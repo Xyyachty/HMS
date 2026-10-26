@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Hotel Management System — Log In</title>
-  <link rel="icon" type="image/png" href="{{ asset('chtm-logoo.png') }}" />
+  <link rel="icon" type="image/png" href="{{ asset('new_logo_in_chtm....png') }}" />
   <link rel="stylesheet" href="{{ asset('css/app.css') }}" />
   <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -53,6 +53,20 @@
 
     .brand-gradient { background: linear-gradient(135deg, #F472B6, #DB2777, #9D174D); }
     .brand-gradient-alt { background: linear-gradient(135deg, #FB7185, #DB2777, #A855F7); }
+
+    /* Campus photo behind the brand wash on the visual panel */
+    .hero-photo {
+      object-position: center 40%;
+      transform: scale(1.04);
+    }
+    .hero-wash {
+      background: linear-gradient(135deg, #FB7185, #DB2777, #A855F7);
+      opacity: 0.78;
+      mix-blend-mode: multiply;
+    }
+    .hero-shade {
+      background: linear-gradient(to top, rgba(76, 5, 39, 0.65), rgba(76, 5, 39, 0.1) 55%, rgba(76, 5, 39, 0.35));
+    }
 
     .gradient-text {
       background: linear-gradient(135deg, #F472B6, #DB2777, #9D174D);
@@ -178,6 +192,7 @@
       animation: spin 0.7s linear infinite;
     }
   </style>
+@include('partials.no-horizontal-scroll')
 </head>
 <body class="bg-white">
 
@@ -188,6 +203,11 @@
 
   <!-- ==================== LEFT PANEL — Visual ==================== -->
   <div class="auth-panel hidden lg:flex lg:w-1/2 h-full relative overflow-hidden brand-gradient-alt items-center justify-center p-10">
+    <!-- Campus photo + brand wash -->
+    <img src="{{ asset('SPC_GATE.png') }}" alt="" aria-hidden="true" class="hero-photo absolute inset-0 w-full h-full object-cover" />
+    <div class="hero-wash absolute inset-0"></div>
+    <div class="hero-shade absolute inset-0"></div>
+
     <!-- Decorative shapes -->
     <div class="absolute inset-0">
       <div class="float-a absolute top-16 left-16 w-20 h-20 border-2 border-white/10 rounded-3xl"></div>
@@ -203,10 +223,10 @@
 
     <div class="relative z-10 max-w-md text-center">
       <!-- Logo -->
-      <img src="{{ asset('chtm-logoo.png') }}" alt="Hotel Management System logo" class="h-16 w-auto object-contain drop-shadow-sm mx-auto mb-8" />
+      <img src="{{ asset('new_logo_in_chtm....png') }}" alt="College of Hospitality and Tourism Management logo" class="h-16 w-auto object-contain drop-shadow-sm mx-auto mb-8" />
 
-      <h1 class="text-3xl font-extrabold text-white tracking-tight mb-4">Hotel Management System</h1>
-      <p class="text-lg text-white/70 font-light leading-relaxed mb-10">Interactive Hospitality Task Management — drag, drop, and manage hotel tasks across departments.</p>
+      <h1 class="text-3xl font-extrabold text-white tracking-tight mb-4" style="text-shadow: 0 2px 12px rgba(76, 5, 39, 0.45);">Hotel Management System</h1>
+      <p class="text-lg text-white/80 font-light leading-relaxed mb-10" style="text-shadow: 0 1px 8px rgba(76, 5, 39, 0.4);">Interactive Hospitality Task Management — drag, drop, and manage hotel tasks across departments.</p>
 
       <!-- Role chips -->
       
@@ -225,15 +245,9 @@
     <div class="form-stack w-full max-w-md relative z-10">
       <!-- Mobile logo -->
       <div class="flex items-center gap-2.5 mb-5 lg:hidden">
-        <img src="{{ asset('chtm-logoo.png') }}" alt="Hotel Management System logo" class="h-9 w-auto object-contain drop-shadow-sm" />
+        <img src="{{ asset('new_logo_in_chtm....png') }}" alt="College of Hospitality and Tourism Management logo" class="h-9 w-auto object-contain drop-shadow-sm" />
         <span class="text-lg font-bold tracking-tight">Hotel Management System</span>
       </div>
-
-      <!-- Back to home -->
-      <a href="{{ url('/') }}" class="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-brand transition-colors mb-5">
-        <span class="iconify" data-icon="mdi:arrow-left"></span>
-        Back
-      </a>
 
       <!-- ============ LOGIN FORM ============ -->
       <div id="loginPanel" class="form-panel active">
@@ -262,10 +276,7 @@
 
           <!-- Password -->
           <div>
-            <div class="flex items-center justify-between mb-1.5">
-              <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Password</label>
-              <a href="{{ route('forgot-password') }}" class="text-xs text-brand font-semibold hover:text-brand-dark transition-colors">Forgot password?</a>
-            </div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Password</label>
             <div class="relative">
               <span class="iconify absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" data-icon="mdi:lock-outline"></span>
               <input id="loginPassword" name="password" type="password" placeholder="Enter your password" required
@@ -274,6 +285,7 @@
                 <span class="iconify text-lg" data-icon="mdi:eye-off-outline"></span>
               </button>
             </div>
+            <a href="{{ route('forgot-password') }}" class="mt-1.5 block text-right text-xs text-brand font-semibold hover:text-brand-dark transition-colors">Forgot password?</a>
           </div>
 
           <!-- Remember me -->

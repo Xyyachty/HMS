@@ -26,12 +26,30 @@ class HotelMenuItem extends Model
         'stock',
         'description',
         'image',
+        'best_seller',
     ];
 
     protected $casts = [
         'price' => 'integer',
         'stock' => 'integer',
+        'best_seller' => 'boolean',
     ];
+
+    /**
+     * Whether this database has the best_seller column yet. Asked because it
+     * arrives in a migration of its own; until it has run, a dish simply is not
+     * one the team picked. Answered once per request.
+     */
+    public static function supportsBestSeller(): bool
+    {
+        static $has = null;
+
+        if ($has === null) {
+            $has = \Illuminate\Support\Facades\Schema::hasColumn('hotel_menu_items', 'best_seller');
+        }
+
+        return $has;
+    }
 
     public static function normalizeCategory(?string $value): string
     {
@@ -58,6 +76,8 @@ class HotelMenuItem extends Model
             'stock'    => (int) $this->stock,
             'sub'      => $this->description ?? '',
             'img'      => \App\Support\HotelImageStore::url($this->image),
+            // Picked for the Best Seller section (RS TASK 2).
+            'bestSeller' => self::supportsBestSeller() && (bool) $this->best_seller,
         ];
     }
 }

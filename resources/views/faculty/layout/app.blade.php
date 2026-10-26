@@ -5,27 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('page_title', 'Hotel Management System') | Faculty</title>
-    <link rel="icon" type="image/png" href="{{ asset('chtm-logoo.png') }}">
+    <link rel="icon" type="image/png" href="{{ asset('new_logo_in_chtm....png') }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}" />
+    {{-- app.css is a frozen Tailwind build still carrying Tailwind's stock hues.
+         This re-points its colour utilities at the Student portal's four colours
+         (wine, gold, cream, ink) without touching any class name or layout. --}}
+    <link rel="stylesheet" href="{{ asset('css/faculty-palette.css') }}" />
     <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        ::selection { background: #DB2777; color: #fff; }
+        ::selection { background: #7B1730; color: #fff; }
         body { font-family: 'Manrope', sans-serif; }
 
-        .brand-gradient { background: linear-gradient(135deg, #F472B6, #DB2777, #9D174D); }
-        .brand-gradient-alt { background: linear-gradient(135deg, #FB7185, #DB2777, #A855F7); }
-        .gradient-text {
-            background: linear-gradient(135deg, #F472B6, #DB2777, #9D174D);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-        }
+        /* Flat wine, not a gradient: buttons wear this class, and a button reads
+           as one solid colour. The name stays so every call site keeps working. */
+        .brand-gradient { background: #7B1730; }
         .app-sidebar {
-            background: linear-gradient(180deg, #DB2777 0%, #BE185D 38%, #9D174D 72%, #500724 100%);
+            background: linear-gradient(180deg, #7B1730 0%, #5E1024 38%, #4A0D1C 72%, #2A1118 100%);
         }
 
-        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar { width: 0.3125rem; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 0.625rem; }
 
         .glass-header {
             background: rgba(255, 255, 255, 0.85);
@@ -60,7 +61,7 @@
             100% { background-position: 200% 0; }
         }
         .shimmer-bar {
-            background: linear-gradient(90deg, #F472B6, #DB2777, #FB7185, #DB2777);
+            background: linear-gradient(90deg, #C4425E, #7B1730, #C4425E, #7B1730);
             background-size: 200% 100%;
             animation: shimmer 2s linear infinite;
         }
@@ -85,8 +86,26 @@
             transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .sidebar-mobile.open { transform: translateX(0); }
+
+        /* app.css predates the arbitrary text sizes these pages use, so without
+           these rules that text fell back to its parent's size. Font size only,
+           the same rule the dean portal's Tailwind CDN generates. */
+        .text-\[0\.5625rem\] { font-size: 0.5625rem; }
+        .text-\[0\.625rem\] { font-size: 0.625rem; }
+        .text-\[0\.6875rem\] { font-size: 0.6875rem; }
+        .text-\[0\.75rem\] { font-size: 0.75rem; }
+        .text-\[0\.8125rem\] { font-size: 0.8125rem; }
+        .text-\[0\.9375rem\] { font-size: 0.9375rem; }
+        .text-\[1\.75rem\] { font-size: 1.75rem; }
+        .text-\[1\.875rem\] { font-size: 1.875rem; }
     </style>
+    @include('partials.gray-scheme-styles')
+    @include('partials.ink-all-styles')
     @stack('styles')
+    @include('partials.status-badge-styles')
+    @include('partials.portal-scale')
+    @include('partials.select-caret-styles')
+@include('partials.no-horizontal-scroll')
 </head>
 <body class="bg-slate-50 antialiased">
 
@@ -98,35 +117,34 @@
             <!-- Logo -->
             <div class="h-20 flex items-center px-6 border-b border-white/10 shrink-0">
                 <a href="#" class="flex items-center gap-3 group">
-                    <img src="{{ asset('chtm-logoo.png') }}" alt="Hotel Management System logo" class="h-16 w-auto object-contain drop-shadow-sm group-hover:scale-105 transition-transform duration-300" />
+                    <img src="{{ asset('new_logo_in_chtm....png') }}" alt="College of Hospitality and Tourism Management logo" class="h-16 w-auto object-contain drop-shadow-sm group-hover:scale-105 transition-transform duration-300" />
                     <div>
                         <span class="text-sm font-bold tracking-tight text-white block leading-tight">Hotel Management System</span>
-                        <span class="text-[10px] text-white uppercase tracking-widest">Faculty Portal</span>
+                        <span class="text-[0.625rem] text-white uppercase tracking-widest">Faculty Portal</span>
                     </div>
                 </a>
             </div>
 
             <!-- Navigation -->
             <nav class="flex-1 py-6 overflow-y-auto">
-                <p class="px-8 mb-3 text-[10px] font-bold uppercase tracking-widest text-white">Main Menu</p>
                 <ul class="space-y-1 px-4">
                     <li>
-                        <a href="{{ route('faculty.dashboard') }}" class="nav-item {{ request()->routeIs('faculty.dashboard') ? 'active' : '' }} flex items-center px-4 py-3 rounded-xl text-white">
+                        <a href="{{ route('faculty.dashboard') }}" data-tour="nav-dashboard" class="nav-item {{ request()->routeIs('faculty.dashboard') ? 'active' : '' }} flex items-center px-4 py-3 rounded-xl text-white">
                             <span class="font-semibold text-sm">Dashboard</span>
                         </a>
                     </li>
                     <li>
-                        <a href="{{ route('faculty.students') }}" class="nav-item {{ request()->routeIs('faculty.students') ? 'active' : '' }} flex items-center px-4 py-3 rounded-xl text-white">
+                        <a href="{{ route('faculty.students') }}" data-tour="nav-students" class="nav-item {{ request()->routeIs('faculty.students') ? 'active' : '' }} flex items-center px-4 py-3 rounded-xl text-white">
                             <span class="font-medium text-sm">Manage Students</span>
                         </a>
                     </li>
                     <li>
-                        <a href="{{ route('faculty.role') }}" class="nav-item {{ request()->routeIs('faculty.role') || request()->routeIs('faculty.activity') ? 'active' : '' }} flex items-center px-4 py-3 rounded-xl text-white">
+                        <a href="{{ route('faculty.role') }}" data-tour="nav-teams" class="nav-item {{ request()->routeIs('faculty.role') || request()->routeIs('faculty.activity') ? 'active' : '' }} flex items-center px-4 py-3 rounded-xl text-white">
                             <span class="font-medium text-sm">Manage Teams</span>
                         </a>
                     </li>
                     <li>
-                        <a href="{{ route('faculty.reports') }}" class="nav-item {{ request()->routeIs('faculty.reports') ? 'active' : '' }} flex items-center px-4 py-3 rounded-xl text-white">
+                        <a href="{{ route('faculty.reports') }}" data-tour="nav-reports" class="nav-item {{ request()->routeIs('faculty.reports') ? 'active' : '' }} flex items-center px-4 py-3 rounded-xl text-white">
                             <span class="font-medium text-sm">Reports</span>
                         </a>
                     </li>
@@ -142,30 +160,14 @@
                     $authUser->first_name ?? null,
                     $authUser->last_name ?? null,
                 ]))) ?: ($authUser->name ?? 'Faculty');
-                $avatarUrl = $authUser?->avatar_url
-                    ?? ('https://ui-avatars.com/api/?name=' . urlencode($displayName) . '&background=DB2777&color=fff&size=40&font-size=0.4');
             @endphp
             <div class="p-4 border-t border-white/10 shrink-0">
-                <div class="bg-white/5 rounded-2xl p-4">
-                    <div class="flex items-center gap-3 mb-3">
-                        <img src="{{ $avatarUrl }}" alt="{{ $displayName }}" class="w-10 h-10 rounded-xl border-2 border-white/20 object-cover">
-                        <div class="min-w-0">
-                            <p class="text-sm font-bold text-white truncate">{{ $displayName }}</p>
-                            <p class="text-[10px] text-white">Faculty</p>
-                        </div>
-                    </div>
-                    <a href="{{ route('faculty.profile') }}" class="mb-2 flex items-center gap-2 text-xs font-semibold text-white hover:text-white/80 transition-colors">
-                        <span class="iconify" data-icon="mdi:account-outline"></span>
-                        My Profile
-                    </a>
-                    <form method="POST" action="{{ route('logout') }}">
-                        @csrf
-                        <button type="submit" class="flex items-center gap-2 text-xs font-semibold text-white hover:text-white/80 transition-colors">
-                            <span class="iconify" data-icon="mdi:logout"></span>
-                            Sign Out
-                        </button>
-                    </form>
-                </div>
+                @include('partials.sidebar-profile-card', [
+                    'user'        => $authUser,
+                    'name'        => $displayName,
+                    'role'        => 'Faculty',
+                    'profileHref' => route('faculty.profile'),
+                ])
             </div>
         </aside>
 
@@ -173,14 +175,17 @@
         <!-- ==================== MAIN CONTENT ==================== -->
         <div class="flex-1 flex flex-col min-w-0">
 
+            @php
+                $inkAll = request()->routeIs('faculty.dashboard', 'faculty.role', 'faculty.activity', 'faculty.reports');
+            @endphp
             <!-- Top Header -->
             <header class="glass-header h-20 flex items-center justify-between px-6 md:px-8 sticky top-0 z-10 shrink-0">
                 <div class="flex items-center gap-4">
                     <!-- Mobile menu toggle -->
-                    <button onclick="toggleSidebar()" class="lg:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors">
+                    <button onclick="toggleSidebar()" data-tour="menu-toggle" class="lg:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors">
                         <span class="iconify text-xl text-slate-600" data-icon="mdi:menu"></span>
                     </button>
-                    <div>
+                    <div class="{{ $inkAll ? 'ink-all' : '' }}">
                         <h2 class="text-xl font-bold text-slate-900 tracking-tight">@yield('page_title', 'Dashboard')</h2>
                         <p class="text-xs text-slate-400 font-light">Welcome back, {{ $displayName }}</p>
                     </div>
@@ -188,13 +193,14 @@
 
                 <div class="flex items-center gap-3 md:gap-5">
                     @include('partials.datetime-clock')
+                    @include('partials.tour-button')
                     @include('partials.notification-bell')
                 </div>
             </header>
 
 
             <!-- ==================== PAGE CONTENT ==================== -->
-            <main class="flex-1 overflow-y-auto p-4 md:p-6" style="background-color:#F5F5F5">
+            <main class="{{ $inkAll ? 'ink-all' : '' }} gray-accents flex-1 overflow-y-auto p-4 md:p-6" style="background-color:#dadada">
                 @yield('content')
             </main>
         </div>
@@ -208,10 +214,10 @@
         <!-- Same sidebar content -->
         <div class="h-20 flex items-center px-6 border-b border-white/10 shrink-0">
             <a href="#" class="flex items-center gap-3">
-                <img src="{{ asset('chtm-logoo.png') }}" alt="Hotel Management System logo" class="h-16 w-auto object-contain drop-shadow-sm" />
+                <img src="{{ asset('new_logo_in_chtm....png') }}" alt="College of Hospitality and Tourism Management logo" class="h-16 w-auto object-contain drop-shadow-sm" />
                 <div>
                     <span class="text-sm font-bold tracking-tight text-white block leading-tight">Hotel Management System</span>
-                    <span class="text-[10px] text-white uppercase tracking-widest">Faculty Portal</span>
+                    <span class="text-[0.625rem] text-white uppercase tracking-widest">Faculty Portal</span>
                 </div>
             </a>
         </div>
@@ -228,6 +234,8 @@
 
     <!-- ==================== SCRIPTS ==================== -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    @include('partials.swal-theme')
+    <script src="{{ asset('js/hms-swal-theme.js') }}?v={{ filemtime(public_path('js/hms-swal-theme.js')) }}"></script>
     @if (session('welcome'))
         <script>
             window.addEventListener('load', function () {
@@ -238,7 +246,7 @@
                     timer: 2500,
                     timerProgressBar: true,
                     showConfirmButton: false,
-                    iconColor: '#DB2777',
+                    iconColor: '#C9A45C',
                     width: '22rem'
                 });
             });
@@ -262,6 +270,11 @@
             });
         });
     </script>
+    @include('partials.ph-phone-input')
     @stack('scripts')
+@include('partials.logout-confirm')
+@include('partials.session-guard')
+@include('partials.guided-tour')
+@include('partials.nav-loader')
 </body>
 </html>

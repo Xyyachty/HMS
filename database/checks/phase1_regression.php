@@ -37,20 +37,11 @@ for ($i = 1; $i < count($p); $i++) {
 $check('scopeOrderByPriority sorts high->low', $sorted, count($p) . ' tasks');
 
 echo "\nDean dashboard aggregates\n";
+$old = (int) StudentGroup::query()
+    ->selectRaw('COUNT(DISTINCT CONCAT(COALESCE(faculty_id, 0), "::", group_name)) as aggregate')
+    ->value('aggregate');
 $new = StudentGroup::query()->select('faculty_id','group_name')->distinct()->get()->count();
-
-if (Illuminate\Support\Facades\DB::connection()->getDriverName() === 'mysql') {
-    // Only meaningful on MySQL: this is the expression the controller used to run,
-    // kept as a reference value. On PostgreSQL it raises `column "::" does not exist`,
-    // which is the exact bug the replacement fixed.
-    $old = (int) StudentGroup::query()
-        ->selectRaw('COUNT(DISTINCT CONCAT(COALESCE(faculty_id, 0), "::", group_name)) as aggregate')
-        ->value('aggregate');
-    $check('totalTeams matches previous MySQL result', $old === $new, "old=$old new=$new");
-} else {
-    // Cross-checked against MySQL when this suite last ran there.
-    $check('totalTeams counts distinct (faculty, name) pairs', $new === 10, "got $new");
-}
+$check('totalTeams matches previous MySQL result', $old === $new, "old=$old new=$new");
 
 echo "\nEmail normalization\n";
 $u = User::first();
@@ -86,53 +77,28 @@ $item = HotelMenuItem::first();
 $membership = StudentGroup::where('group_name', $item->group_name)
     ->where('faculty_id', $item->faculty_id)->first();
 $lines = App\Models\HotelFoodOrder::sanitizeItems([
-    ['menu_item_id' => $item->hotel_menu_item_id, 'name' => $item->name, 'price' => $item->price, 'qty' => 1],
+    ['menu_item_id' => $item->id, 'name' => $item->name, 'price' => $item->price, 'qty' => 1],
 ]);
-$check('sanitizeItems keeps menu_item_id', ($lines[0]['menu_item_id'] ?? null) === $item->hotel_menu_item_id);
+$check('sanitizeItems keeps menu_item_id', ($lines[0]['menu_item_id'] ?? null) === $item->id);
 $locked = App\Support\HotelOrderAccess::lockMenuItemsFor($membership, $lines);
 $check('matchMenuItem resolves by id',
-    optional(App\Support\HotelOrderAccess::matchMenuItem($locked, $lines[0]))->hotel_menu_item_id === $item->hotel_menu_item_id);
+    optional(App\Support\HotelOrderAccess::matchMenuItem($locked, $lines[0]))->id === $item->id);
 $legacy = ['menu_item_id' => null, 'name' => mb_strtoupper($item->name), 'qty' => 1];
 $locked2 = App\Support\HotelOrderAccess::lockMenuItemsFor($membership, [$legacy]);
 $check('matchMenuItem falls back to name, any case',
-    optional(App\Support\HotelOrderAccess::matchMenuItem($locked2, $legacy))->hotel_menu_item_id === $item->hotel_menu_item_id);
+    optional(App\Support\HotelOrderAccess::matchMenuItem($locked2, $legacy))->id === $item->id);
 
-echo "\nUser data (must never drift)\n";
-// students (44) + faculties (1) became user_information (45) — see the
-// 2026_08_18_000000 merge migration. The split is asserted separately below.
+echo "\nRow counts vs Phase 0 baseline\n";
 $baseline = [
-    'users' => 46, 'user_information' => 45, 'tasks' => 22, 'student_groups' => 40,
-    'student_group_roles' => 41, 'faculty_classes' => 2,
-    'hotel_rooms' => 6, 'hotel_menu_items' => 14, 'hotel_customers' => 2,
+    'users' => 46, 'students' => 44, 'tasks' => 22, 'student_groups' => 40,
+    'template_elements' => 114, 'template_layouts' => 80, 'template_content_items' => 66,
+    'template_content_fields' => 226, 'template_images' => 24, 'hotel_rooms' => 6,
+    'hotel_menu_items' => 14, 'activity_logs' => 62,
 ];
 foreach ($baseline as $table => $expected) {
     $actual = Illuminate\Support\Facades\DB::table($table)->count();
     $check("$table unchanged", $actual === $expected, "expected $expected, got $actual");
 }
-
-foreach (['student' => 44, 'faculty' => 1] as $type => $expected) {
-    $actual = App\Models\UserInformation::where('user_type', $type)->count();
-    $check("user_information $type rows unchanged", $actual === $expected, "expected $expected, got $actual");
-}
-
-echo "\nLive template rows (version_id = 0)\n";
-// Template table TOTALS are deliberately not asserted: every manual save writes a
-// version snapshot and prunes old ones, so they legitimately rise and fall. The live
-// set is what renders the current site, and that must survive a save unchanged.
-$live = [
-    'template_layouts' => 20,
-    'template_elements' => 8,
-    'template_content_items' => 15,
-    'template_images' => 12,
-];
-foreach ($live as $table => $expected) {
-    $actual = Illuminate\Support\Facades\DB::table($table)->where('version_id', 0)->count();
-    $check("$table live rows", $actual === $expected, "expected $expected, got $actual");
-}
-
-// Append-only and grows with real use, so assert the floor rather than equality.
-$logs = Illuminate\Support\Facades\DB::table('activity_logs')->count();
-$check('activity_logs at or above migration baseline', $logs >= 62, "$logs rows");
 
 echo "\n" . ($fail === 0 ? "ALL CHECKS PASSED" : "$fail CHECK(S) FAILED") . "\n";
 exit($fail === 0 ? 0 : 1);

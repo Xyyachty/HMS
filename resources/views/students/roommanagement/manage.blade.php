@@ -1,7 +1,5 @@
 @extends('students.builder.ops-shell')
 
-@php $backRoute = 'students.roommanagement'; @endphp
-
 @section('page-title', 'Room Management')
 
 @section('head-extra')
@@ -13,7 +11,7 @@
   #opsContentWrap { font-family: var(--font-body, 'Outfit', sans-serif); }
   .font-display { font-family: var(--font-display, 'Playfair Display', serif); }
   .room-status-badge {
-    padding: 0.25rem 0.7rem; border-radius: 4px;
+    padding: 0.25rem 0.7rem; border-radius: 0.25rem;
     font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase;
     font-weight: 600; border: 1px solid transparent;
   }
@@ -37,7 +35,7 @@
     background: var(--accent); color: var(--bg);
     font-family: var(--font-body, 'Outfit', sans-serif); font-weight: 600;
     font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase;
-    padding: 0.8rem 1.8rem; border: none; border-radius: 6px;
+    padding: 0.8rem 1.8rem; border: none; border-radius: 0.375rem;
     cursor: pointer; transition: background 0.2s, transform 0.2s;
   }
   .btn-primary:hover { background: var(--accent-light); transform: translateY(-1px); }
@@ -46,14 +44,14 @@
     background: transparent; color: var(--accent);
     font-family: var(--font-body, 'Outfit', sans-serif); font-weight: 500;
     font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase;
-    padding: 0.6rem 1.3rem; border: 1px solid var(--accent); border-radius: 6px;
+    padding: 0.6rem 1.3rem; border: 1px solid var(--accent); border-radius: 0.375rem;
     cursor: pointer; transition: background 0.2s, color 0.2s, transform 0.2s;
     text-decoration: none;
   }
   .btn-outline:hover { background: var(--accent); color: var(--bg); transform: translateY(-1px); }
   .booking-input {
     background: rgba(255,255,255,0.03); border: 1px solid var(--border);
-    border-radius: 6px; padding: 0.7rem 0.9rem; color: var(--fg);
+    border-radius: 0.375rem; padding: 0.7rem 0.9rem; color: var(--fg);
     font-family: var(--font-body, 'Outfit', sans-serif); font-size: 0.85rem;
     outline: none; transition: border-color 0.2s; width: 100%;
   }
@@ -61,11 +59,11 @@
   .booking-input::placeholder { color: var(--fg-muted); opacity: 0.5; }
   .rm-row {
     display: flex; align-items: stretch; width: 100%;
-    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 0.875rem;
     overflow: hidden;
   }
   .rm-content { flex: 1; min-width: 0; padding: 1.25rem 1.6rem; position: relative; color: var(--fg); }
-  .rm-panel { max-width: 520px; }
+  .rm-panel { max-width: 32.5rem; }
   .rm-panel h3 { font-family: var(--font-display, 'Playfair Display', serif); font-size: 1.35rem; font-weight: 700; margin: 0 0 0.35rem; color: var(--fg); }
   .rm-panel-desc { color: var(--fg-muted); font-size: 0.82rem; margin: 0 0 1.35rem; line-height: 1.5; }
   .rm-form-grid { display: grid; gap: 0.95rem; }
@@ -80,14 +78,14 @@
   .room-card-tab {
     font-family: var(--font-body, 'Outfit', sans-serif); font-size: 0.74rem; font-weight: 600;
     letter-spacing: 0.06em; text-transform: uppercase;
-    padding: 0.5rem 0.9rem; border-radius: 100px;
+    padding: 0.5rem 0.9rem; border-radius: 6.25rem;
     border: 1.5px solid var(--border); background: transparent;
     color: var(--fg-muted); cursor: pointer; transition: all 0.15s;
   }
   .room-card-tab:hover { border-color: var(--accent); color: var(--accent); }
   .room-card-tab.active { background: var(--accent); border-color: var(--accent); color: var(--bg, #0c0b09); }
   .room-browse-card {
-    text-align: left; border: 1px solid var(--border); border-radius: 10px;
+    text-align: left; border: 1px solid var(--border); border-radius: 0.625rem;
     overflow: hidden; background: var(--bg-warm); cursor: pointer; padding: 0;
     transition: border-color 0.15s, transform 0.15s;
   }
@@ -99,20 +97,96 @@
     padding: 1.5rem; z-index: 200;
   }
   .room-modal {
-    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
-    width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto;
+    background: var(--card); border: 1px solid var(--border); border-radius: 0.875rem;
+    width: 100%; max-width: 30rem; max-height: 90vh; overflow-y: auto;
   }
-  .room-modal-img { position: relative; height: 200px; }
+  .room-modal-img { position: relative; height: 12.5rem; }
   .room-modal-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .room-modal-close {
-    position: absolute; top: 10px; right: 10px; width: 32px; height: 32px;
-    border-radius: 8px; border: none; background: rgba(0,0,0,0.55); color: #fff;
+    position: absolute; top: 0.625rem; right: 0.625rem; width: 2rem; height: 2rem;
+    border-radius: 0.5rem; border: none; background: rgba(0,0,0,0.55); color: #fff;
     cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+
+  /* Photo chooser. It opens on top of the Add/Edit Room dialog, so it needs to
+     stack above the overlay that owns it. */
+  .room-image-overlay { z-index: 260; }
+  .room-image-modal { max-width: 35rem; padding: 1.5rem; }
+  .room-image-title {
+    font-family: var(--font-display, 'Playfair Display', serif);
+    font-size: 1.35rem; color: var(--fg); margin: 0 0 0.3rem;
+  }
+  .room-image-hint {
+    color: var(--fg-muted); font-size: 0.76rem; line-height: 1.5; margin: 0 0 1.1rem;
+  }
+  .room-image-stage {
+    position: relative; border: 1px solid var(--border); border-radius: 0.625rem;
+    overflow: hidden; background: rgba(255,255,255,0.02);
+  }
+  .room-image-stage img {
+    width: 100%; height: 16.25rem; object-fit: cover; display: block;
+  }
+  .room-image-badge {
+    position: absolute; top: 0.625rem; left: 0.625rem; padding: 0.25rem 0.6rem;
+    border-radius: 999px; background: rgba(0,0,0,0.6); color: #fff;
+    font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase;
+  }
+  .room-image-empty {
+    height: 16.25rem; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 0.625rem; color: var(--fg-muted); font-size: 0.78rem;
+  }
+  .room-image-actions {
+    display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-top: 1.2rem;
+  }
+  .room-image-actions .room-image-done { margin-left: auto; }
+
+  .room-slot-grid {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem;
+  }
+  @media (max-width: 560px) {
+    .room-slot-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  .room-slot {
+    border: 1px solid var(--border); border-radius: 0.625rem; overflow: hidden;
+    background: rgba(255,255,255,0.02);
+  }
+  .room-slot.is-primary { border-color: var(--accent); }
+  .room-slot-thumb {
+    position: relative; height: 6rem; background-size: cover; background-position: center;
+    background-color: rgba(255,255,255,0.03); cursor: pointer;
+  }
+  .room-slot-thumb.is-empty {
+    display: flex; align-items: center; justify-content: center;
+    color: var(--fg-muted); font-size: 1.3rem;
+  }
+  .room-slot-badge {
+    position: absolute; top: 0.375rem; left: 0.375rem; padding: 0.15rem 0.45rem; border-radius: 999px;
+    background: rgba(0,0,0,0.65); color: #fff; font-size: 0.56rem;
+    letter-spacing: 0.1em; text-transform: uppercase;
+  }
+  .room-slot-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.4rem;
+    padding: 0.45rem 0.55rem;
+  }
+  .room-slot-name {
+    color: var(--fg-muted); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase;
+  }
+  .room-slot-btn {
+    border: 1px solid var(--border); background: transparent; color: var(--fg);
+    border-radius: 999px; padding: 0.2rem 0.55rem; font-size: 0.58rem;
+    letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;
+    font-family: var(--font-body, 'Outfit', sans-serif); transition: all 0.15s;
+  }
+  .room-slot-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .room-slot-clear {
+    border: none; background: none; color: var(--danger, #fb7185);
+    font-size: 0.6rem; cursor: pointer; padding: 0;
+    font-family: var(--font-body, 'Outfit', sans-serif);
   }
 
   .room-cal {
     background: rgba(255,255,255,0.03); border: 1px solid var(--border);
-    border-radius: 12px; padding: 0.9rem 1rem 1rem;
+    border-radius: 0.75rem; padding: 0.9rem 1rem 1rem;
   }
   .room-cal-header {
     display: flex; align-items: center; justify-content: space-between;
@@ -123,7 +197,7 @@
     color: var(--fg);
   }
   .room-cal-nav {
-    width: 26px; height: 26px; border-radius: 8px; border: 1px solid var(--border);
+    width: 1.625rem; height: 1.625rem; border-radius: 0.5rem; border: 1px solid var(--border);
     background: transparent; color: var(--fg-muted); cursor: pointer;
     display: flex; align-items: center; justify-content: center; transition: all 0.15s;
   }
@@ -138,7 +212,7 @@
     color: var(--fg-muted); text-align: center;
   }
   .room-cal-day {
-    aspect-ratio: 1; border-radius: 8px; border: 1px solid transparent;
+    aspect-ratio: 1; border-radius: 0.5rem; border: 1px solid transparent;
     background: rgba(255,255,255,0.02); color: var(--fg);
     font-family: var(--font-body, 'Outfit', sans-serif); font-size: 0.74rem; cursor: default;
     display: flex; align-items: center; justify-content: center;
@@ -151,7 +225,7 @@
     display: inline-flex; align-items: center; gap: 0.35rem;
     font-size: 0.68rem; color: var(--fg-muted);
   }
-  .room-cal-swatch { width: 10px; height: 10px; border-radius: 3px; display: inline-block; background: rgba(255,255,255,0.08); }
+  .room-cal-swatch { width: 0.625rem; height: 0.625rem; border-radius: 0.1875rem; display: inline-block; background: rgba(255,255,255,0.08); }
   .room-cal-swatch.is-booked { background: var(--danger, #fb7185); }
   .room-cal-swatch.is-past { background: var(--fg-muted); opacity: 0.5; }
 
@@ -173,6 +247,216 @@
   :root[data-ops-theme="2"] .room-cal-day { background: rgba(27,67,50,0.035); }
   :root[data-ops-theme="2"] .room-cal-day.is-booked { background: rgba(225,29,72,0.1); }
   :root[data-ops-theme="2"] .room-cal-swatch { background: rgba(27,67,50,0.12); }
+  /* ── Manage Rooms (mr-) ──────────────────────────────────────────────────
+     Reads the shell's tokens, the same way the Housekeeping pages do, so it
+     follows Template 1, Template 2 and a team's own site colours. Shape rule:
+     pills for status and tabs, 10px for buttons and fields, 14px for panels
+     and cards. Guest Details below keeps its own rm- styles. */
+  :root[data-ops-theme="2"] { --warn: #b45309; }
+  .mr {
+    --mr-soft: color-mix(in srgb, var(--fg) 4%, transparent);
+    --mr-tint: color-mix(in srgb, var(--accent) 12%, transparent);
+    --mr-line: var(--border);
+    --mr-ok: var(--success, #4ade80);
+    --mr-warn: var(--warn, #f59e0b);
+    --mr-bad: var(--danger, #fb7185);
+    color: var(--fg);
+    display: grid; gap: 1.25rem;
+  }
+  .mr-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+  .mr-eyebrow { color: var(--accent); font-size: 0.72rem; letter-spacing: 0.25em; text-transform: uppercase; margin: 0 0 0.5rem; }
+  .mr-head h1 { margin: 0; font-size: 1.85rem; line-height: 1.15; color: var(--fg); }
+  .mr-lead { margin: 0.45rem 0 0; color: var(--fg-muted); font-size: 0.92rem; max-width: 66ch; line-height: 1.5; }
+  .mr-head-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+  .mr-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem;
+    font: 600 0.88rem/1.15 var(--font-body, 'Outfit', sans-serif);
+    padding: 0.8rem 1.15rem; border-radius: 0.625rem; cursor: pointer; text-decoration: none;
+    border: 1px solid var(--accent); background: transparent; color: var(--accent);
+    transition: background 0.15s, transform 0.1s, filter 0.15s;
+  }
+  .mr-btn:hover { background: var(--mr-tint); }
+  .mr-btn:active { transform: translateY(1px); }
+  .mr-btn.is-solid { background: var(--accent); color: var(--bg); }
+  .mr-btn.is-solid:hover { filter: brightness(1.08); }
+  .mr-btn.is-quiet { border-color: var(--mr-line); color: var(--fg-muted); }
+  .mr-btn.is-quiet:hover { color: var(--fg); background: var(--mr-soft); }
+  .mr-btn.is-small { padding: 0.62rem 0.95rem; font-size: 0.84rem; }
+  .mr-btn.is-wide { width: 100%; }
+  .mr-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; filter: none; }
+  .mr-btn:focus-visible, .mr-tab:focus-visible, .mr-chip:focus-visible, .mr-link:focus-visible, .mr-close:focus-visible, .mr-photos:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+
+  .mr-how { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; }
+  .mr-how li { display: flex; gap: 0.7rem; align-items: flex-start; padding: 0.85rem 0.95rem; border-radius: 0.875rem; background: var(--mr-soft); border: 1px solid var(--mr-line); }
+  .mr-how-num { flex: none; width: 1.875rem; height: 1.875rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.78rem; background: var(--mr-tint); color: var(--accent); }
+  .mr-how div b { display: block; font-size: 0.86rem; color: var(--fg); margin-bottom: 0.15rem; }
+  .mr-how div span { display: block; font-size: 0.78rem; color: var(--fg-muted); line-height: 1.4; }
+
+  .mr-panel { background: var(--card); border: 1px solid var(--mr-line); border-radius: 0.875rem; padding: 1.2rem 1.3rem 1.4rem; }
+  .mr-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .mr-panel-head h2 { margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--fg); }
+  .mr-panel-head p { margin: 0.25rem 0 0; font-size: 0.84rem; color: var(--fg-muted); }
+  .mr-live { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; color: var(--fg-muted); }
+  .mr-live::before { content: ''; width: 0.4375rem; height: 0.4375rem; border-radius: 50%; background: var(--mr-ok); }
+
+  .mr .tone-ok, .mr-modal .tone-ok       { background: color-mix(in srgb, var(--mr-ok) 16%, transparent);   color: var(--mr-ok); }
+  .mr .tone-warn, .mr-modal .tone-warn   { background: color-mix(in srgb, var(--mr-warn) 16%, transparent); color: var(--mr-warn); }
+  .mr .tone-brand, .mr-modal .tone-brand { background: var(--mr-tint); color: var(--accent); }
+
+  .mr-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; margin-bottom: 1.1rem; }
+  .mr-stat { display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 0.95rem; border-radius: 0.75rem; border: 1px solid var(--mr-line); background: var(--mr-soft); }
+  .mr-stat-icon { flex: none; width: 2.375rem; height: 2.375rem; border-radius: 0.625rem; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; }
+  .mr-stat div b { display: block; font-size: 1.35rem; line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--fg); }
+  .mr-stat div span { display: block; font-size: 0.78rem; color: var(--fg-muted); }
+
+  .mr-types { display: grid; gap: 0.5rem; margin-bottom: 0.9rem; }
+  .mr-tabs { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .mr-tab { display: inline-flex; align-items: center; gap: 0.5rem; font: 600 0.84rem/1 var(--font-body, 'Outfit', sans-serif); padding: 0.6rem 0.9rem; border-radius: 999px; cursor: pointer; border: 1px solid var(--mr-line); background: var(--mr-soft); color: var(--fg-muted); transition: background 0.15s, color 0.15s, border-color 0.15s; }
+  .mr-tab:hover { color: var(--fg); border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
+  .mr-tab.is-on { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .mr-tab.is-new { border-style: dashed; background: transparent; color: var(--accent); }
+  .mr-count { min-width: 1.45rem; padding: 0.2rem 0.4rem; border-radius: 999px; text-align: center; font-size: 0.74rem; font-variant-numeric: tabular-nums; background: color-mix(in srgb, var(--fg) 8%, transparent); }
+  .mr-tab.is-on .mr-count { background: color-mix(in srgb, var(--bg) 22%, transparent); }
+
+  .mr-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .mr-showing { margin: 0; font-size: 0.86rem; color: var(--fg-muted); display: flex; align-items: center; gap: 0.4rem 0.9rem; flex-wrap: wrap; }
+  .mr-showing b { color: var(--fg); }
+  .mr-link { display: inline-flex; align-items: center; gap: 0.4rem; background: none; border: 0; padding: 0.25rem 0; cursor: pointer; color: var(--accent); font: 600 0.84rem/1 var(--font-body, 'Outfit', sans-serif); }
+  .mr-link:hover { text-decoration: underline; }
+  .mr-search { position: relative; flex: 1 1 240px; max-width: 21.25rem; }
+  .mr-search i { position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%); color: var(--fg-muted); font-size: 0.8rem; pointer-events: none; }
+  .mr-search .mr-input { padding-left: 2.3rem; }
+
+  .mr-input {
+    box-sizing: border-box; width: 100%;
+    background: var(--mr-soft); border: 1px solid var(--mr-line);
+    border-radius: 0.625rem; padding: 0.75rem 0.9rem; color: var(--fg);
+    font: 400 0.9rem/1.4 var(--font-body, 'Outfit', sans-serif);
+    outline: none; transition: border-color 0.15s;
+  }
+  .mr-input:focus { border-color: var(--accent); }
+  .mr-input::placeholder { color: var(--fg-muted); opacity: 0.7; }
+  .mr-input.has-error { border-color: var(--mr-bad); }
+  textarea.mr-input { resize: vertical; min-height: 4.6rem; }
+
+  /* Room cards: one height per row, button at the bottom. */
+  .mr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(270px, 100%), 1fr)); gap: 1rem; align-items: stretch; }
+  .mr-card { min-width: 0; border: 1px solid var(--mr-line); border-radius: 0.875rem; background: var(--mr-soft); overflow: hidden; display: flex; flex-direction: column; }
+  .mr-card-img { position: relative; aspect-ratio: 16 / 9; background: var(--mr-soft); overflow: hidden; }
+  .mr-card-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+  .mr-card-img .mr-pill { position: absolute; top: 0.625rem; left: 0.625rem; background: var(--card); box-shadow: 0 2px 10px rgba(0,0,0,0.25); }
+  .mr-pill { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.7rem; border-radius: 999px; font-size: 0.76rem; font-weight: 600; white-space: nowrap; }
+  .mr-card-body { padding: 0.9rem 1rem 1rem; display: flex; flex-direction: column; gap: 0.7rem; flex: 1; }
+  .mr-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; }
+  .mr-name { margin: 0; font-size: 1.08rem; font-weight: 700; color: var(--fg); line-height: 1.25; overflow-wrap: anywhere; }
+  .mr-type { display: block; font-size: 0.78rem; font-weight: 600; color: var(--accent); margin-top: 0.2rem; }
+  .mr-price { text-align: right; flex: none; }
+  .mr-price b { display: block; font-size: 1.02rem; color: var(--fg); font-variant-numeric: tabular-nums; }
+  .mr-price small { display: block; font-size: 0.7rem; color: var(--fg-muted); }
+  .mr-desc { margin: 0; font-size: 0.83rem; line-height: 1.5; color: var(--fg-muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 3em; }
+  .mr-desc.is-empty { font-style: italic; opacity: 0.7; }
+  .mr-next { margin: auto 0 0; display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: var(--fg); padding: 0.55rem 0.7rem; border-radius: 0.625rem; background: var(--card); border: 1px solid var(--mr-line); }
+  .mr-next i { color: var(--fg-muted); }
+  .mr-more { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem; font-size: 0.82rem; color: var(--fg-muted); }
+
+  .mr-empty { border: 1.5px dashed var(--mr-line); border-radius: 0.875rem; padding: 2.2rem 1.5rem; text-align: center; }
+  .mr-empty-icon { width: 3.5rem; height: 3.5rem; margin: 0 auto 0.9rem; border-radius: 1rem; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; background: var(--mr-tint); color: var(--accent); }
+  .mr-empty h3 { margin: 0; font-size: 1.02rem; font-weight: 700; color: var(--fg); }
+  .mr-empty p { margin: 0.4rem auto 0; max-width: 52ch; font-size: 0.86rem; line-height: 1.5; color: var(--fg-muted); }
+  .mr-empty .mr-btn { margin-top: 1.1rem; }
+
+  /* Dialogs. Below .room-image-overlay (260), which opens on top of them. */
+  .mr-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; padding: 1.25rem; z-index: 200; }
+  .mr-modal {
+    --mr-soft: color-mix(in srgb, var(--fg) 4%, transparent);
+    --mr-tint: color-mix(in srgb, var(--accent) 12%, transparent);
+    --mr-line: var(--border);
+    --mr-ok: var(--success, #4ade80);
+    --mr-bad: var(--danger, #fb7185);
+    box-sizing: border-box; background: var(--card); color: var(--fg); border: 1px solid var(--mr-line); border-radius: 0.875rem; width: 100%; max-width: 36.25rem; max-height: 92vh; overflow-y: auto;
+  }
+  .mr-modal.is-small { max-width: 28.75rem; }
+  .mr-modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.35rem 0; }
+  .mr-modal-head h2 { margin: 0; font-size: 1.45rem; line-height: 1.2; color: var(--fg); }
+  .mr-modal-head p { margin: 0.35rem 0 0; font-size: 0.84rem; color: var(--fg-muted); line-height: 1.45; }
+  .mr-close { flex: none; width: 2.125rem; height: 2.125rem; border-radius: 0.625rem; border: 1px solid var(--mr-line); background: transparent; color: var(--fg-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .mr-close:hover { color: var(--fg); background: var(--mr-soft); }
+  .mr-form { padding: 1.1rem 1.35rem 1.35rem; display: grid; gap: 1.05rem; }
+  .mr-field { display: grid; gap: 0.4rem; align-content: start; }
+  .mr-label { font-size: 0.86rem; font-weight: 600; color: var(--fg); }
+  .mr-label em { font-style: normal; font-weight: 400; color: var(--fg-muted); }
+  .mr-help { margin: 0; font-size: 0.76rem; color: var(--fg-muted); line-height: 1.45; }
+  .mr-error { margin: 0; font-size: 0.78rem; color: var(--mr-bad); }
+  .mr-money { position: relative; }
+  .mr-money span { position: absolute; left: 0.9rem; top: 50%; transform: translateY(-50%); color: var(--fg-muted); font-size: 0.9rem; pointer-events: none; }
+  .mr-money .mr-input { padding-left: 1.8rem; }
+  .mr-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .mr-chip { padding: 0.55rem 0.9rem; border-radius: 999px; border: 1px solid var(--mr-line); background: var(--mr-soft); color: var(--fg); cursor: pointer; font: 500 0.84rem/1.2 var(--font-body, 'Outfit', sans-serif); transition: border-color 0.15s, background 0.15s; }
+  .mr-chip:hover { border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
+  .mr-chip.is-on { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .mr-note { margin: 0; display: flex; gap: 0.55rem; align-items: flex-start; padding: 0.75rem 0.85rem; border-radius: 0.625rem; border: 1px solid var(--mr-line); background: var(--mr-soft); font-size: 0.84rem; line-height: 1.45; color: var(--fg-muted); }
+  .mr-note i { margin-top: 0.2rem; }
+  .mr-note.is-ok { color: var(--fg); border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: var(--mr-tint); }
+  .mr-note.is-ok i { color: var(--accent); }
+  .mr-photos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; padding: 0; border: 0; background: none; cursor: pointer; }
+  .mr-photo { position: relative; height: 5.25rem; border-radius: 0.625rem; border: 1px solid var(--mr-line); background-color: var(--mr-soft); background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; color: var(--accent); }
+  .mr-photo.is-empty { border-style: dashed; }
+  .mr-photos:hover .mr-photo { border-color: var(--accent); }
+  .mr-photo small { position: absolute; top: 0.3125rem; left: 0.3125rem; padding: 0.12rem 0.45rem; border-radius: 999px; background: rgba(0,0,0,0.65); color: #fff; font-size: 0.62rem; }
+  .mr-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .mr-actions .mr-btn { flex: 1 1 auto; }
+
+  @media (max-width: 860px) {
+    .mr-how, .mr-stats { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 560px) {
+    .mr-head-actions, .mr-head-actions .mr-btn, .mr-search { width: 100%; max-width: none; }
+  }
+  /* Guest Details (shares the mr- look) */
+  .mr-guests { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: 1rem; align-items: stretch; }
+  .mr-guest { min-width: 0; display: flex; flex-direction: column; gap: 0.75rem; padding: 1rem 1.05rem 1.05rem; border-radius: 0.875rem; border: 1px solid var(--mr-line); background: var(--mr-soft); }
+  .mr-guest.is-over { border-color: color-mix(in srgb, var(--mr-bad) 55%, transparent); }
+  .mr-guest-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; }
+  .mr-guest-facts { list-style: none; margin: 0; padding: 0.65rem 0.75rem; border-radius: 0.625rem; background: var(--card); border: 1px solid var(--mr-line); display: grid; gap: 0.4rem; }
+  .mr-guest-facts li { display: flex; gap: 0.55rem; align-items: flex-start; font-size: 0.84rem; color: var(--fg); }
+  .mr-guest-facts li i { width: 1rem; text-align: center; color: var(--fg-muted); margin-top: 0.2rem; font-size: 0.78rem; }
+  .mr-time { margin: 0; display: flex; gap: 0.5rem; align-items: flex-start; padding: 0.6rem 0.75rem; border-radius: 0.625rem; font-size: 0.84rem; line-height: 1.45; font-variant-numeric: tabular-nums; }
+  .mr-time i { margin-top: 0.2rem; }
+  .mr-time.is-ok   { background: color-mix(in srgb, var(--mr-ok) 10%, transparent); color: var(--fg); }
+  .mr-time.is-ok i { color: var(--mr-ok); }
+  .mr-time.is-soon { background: color-mix(in srgb, var(--mr-warn) 12%, transparent); color: var(--fg); font-weight: 600; }
+  .mr-time.is-soon i { color: var(--mr-warn); }
+  .mr-time.is-over { background: color-mix(in srgb, var(--mr-bad) 12%, transparent); color: var(--mr-bad); font-weight: 700; }
+  .mr-time.is-idle { background: var(--card); border: 1px solid var(--mr-line); color: var(--fg-muted); }
+  .mr-owed { margin: 0; font-size: 0.84rem; color: var(--fg-muted); display: flex; align-items: center; gap: 0.4rem; }
+  .mr-owed b { color: var(--mr-bad); }
+  .mr-guest-actions { display: flex; gap: 0.5rem; margin-top: auto; }
+  .mr-guest-actions .mr-btn { flex: 1 1 0; }
+  .mr-tab i { font-size: 0.78rem; }
+
+  .mr-section { display: grid; gap: 0.55rem; }
+  .mr-section h3 { margin: 0; padding-bottom: 0.35rem; border-bottom: 1px solid var(--mr-line); font-size: 0.74rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); }
+  .mr-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem 1rem; }
+  .mr-fact small { display: block; font-size: 0.74rem; color: var(--fg-muted); }
+  .mr-fact span { display: block; font-size: 0.88rem; color: var(--fg); overflow-wrap: anywhere; }
+  .mr-notes { margin: 0; font-size: 0.86rem; line-height: 1.55; color: var(--fg); white-space: pre-wrap; }
+  .mr-bill { display: grid; gap: 0.15rem; }
+  .mr-bill div { display: flex; justify-content: space-between; gap: 1rem; font-size: 0.86rem; color: var(--fg-muted); padding: 0.25rem 0; }
+  .mr-bill b { color: var(--fg); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .mr-bill .is-total { border-top: 2px solid var(--accent); margin-top: 0.35rem; padding-top: 0.55rem; color: var(--fg); font-weight: 700; }
+  .mr-bill .is-total b { font-size: 1.05rem; font-weight: 700; }
+  .mr-bill .is-owed { color: var(--mr-bad); font-weight: 700; }
+  .mr-bill .is-owed b { color: var(--mr-bad); font-weight: 700; }
+  .mr-bill .is-clear b { color: var(--mr-ok); }
+  .mr-payments { display: grid; gap: 0.5rem; }
+  .mr-payments > div { padding: 0.6rem 0.75rem; border-radius: 0.625rem; border: 1px solid var(--mr-line); background: var(--mr-soft); }
+  .mr-payments > div > div { display: flex; justify-content: space-between; gap: 1rem; font-size: 0.86rem; color: var(--fg); }
+  .mr-payments small { display: block; margin-top: 0.2rem; font-size: 0.76rem; color: var(--fg-muted); }
+  .mr-modal { --mr-warn: var(--warn, #f59e0b); }
+  @media (max-width: 560px) { .mr-facts { grid-template-columns: 1fr; } }
 </style>
 @endsection
 
@@ -182,14 +466,31 @@
 
 @section('scripts')
 <script>
-  window.HMS_ROOMMANAGEMENT_URL = @json(route('students.roommanagement'));
+  window.HMS_ROOMMANAGEMENT_URL = @json(route('students.dashboard', ['section' => 'tasks']));
   window.HMS_ROOM_MGMT_INITIAL_NAV = @json(request()->query('nav', 'manage-room'));
 </script>
 @verbatim
 <script type="text/babel">
-const { useState, useEffect, useCallback, useRef, useMemo } = React;
+const { useState, useEffect, useCallback, useRef, useMemo, useId } = React;
 
-const ROOM_CATEGORIES = ['Classic', 'Superior', 'Deluxe', 'Premium', 'Family'];
+// What every team starts with. Room Management can add categories of its own while
+// customising the Rooms section of the site; the server sends the team's full list
+// down with the rooms, and these five only stand in until it arrives.
+const DEFAULT_ROOM_CATEGORIES = ['Classic', 'Superior', 'Deluxe', 'Premium', 'Family'];
+let ROOM_CATEGORIES = DEFAULT_ROOM_CATEGORIES.slice();
+/* Module-level rather than a prop: normalizeRoomCategory() is called from several
+   render paths. The App holds the same list in state, so a change re-renders. */
+/* A stored photo's address carries the team's name, so it can hold a space, and an
+   unquoted url() ends at the first one: the whole declaration was dropped and the
+   slot went black. Quoted, with the two characters that would end a quoted url
+   escaped. */
+function cssUrl(src) {
+  return 'url("' + String(src == null ? '' : src).replace(/["\\]/g, '\\$&') + '")';
+}
+
+function setRoomCategoryNames(names) {
+  if (Array.isArray(names) && names.length) ROOM_CATEGORIES = names.slice();
+}
 const BLOCK_HOURS = 12;
 const IMAGE_MAX_DIMENSION = 1280;
 const IMAGE_MAX_BYTES = 600 * 1024;
@@ -205,10 +506,12 @@ const IMAGE_MAX_BYTES = 600 * 1024;
 function bookingStatusClass(status) {
   return String(status || '').trim() === 'Checked In' ? 'status-occupied' : 'status-reserved';
 }
+/* Falls back to the team's first category, not to a literal "Classic" — the Rooms tab
+   bar can rename that one, so it stops being an answer once somebody does. */
 function normalizeRoomCategory(value) {
-  const raw = String(value || 'Classic').trim().toLowerCase();
+  const raw = String(value || '').trim().toLowerCase();
   const match = ROOM_CATEGORIES.find(c => c.toLowerCase() === raw);
-  return match || 'Classic';
+  return match || ROOM_CATEGORIES[0] || 'Classic';
 }
 function reservationArrivalStatus(reservation) {
   const raw = String((reservation && reservation.arrivalStatus) || 'Booked').trim().toLowerCase();
@@ -465,14 +768,22 @@ function pickImageFile(onPicked) {
 }
 
 // No name: adding a room derives it from the category (see nextRoomNameFor).
-function createEmptyRoomForm() {
-  return { category: '', status: 'Available', price: '', desc: '', img: '' };
+// When opened from a category tab, carry that category into the form instead of
+// silently falling back to the first category in the inventory.
+function createEmptyRoomForm(category) {
+  return { category: String(category || '').trim(), status: 'Available', price: '', capacity: '', desc: '', imgs: toRoomSlots(null) };
 }
 
 /* Mirrors App\Support\HotelRoomDefaults: each category numbers from its own hundreds
    block, and the next room takes the highest number already used there plus one. Only
    a preview — the server recomputes it on save, so the two cannot disagree on disk. */
-const CATEGORY_FLOORS = { Classic: 1, Superior: 2, Deluxe: 3, Premium: 4, Family: 5 };
+/* Replaced by the blocks the server sends with the categories, which is what a team's
+   own categories number from — these five only stand in until that lands. */
+let CATEGORY_FLOORS = { Classic: 1, Superior: 2, Deluxe: 3, Premium: 4, Family: 5 };
+
+function setCategoryFloors(map) {
+  if (map && Object.keys(map).length) CATEGORY_FLOORS = map;
+}
 
 function nextRoomNameFor(rooms, category) {
   const cat = normalizeRoomCategory(category);
@@ -500,6 +811,106 @@ function roomCardImg(room) {
   return 'https://picsum.photos/seed/room-' + seed + '/800/600.jpg';
 }
 
+/* How many photographs one room keeps. Mirrors HotelRoom::GALLERY_MAX — the
+   server bounds the list too, so the two cannot disagree on disk. */
+const ROOM_GALLERY_MAX = 3;
+
+/* The three slots as the form holds them: a fixed-length list, so slot 2 stays
+   slot 2 when slot 1 is cleared and the server is handed the order on screen. */
+function toRoomSlots(room) {
+  const slots = new Array(ROOM_GALLERY_MAX).fill('');
+  const saved = (room && Array.isArray(room.imgs) && room.imgs.length)
+    ? room.imgs
+    : [(room && room.img) || ''];
+  saved.slice(0, ROOM_GALLERY_MAX).forEach((url, i) => { slots[i] = url || ''; });
+  return slots;
+}
+
+/* What goes on the wire: the first slot is the room's primary photograph, the
+   rest are its gallery. Blanks are dropped so a cleared middle slot does not
+   reach the server as an empty string. */
+function roomSlotsPayload(slots) {
+  const list = (slots || []).map(u => String(u || '').trim()).filter(Boolean);
+  return { image: list[0] || '', gallery: list.slice(1) };
+}
+
+/* Room photographs are chosen in their own dialog rather than straight from the
+   file picker, so each one can be looked at before it is kept — the same three-up
+   grid the home page's slider images are replaced through. It opens on top of the
+   Add or Edit dialog, which is why it portals to the body instead of nesting. */
+function RoomImageModal({ open, slots, onChange, onClose }) {
+  if (!open) return null;
+
+  const list = toRoomSlots({ imgs: slots });
+
+  const replaceAt = (i) => pickImageFile((url) => {
+    if (!url) return;
+    const next = list.slice();
+    next[i] = url;
+    onChange(next);
+  });
+
+  const clearAt = (i) => {
+    const next = list.slice();
+    next[i] = '';
+    onChange(next);
+  };
+
+  return ReactDOM.createPortal(
+    <div
+      className="room-modal-overlay room-image-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Room photos"
+      /* React portals still bubble through the React tree, so without this a
+         click in here would also reach the Add or Edit overlay behind it. */
+      onClick={e => { e.stopPropagation(); onClose(); }}
+    >
+      <div className="room-modal room-image-modal" onClick={e => e.stopPropagation()}>
+        <h3 className="room-image-title">Room photos</h3>
+        <p className="room-image-hint">
+          Guests flip through these on the room card. Click a photo to replace it. Photo 1 is
+          the main one, shown wherever there is space for only one.
+        </p>
+
+        <div className="room-slot-grid">
+          {list.map((url, i) => (
+            <div key={i} className={`room-slot${i === 0 ? ' is-primary' : ''}`}>
+              <div
+                className={`room-slot-thumb${url ? '' : ' is-empty'}`}
+                style={url ? { backgroundImage: cssUrl(url) } : undefined}
+                onClick={() => replaceAt(i)}
+                role="button"
+                aria-label={(url ? 'Replace photo ' : 'Choose photo ') + (i + 1)}
+              >
+                {!url && <i className="fa-solid fa-plus"></i>}
+                {i === 0 && url && <span className="room-slot-badge">Main</span>}
+              </div>
+              <div className="room-slot-row">
+                <span className="room-slot-name">Photo {i + 1}</span>
+                {url
+                  ? <button type="button" className="room-slot-clear" onClick={() => clearAt(i)}>Remove</button>
+                  : null}
+                <button type="button" className="room-slot-btn" onClick={() => replaceAt(i)}>
+                  {url ? 'Replace' : 'Add'}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="room-image-actions">
+          <span className="room-image-hint" style={{ margin: 0 }}>
+            A room with no photo gets a sample picture.
+          </span>
+          <button type="button" className="btn-outline room-image-done" onClick={onClose} style={{ fontSize: '0.72rem', padding: '0.55rem 1rem' }}>Done</button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 function validateRoomForm(form, requireName = true) {
   const errors = {};
   if (requireName && !String(form.name || '').trim()) errors.name = 'Room name is required.';
@@ -508,59 +919,294 @@ function validateRoomForm(form, requireName = true) {
   if (!String(form.price || '').trim() || !Number.isFinite(price) || price <= 0) {
     errors.price = 'Enter a valid price.';
   }
+  const capacity = Number(form.capacity);
+  if (String(form.capacity || '').trim() && !(Number.isInteger(capacity) && capacity >= 1 && capacity <= 99)) {
+    errors.capacity = 'Type a number from 1 to 99, or leave it empty.';
+  }
   return errors;
 }
 
-function ManageRoomPanel({ rooms, onSubmit, onCancel, onCloseModal, onRoomUpdated }) {
-  const [form, setForm] = useState(createEmptyRoomForm);
-  const [errors, setErrors] = useState({});
-  const [imgPreview, setImgPreview] = useState('');
-  const [saving, setSaving] = useState(false);
-  // The inventory list that used to be its own Room Availability section. Adding a
-  // room and looking one up are the same job, so they share a screen now.
-  const [tab, setTab] = useState('All');
-  const [selectedRoomId, setSelectedRoomId] = useState(null);
-  const [page, setPage] = useState(1);
+/* The Guests field as the server takes it: a whole number, or null for "follow the type". */
+function roomCapacityPayload(form) {
+  const n = parseInt(String(form.capacity || '').trim(), 10);
+  return Number.isNaN(n) ? null : n;
+}
 
-  const list = rooms || [];
-  const tabs = ['All', ...ROOM_CATEGORIES];
-  const filtered = tab === 'All' ? list : list.filter(r => normalizeRoomCategory(r.category || r.label) === tab);
-  const selectedRoom = list.find(r => r.id === selectedRoomId) || null;
-  // Preview only — HotelRoomDefaults::nextNameFor() decides the real one on save.
-  const nextRoomName = form.category ? nextRoomNameFor(list, form.category) : '';
+/* ── Manage Rooms: plain-language cards and dialogs ─────────────────────────
+   Everything below reads the shell's tokens through the mr- classes, the same
+   way the Housekeeping pages do. "Category" is called "room type" on screen;
+   the requests and field names underneath are unchanged. */
 
-  // Fifty rooms is a long scroll, so the table pages. safePage rather than page so
-  // switching to a shorter category tab cannot strand the view past the last page.
-  const PER_PAGE = 5;
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
-  const safePage = Math.min(page, totalPages);
-  const pageRooms = filtered.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
+// SweetAlert draws outside the page's CSS, so it gets the live token values.
+function themeColor(name, fallback) {
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return value || fallback;
+}
 
+function mrAlert(icon, title, text, opts) {
+  if (!window.Swal) return;
+  window.Swal.fire(Object.assign({
+    icon, title, text,
+    background: themeColor('--card', '#181714'), color: themeColor('--fg', '#f5f0e8'),
+    iconColor: icon === 'success' ? themeColor('--success', '#4ade80')
+      : icon === 'warning' ? themeColor('--warn', '#f59e0b')
+      : themeColor('--danger', '#fb7185'),
+    confirmButtonColor: themeColor('--accent', '#c9a84c'),
+    confirmButtonText: 'OK',
+    timer: icon === 'success' ? 3000 : undefined,
+    timerProgressBar: icon === 'success',
+  }, opts || {}));
+}
+
+function useEscapeKey(onClose) {
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') setSelectedRoomId(null); };
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, []);
+  }, [onClose]);
+}
 
-  const fieldLabel = {
-    fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase',
-    color: 'var(--fg-muted)', display: 'block', marginBottom: '0.4rem',
+function mrPlural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
+
+/* Where a room stands today, read off its open booking. hotel_rooms.status is
+   Housekeeping's and is still not read here — see the note at the top. */
+function roomNow(room) {
+  const r = room && room.reservation;
+  if (r && r.status === 'Checked In') return { key: 'guest', label: 'Guest staying', icon: 'fa-user', tone: 'tone-brand' };
+  if (r) return { key: 'booked', label: 'Booked', icon: 'fa-calendar-check', tone: 'tone-warn' };
+  return { key: 'free', label: 'Free now', icon: 'fa-circle-check', tone: 'tone-ok' };
+}
+
+function formatShortDay(iso) {
+  if (!iso) return '';
+  const d = new Date(iso + 'T00:00:00');
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+
+/* The next booked stretch from today on, for the card's one-line summary. */
+function nextBooking(room) {
+  const today = todayStr();
+  const ranges = (room && room.bookedRanges) || [];
+  const upcoming = ranges
+    .filter(r => r && r.from && r.to && r.to > today)
+    .sort((a, b) => (a.from < b.from ? -1 : 1));
+  return upcoming[0] || null;
+}
+
+function MrModalHead({ titleId, title, text, onClose }) {
+  return (
+    <div className="mr-modal-head">
+      <div>
+        <h2 id={titleId} className="font-display">{title}</h2>
+        {text ? <p>{text}</p> : null}
+      </div>
+      <button type="button" className="mr-close" onClick={onClose} aria-label="Close">
+        <i className="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+  );
+}
+
+/* Renaming a room type, in the page's own chrome. window.prompt() would work, but it
+   announces the hostname above the question — "hms-….onrender.com says" — which reads
+   like the site is talking to you from outside itself. */
+function RenameCategoryModal({ from, saving, error, onSubmit, onCancel }) {
+  const [name, setName] = useState(from || '');
+  const uid = useId();
+  useEscapeKey(onCancel);
+
+  const clean = name.trim();
+  const canSave = !!clean && clean !== from && !saving;
+  const submit = (e) => {
+    if (e) e.preventDefault();
+    if (canSave) onSubmit(clean);
   };
+
+  return (
+    <div className="mr-overlay" onClick={onCancel}>
+      <div className="mr-modal is-small" role="dialog" aria-modal="true" aria-labelledby={uid + '-t'} onClick={e => e.stopPropagation()}>
+        <MrModalHead titleId={uid + '-t'} title={`Rename "${from}"`} text="The rooms of this type are renamed too, here and on your hotel website." onClose={onCancel} />
+        <form onSubmit={submit} className="mr-form" noValidate>
+          <div className="mr-field">
+            <label className="mr-label" htmlFor={uid + '-n'}>New name</label>
+            <input
+              id={uid + '-n'} type="text" className={`mr-input ${error ? 'has-error' : ''}`}
+              value={name} maxLength={60} autoFocus
+              onChange={e => setName(e.target.value)}
+            />
+            {error
+              ? <p className="mr-error">{error}</p>
+              : <p className="mr-help">Example: "{from} 101" becomes "{clean || 'New name'} 101".</p>}
+          </div>
+          <div className="mr-actions">
+            <button type="button" className="mr-btn is-quiet" onClick={onCancel}>Cancel</button>
+            <button type="submit" className="mr-btn is-solid" disabled={!canSave}>
+              <i className="fa-solid fa-pen"></i> {saving ? 'Renaming…' : 'Rename'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* How many guests one room of this type sleeps. Bookings for a bigger party are
+   refused at the desk and online; left blank, the type takes any party. */
+function SleepsModal({ category, current, saving, error, onSubmit, onCancel }) {
+  const [value, setValue] = useState(current ? String(current) : '');
+  const uid = useId();
+  useEscapeKey(onCancel);
+
+  const parsed = parseInt(String(value).replace(/[^0-9]/g, ''), 10);
+  const next = Number.isNaN(parsed) ? null : parsed;
+  const canSave = !saving && (next === null || (next >= 1 && next <= 99)) && next !== (current || null);
+  const submit = (e) => {
+    if (e) e.preventDefault();
+    if (canSave) onSubmit(next);
+  };
+
+  return (
+    <div className="mr-overlay" onClick={onCancel}>
+      <div className="mr-modal is-small" role="dialog" aria-modal="true" aria-labelledby={uid + '-t'} onClick={e => e.stopPropagation()}>
+        <MrModalHead titleId={uid + '-t'} title={`Guest limit for ${category}`} text="A booking for more guests than this is refused, at the desk and on your hotel website." onClose={onCancel} />
+        <form onSubmit={submit} className="mr-form" noValidate>
+          <div className="mr-field">
+            <label className="mr-label" htmlFor={uid + '-n'}>Sleeps</label>
+            <input
+              id={uid + '-n'} type="text" inputMode="numeric" className={`mr-input ${error ? 'has-error' : ''}`}
+              value={value} maxLength={2} placeholder="e.g. 2" autoFocus
+              onChange={e => setValue(e.target.value)}
+            />
+            {error
+              ? <p className="mr-error">{error}</p>
+              : <p className="mr-help">Leave it empty for no limit.</p>}
+          </div>
+          <div className="mr-actions">
+            <button type="button" className="mr-btn is-quiet" onClick={onCancel}>Cancel</button>
+            <button type="submit" className="mr-btn is-solid" disabled={!canSave}>
+              <i className="fa-solid fa-user-group"></i> {saving ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* A room type the team invents. The rate seeds the price of every room created under
+   it, and a type stored at zero would price its rooms at nothing, so it is required
+   here exactly as it is in the site's own Add Room Category dialog — same default,
+   same floor. */
+function AddCategoryModal({ saving, error, onSubmit, onCancel }) {
+  const [name, setName] = useState('');
+  const [rate, setRate] = useState('2000');
+  const uid = useId();
+  useEscapeKey(onCancel);
+
+  const clean = name.trim();
+  const parsedRate = parseInt(String(rate).replace(/[^0-9]/g, ''), 10) || 0;
+  const canSave = !!clean && parsedRate > 0 && !saving;
+  const submit = (e) => {
+    if (e) e.preventDefault();
+    if (canSave) onSubmit(clean, parsedRate);
+  };
+
+  return (
+    <div className="mr-overlay" onClick={onCancel}>
+      <div className="mr-modal is-small" role="dialog" aria-modal="true" aria-labelledby={uid + '-t'} onClick={e => e.stopPropagation()}>
+        <MrModalHead titleId={uid + '-t'} title="Add a room type" text="A new group of rooms, like Executive or Suite. It also shows as a tab on the Rooms page of your hotel website." onClose={onCancel} />
+        <form onSubmit={submit} className="mr-form" noValidate>
+          <div className="mr-field">
+            <label className="mr-label" htmlFor={uid + '-n'}>Room type name</label>
+            <input
+              id={uid + '-n'} type="text" className={`mr-input ${error ? 'has-error' : ''}`}
+              value={name} maxLength={60} autoFocus placeholder="Example: Executive"
+              onChange={e => setName(e.target.value)}
+            />
+            <p className="mr-help">Rooms you add to it are numbered for you, like "{clean || 'Executive'} 101".</p>
+          </div>
+          <div className="mr-field">
+            <label className="mr-label" htmlFor={uid + '-r'}>Price for each 12-hour stay</label>
+            <div className="mr-money"><span>₱</span>
+              <input id={uid + '-r'} type="text" inputMode="numeric" className="mr-input" value={rate} maxLength={9} placeholder="2000" onChange={e => setRate(e.target.value)} />
+            </div>
+            <p className="mr-help">New rooms of this type start at this price. You can change each room later.</p>
+          </div>
+          {error ? <p className="mr-error">{error}</p> : null}
+          <div className="mr-actions">
+            <button type="button" className="mr-btn is-quiet" onClick={onCancel}>Cancel</button>
+            <button type="submit" className="mr-btn is-solid" disabled={!canSave}>
+              <i className="fa-solid fa-plus"></i> {saving ? 'Adding…' : 'Add room type'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* The room-type picker both room dialogs share: big chips, one per type. */
+function TypeChips({ categories, value, onChange }) {
+  return (
+    <div className="mr-chips" role="radiogroup" aria-label="Room type">
+      {categories.map(c => (
+        <button key={c} type="button" role="radio" aria-checked={value === c} className={`mr-chip ${value === c ? 'is-on' : ''}`} onClick={() => onChange(c)}>
+          {c}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* The three photo slots, shown small in the dialog with one button to change them. */
+function PhotoStrip({ imgs, onOpen }) {
+  const slots = toRoomSlots({ imgs });
+  const chosen = slots.filter(Boolean).length;
+  return (
+    <div className="mr-field">
+      <span className="mr-label">Photos <em>(up to {ROOM_GALLERY_MAX})</em></span>
+      <button type="button" className="mr-photos" onClick={onOpen}>
+        {slots.map((url, i) => (
+          <span key={i} className={`mr-photo ${url ? '' : 'is-empty'}`} style={url ? { backgroundImage: cssUrl(url) } : undefined}>
+            {!url ? <i className="fa-solid fa-plus"></i> : null}
+            {i === 0 && url ? <small>Main</small> : null}
+          </span>
+        ))}
+      </button>
+      <p className="mr-help">
+        {chosen ? `${chosen} of ${ROOM_GALLERY_MAX} chosen. Click to change them.` : 'Click to add photos. Guests flip through them on the room card.'}
+      </p>
+    </div>
+  );
+}
+
+/* Adding a room is the rare move; looking one up is the common one — so the form
+   lives in a dialog and the page leads with the rooms. Same POST, same validation. */
+function AddRoomModal({ rooms, categories, sleeps, defaultCategory, onClose, onAdded }) {
+  const [form, setForm] = useState(() => createEmptyRoomForm(defaultCategory));
+  const [errors, setErrors] = useState({});
+  const [imgModal, setImgModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const uid = useId();
+  const typeList = (categories && categories.length ? categories : DEFAULT_ROOM_CATEGORIES);
+  const typeSleeps = (sleeps || {})[form.category] || null;
+
+  // Preview only — HotelRoomDefaults::nextNameFor() decides the real one on save.
+  const nextRoomName = form.category ? nextRoomNameFor(rooms || [], form.category) : '';
+
+  useEscapeKey(onClose);
 
   const update = (field, value) => {
     setForm(prev => Object.assign({}, prev, { [field]: value }));
     if (errors[field]) setErrors(prev => Object.assign({}, prev, { [field]: null }));
   };
 
-  const resetForm = () => {
-    setForm(createEmptyRoomForm());
-    setErrors({});
-    setImgPreview('');
-  };
-
   const handleSubmit = (e) => {
     e.preventDefault();
     const nextErrors = validateRoomForm(form, false);
+    if (nextErrors.category) nextErrors.category = 'Pick a room type first.';
+    if (nextErrors.price) nextErrors.price = 'Type a price above 0.';
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) return;
 
@@ -569,306 +1215,142 @@ function ManageRoomPanel({ rooms, onSubmit, onCancel, onCloseModal, onRoomUpdate
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
       // No name: the server numbers the room from its category (Classic 110 -> 111).
-      body: JSON.stringify({
+      body: JSON.stringify(Object.assign({
         category: form.category,
         price: parseInt(String(form.price).replace(/,/g, ''), 10),
+        capacity: roomCapacityPayload(form),
         description: String(form.desc || '').trim(),
-        image: form.img || '',
-      }),
+      }, roomSlotsPayload(form.imgs))),
     })
       .then(r => r.ok ? r.json() : r.json().then(e => Promise.reject(e)))
       .then(data => {
-        if (data.room && typeof onSubmit === 'function') onSubmit(data.room);
-        resetForm();
-        if (window.Swal) {
-          if (typeof onCloseModal === 'function') onCloseModal();
-          window.Swal.fire({
-            icon: 'success',
-            title: 'Room Added!',
-            text: data.room.name + ' has been added to the inventory.',
-            background: 'var(--card, #181714)',
-            color: 'var(--fg, #f5f0e8)',
-            iconColor: 'var(--success, #4ade80)',
-            confirmButtonColor: 'var(--accent, #c9a84c)',
-            confirmButtonText: 'Great!',
-            timer: 3000,
-            timerProgressBar: true,
-          });
-        } else if (typeof onCloseModal === 'function') {
-          onCloseModal();
-        }
+        if (data.room && typeof onAdded === 'function') onAdded(data.room);
+        onClose();
+        const warned = !!data.image_warning;
+        // A warning waits to be read; a plain success does not.
+        mrAlert(warned ? 'warning' : 'success',
+          warned ? 'Room added without its photo' : 'Room added',
+          warned ? data.image_warning : data.room.name + ' is now on the list and can be booked.');
       })
       .catch((err) => {
-        const msg = (err && err.message) ? err.message : 'Failed to save. Please try again.';
-        if (window.Swal) {
-          window.Swal.fire({
-            icon: 'error', title: 'Error', text: msg,
-            background: 'var(--card, #181714)', color: 'var(--fg, #f5f0e8)', iconColor: 'var(--danger, #fb7185)', confirmButtonColor: 'var(--accent, #c9a84c)',
-          });
-        } else {
-          // Category, not name: the add form has no name field to show it under.
-          setErrors({ category: msg });
-        }
+        const msg = (err && err.message) ? err.message : 'Could not save. Please try again.';
+        if (window.Swal) mrAlert('error', 'Not saved', msg);
+        // Category, not name: the add form has no name field to show it under.
+        else setErrors({ category: msg });
       })
       .finally(() => setSaving(false));
   };
 
-  const handleCancel = () => { resetForm(); if (typeof onCancel === 'function') onCancel(); };
-
-  const handleImagePick = () => {
-    pickImageFile((url) => {
-      if (!url) return;
-      update('img', url);
-      setImgPreview(url);
-    });
-  };
-
-  const errorText = (key) => (
-    errors[key]
-      ? <p style={{ margin: '0.35rem 0 0', color: 'var(--danger, #fb7185)', fontSize: '0.72rem' }}>{errors[key]}</p>
-      : null
-  );
-
   return (
-    <div className="rm-panel" style={{ maxWidth: '100%' }}>
-      <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', margin: '0 0 0.4rem' }}>Inventory</p>
-      <h3>Manage Room</h3>
-      <p className="rm-panel-desc">Add a new room to the hotel inventory, and browse every room already in it.</p>
+    <div className="mr-overlay" onClick={onClose}>
+      <div className="mr-modal" role="dialog" aria-modal="true" aria-labelledby={uid + '-t'} onClick={e => e.stopPropagation()}>
+        <MrModalHead titleId={uid + '-t'} title="Add a room" text="The room can be booked as soon as you save it." onClose={onClose} />
 
-      <form onSubmit={handleSubmit} className="rm-form-grid" noValidate style={{ maxWidth: 520 }}>
-        <div>
-          <label style={fieldLabel}>Room Name</label>
+        <form onSubmit={handleSubmit} className="mr-form" noValidate>
+          <div className="mr-field">
+            <span className="mr-label">What type of room?</span>
+            <TypeChips categories={typeList} value={form.category} onChange={c => update('category', c)} />
+            {errors.category ? <p className="mr-error">{errors.category}</p> : null}
+          </div>
+
           {/* Not typed: the server numbers a new room from its category. This only
               previews what it will be called, so the name cannot drift from the
               sequence. The server recomputes it on save either way. */}
-          <div className="booking-input" style={{ color: form.category ? 'var(--fg)' : 'var(--fg-muted)', cursor: 'default', display: 'flex', alignItems: 'center', gap: 8 }}>
-            {form.category
-              ? <><i className="fa-solid fa-hashtag" style={{ fontSize: '0.7rem', color: 'var(--accent)' }}></i>{nextRoomName}</>
-              : 'Pick a category to see the room number'}
-          </div>
-        </div>
-
-        <div className="rm-form-row">
-          <div>
-            <label style={fieldLabel}>Room Category *</label>
-            <select
-              className="booking-input" value={form.category} onChange={e => update('category', e.target.value)}
-              style={Object.assign({ colorScheme: 'dark', background: 'rgba(255,255,255,0.03)', color: form.category ? 'var(--fg)' : 'var(--fg-muted)' }, errors.category ? { borderColor: '#f43f5e' } : {})}
-            >
-              <option value="" style={{ background: 'var(--card, #181714)', color: 'var(--fg-muted)' }}>Select category</option>
-              {ROOM_CATEGORIES.map(c => <option key={c} value={c} style={{ background: 'var(--card, #181714)', color: 'var(--fg)' }}>{c}</option>)}
-            </select>
-            {errorText('category')}
-          </div>
-          <div>
-            <label style={fieldLabel}>Status</label>
-            <div className="booking-input" style={{ color: 'var(--success, #4ade80)', fontWeight: 600, cursor: 'default', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--success, #4ade80)', display: 'inline-block', flexShrink: 0 }}></span>
-              Available
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <label style={fieldLabel}>Price *</label>
-          <input
-            type="number" min="1" step="1" className="booking-input" placeholder="e.g. 4500"
-            value={form.price} onChange={e => update('price', e.target.value)}
-            style={errors.price ? { borderColor: '#f43f5e' } : undefined}
-          />
-          {errorText('price')}
-        </div>
-
-        <div>
-          <label style={fieldLabel}>Description</label>
-          <textarea
-            className="booking-input" rows={3} placeholder="Short description of the room..."
-            value={form.desc} onChange={e => update('desc', e.target.value)}
-            style={{ resize: 'vertical', minHeight: 88 }}
-          />
-        </div>
-
-        <div>
-          <label style={fieldLabel}>Room Image</label>
-          <div
-            onClick={handleImagePick}
-            style={{ border: '1.5px dashed var(--border)', borderRadius: 8, cursor: 'pointer', overflow: 'hidden', background: 'rgba(255,255,255,0.02)', transition: 'border-color 0.2s' }}
-            onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent)'}
-            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
-          >
-            {imgPreview ? (
-              <img src={imgPreview} alt="Room preview" style={{ width: '100%', height: 140, objectFit: 'cover', display: 'block' }} />
-            ) : (
-              <div style={{ height: 100, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--fg-muted)' }}>
-                <i className="fa-solid fa-cloud-arrow-up" style={{ fontSize: '1.4rem', color: 'var(--accent)', opacity: 0.7 }}></i>
-                <span style={{ fontSize: '0.75rem' }}>Click to upload image</span>
-              </div>
-            )}
-          </div>
-          {imgPreview && (
-            <button type="button" onClick={() => { update('img', ''); setImgPreview(''); }}
-              style={{ marginTop: '0.4rem', background: 'none', border: 'none', color: 'var(--danger, #fb7185)', fontSize: '0.72rem', cursor: 'pointer', padding: 0, fontFamily: 'var(--font-body, Outfit, sans-serif)' }}>
-              <i className="fa-solid fa-xmark" style={{ marginRight: 4 }}></i>Remove image
-            </button>
-          )}
-        </div>
-
-        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
-          <button type="submit" className="btn-primary" disabled={saving}>
-            <i className="fa-solid fa-plus" style={{ fontSize: '0.7rem' }}></i> {saving ? 'Saving…' : 'Add Room'}
-          </button>
-          <button type="button" className="btn-outline" onClick={handleCancel} style={{ fontSize: '0.72rem', padding: '0.55rem 1rem' }}>Cancel</button>
-        </div>
-      </form>
-
-      <div style={{ marginTop: '2.25rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)' }}>
-        <h3 style={{ margin: '0 0 0.35rem' }}>All Rooms</h3>
-        <p className="rm-panel-desc">Every room in the hotel. Update one to edit its details or check its booked dates.</p>
-
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1.15rem' }}>
-          {tabs.map(t => {
-            const count = t === 'All' ? list.length : list.filter(r => normalizeRoomCategory(r.category || r.label) === t).length;
-            return (
-              <button key={t} type="button" onClick={() => { setTab(t); setPage(1); }} className={`room-card-tab${tab === t ? ' active' : ''}`}>
-                {t} ({count})
-              </button>
-            );
-          })}
-        </div>
-
-        {filtered.length === 0 ? (
-          <p style={{ color: 'var(--fg-muted)', fontSize: '0.85rem', padding: '1.5rem 0', textAlign: 'center' }}>
-            {list.length === 0 ? 'No rooms yet. Add the first one above.' : 'No rooms in this category yet.'}
+          <p className={`mr-note ${form.category ? 'is-ok' : ''}`}>
+            <i className={`fa-solid ${form.category ? 'fa-hashtag' : 'fa-circle-info'}`}></i>
+            <span>{form.category
+              ? <>This room will be called <b>{nextRoomName}</b>. The number is given for you.</>
+              : 'Pick a room type and the room number is given for you.'}</span>
           </p>
-        ) : (
-          <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid var(--border)' }}>
-            <table className="rm-table">
-              <thead>
-                <tr>
-                  <th style={{ width: 92 }}>Image</th>
-                  <th>Room</th>
-                  <th>Room Category</th>
-                  <th>Description</th>
-                  <th style={{ width: 110 }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pageRooms.map(room => (
-                  <tr key={room.id}>
-                    <td>
-                      <img
-                        src={roomCardImg(room)}
-                        alt={room.name}
-                        style={{ width: 72, height: 52, objectFit: 'cover', borderRadius: 6, display: 'block', background: 'var(--bg-warm, #12110f)' }}
-                      />
-                    </td>
-                    <td>
-                      <span style={{ display: 'block', color: 'var(--fg)', fontWeight: 600 }}>{room.name}</span>
-                      <span style={{ display: 'block', color: 'var(--accent-light)', fontFamily: 'var(--font-display, Playfair Display, serif)', fontSize: '0.82rem', marginTop: 2 }}>
-                        {formatPeso(room.price)}
-                      </span>
-                    </td>
-                    <td>{room.label || room.category}</td>
-                    <td style={{ whiteSpace: 'normal', minWidth: 220, maxWidth: 380 }}>
-                      {room.desc || <span style={{ opacity: 0.45 }}>No description yet.</span>}
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        className="btn-outline"
-                        style={{ fontSize: '0.68rem', padding: '0.4rem 0.8rem' }}
-                        onClick={() => setSelectedRoomId(room.id)}
-                      >
-                        <i className="fa-solid fa-pen" style={{ fontSize: '0.65rem' }}></i> Update
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
 
-        {totalPages > 1 && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.85rem', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.75rem', color: 'var(--fg-muted)' }}>
-              Showing {(safePage - 1) * PER_PAGE + 1}–{Math.min(safePage * PER_PAGE, filtered.length)} of {filtered.length}
-            </span>
-            <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={safePage === 1}
-                style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: safePage === 1 ? 'var(--fg-muted)' : 'var(--fg)', cursor: safePage === 1 ? 'default' : 'pointer', fontSize: '0.78rem', opacity: safePage === 1 ? 0.4 : 1 }}
-              >
-                <i className="fa-solid fa-chevron-left" style={{ fontSize: '0.65rem' }}></i>
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => setPage(n)}
-                  style={{ padding: '0.35rem 0.65rem', borderRadius: 6, border: '1px solid ' + (n === safePage ? 'var(--accent)' : 'var(--border)'), background: n === safePage ? 'var(--accent)' : 'transparent', color: n === safePage ? 'var(--bg)' : 'var(--fg-muted)', cursor: 'pointer', fontSize: '0.78rem', fontWeight: n === safePage ? 700 : 400 }}
-                >
-                  {n}
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={safePage === totalPages}
-                style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: safePage === totalPages ? 'var(--fg-muted)' : 'var(--fg)', cursor: safePage === totalPages ? 'default' : 'pointer', fontSize: '0.78rem', opacity: safePage === totalPages ? 0.4 : 1 }}
-              >
-                <i className="fa-solid fa-chevron-right" style={{ fontSize: '0.65rem' }}></i>
-              </button>
+          <div className="mr-field">
+            <label className="mr-label" htmlFor={uid + '-p'}>Price for each 12-hour stay</label>
+            <div className="mr-money"><span>₱</span>
+              <input
+                id={uid + '-p'} type="number" min="1" step="1" inputMode="numeric"
+                className={`mr-input ${errors.price ? 'has-error' : ''}`} placeholder="4500"
+                value={form.price} onChange={e => update('price', e.target.value)}
+              />
             </div>
+            {errors.price ? <p className="mr-error">{errors.price}</p> : <p className="mr-help">A guest staying 24 hours pays this twice.</p>}
           </div>
-        )}
+
+          <div className="mr-field">
+            <label className="mr-label" htmlFor={uid + '-g'}>Guests allowed <em>(optional)</em></label>
+            <input
+              id={uid + '-g'} type="number" min="1" max="99" step="1" inputMode="numeric"
+              className={`mr-input ${errors.capacity ? 'has-error' : ''}`} placeholder={typeSleeps ? String(typeSleeps) : 'No limit'}
+              value={form.capacity} onChange={e => update('capacity', e.target.value)}
+            />
+            {errors.capacity ? <p className="mr-error">{errors.capacity}</p> : <p className="mr-help">
+              {typeSleeps
+                ? `Leave empty to use the ${form.category} limit of ${mrPlural(typeSleeps, 'guest', 'guests')}.`
+                : 'Leave empty for no limit. Bookings for more guests are refused.'}
+            </p>}
+          </div>
+
+          <div className="mr-field">
+            <label className="mr-label" htmlFor={uid + '-d'}>Short description <em>(optional)</em></label>
+            <textarea
+              id={uid + '-d'} className="mr-input" rows={3} placeholder="Example: Queen bed, city view and a work desk."
+              value={form.desc} onChange={e => update('desc', e.target.value)}
+            />
+            <p className="mr-help">Guests read this on your hotel website.</p>
+          </div>
+
+          <PhotoStrip imgs={form.imgs} onOpen={() => setImgModal(true)} />
+
+          <div className="mr-actions">
+            <button type="button" className="mr-btn is-quiet" onClick={onClose}>Cancel</button>
+            <button type="submit" className="mr-btn is-solid" disabled={saving}>
+              <i className="fa-solid fa-plus"></i> {saving ? 'Saving…' : 'Add this room'}
+            </button>
+          </div>
+        </form>
       </div>
 
-      {selectedRoom && (
-        <EditRoomModal
-          room={selectedRoom}
-          onClose={() => setSelectedRoomId(null)}
-          onSaved={onRoomUpdated}
-        />
-      )}
+      <RoomImageModal
+        open={imgModal}
+        slots={form.imgs}
+        onChange={next => update('imgs', next)}
+        onClose={() => setImgModal(false)}
+      />
     </div>
   );
 }
 
-/* The Update action from the rooms table. Edits the room's own fields; the booked
-   dates below it stay read-only — they belong to bookings, not to the room. */
-function EditRoomModal({ room, onClose, onSaved }) {
+/* The Edit button on a room card. Edits the room's own fields; the booked dates
+   below stay read-only — they belong to bookings, not to the room. */
+function EditRoomModal({ room, categories, sleeps, onClose, onSaved }) {
   const [form, setForm] = useState(() => ({
     name: room.name || '',
     category: normalizeRoomCategory(room.category || room.label),
     price: String(room.price || ''),
+    capacity: room.capacity ? String(room.capacity) : '',
     desc: room.desc || '',
-    img: room.img || '',
+    imgs: toRoomSlots(room),
   }));
   const [errors, setErrors] = useState({});
+  const [imgModal, setImgModal] = useState(false);
   const [saving, setSaving] = useState(false);
-
-  const fieldLabel = {
-    fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase',
-    color: 'var(--fg-muted)', display: 'block', marginBottom: '0.4rem',
-  };
+  const uid = useId();
+  const typeList = (categories && categories.length ? categories : DEFAULT_ROOM_CATEGORIES);
+  const typeSleeps = (sleeps || {})[form.category] || null;
+  const now = roomNow(room);
 
   const update = (field, value) => {
     setForm(prev => Object.assign({}, prev, { [field]: value }));
     if (errors[field]) setErrors(prev => Object.assign({}, prev, { [field]: null }));
   };
 
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  useEscapeKey(onClose);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     const nextErrors = validateRoomForm(form);
+    if (nextErrors.name) nextErrors.name = 'Type the room name.';
+    if (nextErrors.category) nextErrors.category = 'Pick a room type.';
+    if (nextErrors.price) nextErrors.price = 'Type a price above 0.';
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) return;
 
@@ -878,138 +1360,427 @@ function EditRoomModal({ room, onClose, onSaved }) {
       method: 'PATCH',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
-      body: JSON.stringify({
+      // The slots are handed back whole, the untouched ones as the /storage/...
+      // URLs they arrived as: the server collapses those to the paths it already
+      // holds rather than re-uploading them.
+      body: JSON.stringify(Object.assign({
         name: String(form.name).trim(),
         category: form.category,
         price: parseInt(String(form.price).replace(/,/g, ''), 10),
+        capacity: roomCapacityPayload(form),
         description: String(form.desc || '').trim(),
-        // Handed back as-is when untouched: the server collapses an existing
-        // /storage/... URL to the path it already holds rather than re-uploading.
-        image: form.img || '',
-      }),
+      }, roomSlotsPayload(form.imgs))),
     })
       .then(r => (r.ok ? r.json() : r.json().then(err => Promise.reject(err))))
       .then(data => {
         if (data.room && typeof onSaved === 'function') onSaved(data.room);
         onClose();
-        if (window.Swal) {
-          window.Swal.fire({
-            icon: 'success',
-            title: 'Room Updated!',
-            text: data.room.name + ' has been saved.',
-            background: 'var(--card, #181714)', color: 'var(--fg, #f5f0e8)', iconColor: 'var(--success, #4ade80)',
-            confirmButtonColor: 'var(--accent, #c9a84c)', confirmButtonText: 'Great!',
-            timer: 3000, timerProgressBar: true,
-          });
-        }
+        const warned = !!data.image_warning;
+        mrAlert(warned ? 'warning' : 'success',
+          warned ? 'Saved without the new photo' : 'Changes saved',
+          warned ? data.image_warning : data.room.name + ' has been updated.');
       })
       .catch(err => {
-        const msg = (err && err.message) ? err.message : 'Failed to save. Please try again.';
-        if (window.Swal) {
-          window.Swal.fire({
-            icon: 'error', title: 'Error', text: msg,
-            background: 'var(--card, #181714)', color: 'var(--fg, #f5f0e8)', iconColor: 'var(--danger, #fb7185)', confirmButtonColor: 'var(--accent, #c9a84c)',
-          });
-        } else {
-          setErrors({ name: msg });
-        }
+        const msg = (err && err.message) ? err.message : 'Could not save. Please try again.';
+        if (window.Swal) mrAlert('error', 'Not saved', msg);
+        else setErrors({ name: msg });
       })
       .finally(() => setSaving(false));
   };
 
-  const errorText = (key) => (
-    errors[key]
-      ? <p style={{ margin: '0.35rem 0 0', color: 'var(--danger, #fb7185)', fontSize: '0.72rem' }}>{errors[key]}</p>
-      : null
-  );
-
   return (
-    <div className="room-modal-overlay" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="room-modal" onClick={e => e.stopPropagation()}>
-        <div className="room-modal-img">
-          <img src={form.img || roomCardImg(room)} alt={room.name} />
-          <button type="button" className="room-modal-close" onClick={onClose} aria-label="Close">
-            <i className="fa-solid fa-xmark"></i>
-          </button>
-        </div>
-        <div style={{ padding: '1.5rem' }}>
-          <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
-            Update Room
-          </p>
-          <h2 className="font-display" style={{ fontSize: '1.5rem', marginBottom: '1.1rem', color: 'var(--fg)' }}>{room.name}</h2>
+    <div className="mr-overlay" onClick={onClose}>
+      <div className="mr-modal" role="dialog" aria-modal="true" aria-labelledby={uid + '-t'} onClick={e => e.stopPropagation()}>
+        <MrModalHead
+          titleId={uid + '-t'}
+          title={`Edit ${room.name}`}
+          text={now.key === 'guest' && room.reservation
+            ? `${room.reservation.fullName || 'A guest'} is staying here now.`
+            : now.key === 'booked' && room.reservation
+              ? `Booked by ${room.reservation.fullName || 'a guest'}.`
+              : 'Nobody is in this room right now.'}
+          onClose={onClose}
+        />
 
-          <form onSubmit={handleSubmit} className="rm-form-grid" noValidate>
-            <div>
-              <label style={fieldLabel}>Room Name *</label>
+        <form onSubmit={handleSubmit} className="mr-form" noValidate>
+          <div className="mr-field">
+            <label className="mr-label" htmlFor={uid + '-n'}>Room name</label>
+            <input
+              id={uid + '-n'} type="text" className={`mr-input ${errors.name ? 'has-error' : ''}`} value={form.name}
+              onChange={e => update('name', e.target.value)}
+            />
+            {errors.name ? <p className="mr-error">{errors.name}</p> : <p className="mr-help">Usually the type and number, like "Classic 101".</p>}
+          </div>
+
+          <div className="mr-field">
+            <span className="mr-label">Room type</span>
+            <TypeChips categories={typeList} value={form.category} onChange={c => update('category', c)} />
+            {errors.category ? <p className="mr-error">{errors.category}</p> : null}
+          </div>
+
+          <div className="mr-field">
+            <label className="mr-label" htmlFor={uid + '-p'}>Price for each 12-hour stay</label>
+            <div className="mr-money"><span>₱</span>
               <input
-                type="text" className="booking-input" value={form.name}
-                onChange={e => update('name', e.target.value)}
-                style={errors.name ? { borderColor: '#f43f5e' } : undefined}
-              />
-              {errorText('name')}
-            </div>
-
-            <div className="rm-form-row">
-              <div>
-                <label style={fieldLabel}>Room Category *</label>
-                <select
-                  className="booking-input" value={form.category} onChange={e => update('category', e.target.value)}
-                  style={Object.assign({ colorScheme: 'dark', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)' }, errors.category ? { borderColor: '#f43f5e' } : {})}
-                >
-                  <option value="" style={{ background: 'var(--card, #181714)', color: 'var(--fg-muted)' }}>Select category</option>
-                  {ROOM_CATEGORIES.map(c => <option key={c} value={c} style={{ background: 'var(--card, #181714)', color: 'var(--fg)' }}>{c}</option>)}
-                </select>
-                {errorText('category')}
-              </div>
-              <div>
-                <label style={fieldLabel}>Price *</label>
-                <input
-                  type="number" min="1" step="1" className="booking-input" value={form.price}
-                  onChange={e => update('price', e.target.value)}
-                  style={errors.price ? { borderColor: '#f43f5e' } : undefined}
-                />
-                {errorText('price')}
-              </div>
-            </div>
-
-            <div>
-              <label style={fieldLabel}>Description</label>
-              <textarea
-                className="booking-input" rows={3} value={form.desc}
-                onChange={e => update('desc', e.target.value)}
-                style={{ resize: 'vertical', minHeight: 88 }}
+                id={uid + '-p'} type="number" min="1" step="1" inputMode="numeric"
+                className={`mr-input ${errors.price ? 'has-error' : ''}`} value={form.price}
+                onChange={e => update('price', e.target.value)}
               />
             </div>
+            {errors.price ? <p className="mr-error">{errors.price}</p> : <p className="mr-help">Bookings already made keep the price they were booked at.</p>}
+          </div>
 
-            <div>
-              <label style={fieldLabel}>Room Image</label>
-              <button
-                type="button"
-                onClick={() => pickImageFile(url => { if (url) update('img', url); })}
-                className="btn-outline"
-                style={{ fontSize: '0.7rem', padding: '0.5rem 0.9rem' }}
-              >
-                <i className="fa-solid fa-cloud-arrow-up" style={{ fontSize: '0.7rem' }}></i> Replace image
-              </button>
-            </div>
+          <div className="mr-field">
+            <label className="mr-label" htmlFor={uid + '-g'}>Guests allowed <em>(optional)</em></label>
+            <input
+              id={uid + '-g'} type="number" min="1" max="99" step="1" inputMode="numeric"
+              className={`mr-input ${errors.capacity ? 'has-error' : ''}`} placeholder={typeSleeps ? String(typeSleeps) : 'No limit'}
+              value={form.capacity} onChange={e => update('capacity', e.target.value)}
+            />
+            {errors.capacity ? <p className="mr-error">{errors.capacity}</p> : <p className="mr-help">
+              {typeSleeps
+                ? `Leave empty to use the ${form.category} limit of ${mrPlural(typeSleeps, 'guest', 'guests')}.`
+                : 'Leave empty for no limit. Bookings for more guests are refused.'}
+            </p>}
+          </div>
 
-            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
-              <button type="submit" className="btn-primary" disabled={saving}>
-                <i className="fa-solid fa-floppy-disk" style={{ fontSize: '0.7rem' }}></i> {saving ? 'Saving…' : 'Save Changes'}
-              </button>
-              <button type="button" className="btn-outline" onClick={onClose} style={{ fontSize: '0.72rem', padding: '0.55rem 1rem' }}>Cancel</button>
-            </div>
-          </form>
+          <div className="mr-field">
+            <label className="mr-label" htmlFor={uid + '-d'}>Short description <em>(optional)</em></label>
+            <textarea id={uid + '-d'} className="mr-input" rows={3} value={form.desc} onChange={e => update('desc', e.target.value)} />
+          </div>
 
-          <p style={{ ...fieldLabel, margin: '1.35rem 0 0.5rem' }}>Availability</p>
-          <RoomAvailabilityCalendar ranges={room.bookedRanges} />
-        </div>
+          <PhotoStrip imgs={form.imgs} onOpen={() => setImgModal(true)} />
+
+          <div className="mr-actions">
+            <button type="button" className="mr-btn is-quiet" onClick={onClose}>Cancel</button>
+            <button type="submit" className="mr-btn is-solid" disabled={saving}>
+              <i className="fa-solid fa-floppy-disk"></i> {saving ? 'Saving…' : 'Save changes'}
+            </button>
+          </div>
+
+          <div className="mr-field">
+            <span className="mr-label">Booked dates</span>
+            <p className="mr-help" style={{ marginTop: '-0.2rem' }}>Red days are already booked. Only the Front Desk can book or move a stay.</p>
+            <RoomAvailabilityCalendar ranges={room.bookedRanges} />
+          </div>
+        </form>
       </div>
+
+      <RoomImageModal
+        open={imgModal}
+        slots={form.imgs}
+        onChange={next => update('imgs', next)}
+        onClose={() => setImgModal(false)}
+      />
     </div>
   );
 }
 
-/* 'Aug 12, 2026 - 2:00 PM' from a full ISO timestamp. */
+function RoomCard({ room, sleeps, onEdit }) {
+  const now = roomNow(room);
+  const next = nextBooking(room);
+  const today = todayStr();
+
+  let bookingLine = 'No upcoming bookings';
+  if (next) {
+    bookingLine = next.from <= today
+      ? `Booked until ${formatShortDay(next.to)}`
+      : `Next booking: ${formatShortDay(next.from)} to ${formatShortDay(next.to)}`;
+  }
+
+  return (
+    <article className="mr-card">
+      <div className="mr-card-img">
+        <img src={roomCardImg(room)} alt={room.name} loading="lazy" />
+        <span className={`mr-pill ${now.tone}`}><i className={`fa-solid ${now.icon}`}></i>{now.label}</span>
+      </div>
+      <div className="mr-card-body">
+        <div className="mr-card-top">
+          <div style={{ minWidth: 0 }}>
+            <h3 className="mr-name">{room.name}</h3>
+            <span className="mr-type">
+              {room.label || room.category}
+              {(room.capacity || sleeps) ? ` · ${mrPlural(room.capacity || sleeps, 'Guest', 'Guests')}` : ''}
+            </span>
+          </div>
+          <div className="mr-price">
+            <b>{formatPeso(room.price)}</b>
+            <small>per 12 hours</small>
+          </div>
+        </div>
+        <p className={`mr-desc ${room.desc ? '' : 'is-empty'}`}>{room.desc || 'No description.'}</p>
+        <p className="mr-next">
+          <i className="fa-regular fa-calendar"></i>
+          <span>{now.key === 'guest' && room.reservation ? `${room.reservation.fullName || 'Guest'} is staying` : bookingLine}</span>
+        </p>
+        <button type="button" className="mr-btn is-small is-wide" onClick={() => onEdit(room)}>
+          <i className="fa-solid fa-pen"></i> Edit room
+        </button>
+      </div>
+    </article>
+  );
+}
+
+const MR_PAGE = 12;
+
+function ManageRoomPanel({ rooms, categories, sleeps, onSubmit, onRoomUpdated, onAddCategory, onRenameCategory, onSetSleeps, onToast }) {
+  // The inventory list that used to be its own Room Availability section. Adding a
+  // room and looking one up are the same job, so they share a screen.
+  const [tab, setTab] = useState('All');
+  const [search, setSearch] = useState('');
+  const [shown, setShown] = useState(MR_PAGE);
+  const [selectedRoomId, setSelectedRoomId] = useState(null);
+  const [addOpen, setAddOpen] = useState(false);
+  // The type the rename dialog is open on, or null when it is closed.
+  const [renameFrom, setRenameFrom] = useState(null);
+  const [renameSaving, setRenameSaving] = useState(false);
+  const [renameError, setRenameError] = useState('');
+  // The type the guest-limit dialog is open on, or null when it is closed.
+  const [sleepsFor, setSleepsFor] = useState(null);
+  const [sleepsSaving, setSleepsSaving] = useState(false);
+  const [sleepsError, setSleepsError] = useState('');
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const [categorySaving, setCategorySaving] = useState(false);
+  const [categoryError, setCategoryError] = useState('');
+
+  const list = rooms || [];
+  const categoryNames = (categories && categories.length) ? categories : DEFAULT_ROOM_CATEGORIES;
+  const tabs = ['All', ...categoryNames];
+  const q = search.trim().toLowerCase();
+  const filtered = list
+    .filter(r => tab === 'All' || normalizeRoomCategory(r.category || r.label) === tab)
+    .filter(r => !q || [r.name, r.desc, r.reservation && r.reservation.fullName].some(v => String(v || '').toLowerCase().includes(q)));
+  const visible = filtered.slice(0, shown);
+  const selectedRoom = list.find(r => r.id === selectedRoomId) || null;
+
+  const counts = list.reduce((t, r) => { t[roomNow(r).key] += 1; return t; }, { free: 0, booked: 0, guest: 0 });
+
+  const pickTab = (t) => { setTab(t); setShown(MR_PAGE); };
+
+  /* Renaming a type renames the category for the whole team — the rooms in it are
+     renamed with it, and the hotel site's own Rooms tabs follow on their next poll. */
+  const submitRename = (to) => {
+    if (typeof onRenameCategory !== 'function' || !renameFrom) return;
+    const from = renameFrom;
+    setRenameSaving(true);
+    setRenameError('');
+
+    Promise.resolve(onRenameCategory(from, to)).then((renamed) => {
+      setRenameSaving(false);
+      if (!renamed) {
+        // Kept open with the typed name still in it — the fix is usually one word.
+        setRenameError('That name is already used. Pick another.');
+        return;
+      }
+      setRenameFrom(null);
+      // Follow the rename: the tab this panel was filtering on is gone by that name.
+      setTab(prev => (prev === from ? renamed : prev));
+      if (onToast) onToast(`${from} is now ${renamed}`);
+    });
+  };
+
+  const submitSleeps = (capacity) => {
+    const category = sleepsFor;
+    setSleepsSaving(true);
+    setSleepsError('');
+    Promise.resolve(onSetSleeps(category, capacity)).then((ok) => {
+      setSleepsSaving(false);
+      if (!ok) {
+        setSleepsError('Could not save the guest limit. Try again.');
+        return;
+      }
+      setSleepsFor(null);
+      if (onToast) onToast(capacity ? `${category} now sleeps ${mrPlural(capacity, 'guest', 'guests')}.` : `${category} has no guest limit.`);
+    });
+  };
+
+  /* A new type is a write against the team, so the server decides whether the name
+     is free and hands back the whole list; the tabs are redrawn from that rather than
+     from what was typed. A duplicate comes back as null. */
+  const handleAddCategory = (name, rate) => {
+    if (typeof onAddCategory !== 'function') return;
+    setCategorySaving(true);
+    setCategoryError('');
+    Promise.resolve(onAddCategory(name, rate)).then((created) => {
+      if (!created) {
+        setCategoryError('That room type already exists.');
+        return;
+      }
+      setCategoryOpen(false);
+      pickTab(created);
+      if (onToast) onToast(`${created} added. You can now add rooms to it.`);
+    }).finally(() => setCategorySaving(false));
+  };
+
+  return (
+    <div className="mr">
+      <header className="mr-head">
+        <div>
+          <p className="mr-eyebrow">Room Management</p>
+          <h1 className="font-display">Manage Rooms</h1>
+          <p className="mr-lead">
+            Every room guests can book on your hotel website. Add new rooms, change a room's
+            price, description or photos, and see which dates are already booked.
+          </p>
+        </div>
+        <div className="mr-head-actions">
+          <button type="button" className="mr-btn is-solid" onClick={() => setAddOpen(true)}>
+            <i className="fa-solid fa-plus"></i> Add a room
+          </button>
+        </div>
+      </header>
+
+      <ol className="mr-how" aria-label="Good to know">
+        <li><span className="mr-how-num"><i className="fa-solid fa-layer-group"></i></span><div><b>Rooms are grouped by type</b><span>Like Classic or Deluxe. Pick a type below to see only those rooms.</span></div></li>
+        <li><span className="mr-how-num"><i className="fa-solid fa-hashtag"></i></span><div><b>Numbers are given for you</b><span>A new Classic room after Classic 110 becomes Classic 111.</span></div></li>
+        <li><span className="mr-how-num"><i className="fa-solid fa-clock"></i></span><div><b>Prices are per 12 hours</b><span>A guest staying a full day pays the price twice.</span></div></li>
+      </ol>
+
+      <section className="mr-panel" aria-labelledby="mr-list">
+        <div className="mr-panel-head">
+          <div>
+            <h2 id="mr-list">Your rooms</h2>
+            <p>{list.length ? `${mrPlural(list.length, 'room', 'rooms')} in the hotel.` : 'No rooms.'}</p>
+          </div>
+          <span className="mr-live">Updates on its own</span>
+        </div>
+
+        {list.length ? (
+          <div className="mr-stats">
+            <div className="mr-stat"><span className="mr-stat-icon tone-ok"><i className="fa-solid fa-circle-check"></i></span><div><b>{counts.free}</b><span>Free now</span></div></div>
+            <div className="mr-stat"><span className="mr-stat-icon tone-warn"><i className="fa-solid fa-calendar-check"></i></span><div><b>{counts.booked}</b><span>Booked, guest not in yet</span></div></div>
+            <div className="mr-stat"><span className="mr-stat-icon tone-brand"><i className="fa-solid fa-user"></i></span><div><b>{counts.guest}</b><span>Guest staying now</span></div></div>
+          </div>
+        ) : null}
+
+        <div className="mr-types">
+          <span className="mr-label">Room types</span>
+          <div className="mr-tabs" role="group" aria-label="Show rooms by type">
+            {tabs.map(t => {
+              const count = t === 'All' ? list.length : list.filter(r => normalizeRoomCategory(r.category || r.label) === t).length;
+              return (
+                <button key={t} type="button" aria-pressed={tab === t} className={`mr-tab ${tab === t ? 'is-on' : ''}`} onClick={() => pickTab(t)}>
+                  {t === 'All' ? 'All rooms' : t}
+                  <span className="mr-count">{count}</span>
+                </button>
+              );
+            })}
+            {/* Dashed so it reads as "make a new one" rather than as another type. */}
+            {onAddCategory && (
+              <button type="button" className="mr-tab is-new" onClick={() => { setCategoryError(''); setCategoryOpen(true); }}>
+                <i className="fa-solid fa-plus"></i> New room type
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="mr-toolbar">
+          <p className="mr-showing">
+            {tab === 'All' ? 'Showing all rooms' : <>Showing <b>{tab}</b> rooms</>}
+            {/* "All" is not a type, so it is the one tab with nothing to rename. */}
+            {onRenameCategory && tab !== 'All' ? (
+              <button type="button" className="mr-link" onClick={() => { setRenameError(''); setRenameFrom(tab); }}>
+                <i className="fa-solid fa-pen"></i> Rename {tab}
+              </button>
+            ) : null}
+            {onSetSleeps && tab !== 'All' ? (
+              <button type="button" className="mr-link" onClick={() => { setSleepsError(''); setSleepsFor(tab); }}>
+                <i className="fa-solid fa-user-group"></i> {(sleeps || {})[tab] ? mrPlural(sleeps[tab], 'Guest', 'Guests') : 'No guest limit'}
+              </button>
+            ) : null}
+          </p>
+          {list.length > 0 ? (
+            <div className="mr-search">
+              <i className="fa-solid fa-magnifying-glass"></i>
+              <input type="text" className="mr-input" placeholder="Search a room or guest name" aria-label="Search a room or guest name" value={search} onChange={e => { setSearch(e.target.value); setShown(MR_PAGE); }} />
+            </div>
+          ) : null}
+        </div>
+
+        {filtered.length === 0 ? (
+          <div className="mr-empty">
+            <div className="mr-empty-icon"><i className={`fa-solid ${q ? 'fa-magnifying-glass' : 'fa-bed'}`}></i></div>
+            <h3>{q ? 'No room matches your search' : list.length === 0 ? 'No rooms' : `No ${tab} rooms`}</h3>
+            <p>{q ? 'Check the spelling, or clear the search box.' : 'Use "Add a room" to create one. Guests can book it right away.'}</p>
+            {!q ? (
+              <button type="button" className="mr-btn is-solid" onClick={() => setAddOpen(true)}>
+                <i className="fa-solid fa-plus"></i> Add a room
+              </button>
+            ) : null}
+          </div>
+        ) : (
+          <>
+            <div className="mr-grid">
+              {visible.map(room => <RoomCard key={room.id} room={room} sleeps={(sleeps || {})[room.category]} onEdit={r => setSelectedRoomId(r.id)} />)}
+            </div>
+            <div className="mr-more">
+              <span>Showing {visible.length} of {filtered.length}</span>
+              {visible.length < filtered.length ? (
+                <button type="button" className="mr-btn is-small" onClick={() => setShown(s => s + MR_PAGE)}>
+                  <i className="fa-solid fa-chevron-down"></i> Show {Math.min(MR_PAGE, filtered.length - visible.length)} more
+                </button>
+              ) : null}
+            </div>
+          </>
+        )}
+      </section>
+
+      {addOpen && (
+        <AddRoomModal
+          rooms={list}
+          categories={categoryNames}
+          sleeps={sleeps}
+          defaultCategory={tab === 'All' ? '' : tab}
+          onClose={() => setAddOpen(false)}
+          onAdded={onSubmit}
+        />
+      )}
+
+      {categoryOpen && (
+        <AddCategoryModal
+          saving={categorySaving}
+          error={categoryError}
+          onSubmit={handleAddCategory}
+          onCancel={() => { setCategoryOpen(false); setCategoryError(''); }}
+        />
+      )}
+
+      {renameFrom && (
+        <RenameCategoryModal
+          key={renameFrom}
+          from={renameFrom}
+          saving={renameSaving}
+          error={renameError}
+          onSubmit={submitRename}
+          onCancel={() => { setRenameFrom(null); setRenameError(''); }}
+        />
+      )}
+
+      {sleepsFor && (
+        <SleepsModal
+          key={sleepsFor}
+          category={sleepsFor}
+          current={(sleeps || {})[sleepsFor] || null}
+          saving={sleepsSaving}
+          error={sleepsError}
+          onSubmit={submitSleeps}
+          onCancel={() => { setSleepsFor(null); setSleepsError(''); }}
+        />
+      )}
+
+      {selectedRoom && (
+        <EditRoomModal
+          room={selectedRoom}
+          categories={categoryNames}
+          sleeps={sleeps}
+          onClose={() => setSelectedRoomId(null)}
+          onSaved={onRoomUpdated}
+        />
+      )}
+    </div>
+  );
+}
+
 function formatStamp(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
@@ -1018,31 +1789,48 @@ function formatStamp(iso) {
     + ' · ' + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
+/* "Fri, Oct 9 · 2:00 PM" from a stored date and clock time. */
+function formatDayTime(date, time) {
+  if (!date) return '—';
+  const d = new Date(date + 'T00:00:00');
+  const day = Number.isNaN(d.getTime()) ? date : d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+  const clock = formatClockTime(time);
+  return clock ? `${day} · ${clock}` : day;
+}
+
+function formatEndsAt(reservation) {
+  const end = stayEndsAt(reservation);
+  if (!end) return reservation && reservation.checkOut ? formatDayTime(reservation.checkOut) : '—';
+  return end.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
+    + ' · ' + end.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
+/* The three booking states, as the person at the desk would say them. */
+function guestState(reservation) {
+  const status = String((reservation && reservation.status) || '').trim();
+  if (status === 'Checked In') return { key: 'in', label: 'Staying now', icon: 'fa-bed', tone: 'tone-ok' };
+  if (status === 'Arrived') return { key: 'arrived', label: 'At the hotel, not checked in', icon: 'fa-person-walking-luggage', tone: 'tone-warn' };
+  return { key: 'booked', label: 'Booked, not here yet', icon: 'fa-calendar-check', tone: 'tone-brand' };
+}
+
+function guestBalance(res) {
+  const grand = Number(res.grandTotal) || ((Number(res.totalDue) || 0) + (Number(res.roomServiceTotal) || 0) + (Number(res.addonsTotal) || 0) + (Number(res.otherCharges) || 0));
+  const paid = Number(res.amountPaid) || 0;
+  return res.outstanding != null ? Number(res.outstanding) : Math.max(0, grand - paid);
+}
+
 /*
- * Read-only view of one stay. The table carries only what Room Management scans by
- * (who, where, when, status), so the money detail the Total and Payment columns used
- * to abbreviate lives here in full instead.
+ * Read-only view of one stay. The card carries only what Room Management scans by
+ * (who, where, when, status), so the money detail lives here in full instead.
  */
 function GuestDetailsModal({ room, onClose }) {
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  const uid = useId();
+  useEscapeKey(onClose);
 
   const res = room && room.reservation;
   if (!res) return null;
 
-  const label = { fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--fg-muted)', marginBottom: '0.15rem' };
-  const value = { margin: 0, color: 'var(--fg)', fontSize: '0.85rem' };
-  const sectionTitle = {
-    fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase',
-    color: 'var(--accent)', margin: '1.15rem 0 0.55rem', paddingBottom: '0.3rem',
-    borderBottom: '1px solid var(--border)',
-  };
-  const line = { display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.83rem', color: 'var(--fg-muted)', padding: '0.22rem 0' };
-  const amt = { color: 'var(--fg)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' };
-
+  const state = guestState(res);
   const roomTotal = Number(res.totalDue) || 0;
   const service = Number(res.roomServiceTotal) || 0;
   const serviceCount = Number(res.roomServiceCount) || 0;
@@ -1054,245 +1842,275 @@ function GuestDetailsModal({ room, onClose }) {
   const outstanding = res.outstanding != null ? Number(res.outstanding) : Math.max(0, grand - paid);
   const payments = res.payments || [];
 
+  const Fact = ({ label, children }) => (
+    <div className="mr-fact"><small>{label}</small><span>{children || '—'}</span></div>
+  );
+
   return (
-    <div className="room-modal-overlay" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="room-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 560 }}>
-        <div style={{ padding: '1.4rem 1.6rem 1rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
-          <div>
-            <p style={{ margin: 0, color: 'var(--accent)', fontSize: '0.62rem', letterSpacing: '0.14em', textTransform: 'uppercase' }}>Guest</p>
-            <h2 className="font-display" style={{ margin: '0.25rem 0 0.4rem', fontSize: '1.35rem', color: 'var(--fg)' }}>
-              {res.fullName || 'Guest'}
-            </h2>
-            <span className={`room-status-badge ${bookingStatusClass(res.status)}`} style={{ position: 'static' }}>{res.status}</span>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--fg-muted)', cursor: 'pointer', flexShrink: 0 }}
-          >
-            <i className="fa-solid fa-xmark"></i>
-          </button>
-        </div>
+    <div className="mr-overlay" onClick={onClose}>
+      <div className="mr-modal" role="dialog" aria-modal="true" aria-labelledby={uid + '-t'} onClick={e => e.stopPropagation()}>
+        <MrModalHead
+          titleId={uid + '-t'}
+          title={res.fullName || 'Guest'}
+          text={`${room.name} · ${room.label || room.category}`}
+          onClose={onClose}
+        />
+        <div className="mr-form">
+          <span className={`mr-pill ${state.tone}`} style={{ justifySelf: 'start' }}><i className={`fa-solid ${state.icon}`}></i>{state.label}</span>
 
-        <div style={{ padding: '0.25rem 1.6rem 1.6rem' }}>
-          <p style={sectionTitle}>Guest</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.55rem 1rem' }}>
-            <div><p style={label}>Full name</p><p style={value}>{res.fullName || '—'}</p></div>
-            <div><p style={label}>Contact no.</p><p style={value}>{res.contactNo || '—'}</p></div>
-            <div><p style={label}>Email</p><p style={{ ...value, overflowWrap: 'anywhere' }}>{res.email || '—'}</p></div>
-            <div><p style={label}>ID number</p><p style={value}>{res.idNumber || '—'}</p></div>
-          </div>
-
-          <p style={sectionTitle}>Stay</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.55rem 1rem' }}>
-            <div><p style={label}>Room</p><p style={value}>{room.name} · {room.label || room.category}</p></div>
-            <div><p style={label}>Rate / 12 hrs</p><p style={value}>{formatPeso(res.roomRate || room.price)}</p></div>
-            <div><p style={label}>Check-in</p><p style={value}>{formatCheckIn(res.checkIn, res.checkInTime)}</p></div>
-            <div><p style={label}>Check-out</p><p style={value}>{res.checkOut || '—'}</p></div>
-            <div><p style={label}>Booked</p><p style={value}>{formatStamp(res.reservedAt)}</p></div>
-            <div><p style={label}>Arrived</p><p style={value}>{formatStamp(res.arrivedAt)}</p></div>
-            <div><p style={label}>Checked in</p><p style={value}>{formatStamp(res.checkedInAt)}</p></div>
-            <div><p style={label}>Booked by</p><p style={value}>{res.bookedBy || '—'}</p></div>
-          </div>
-
-          {res.notes && (
-            <>
-              <p style={sectionTitle}>Notes</p>
-              <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.84rem', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{res.notes}</p>
-            </>
-          )}
-
-          <p style={sectionTitle}>Charges</p>
-          <div style={line}><span>Room charge</span><span style={amt}>{formatPeso(roomTotal)}</span></div>
-          <div style={line}>
-            <span>Room service{serviceCount > 0 ? ` (${serviceCount} order${serviceCount === 1 ? '' : 's'})` : ''}</span>
-            <span style={amt}>{formatPeso(service)}</span>
-          </div>
-          {addonsCount > 0 && (
-            <div style={line}>
-              <span>Add-ons ({addonsCount} item{addonsCount === 1 ? '' : 's'})</span>
-              <span style={amt}>{formatPeso(addonsTotal)}</span>
+          <section className="mr-section">
+            <h3>About the guest</h3>
+            <div className="mr-facts">
+              <Fact label="Full name">{res.fullName}</Fact>
+              <Fact label="Phone">{res.contactNo}</Fact>
+              <Fact label="Email">{res.email}</Fact>
+              <Fact label="ID number">{res.idNumber}</Fact>
             </div>
-          )}
-          <div style={line}><span>Other charges</span><span style={amt}>{formatPeso(extras)}</span></div>
-          <div style={{ ...line, borderTop: '2px solid var(--accent)', marginTop: '0.6rem', paddingTop: '0.6rem', color: 'var(--fg)', fontWeight: 700 }}>
-            <span>Total</span>
-            <span style={{ ...amt, color: 'var(--accent-light)', fontFamily: 'var(--font-display, Playfair Display, serif)', fontSize: '1.1rem' }}>{formatPeso(grand)}</span>
-          </div>
-          <div style={{ ...line, color: 'var(--fg)', fontWeight: 600 }}><span>Paid</span><span style={amt}>{formatPeso(paid)}</span></div>
-          <div style={line}>
-            <span>Balance</span>
-            <span style={{ ...amt, color: outstanding > 0 ? 'var(--danger, #fb7185)' : 'var(--fg)', fontWeight: 700 }}>{formatPeso(outstanding)}</span>
-          </div>
+          </section>
 
-          <p style={sectionTitle}>Payments</p>
-          {payments.length === 0 ? (
-            <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.82rem' }}>Nothing has been paid on this stay yet.</p>
-          ) : (
-            payments.map(p => (
-              <div key={p.id} style={{ padding: '0.5rem 0', borderBottom: '1px solid rgba(42,38,33,0.5)' }}>
-                <div style={{ ...line, padding: 0 }}>
-                  <span style={{ color: 'var(--fg)' }}>{p.type} · {p.method}</span>
-                  <span style={amt}>{formatPeso(p.amountPaid)}</span>
-                </div>
-                <p style={{ margin: '0.2rem 0 0', fontSize: '0.72rem', color: 'var(--fg-muted)' }}>
-                  {formatStamp(p.paidAt)}
-                  {p.reference ? ` · Ref ${p.reference}` : ''}
-                  {p.payerName ? ` · ${p.payerName}` : ''}
-                </p>
+          <section className="mr-section">
+            <h3>The stay</h3>
+            <div className="mr-facts">
+              <Fact label="Room">{room.name}</Fact>
+              <Fact label="Price per 12 hours">{formatPeso(res.roomRate || room.price)}</Fact>
+              <Fact label="Check-in">{formatDayTime(res.checkIn, res.checkInTime)}</Fact>
+              <Fact label="Check-out">{formatEndsAt(res)}</Fact>
+              <Fact label="Booked on">{res.reservedAt ? formatStamp(res.reservedAt) : null}</Fact>
+              <Fact label="Booked by">{res.bookedBy}</Fact>
+              <Fact label="Arrived at the hotel">{res.arrivedAt ? formatStamp(res.arrivedAt) : null}</Fact>
+              <Fact label="Checked in">{res.checkedInAt ? formatStamp(res.checkedInAt) : null}</Fact>
+            </div>
+          </section>
+
+          {res.notes ? (
+            <section className="mr-section">
+              <h3>Notes</h3>
+              <p className="mr-notes">{res.notes}</p>
+            </section>
+          ) : null}
+
+          <section className="mr-section">
+            <h3>Bill so far</h3>
+            <div className="mr-bill">
+              <div><span>Room</span><b>{formatPeso(roomTotal)}</b></div>
+              <div><span>Food ordered to the room{serviceCount > 0 ? ` (${serviceCount})` : ''}</span><b>{formatPeso(service)}</b></div>
+              {addonsCount > 0 ? <div><span>Borrowed items ({addonsCount})</span><b>{formatPeso(addonsTotal)}</b></div> : null}
+              <div><span>Other charges</span><b>{formatPeso(extras)}</b></div>
+              <div className="is-total"><span>Total</span><b>{formatPeso(grand)}</b></div>
+              <div><span>Paid</span><b>{formatPeso(paid)}</b></div>
+              <div className={outstanding > 0 ? 'is-owed' : 'is-clear'}>
+                <span>{outstanding > 0 ? 'Still to pay' : 'Fully paid'}</span><b>{formatPeso(outstanding)}</b>
               </div>
-            ))
-          )}
+            </div>
+          </section>
+
+          <section className="mr-section">
+            <h3>Payments</h3>
+            {payments.length === 0 ? (
+              <p className="mr-help">Nothing has been paid on this stay.</p>
+            ) : (
+              <div className="mr-payments">
+                {payments.map(p => (
+                  <div key={p.id}>
+                    <div><b>{p.type} · {p.method}</b><b>{formatPeso(p.amountPaid)}</b></div>
+                    <small>
+                      {formatStamp(p.paidAt)}
+                      {p.reference ? ` · Ref ${p.reference}` : ''}
+                      {p.payerName ? ` · Paid by ${p.payerName}` : ''}
+                    </small>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <div className="mr-actions">
+            <button type="button" className="mr-btn is-quiet" onClick={onClose}>Close</button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function GuestDetailsPanel({ rooms, onBookingAction, onToast }) {
-  const now = useNow(1000);
-  // The View action. Read-only, so it needs no fetch: the row already holds the whole
-  // reservation payload the modal renders. Keyed by room id so a poll refresh swaps
-  // in the updated row rather than leaving a stale snapshot open.
-  const [detailsRoomId, setDetailsRoomId] = useState(null);
-  // `reservation` is only ever projected from an open booking (see
-  // HotelRoom::activeBooking()), so its presence alone means the room has a live guest
-  // — hotel_rooms.status is housekeeping-only now and no longer part of this filter.
-  const occupied = (rooms || []).filter(r => r.reservation);
-  const awaitingCheckIn = occupied.filter(r => r.reservation.status !== 'Checked In').length;
-  // Resolved from the live list, so an open modal follows the 8s poll instead of
-  // holding the row as it looked when it was opened.
-  const detailsRoom = occupied.find(r => r.id === detailsRoomId) || null;
-
-  // Check-in moves the booking only — the room's own status is untouched.
-  const checkInGuest = (room) => {
-    if (typeof onBookingAction !== 'function' || !room.reservation) return;
-    onBookingAction(room.reservation.bookingId, 'check_in');
-    if (onToast) onToast(`${room.name} checked in.`);
-  };
-
-  /* No nowrap and no fixed widths: the table has to fit the page rather than force a
-     horizontal scrollbar, so long headers wrap instead of pushing the table wider.
-     Cells that must stay on one line (dates, countdown) opt in via tdTight. */
-  const thStyle = {
-    padding: '0.6rem 0.7rem', fontSize: '0.6rem', fontWeight: 700,
-    letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--fg-muted)',
-    borderBottom: '1px solid var(--border)',
-    textAlign: 'left', background: 'rgba(255,255,255,0.02)',
-  };
-  const tdStyle = {
-    padding: '0.7rem', fontSize: '0.78rem', color: 'var(--fg-muted)',
-    borderBottom: '1px solid rgba(42,38,33,0.5)', verticalAlign: 'middle',
-  };
-  const tdTight = { ...tdStyle, whiteSpace: 'nowrap' };
-  const rowBtn = {
-    display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
-    padding: '0.35rem 0.65rem', borderRadius: 6, cursor: 'pointer',
-    fontFamily: 'var(--font-body, Outfit, sans-serif)', fontSize: '0.68rem', fontWeight: 600,
-    letterSpacing: '0.05em', textTransform: 'uppercase', whiteSpace: 'nowrap',
-  };
-
-  if (!occupied.length) {
-    return (
-      <div className="rm-panel" style={{ maxWidth: '100%' }}>
-        <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', margin: '0 0 0.4rem' }}>Occupancy</p>
-        <h3>Guest Details</h3>
-        <p className="rm-panel-desc">No rooms with registered guests at this time.</p>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2.5rem 0' }}>
-          <div style={{ textAlign: 'center', color: 'var(--fg-muted)' }}>
-            <i className="fa-solid fa-door-open" style={{ fontSize: '2rem', opacity: 0.25, display: 'block', marginBottom: '0.75rem' }}></i>
-            <p style={{ fontSize: '0.82rem' }}>All rooms are currently vacant.</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+function GuestCard({ room, now, onView, onCheckIn }) {
+  const res = room.reservation;
+  const state = guestState(res);
+  const remaining = remainingStay(res, now);
+  const owed = guestBalance(res);
+  const overdue = remaining.tone === 'over';
 
   return (
-    <div className="rm-panel" style={{ maxWidth: '100%' }}>
-      <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', margin: '0 0 0.4rem' }}>Occupancy</p>
-      <h3>Guest Details</h3>
-      <p className="rm-panel-desc">
-        {occupied.length} room{occupied.length > 1 ? 's' : ''} with a registered guest
-        {awaitingCheckIn > 0 ? ` · ${awaitingCheckIn} awaiting check-in` : ''}.
-      </p>
-      <div style={{ borderRadius: 10, border: '1px solid var(--border)' }}>
-        <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontFamily: 'var(--font-body, Outfit, sans-serif)' }}>
-          <thead>
-            <tr>
-              <th style={{ ...thStyle, width: '16%' }}>Guest Name</th>
-              <th style={{ ...thStyle, width: '13%' }}>Room</th>
-              <th style={{ ...thStyle, width: '16%' }}>Contact</th>
-              <th style={{ ...thStyle, width: '13%' }}>Check-In</th>
-              <th style={{ ...thStyle, width: '10%' }}>Check-Out</th>
-              <th style={{ ...thStyle, width: '11%' }}>Time Remaining</th>
-              <th style={{ ...thStyle, width: '10%' }}>Status</th>
-              <th style={{ ...thStyle, width: '11%' }}>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {occupied.map((room, idx) => {
-              const res = room.reservation;
-              const rowBg = idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)';
-              const canCheckIn = res.status !== 'Checked In';
-              const remaining = remainingStay(res, now);
-              return (
-                <tr key={room.id} style={{ background: rowBg }}>
-                  <td style={{ ...tdStyle, color: 'var(--fg)', fontWeight: 600, overflowWrap: 'anywhere' }}>
-                    <span style={{ display: 'block' }}>{res.fullName || '—'}</span>
-                    <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--fg-muted)', fontWeight: 400 }}>{res.idNumber || ''}</span>
-                  </td>
-                  <td style={tdStyle}>
-                    <span style={{ display: 'block', fontSize: '0.6rem', color: 'var(--accent)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 2 }}>{room.label || room.category}</span>
-                    <span style={{ color: 'var(--fg)', fontWeight: 500 }}>{room.name}</span>
-                  </td>
-                  <td style={{ ...tdStyle, overflowWrap: 'anywhere' }}>
-                    <span style={{ display: 'block' }}>{res.contactNo || '—'}</span>
-                    <span style={{ display: 'block', fontSize: '0.72rem' }}>{res.email || ''}</span>
-                  </td>
-                  <td style={tdStyle}>{formatCheckIn(res.checkIn, res.checkInTime)}</td>
-                  <td style={tdTight}>{res.checkOut || '—'}</td>
-                  <td style={{
-                    ...tdTight,
-                    color: STAY_TONE_COLORS[remaining.tone],
-                    fontWeight: remaining.tone === 'idle' ? 400 : 600,
-                    opacity: remaining.tone === 'idle' ? 0.6 : 1,
-                    fontVariantNumeric: 'tabular-nums',
-                  }}>
-                    {remaining.text}
-                  </td>
-                  <td style={tdStyle}>
-                    <span className={`room-status-badge ${bookingStatusClass(res.status)}`} style={{ position: 'static' }}>{res.status}</span>
-                  </td>
-                  <td style={tdStyle}>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
-                      <button
-                        type="button"
-                        onClick={() => setDetailsRoomId(room.id)}
-                        title="See everything recorded for this guest"
-                        style={{ ...rowBtn, border: '1px solid var(--border)', background: 'transparent', color: 'var(--fg)' }}
-                      >
-                        <i className="fa-solid fa-eye" style={{ fontSize: '0.68rem' }}></i> View
-                      </button>
-                      {canCheckIn && (
-                        <button
-                          type="button"
-                          onClick={() => checkInGuest(room)}
-                          title="Check the guest in"
-                          style={{ ...rowBtn, border: '1px solid var(--accent)', background: 'var(--accent)', color: 'var(--bg)' }}
-                        >
-                          <i className="fa-solid fa-right-to-bracket" style={{ fontSize: '0.68rem' }}></i> Check In
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+    <article className={`mr-guest ${overdue ? 'is-over' : ''}`}>
+      <div className="mr-guest-top">
+        <div style={{ minWidth: 0 }}>
+          <h3 className="mr-name">{res.fullName || 'Guest'}</h3>
+          <span className="mr-type">{room.name} · {room.label || room.category}</span>
+        </div>
+        <span className={`mr-pill ${state.tone}`}><i className={`fa-solid ${state.icon}`}></i>{state.key === 'in' ? 'Staying now' : state.key === 'arrived' ? 'At the hotel' : 'Not here yet'}</span>
       </div>
+
+      <ul className="mr-guest-facts">
+        <li><i className="fa-solid fa-phone"></i><span>{res.contactNo || 'No phone given'}</span></li>
+        <li><i className="fa-solid fa-right-to-bracket"></i><span>Check-in: {formatDayTime(res.checkIn, res.checkInTime)}</span></li>
+        <li><i className="fa-solid fa-right-from-bracket"></i><span>Check-out: {formatEndsAt(res)}</span></li>
+      </ul>
+
+      {state.key === 'in' ? (
+        <p className={`mr-time is-${remaining.tone}`}>
+          <i className={`fa-solid ${overdue ? 'fa-triangle-exclamation' : 'fa-hourglass-half'}`}></i>
+          <span>{overdue ? `Stay time is up. ${remaining.text}.` : `Time left: ${remaining.text}`}</span>
+        </p>
+      ) : (
+        <p className="mr-time is-idle">
+          <i className="fa-solid fa-circle-info"></i>
+          <span>{state.key === 'arrived' ? 'The guest is at the hotel. Check them in when the room is ready.' : 'Check the guest in when they arrive.'}</span>
+        </p>
+      )}
+
+      {owed > 0 ? <p className="mr-owed"><i className="fa-solid fa-peso-sign"></i> Still to pay: <b>{formatPeso(owed)}</b></p> : null}
+
+      <div className="mr-guest-actions">
+        <button type="button" className="mr-btn is-small" onClick={() => onView(room)}>
+          <i className="fa-solid fa-eye"></i> See details
+        </button>
+        {state.key !== 'in' ? (
+          <button type="button" className="mr-btn is-solid is-small" onClick={() => onCheckIn(room)}>
+            <i className="fa-solid fa-key"></i> Check in
+          </button>
+        ) : null}
+      </div>
+    </article>
+  );
+}
+
+const GUEST_TABS = [
+  { key: 'all',     label: 'All guests',          icon: 'fa-users',          match: () => true },
+  { key: 'waiting', label: 'Waiting to check in', icon: 'fa-calendar-check', match: r => r.reservation.status !== 'Checked In' },
+  { key: 'in',      label: 'Staying now',         icon: 'fa-bed',            match: r => r.reservation.status === 'Checked In' },
+];
+
+function GuestDetailsPanel({ rooms, onBookingAction, onToast }) {
+  const now = useNow(1000);
+  const [tab, setTab] = useState('all');
+  const [search, setSearch] = useState('');
+  // The See details action. Read-only, so it needs no fetch: the room already holds
+  // the whole reservation payload the dialog renders. Keyed by room id so a poll
+  // refresh swaps in the updated room rather than leaving a stale snapshot open.
+  const [detailsRoomId, setDetailsRoomId] = useState(null);
+  // `reservation` is only ever projected from an open booking (see
+  // HotelRoom::activeBooking()), so its presence alone means the room has a guest —
+  // hotel_rooms.status is housekeeping-only and no longer part of this filter.
+  const occupied = (rooms || []).filter(r => r.reservation);
+  const detailsRoom = occupied.find(r => r.id === detailsRoomId) || null;
+
+  const current = GUEST_TABS.find(t => t.key === tab) || GUEST_TABS[0];
+  const q = search.trim().toLowerCase();
+  const visible = occupied
+    .filter(current.match)
+    .filter(r => !q || [r.name, r.reservation.fullName, r.reservation.contactNo].some(v => String(v || '').toLowerCase().includes(q)));
+
+  const staying = occupied.filter(r => r.reservation.status === 'Checked In');
+  const waiting = occupied.length - staying.length;
+  const endingSoon = staying.filter(r => { const t = remainingStay(r.reservation, now).tone; return t === 'soon' || t === 'over'; }).length;
+
+  // Check-in moves the booking only — the room's own status is untouched. Asked first:
+  // it starts the guest's paid clock, and a mis-click on the wrong card is easy.
+  const checkInGuest = (room) => {
+    if (typeof onBookingAction !== 'function' || !room.reservation) return;
+    const go = () => {
+      onBookingAction(room.reservation.bookingId, 'check_in');
+      if (onToast) onToast(`${room.reservation.fullName || 'Guest'} is checked in to ${room.name}.`);
+    };
+    if (!window.Swal) { if (window.confirm(`Check in ${room.reservation.fullName || 'this guest'} to ${room.name}?`)) go(); return; }
+    window.Swal.fire({
+      title: `Check in ${room.reservation.fullName || 'this guest'}?`,
+      text: `They get the key to ${room.name}, and their stay time starts now.`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, check in',
+      cancelButtonText: 'Not yet',
+      background: themeColor('--card', '#181714'),
+      color: themeColor('--fg', '#f5f0e8'),
+      confirmButtonColor: themeColor('--accent', '#c9a84c'),
+      cancelButtonColor: '#71717a',
+    }).then(r => { if (r.isConfirmed) go(); });
+  };
+
+  let emptyTitle = 'No guests right now';
+  let emptyText = 'When the Front Desk books a guest into a room, they show up here.';
+  if (q) { emptyTitle = 'No guest matches your search'; emptyText = 'Check the spelling, or clear the search box.'; }
+  else if (occupied.length && tab === 'waiting') { emptyTitle = 'Nobody is waiting'; emptyText = 'Every booked guest is already checked in.'; }
+  else if (occupied.length && tab === 'in') { emptyTitle = 'Nobody is staying'; emptyText = 'Guests show here once you check them in.'; }
+
+  return (
+    <div className="mr">
+      <header className="mr-head">
+        <div>
+          <p className="mr-eyebrow">Room Management</p>
+          <h1 className="font-display">Guest Details</h1>
+          <p className="mr-lead">
+            Guests staying in a room now, and guests who booked but are not checked in yet.
+            Check a guest in when they arrive, and press See details for their contact
+            information and bill.
+          </p>
+        </div>
+      </header>
+
+      <ol className="mr-how" aria-label="How it works">
+        <li><span className="mr-how-num">1</span><div><b>Front Desk books the guest</b><span>The guest shows here as "Not here yet".</span></div></li>
+        <li><span className="mr-how-num">2</span><div><b>You check the guest in</b><span>Press Check in when they arrive. Their stay time starts.</span></div></li>
+        <li><span className="mr-how-num">3</span><div><b>Front Desk checks them out</b><span>The guest leaves this list and the room goes to Housekeeping.</span></div></li>
+      </ol>
+
+      <section className="mr-panel" aria-labelledby="gd-list">
+        <div className="mr-panel-head">
+          <div>
+            <h2 id="gd-list">Guests</h2>
+            <p>{occupied.length ? `${mrPlural(occupied.length, 'room has', 'rooms have')} a guest.` : 'No rooms have a guest right now.'}</p>
+          </div>
+          <span className="mr-live">Updates on its own</span>
+        </div>
+
+        {occupied.length ? (
+          <div className="mr-stats">
+            <div className="mr-stat"><span className="mr-stat-icon tone-ok"><i className="fa-solid fa-bed"></i></span><div><b>{staying.length}</b><span>Staying now</span></div></div>
+            <div className="mr-stat"><span className="mr-stat-icon tone-brand"><i className="fa-solid fa-calendar-check"></i></span><div><b>{waiting}</b><span>Waiting to check in</span></div></div>
+            <div className="mr-stat"><span className={`mr-stat-icon ${endingSoon ? 'tone-warn' : 'tone-ok'}`}><i className="fa-solid fa-hourglass-half"></i></span><div><b>{endingSoon}</b><span>Stay ends within 2 hours or is over</span></div></div>
+          </div>
+        ) : null}
+
+        {occupied.length ? (
+          <div className="mr-toolbar">
+            <div className="mr-tabs" role="group" aria-label="Show guests">
+              {GUEST_TABS.map(t => (
+                <button key={t.key} type="button" aria-pressed={tab === t.key} className={`mr-tab ${tab === t.key ? 'is-on' : ''}`} onClick={() => setTab(t.key)}>
+                  <i className={`fa-solid ${t.icon}`}></i>{t.label}
+                  <span className="mr-count">{occupied.filter(t.match).length}</span>
+                </button>
+              ))}
+            </div>
+            <div className="mr-search">
+              <i className="fa-solid fa-magnifying-glass"></i>
+              <input type="text" className="mr-input" placeholder="Search a guest, phone or room" aria-label="Search a guest, phone or room" value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+          </div>
+        ) : null}
+
+        {visible.length === 0 ? (
+          <div className="mr-empty">
+            <div className="mr-empty-icon"><i className={`fa-solid ${q ? 'fa-magnifying-glass' : 'fa-door-open'}`}></i></div>
+            <h3>{emptyTitle}</h3>
+            <p>{emptyText}</p>
+          </div>
+        ) : (
+          <div className="mr-guests">
+            {visible.map(room => (
+              <GuestCard key={room.id} room={room} now={now} onView={r => setDetailsRoomId(r.id)} onCheckIn={checkInGuest} />
+            ))}
+          </div>
+        )}
+      </section>
 
       {detailsRoom && (
         <GuestDetailsModal room={detailsRoom} onClose={() => setDetailsRoomId(null)} />
@@ -1301,7 +2119,7 @@ function GuestDetailsPanel({ rooms, onBookingAction, onToast }) {
   );
 }
 
-function RoomManagementPage({ initialNav, rooms, onBack, onAddRoom, onRoomUpdated, onBookingAction, onToast }) {
+function RoomManagementPage({ initialNav, rooms, categories, sleeps, onAddRoom, onRoomUpdated, onAddCategory, onRenameCategory, onSetSleeps, onBookingAction, onToast }) {
   const activeNav = initialNav || 'manage-room';
 
   const handleAddRoom = (payload) => {
@@ -1310,48 +2128,61 @@ function RoomManagementPage({ initialNav, rooms, onBack, onAddRoom, onRoomUpdate
   };
 
   return (
-    <div style={{ padding: '1.5rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.1rem' }}>
-        <div>
-          <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Staff Tools</p>
-          <h1 className="font-display" style={{ fontSize: '1.9rem', margin: 0, color: 'var(--fg)' }}>Room Management</h1>
-        </div>
-        <button type="button" className="btn-outline" onClick={onBack} style={{ fontSize: '0.72rem', padding: '0.55rem 1rem' }}>
-          <i className="fa-solid fa-arrow-left" style={{ fontSize: '0.75rem' }}></i> Back
-        </button>
-      </div>
-
-      <div className="rm-row">
-        <div className="rm-content">
-          {activeNav === 'guest-details' ? (
-            <GuestDetailsPanel rooms={rooms} onBookingAction={onBookingAction} onToast={onToast} />
-          ) : (
-            // Manage Room is the fallback: ?nav=rooms was the old Room Availability
-            // section, whose room list lives here now, so an old link still lands
-            // somewhere sensible instead of on a blank panel.
-            <ManageRoomPanel rooms={rooms} onSubmit={handleAddRoom} onCancel={onBack} onCloseModal={() => {}} onRoomUpdated={onRoomUpdated} />
-          )}
-        </div>
-      </div>
+    <div style={{ padding: '1.5rem' }} data-hms-no-edit="1">
+      {activeNav === 'guest-details' ? (
+        <GuestDetailsPanel rooms={rooms} onBookingAction={onBookingAction} onToast={onToast} />
+      ) : (
+        // Manage Room is the fallback: ?nav=rooms was the old Room Availability
+        // section, whose room list lives here now, so an old link still lands
+        // somewhere sensible instead of on a blank panel.
+        <ManageRoomPanel rooms={rooms} categories={categories} sleeps={sleeps} onSubmit={handleAddRoom} onRoomUpdated={onRoomUpdated} onAddCategory={onAddCategory} onRenameCategory={onRenameCategory} onSetSleeps={onSetSleeps} onToast={onToast} />
+      )}
     </div>
   );
 }
 
 function App() {
   const [rooms, setRooms] = useState([]);
+  // The team's categories ride along with the rooms, so a category added while
+  // customising the site's Rooms section shows up here on the next poll.
+  const [categories, setCategories] = useState(DEFAULT_ROOM_CATEGORIES);
+  // Category name to how many guests it sleeps; a type without one takes any party.
+  const [sleeps, setSleeps] = useState({});
   const pendingWrites = useRef(0);
+
+  // Every response that carries the team's categories goes through here.
+  const applyCategories = useCallback((list) => {
+    const names = list.map(c => (typeof c === 'string' ? c : c.name)).filter(Boolean);
+    const floors = {};
+    const capacities = {};
+    list.forEach(c => {
+      if (c && c.name && c.floor) floors[c.name] = c.floor;
+      if (c && c.name && c.capacity) capacities[c.name] = c.capacity;
+    });
+    setRoomCategoryNames(names);
+    setCategoryFloors(floors);
+    setCategories(names);
+    setSleeps(capacities);
+  }, []);
 
   const fetchRooms = useCallback(() => {
     if (pendingWrites.current > 0) return;
     fetch('/students/hotel/rooms', { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
       .then(r => r.json())
-      .then(data => { if (pendingWrites.current > 0) return; if (Array.isArray(data.rooms)) setRooms(data.rooms); })
+      .then(data => {
+        if (pendingWrites.current > 0) return;
+        if (Array.isArray(data.rooms)) setRooms(data.rooms);
+        if (Array.isArray(data.categories) && data.categories.length) applyCategories(data.categories);
+      })
       .catch(() => {});
   }, []);
 
   useEffect(() => {
     fetchRooms();
-    const id = setInterval(fetchRooms, 8000);
+    // Not while the tab is in the background: every poll takes one of the database
+    // connections Supabase's pooler shares between all of us (see render.yaml), and
+    // nobody is reading a screen they cannot see. Focus brings it straight back.
+    const id = setInterval(() => { if (!document.hidden) fetchRooms(); }, 12000);
     window.addEventListener('focus', fetchRooms);
     return () => { clearInterval(id); window.removeEventListener('focus', fetchRooms); };
   }, [fetchRooms]);
@@ -1363,6 +2194,66 @@ function App() {
   const replaceRoom = useCallback((roomFromDb) => {
     setRooms(prev => prev.map(r => (r.id === roomFromDb.id ? roomFromDb : r)));
   }, []);
+
+  /* Renames a category for the whole team. The rooms in it are renamed with it on the
+     server ("Classic 101" becomes "Standard 101"), so both come back here and on the
+     hotel site's own Rooms tabs. Resolves to the stored spelling, or null when taken. */
+  /* Creates one of the team's categories. The server answers with the whole list,
+     so the tabs here and the site's Rooms tab bar agree without a reload; null
+     means the name was already taken. */
+  const addCategory = useCallback((name, rate) => {
+    pendingWrites.current += 1;
+    return fetch('/students/hotel/room-categories', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
+      body: JSON.stringify({ name: name, rate: rate || null }),
+    })
+      .then(r => r.json().then(data => (r.ok ? data : Promise.reject(data))))
+      .then(data => {
+        if (data && Array.isArray(data.categories)) applyCategories(data.categories);
+        return data && data.category ? data.category.name : null;
+      })
+      .catch(() => null)
+      .finally(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); });
+  }, []);
+
+  const renameCategory = useCallback((from, to) => {
+    pendingWrites.current += 1;
+    return fetch('/students/hotel/room-categories', {
+      method: 'PATCH',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
+      body: JSON.stringify({ from, to }),
+    })
+      .then(r => r.json().then(data => (r.ok ? data : Promise.reject(data))))
+      .then(data => {
+        if (data && Array.isArray(data.categories)) applyCategories(data.categories);
+        if (data && Array.isArray(data.rooms)) setRooms(data.rooms);
+        return data && data.category ? data.category.name : null;
+      })
+      .catch(() => null)
+      .finally(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); });
+  }, []);
+
+  /* Room Management's own edit of a type's guest limit: the same write the site
+     builder's category dialog makes. Resolves true once saved. */
+  const setCategorySleeps = useCallback((name, capacity) => {
+    pendingWrites.current += 1;
+    return fetch('/students/hotel/room-categories/details', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
+      body: JSON.stringify({ name, capacity }),
+    })
+      .then(r => r.json().then(data => (r.ok ? data : Promise.reject(data))))
+      .then(data => {
+        if (data && Array.isArray(data.categories)) applyCategories(data.categories);
+        return true;
+      })
+      .catch(() => false)
+      .finally(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); });
+  }, [applyCategories]);
 
   // Check-in and check-out are booking moves. The room status follows on the server,
   // and the response hands the updated room back so this page never has to infer it.
@@ -1385,9 +2276,14 @@ function App() {
     <RoomManagementPage
       initialNav={window.HMS_ROOM_MGMT_INITIAL_NAV}
       rooms={rooms}
+      categories={categories}
+      sleeps={sleeps}
       onBack={() => { window.location.href = window.HMS_ROOMMANAGEMENT_URL; }}
       onAddRoom={addRoom}
       onRoomUpdated={replaceRoom}
+      onAddCategory={addCategory}
+      onRenameCategory={renameCategory}
+      onSetSleeps={setCategorySleeps}
       onBookingAction={bookingAction}
       onToast={(msg) => window.toast && window.toast(msg)}
     />

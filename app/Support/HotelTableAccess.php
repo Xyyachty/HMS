@@ -7,17 +7,19 @@ use App\Models\StudentGroup;
 /**
  * Authorization for dine-in tables.
  *
- * Restaurant Management owns the table itself — adding, editing, removing, closing
- * it out. Front Desk only ever moves a table from Available to Occupied. Everyone
- * else on the team may read the list but not change it — same shape as
- * HotelOrderAccess / HotelComplaintAccess.
+ * Restaurant Management owns the table itself — adding, editing, removing, billing
+ * and closing it out. Front Desk moves a table from Available to Reserved by holding
+ * it for a customer. Seating that customer once they arrive (Reserved to Occupied) is
+ * open to both, since they may announce themselves at either end. Everyone else on
+ * the team may read the list but not change it — same shape as HotelOrderAccess /
+ * HotelComplaintAccess.
  */
 class HotelTableAccess
 {
     /** Roles that may create/edit/delete a table and close one out. */
     public const MANAGE_ROLES = ['restaurant_management', 'administrator'];
 
-    /** Roles that may seat a guest at an Available table. */
+    /** Roles that may hold an Available table for a customer. */
     public const ASSIGN_ROLES = ['front_desk', 'administrator'];
 
     public static function membership(): ?StudentGroup

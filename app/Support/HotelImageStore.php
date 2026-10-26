@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -45,7 +46,27 @@ class HotelImageStore
         }
 
         $path = self::folder($facultyId, $groupName) . '/' . Str::uuid() . '.' . self::extension($m[1]);
-        Storage::disk(self::disk())->put($path, $binary);
+
+        /* The disk config sets 'throw' => true, so a bad credential, a network
+         * blip, or the bucket rejecting the key mid-request all surface here as an
+         * exception. Every write path builds the rest of the row in the same call
+         * that persists the photo, so a failure this deep used to fail the whole
+         * add/edit — the dish, room, or category was never saved at all, and the
+         * student's only symptom was "nothing happened when I clicked Add." Saving
+         * without the photo is the better failure: the row exists, and null is a
+         * caller can already render (see url()).
+         */
+        try {
+            Storage::disk(self::disk())->put($path, $binary);
+        } catch (\Throwable $e) {
+            Log::error('HotelImageStore: photo upload failed, saving without it', [
+                'disk' => self::disk(),
+                'path' => $path,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
 
         return $path;
     }

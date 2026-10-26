@@ -23,7 +23,7 @@
         <div class="mt-6 flex gap-2 border-b border-slate-200 -mb-6 pb-0 relative z-10 overflow-x-auto">
             <a href="{{ route('faculty.results') }}" class="px-5 py-3 text-xs font-bold text-white bg-brand rounded-t-xl border border-b-0 border-brand shadow-sm relative shrink-0">
                 All Outputs
-                <span class="absolute -top-2 -right-2 w-5 h-5 bg-slate-900 text-white text-[10px] rounded-full flex items-center justify-center border-2 border-white">{{ $outputs->count() }}</span>
+                <span class="absolute -top-2 -right-2 w-5 h-5 bg-slate-900 text-white text-[0.625rem] rounded-full flex items-center justify-center border-2 border-white">{{ $outputs->count() }}</span>
             </a>
             @foreach(['room_management' => 'Room Mgmt', 'front_desk' => 'Front Desk', 'restaurant_management' => 'Restaurant', 'maintenance' => 'Maintenance', 'housekeeping' => 'Housekeeping'] as $roleKey => $label)
                 <span class="px-5 py-3 text-xs font-semibold text-slate-500 rounded-t-xl shrink-0">
@@ -51,7 +51,12 @@
             @endphp
             <div class="p-6 hover:bg-brand-soft/20 transition flex flex-col md:flex-row gap-6 items-start md:items-center">
                 <div class="flex items-center gap-4 w-full md:w-1/4">
-                    <img src="https://ui-avatars.com/api/?name={{ urlencode($displayName) }}&background=DB2777&color=fff&size=40&font-size=0.4" class="w-12 h-12 rounded-xl shadow-md border-2 border-white" alt="{{ $displayName }}">
+                    @include('partials.user-avatar', [
+                        'user'        => $user,
+                        'name'        => $displayName,
+                        'size'        => 'w-12 h-12',
+                        'extraClasses' => 'shadow-md border-2 border-white',
+                    ])
                     <div class="min-w-0">
                         <h4 class="font-bold text-slate-800 text-sm truncate">{{ $displayName }}</h4>
                         <p class="text-xs text-slate-400 font-mono">{{ $task->student?->student_number ? '#' . $task->student->student_number : ($user?->email ?? '—') }}</p>
@@ -60,10 +65,10 @@
 
                 <div class="flex-1 w-full md:w-2/4 min-w-0">
                     <div class="flex items-center gap-2 mb-2 flex-wrap">
-                        <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-brand-soft text-brand border border-brand/10">
+                        <span class="px-2.5 py-1 rounded-full text-[0.625rem] font-bold bg-brand-soft text-brand border border-brand/10">
                             {{ $roleLabels[$task->role] ?? ($task->role ?: 'General') }}
                         </span>
-                        <span class="text-[10px] text-slate-400">Completed: {{ optional($task->updated_at)->format('M d, Y') }}</span>
+                        <span class="text-[0.625rem] text-slate-400">Completed: {{ optional($task->updated_at)->format('M d, Y') }}</span>
                     </div>
                     <h5 class="font-semibold text-slate-700 text-sm">{{ $task->title }}</h5>
                     @if($task->description)
@@ -73,7 +78,7 @@
 
                 <div class="w-full md:w-1/4 flex flex-col items-end gap-3">
                     <div class="text-right">
-                        <span class="block text-[10px] text-emerald-600 uppercase font-bold">Completed</span>
+                        <span class="block text-[0.625rem] text-emerald-600 uppercase font-bold">Completed</span>
                     </div>
                     <a href="{{ route('faculty.activity', ['filter' => 'completed']) }}"
                        class="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:border-brand transition flex items-center gap-1.5">
@@ -84,7 +89,7 @@
         @empty
             <div class="p-12 text-center">
                 <span class="iconify text-5xl text-slate-300" data-icon="mdi:file-document-outline"></span>
-                <p class="mt-3 font-semibold text-slate-500">No completed outputs yet</p>
+                <p class="mt-3 font-semibold text-slate-500">No completed work</p>
                 <p class="text-xs text-slate-400 mt-1">When students finish assigned tasks, they will appear here.</p>
             </div>
         @endforelse

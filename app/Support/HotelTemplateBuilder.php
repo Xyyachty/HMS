@@ -2,12 +2,16 @@
 
 namespace App\Support;
 
+use App\Exceptions\TemplateConflictException;
 use App\Models\GroupSettings;
+use App\Models\HotelConcept;
+use App\Models\HotelPromo;
 use App\Models\StudentGroup;
 use App\Models\TeamRoleTemplate;
 use App\Models\TeamRoleTemplateVersion;
 use App\Models\TemplateContentItem;
 use App\Models\User;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 
 class HotelTemplateBuilder
@@ -20,6 +24,50 @@ class HotelTemplateBuilder
         'maintenance' => 'Maintenance',
     ];
 
+    /**
+     * The four seats of a team, in the order members are auto-assigned. A member
+     * holds exactly one; it is the key stored in student_group_roles and the role
+     * TASK 01–04 are issued against. What the seat covers depends on the phase.
+     */
+    public const SEATS = ['front_desk', 'room_management', 'restaurant_management', 'housekeeping'];
+
+    public const SEAT_LABELS = [
+        'front_desk' => 'Front Desk',
+        'room_management' => 'Room Management',
+        'restaurant_management' => 'Restaurant Management',
+        'housekeeping' => 'Housekeeping / Maintenance',
+    ];
+
+    public const PHASE_CUSTOMIZATION = 'customization';
+    public const PHASE_SIMULATION = 'simulation';
+
+    /** Website customization: Housekeeping and Maintenance are one student's job. */
+    public const CUSTOMIZATION_ROLES = [
+        'front_desk' => ['front_desk'],
+        'room_management' => ['room_management'],
+        'restaurant_management' => ['restaurant_management'],
+        'housekeeping' => ['housekeeping', 'maintenance'],
+    ];
+
+    /**
+     * Simulation: four desks. Room Management runs Maintenance as one desk, and
+     * Housekeeping stands alone. Keyed by the Simulation seat, which is stored
+     * apart from the Customization seat — see SimulationPhase::seatsFor().
+     */
+    public const SIMULATION_ROLES = [
+        'front_desk' => ['front_desk'],
+        'room_management' => ['room_management', 'maintenance'],
+        'housekeeping' => ['housekeeping'],
+        'restaurant_management' => ['restaurant_management'],
+    ];
+
+    public const SIMULATION_SEAT_LABELS = [
+        'front_desk' => 'Front Desk',
+        'room_management' => 'Room & Maintenance',
+        'housekeeping' => 'Housekeeping',
+        'restaurant_management' => 'Restaurant Services',
+    ];
+
     /** How many version snapshots to keep per role template (reduces DB redundancy). */
     public const MAX_VERSION_SNAPSHOTS = 5;
 
@@ -28,12 +76,15 @@ class HotelTemplateBuilder
      * Teammates still see the full merged site; edit is page-scoped.
      */
     public const ROLE_EDITABLE_PAGES = [
-        'front_desk' => ['home'],
+        // Experience rides with Home rather than Amenities: it is guest-facing
+        // brand storytelling (what staying here is like), the same voice Front
+        // Desk already writes for the rest of the site's words and colours.
+        'front_desk' => ['home', 'experience'],
         'room_management' => ['rooms'],
         'restaurant_management' => ['restaurant'],
         // Housekeeping also owns the add-ons catalogue the Amenities page lists,
-        // so it is the one that page's static copy belongs to as well.
-        'housekeeping' => ['experience', 'amenities'],
+        // so that page's static copy belongs to it too.
+        'housekeeping' => ['amenities'],
         'maintenance' => [],
     ];
 
@@ -46,13 +97,143 @@ class HotelTemplateBuilder
         'maintenance' => 'students.maintenance',
     ];
 
+    /**
+     * Where each role's Simulation opens: the first of its Staff Tools, so the
+     * operations work is reached without passing through the website editor.
+     * [route name, query parameters].
+     */
+    public const ROLE_SIMULATION_ROUTES = [
+        'front_desk' => ['students.frontdesk.walk-in', []],
+        'room_management' => ['students.roommanagement.manage', ['nav' => 'manage-room']],
+        'restaurant_management' => ['students.restaurant.manage', ['nav' => 'manage-menu']],
+        'housekeeping' => ['students.housekeeping.inspections', []],
+        'maintenance' => ['students.maintenance.complaints', []],
+    ];
+
     public const USER_ELEMENTS_KEY = '__userElements';
     public const DELETED_KEY = '__deleted';
     public const NAV_LINKS_KEY = '__navLinks';
+
+    /**
+     * The hotel name shown in the header and the footer. A one-item collection
+     * rather than a plain string: TemplateCustomizationStore writes a scalar
+     * customization to template_elements.display_value and reads it back as an
+     * array, so a string would not survive one save and reload.
+     */
+    public const BRAND_NAME_KEY = '__brandName';
+    public const DEFAULT_BRAND_NAME = 'SPC HOTEL';
+
+    /**
+     * One colour for every room card, on the Home section and the Rooms page
+     * alike. Shared like __rooms, and for the same reason: both Front Desk and
+     * Room Management show those cards and either may set the colour.
+     */
+    public const ROOM_CARD_STYLE_KEY = '__roomCardStyle';
+
+    /** The same, for the menu cards: Front Desk shows them on Home, Restaurant Management on its own page. */
+    public const MENU_CARD_STYLE_KEY = '__menuCardStyle';
+
+    /**
+     * Background colours for the site's shared chrome. Like the logo, no single
+     * role owns these, so any site-owning role may set them and the most recent
+     * write wins through claimSharedContentKeys().
+     */
+    public const SITE_COLORS_KEY = '__siteColors';
     public const ROOMS_KEY = '__rooms';
     public const MENUS_KEY = '__menus';
     public const CARD_IMAGES_KEY = '__cardImages';
     public const HERO_SLIDES_KEY = '__heroSlides';
+
+    /**
+     * The partner brands on the Home page, one entry per brand: an id and the
+     * name shown until someone uploads that brand's logo, which is an ordinary
+     * card image keyed by the same id.
+     *
+     * Front Desk's, like the rest of Home. Not a shared content key: another
+     * role has no reason to write it, and page ownership already says so.
+     */
+    public const PARTNERS_KEY = '__partners';
+
+    /**
+     * The tiles in the Experience gallery, one entry per tile: an id, the icon
+     * drawn over it, its title and its description. The photograph itself is an
+     * ordinary card image keyed by the same id, so a tile renamed keeps it.
+     *
+     * Whoever owns the Experience page owns these, the same way Front Desk owns
+     * the partner strip on Home.
+     */
+    public const EXPERIENCES_KEY = '__experiences';
+
+    /**
+     * Which Highlights tiles the Home page's Selected Highlights shows, in
+     * order: ids into __experiences, each with the title it had when picked.
+     * Front Desk's, page-scoped to 'home' like __partners. Unset shows the
+     * gallery's first four.
+     */
+    public const HOME_HIGHLIGHTS_KEY = '__homeHighlights';
+
+    /**
+     * How long an amenity card holds each of its photographs, in seconds.
+     * Housekeeping's, page-scoped to 'amenities' like the rest of that page.
+     */
+    public const AMENITY_SLIDER_KEY = '__amenitySlider';
+
+    /**
+     * The words on the header's Sign in button and inside the guest sign-in
+     * dialog. Front Desk's, like the hotel name, and page-scoped to 'home' so
+     * page ownership keeps every other role out — the same footing as
+     * __partners. Empty fields fall back to the template's own words.
+     */
+    public const GUEST_AUTH_KEY = '__guestAuth';
+
+    /**
+     * The hotel's own words: tagline, description and the contact block the
+     * landing page and every footer show. One entry for the whole site, like the
+     * brand name it sits beside — the same hotel cannot have a different phone
+     * number on the Rooms page than on Home.
+     *
+     * Unset fields fall back to the team's approved concept (see
+     * hotelDefaults()), so a site reads as that concept from the first load and
+     * editing a field is what overrides it.
+     */
+    public const HOTEL_INFO_KEY = '__hotelInfo';
+    public const HOTEL_INFO_ID = 'hotel';
+
+    /** Fields of __hotelInfo, in the order the builder shows them. */
+    public const HOTEL_INFO_FIELDS = [
+        'tagline',
+        'description',
+        'phone',
+        'email',
+        'address',
+        'hours',
+    ];
+
+    /**
+     * Social profiles, each rendered as its network's icon. Kept as a list
+     * rather than one field per network so a team can leave a network out
+     * entirely instead of showing a dead icon.
+     */
+    public const SOCIAL_LINKS_KEY = '__socialLinks';
+
+    /** Networks the footer knows an icon for. */
+    public const SOCIAL_NETWORKS = [
+        'facebook' => 'Facebook',
+        'instagram' => 'Instagram',
+        'x' => 'X',
+        'tiktok' => 'TikTok',
+        'youtube' => 'YouTube',
+        'linkedin' => 'LinkedIn',
+        'website' => 'Website',
+    ];
+
+    /**
+     * Site-wide type: family, base size and text colour. Applied as CSS custom
+     * properties on every page rather than per element, so it reaches text no
+     * one has selected — including sections a role cannot edit.
+     */
+    public const TYPOGRAPHY_KEY = '__typography';
+    public const TYPOGRAPHY_ID = 'type';
 
     /**
      * Site-content keys more than one role may write. Unlike element entries
@@ -69,14 +250,26 @@ class HotelTemplateBuilder
      */
     public const SHARED_CONTENT_KEYS = [
         self::NAV_LINKS_KEY,
+        self::BRAND_NAME_KEY,
+        self::ROOM_CARD_STYLE_KEY,
+        self::MENU_CARD_STYLE_KEY,
+        self::SITE_COLORS_KEY,
         self::ROOMS_KEY,
         self::MENUS_KEY,
+        self::HOTEL_INFO_KEY,
+        self::SOCIAL_LINKS_KEY,
+        self::TYPOGRAPHY_KEY,
     ];
 
     /**
      * The site's single logo, stored as one card image rather than one per
-     * section. Any of these roles may change it and the change applies to the
-     * whole site — header, footer and every page read this one key.
+     * section. Front Desk alone may change it — see filterCustomizationsForRole()
+     * — and the change applies to the whole site: header, footer and every page
+     * read this one key.
+     *
+     * SITE_OWNING_ROLES still covers the site-wide *text* (the hotel's words, its
+     * social profiles, its type) and the per-card artwork each role owns. The
+     * logo and __siteColors are the exceptions and check front_desk directly.
      */
     public const LOGO_IMAGE_ID = 'logo';
     public const LOGO_IMAGE_MAP_KEY = 'brand:' . self::LOGO_IMAGE_ID;
@@ -110,6 +303,62 @@ class HotelTemplateBuilder
         ];
     }
 
+    /**
+     * What the site says about the hotel before anybody has edited it: the team's
+     * approved concept.
+     *
+     * Handed to the template as defaults rather than written into the
+     * customizations at approval time, for two reasons. A team whose faculty
+     * later approves a different concept would otherwise keep the old one's
+     * words frozen into their site; and "never edited" stays distinguishable
+     * from "edited back to the concept's wording", which is what lets a field
+     * left blank in the builder keep tracking the concept.
+     *
+     * The type line is deliberately not a tagline — it is what the concept
+     * itself calls the hotel, which is the most honest thing to show until the
+     * team writes their own.
+     */
+    public static function hotelDefaults(?string $groupName, ?int $facultyId): array
+    {
+        $defaults = [
+            'name' => self::DEFAULT_BRAND_NAME,
+            'tagline' => '',
+            'description' => '',
+        ];
+
+        if (!$groupName || !$facultyId) {
+            return $defaults;
+        }
+
+        $approved = HotelConceptDesk::approvedConcept(
+            HotelConceptDesk::conceptsFor($groupName, $facultyId)
+        );
+
+        if (!$approved) {
+            return $defaults;
+        }
+
+        $name = trim((string) $approved->title);
+        $description = trim((string) $approved->description);
+
+        $type = trim((string) $approved->hotel_type);
+
+        // What the team wrote, and only its type's label as a stand-in for a concept
+        // proposed before there was a field to write one in — typeLabel() answers
+        // '—' for a concept with no type at all, which would read as a tagline
+        // nobody wrote.
+        $tagline = trim((string) ($approved->tagline ?? ''));
+        if ($tagline === '') {
+            $tagline = $type !== '' ? HotelConcept::typeLabel($type) : '';
+        }
+
+        return [
+            'name' => $name !== '' ? $name : $defaults['name'],
+            'tagline' => $tagline,
+            'description' => $description,
+        ];
+    }
+
     public static function isValidRole(string $role): bool
     {
         return array_key_exists($role, self::ROLES);
@@ -132,20 +381,38 @@ class HotelTemplateBuilder
         return self::ROLE_ROUTES[$role] ?? null;
     }
 
+    public static function simulationUrlForRole(string $role): ?string
+    {
+        if (!isset(self::ROLE_SIMULATION_ROUTES[$role])) {
+            return null;
+        }
+        [$name, $params] = self::ROLE_SIMULATION_ROUTES[$role];
+
+        return route($name, $params);
+    }
+
     /**
      * Builder modules a student can open, one per role they hold.
      * Ordered by ROLES so the list stays stable instead of following the
      * order faculty happened to tick the role checkboxes.
      *
      * @param  string[]  $roles
-     * @return array<int, array{role: string, label: string, route: string, editable: bool}>
+     * Each carries both doors: customize_url opens the website editor,
+     * simulation_url opens the role's hotel operations.
+     *
+     * @param  string[]|null  $simulationSeats  the member's Simulation seat; null reads the seats as their own
+     * @return array<int, array{role: string, label: string, route: string, editable: bool, customize_url: string, simulation_url: ?string}>
      */
-    public static function modulesForRoles(array $roles): array
+    public static function modulesForRoles(array $roles, ?array $simulationSeats = null): array
     {
+        $customize = self::rolesForPhase($roles, self::PHASE_CUSTOMIZATION);
+        $simulate = self::rolesForPhase($simulationSeats ?? $roles, self::PHASE_SIMULATION);
         $modules = [];
 
         foreach (self::ROLES as $role => $label) {
-            if (!in_array($role, $roles, true)) {
+            $inCustomize = in_array($role, $customize, true);
+            $inSimulate = in_array($role, $simulate, true);
+            if (!$inCustomize && !$inSimulate) {
                 continue;
             }
             $route = self::routeNameForRole($role);
@@ -157,11 +424,49 @@ class HotelTemplateBuilder
                 'role' => $role,
                 'label' => $label,
                 'route' => $route,
-                'editable' => self::editablePagesForRole($role) !== [],
+                'editable' => $inCustomize && self::editablePagesForRole($role) !== [],
+                'customize_url' => route($route),
+                'simulation_url' => $inSimulate ? self::simulationUrlForRole($role) : null,
             ];
         }
 
         return $modules;
+    }
+
+    /**
+     * Expand stored seat keys into the roles they cover in a phase. Keys outside
+     * the seat map (teams built before seats, e.g. a stored "maintenance") pass
+     * through unchanged so those teams keep working as they did.
+     *
+     * @param  string[]  $storedRoles
+     * @return list<string>
+     */
+    public static function rolesForPhase(array $storedRoles, string $phase): array
+    {
+        $map = $phase === self::PHASE_SIMULATION ? self::SIMULATION_ROLES : self::CUSTOMIZATION_ROLES;
+        $expanded = [];
+
+        foreach ($storedRoles as $role) {
+            foreach ($map[$role] ?? [$role] as $covered) {
+                $expanded[$covered] = true;
+            }
+        }
+
+        return array_keys($expanded);
+    }
+
+    /** @return list<string> */
+    public static function simulationRoleKeys(StudentGroup $membership): array
+    {
+        return self::rolesForPhase(SimulationPhase::seatsFor($membership), self::PHASE_SIMULATION);
+    }
+
+    /** Label for a stored seat in a phase, falling back to the plain role name. */
+    public static function seatLabel(string $role, string $phase = self::PHASE_CUSTOMIZATION): string
+    {
+        $labels = $phase === self::PHASE_SIMULATION ? self::SIMULATION_SEAT_LABELS : self::SEAT_LABELS;
+
+        return $labels[$role] ?? self::ROLES[$role] ?? ucfirst(str_replace('_', ' ', $role));
     }
 
     public static function membershipFor(User $user): ?StudentGroup
@@ -289,14 +594,28 @@ class HotelTemplateBuilder
         }
     }
 
-    /** Max updated_at across the team's role templates — drives live sync for everyone. */
+    /**
+     * A number that changes whenever any of the team's role templates is written
+     * — drives live sync for everyone. Browsers only compare it for equality.
+     *
+     * The newest updated_at alone missed a second save landing in the same second
+     * as the first, since the column is stored to the second, so a teammate who
+     * polled between them never saw the second one. The sum of the rows'
+     * revisions moves on every content write, so it is folded into the low digits.
+     */
     public static function teamSyncVersion(string $groupName, int $facultyId): int
     {
-        $ts = TeamRoleTemplate::where('group_name', $groupName)
-            ->where('faculty_id', $facultyId)
-            ->max('updated_at');
+        $rows = TeamRoleTemplate::where('group_name', $groupName)
+            ->where('faculty_id', $facultyId);
 
-        return $ts ? strtotime((string) $ts) : 0;
+        $ts = (clone $rows)->max('updated_at');
+        $version = $ts ? strtotime((string) $ts) : 0;
+
+        if (TeamRoleTemplate::hasRevisionColumn()) {
+            $version = $version * 1000 + ((int) (clone $rows)->sum('revision')) % 1000;
+        }
+
+        return $version;
     }
 
     /**
@@ -367,6 +686,19 @@ class HotelTemplateBuilder
                     $merged[$key] = ['map' => array_merge($existingMap, $incomingMap)];
                     continue;
                 }
+                /* A shared key lives in exactly one row (claimSharedContentKeys), so a
+                   second row carrying an empty copy of it is a leftover from before that
+                   row gave the key up. Letting it through overwrites the row that does
+                   hold the team's value — the section background colours reverting to the
+                   template default is what that looked like. An empty value still wins
+                   when no row has a real one, so clearing a shared key still clears it. */
+                if (in_array($key, self::SHARED_CONTENT_KEYS, true)
+                    && array_key_exists($key, $merged)
+                    && self::isEmptySharedValue($value)
+                    && !self::isEmptySharedValue($merged[$key])
+                ) {
+                    continue;
+                }
                 $merged[$key] = $value;
             }
         }
@@ -404,9 +736,20 @@ class HotelTemplateBuilder
     {
         $keepKeys = [
             self::NAV_LINKS_KEY,
+            self::BRAND_NAME_KEY,
+            self::ROOM_CARD_STYLE_KEY,
+            self::MENU_CARD_STYLE_KEY,
+            self::SITE_COLORS_KEY,
             self::ROOMS_KEY,
             self::MENUS_KEY,
             self::CARD_IMAGES_KEY,
+            // The hotel's identity is the team's, not the template's: switching
+            // Template 1 ↔ 2 redresses the site, it does not rename the hotel or
+            // drop its phone number.
+            self::HOTEL_INFO_KEY,
+            self::SOCIAL_LINKS_KEY,
+            self::TYPOGRAPHY_KEY,
+            self::GUEST_AUTH_KEY,
         ];
         $out = [];
         foreach ($keepKeys as $key) {
@@ -492,7 +835,59 @@ class HotelTemplateBuilder
                 continue;
             }
 
+            // The room card colour rides with the cards themselves: same two
+            // owners, and claimSharedContentKeys() keeps it in one row so the
+            // merge cannot reinstate a teammate's older colour.
+            if ($key === self::ROOM_CARD_STYLE_KEY && in_array($role, ['front_desk', 'room_management'], true)) {
+                if (is_array($value)) {
+                    $value['page'] = $value['page'] ?? 'rooms';
+                    $out[$key] = $value;
+                }
+                continue;
+            }
+
+            if ($key === self::MENU_CARD_STYLE_KEY && in_array($role, ['front_desk', 'restaurant_management'], true)) {
+                if (is_array($value)) {
+                    $value['page'] = $value['page'] ?? 'restaurant';
+                    $out[$key] = $value;
+                }
+                continue;
+            }
+
+            // The site's background colours are Front Desk's, like the hotel name
+            // and the navigation: they paint every page, not the one page a role
+            // edits, so no other role may write them.
+            if ($key === self::SITE_COLORS_KEY && $role === 'front_desk') {
+                if (is_array($value)) {
+                    $value['page'] = $value['page'] ?? 'home';
+                    $out[$key] = $value;
+                }
+                continue;
+            }
+
+            // The hotel's words, its social profiles and its type are one site's
+            // worth each, shown on every page, so any site-owning role may set
+            // them and claimSharedContentKeys() keeps the winner in one row.
+            if (in_array($key, [self::HOTEL_INFO_KEY, self::SOCIAL_LINKS_KEY, self::TYPOGRAPHY_KEY], true)
+                && in_array($role, self::SITE_OWNING_ROLES, true)
+            ) {
+                if (is_array($value)) {
+                    $value['page'] = $value['page'] ?? 'home';
+                    $out[$key] = $value;
+                }
+                continue;
+            }
+
             if ($key === self::NAV_LINKS_KEY && $role === 'front_desk' && is_array($value)) {
+                $value['page'] = $value['page'] ?? 'home';
+                $out[$key] = $value;
+                continue;
+            }
+
+            // The hotel name belongs to Front Desk, like the navigation. Because
+            // only one row ever holds it, the merge below cannot pick a stale
+            // copy from another role and no claim step is needed for it.
+            if ($key === self::BRAND_NAME_KEY && $role === 'front_desk' && is_array($value)) {
                 $value['page'] = $value['page'] ?? 'home';
                 $out[$key] = $value;
                 continue;
@@ -526,7 +921,8 @@ class HotelTemplateBuilder
                         continue;
                     }
                     if ($id === self::LOGO_IMAGE_ID) {
-                        if (in_array($role, self::SITE_OWNING_ROLES, true)) {
+                        // Front Desk's alone, for the same reason as the colours above.
+                        if ($role === 'front_desk') {
                             $ownMap[$mapKey] = $url;
                         }
                         continue;
@@ -585,6 +981,8 @@ class HotelTemplateBuilder
             'layout' => $template->layout ?? self::defaultLayout(),
             'is_published' => (bool) $template->is_published,
             'version' => (int) $template->version,
+            // What the builder sends back as base_revision; see persist().
+            'revision' => TeamRoleTemplate::hasRevisionColumn() ? (int) $template->revision : null,
             'updated_at' => optional($template->updated_at)->toIso8601String(),
             'sync_version' => self::teamSyncVersion($groupName, $facultyId),
             'can_edit' => $canEdit,
@@ -602,8 +1000,76 @@ class HotelTemplateBuilder
         bool $snapshot = true,
         ?string $label = null
     ): TeamRoleTemplate {
-        return DB::transaction(function () use ($template, $data, $user, $publish, $snapshot, $label) {
+        return self::persist($template, $data, $user, $publish, $snapshot, $label, true);
+    }
+
+    /** Lightweight auto-save: updates content without bumping version number every few seconds. */
+    public static function autosave(TeamRoleTemplate $template, array $data, User $user): TeamRoleTemplate
+    {
+        return self::persist($template, $data, $user, false, false, null, false);
+    }
+
+    /**
+     * The one write path for a role's template, shared by save and autosave.
+     *
+     * The whole team's rows are locked first, in id order. A save rewrites this
+     * row's content (a delete then an insert of every item) and deletes rows
+     * out of its teammates' templates when it claims a shared key. Two saves on
+     * the same row interleaving their delete and insert left both sets of
+     * items behind, and two teammates claiming from each other at once could
+     * deadlock. Taking the team's locks in one fixed order makes a team's saves
+     * run one after the other. They take well under a second, so a queue of
+     * four is not felt.
+     *
+     * base_revision is the revision the browser last loaded. A different
+     * revision on the locked row means a teammate, or this student in another
+     * tab, saved in between. That save is refused with TemplateConflictException
+     * before anything is written. Callers that send no base_revision (restore,
+     * the legacy Front Desk route) write without the check, as before.
+     *
+     * Retried up to three times on a deadlock or serialization failure, which
+     * Postgres reports rather than resolves. A conflict is not retried.
+     */
+    private static function persist(
+        TeamRoleTemplate $template,
+        array $data,
+        User $user,
+        bool $publish,
+        bool $snapshot,
+        ?string $label,
+        bool $applyTemplateSwitch
+    ): TeamRoleTemplate {
+        $templateId = (int) $template->team_role_template_id;
+        $groupName = (string) $template->group_name;
+        $facultyId = (int) $template->faculty_id;
+        $baseRevision = isset($data['base_revision']) ? (int) $data['base_revision'] : null;
+
+        return DB::transaction(function () use ($templateId, $groupName, $facultyId, $data, $user, $publish, $snapshot, $label, $applyTemplateSwitch, $baseRevision) {
+            $team = TeamRoleTemplate::where('group_name', $groupName)
+                ->where('faculty_id', $facultyId)
+                ->orderBy('team_role_template_id')
+                ->lockForUpdate()
+                ->get();
+            // Work on the locked copy: the one the caller passed in was read
+            // before the lock and may already be out of date.
+            $template = $team->firstWhere('team_role_template_id', $templateId);
+            if (!$template) {
+                throw (new ModelNotFoundException())->setModel(TeamRoleTemplate::class, [$templateId]);
+            }
+            $siblings = $team->reject(fn (TeamRoleTemplate $row) => (int) $row->team_role_template_id === $templateId);
+
+            if ($baseRevision !== null
+                && TeamRoleTemplate::hasRevisionColumn()
+                && (int) $template->revision !== $baseRevision
+            ) {
+                throw new TemplateConflictException($template);
+            }
+
             if (array_key_exists('customizations', $data)) {
+                // Read before the write below replaces it: claimChangedCardImages()
+                // needs to know which pictures this save actually changed.
+                $previousCardImages = self::storedCardImageMap($templateId);
+                $previousPromoText = HotelPromo::storedTemplateText($templateId);
                 $ownCustomizations = self::filterCustomizationsForRole(
                     is_array($data['customizations']) ? $data['customizations'] : [],
                     $template->role
@@ -611,34 +1077,39 @@ class HotelTemplateBuilder
                 $template->customizations = $ownCustomizations;
             }
             if (array_key_exists('layout', $data)) {
-                $template->layout = $data['layout'];
+                $template->layout = is_array($data['layout']) ? $data['layout'] : [];
             }
-            if (array_key_exists('selected_template', $data) && $data['selected_template'] !== null) {
+
+            /* The template choice is Front Desk's. Every role's builder posts the
+               choice it loaded with, so a teammate whose page was opened before
+               Front Desk switched carried the old one, and a save from them ran
+               the switch below backwards: the whole team flipped back to the old
+               template and lost every free-position edit. Other roles' rows take
+               the choice from Front Desk's save instead. */
+            if ($template->role === 'front_desk'
+                && array_key_exists('selected_template', $data)
+                && $data['selected_template'] !== null
+            ) {
                 $nextTemplate = (string) $data['selected_template'];
                 $prevTemplate = (string) ($template->selected_template ?? '');
                 $template->selected_template = $nextTemplate;
 
                 // Switching Template 1 <-> 2 (or first pick after dirty edits): drop free-pos / overlays.
-                if ($prevTemplate !== $nextTemplate) {
-                    $cleaned = self::stripCrossTemplateLayoutCustomizations(
+                if ($applyTemplateSwitch && $prevTemplate !== $nextTemplate) {
+                    $template->customizations = self::stripCrossTemplateLayoutCustomizations(
                         is_array($template->customizations) ? $template->customizations : []
                     );
-                    $template->customizations = $cleaned;
 
-                    TeamRoleTemplate::where('group_name', $template->group_name)
-                        ->where('faculty_id', $template->faculty_id)
-                        ->where('team_role_template_id', '!=', $template->team_role_template_id)
-                        ->get()
-                        ->each(function (TeamRoleTemplate $row) use ($nextTemplate) {
-                            $row->selected_template = $nextTemplate;
-                            $row->customizations = self::filterCustomizationsForRole(
-                                self::stripCrossTemplateLayoutCustomizations(
-                                    is_array($row->customizations) ? $row->customizations : []
-                                ),
-                                $row->role
-                            );
-                            $row->save();
-                        });
+                    $siblings->each(function (TeamRoleTemplate $row) use ($nextTemplate) {
+                        $row->selected_template = $nextTemplate;
+                        $row->customizations = self::filterCustomizationsForRole(
+                            self::stripCrossTemplateLayoutCustomizations(
+                                is_array($row->customizations) ? $row->customizations : []
+                            ),
+                            $row->role
+                        );
+                        $row->save();
+                    });
                 }
             }
             if ($publish) {
@@ -665,7 +1136,7 @@ class HotelTemplateBuilder
             $template->touch();
 
             // Front Desk template choice applies to the whole team
-            if ($template->role === 'front_desk' && !empty($template->selected_template)) {
+            if ($applyTemplateSwitch && $template->role === 'front_desk' && !empty($template->selected_template)) {
                 TeamRoleTemplate::where('group_name', $template->group_name)
                     ->where('faculty_id', $template->faculty_id)
                     ->where('role', '!=', 'front_desk')
@@ -675,6 +1146,18 @@ class HotelTemplateBuilder
             // This row is the newest writer of any shared key it holds.
             self::claimSharedContentKeys($template, $ownCustomizations ?? null);
             self::claimSharedLogo($template, $ownCustomizations ?? null);
+            if (isset($previousCardImages)) {
+                self::claimChangedCardImages($template, $previousCardImages, $ownCustomizations);
+                // The Simulation's starting promos follow their Home page cards.
+                HotelPromo::syncFromTemplate(
+                    $groupName,
+                    $facultyId,
+                    $previousPromoText,
+                    $previousCardImages,
+                    $ownCustomizations,
+                    fn () => self::storedCardImageMap($templateId)
+                );
+            }
 
             // Keep legacy group_settings in sync (merged team site)
             self::syncGroupSettings($template);
@@ -696,36 +1179,24 @@ class HotelTemplateBuilder
             }
 
             return $template->fresh();
-        });
+        }, 3);
     }
 
-    /** Lightweight auto-save: updates content without bumping version number every few seconds. */
-    public static function autosave(TeamRoleTemplate $template, array $data, User $user): TeamRoleTemplate
+    /**
+     * Move a teammate's revision on after deleting rows out of their template.
+     *
+     * Their browser still holds those rows in its copy of the template and
+     * would post them straight back on its next save, taking the key back from
+     * the teammate who just claimed it. With the revision moved on, that save
+     * is refused as a conflict and the browser rebases on the current rows.
+     */
+    private static function bumpRevisions(array $templateIds): void
     {
-        return DB::transaction(function () use ($template, $data, $user) {
-            if (array_key_exists('customizations', $data)) {
-                $ownCustomizations = self::filterCustomizationsForRole(
-                    is_array($data['customizations']) ? $data['customizations'] : [],
-                    $template->role
-                );
-                $template->customizations = $ownCustomizations;
-            }
-            if (array_key_exists('layout', $data)) {
-                $template->layout = $data['layout'];
-            }
-            if (array_key_exists('selected_template', $data) && $data['selected_template'] !== null) {
-                $template->selected_template = (string) $data['selected_template'];
-            }
-            $template->updated_by = $user->user_id;
-            $template->save();
-            $template->touch();
+        if ($templateIds === [] || !TeamRoleTemplate::hasRevisionColumn()) {
+            return;
+        }
 
-            self::claimSharedContentKeys($template, $ownCustomizations ?? null);
-            self::claimSharedLogo($template, $ownCustomizations ?? null);
-            self::syncGroupSettings($template);
-
-            return $template->fresh();
-        });
+        TeamRoleTemplate::whereIn('team_role_template_id', $templateIds)->increment('revision');
     }
 
     /**
@@ -740,7 +1211,10 @@ class HotelTemplateBuilder
         // re-read the whole tree from the database — the saved-hook clears the pending
         // value first, so it cannot be served from memory — costing ~6 extra queries.
         $mine = $customizations ?? (is_array($template->customizations) ? $template->customizations : []);
-        $claimed = array_values(array_intersect(self::SHARED_CONTENT_KEYS, array_keys($mine)));
+        $claimed = array_values(array_filter(
+            array_intersect(self::SHARED_CONTENT_KEYS, array_keys($mine)),
+            fn (string $key) => !self::isEmptySharedValue($mine[$key])
+        ));
 
         if ($claimed === []) {
             return;
@@ -769,11 +1243,57 @@ class HotelTemplateBuilder
             return;
         }
 
-        TemplateContentItem::query()
+        /* A collection is stored as more than its item rows: writeCollection() also
+           writes a "<collection>_meta" row for the entry's own fields, plus _map and
+           _amenity rows for the shapes that use them. Deleting only the item rows left
+           a sibling holding a meta row with no items behind it, which reads back as
+           "__siteColors => ['page' => 'home', 'items' => []]" — an entry that says the
+           team has no section colours. The merge takes the last role in ROLES order,
+           so that empty entry overwrote the colours Front Desk had just saved and the
+           site fell back to the template default. Claim the whole collection. */
+        $collections = array_merge(
+            $collections,
+            array_map(fn (string $c) => $c . '_meta', $collections),
+            array_map(fn (string $c) => $c . '_map', $collections),
+            array_map(fn (string $c) => $c . '_amenity', $collections),
+        );
+
+        $stale = TemplateContentItem::query()
             ->whereIn('team_role_template_id', $siblingIds)
             ->where('version_id', TemplateCustomizationStore::LIVE_VERSION_ID)
-            ->whereIn('collection', $collections)
-            ->delete();
+            ->whereIn('collection', $collections);
+        $affected = (clone $stale)->distinct()->pluck('team_role_template_id')->map(fn ($id) => (int) $id)->all();
+        if ($affected === []) {
+            return;
+        }
+
+        $stale->delete();
+        self::bumpRevisions($affected);
+    }
+
+    /**
+     * Whether a shared content entry carries nothing — no items, no map, and no
+     * fields of its own beyond the page it is filed under.
+     *
+     * Such an entry is a leftover rather than a decision: it is what a half-deleted
+     * collection reads back as. It must not claim the key away from the row that
+     * actually holds the team's value, or the value is lost for everybody.
+     */
+    private static function isEmptySharedValue(mixed $value): bool
+    {
+        if (!is_array($value)) {
+            return $value === null || $value === '';
+        }
+
+        if (array_is_list($value)) {
+            return $value === [];
+        }
+
+        if (!empty($value['items']) || !empty($value['map'])) {
+            return false;
+        }
+
+        return array_diff_key($value, array_flip(['page', 'items', 'map'])) === [];
     }
 
     /**
@@ -798,6 +1318,79 @@ class HotelTemplateBuilder
             return;
         }
 
+        self::dropSiblingCardImages($template, [self::LOGO_IMAGE_MAP_KEY]);
+    }
+
+    /**
+     * Give this row every card picture its save changed.
+     *
+     * Each site-owning role keeps its own copy of the whole card-image map, and
+     * mergeTeamCustomizations() unions those copies in ROLES order. So when Front
+     * Desk replaced an Our Team photo, the older copy in Restaurant's or
+     * Housekeeping's row - both later in that order - won the merge, and the photo
+     * snapped back to the old one as soon as the builder re-read the team's site.
+     *
+     * Only the entries whose picture differs from what this row held before are
+     * claimed. Claiming every entry the row carries would let a role that only
+     * re-posted the map it loaded take a teammate's newer picture away.
+     *
+     * @param  array<string, string>  $previous  This row's map before the save.
+     */
+    private static function claimChangedCardImages(TeamRoleTemplate $template, array $previous, array $mine): void
+    {
+        $map = $mine[self::CARD_IMAGES_KEY]['map'] ?? null;
+        if (!is_array($map)) {
+            return;
+        }
+
+        $changed = [];
+        foreach ($map as $key => $url) {
+            $key = (string) $key;
+            // The logo has its own rule: claimSharedLogo() takes it on every save.
+            if ($key === self::LOGO_IMAGE_MAP_KEY || !is_string($url) || trim($url) === '') {
+                continue;
+            }
+            $before = $previous[$key] ?? null;
+            if ($before !== null && HotelImageStore::relativize($before) === HotelImageStore::relativize($url)) {
+                continue;
+            }
+            $changed[] = $key;
+        }
+
+        self::dropSiblingCardImages($template, $changed);
+    }
+
+    /**
+     * This row's live card-image map as stored, keyed by map entry.
+     *
+     * @return array<string, string>
+     */
+    private static function storedCardImageMap(int $templateId): array
+    {
+        return TemplateContentItem::query()
+            ->with('fields')
+            ->where('team_role_template_id', $templateId)
+            ->where('version_id', TemplateCustomizationStore::LIVE_VERSION_ID)
+            ->where('collection', TemplateCustomizationStore::SPECIAL_KEYS[self::CARD_IMAGES_KEY] . '_map')
+            ->get()
+            ->mapWithKeys(fn (TemplateContentItem $item) => [
+                (string) $item->item_ref => (string) ($item->fields->firstWhere('field_name', 'value')?->field_value ?? ''),
+            ])
+            ->all();
+    }
+
+    /**
+     * Delete these card-image entries from the teammates' rows, so this row's
+     * copy is the only one the merge can pick.
+     *
+     * @param  list<string>  $refs
+     */
+    private static function dropSiblingCardImages(TeamRoleTemplate $template, array $refs): void
+    {
+        if ($refs === []) {
+            return;
+        }
+
         $siblingIds = TeamRoleTemplate::where('group_name', $template->group_name)
             ->where('faculty_id', $template->faculty_id)
             ->where('team_role_template_id', '!=', $template->team_role_template_id)
@@ -809,13 +1402,19 @@ class HotelTemplateBuilder
 
         // Card images are written as one content item per map entry, keyed by
         // item_ref — see TemplateCustomizationStore::writeCollection()'s 'map'
-        // branch. Deleting just this ref leaves every other card image intact.
-        TemplateContentItem::query()
+        // branch. Deleting just these refs leaves every other card image intact.
+        $stale = TemplateContentItem::query()
             ->whereIn('team_role_template_id', $siblingIds)
             ->where('version_id', TemplateCustomizationStore::LIVE_VERSION_ID)
             ->where('collection', TemplateCustomizationStore::SPECIAL_KEYS[self::CARD_IMAGES_KEY] . '_map')
-            ->where('item_ref', self::LOGO_IMAGE_MAP_KEY)
-            ->delete();
+            ->whereIn('item_ref', $refs);
+        $affected = (clone $stale)->distinct()->pluck('team_role_template_id')->map(fn ($id) => (int) $id)->all();
+        if ($affected === []) {
+            return;
+        }
+
+        $stale->delete();
+        self::bumpRevisions($affected);
     }
 
     /**
@@ -832,9 +1431,9 @@ class HotelTemplateBuilder
             ->first();
 
         $selected = $frontDesk?->selected_template ?: $template->selected_template;
-        $payload = [
-            'is_published' => (bool) ($frontDesk?->is_published ?? $template->is_published),
-        ];
+        // is_published is left alone: Front Desk's "Open hotel to guests" on the
+        // dashboard owns it, and a builder save must not close the site again.
+        $payload = [];
 
         if ($selected !== null && $selected !== '') {
             $payload['selected_template'] = $selected;

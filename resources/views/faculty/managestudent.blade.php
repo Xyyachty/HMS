@@ -5,40 +5,145 @@
 
 @push('styles')
 <style>
-    /* Bulk upload drop zone */
-    #bulkDropZone.drag-over {
-        border-color: #059669;
-        background-color: rgba(5,150,105,.07);
+    /* ── Bulk upload, step 1 ──
+       Neutral cards on the maroon palette. Written out because the frozen build
+       has no grid breakpoints, and the palette file turns blue and amber into the
+       wine and gold that made this read as a warning. */
+    .bu-lead { font-size: 0.7812rem; color: #111; margin-bottom: .75rem; }
+    .bu-grid { display: grid; gap: .875rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    @media (max-width: 700px) { .bu-grid { grid-template-columns: minmax(0, 1fr); } }
+    .bu-card { border: 1px solid #E4E2E0; border-radius: 1rem; background: #fff; padding: 1rem; display: flex; flex-direction: column; }
+    .bu-card-head { display: flex; align-items: center; gap: .7rem; margin-bottom: .85rem; }
+    .bu-badge {
+        width: 2.25rem; height: 2.25rem; border-radius: .7rem; flex: 0 0 auto;
+        display: inline-flex; align-items: center; justify-content: center;
+        background: #F3F2F1; color: #4A4643; font-size: 1.15rem;
     }
+    .bu-card-title { font-size: 0.8438rem; font-weight: 800; color: #111; line-height: 1.25; }
+    .bu-card-sub { font-size: 0.7188rem; color: #6B6B6B; margin-top: .1rem; }
+    .bu-label { font-size: 0.625rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #6B6B6B; margin: .25rem 0 .35rem; }
+    .bu-chips { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: .5rem; }
+    .bu-chip {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.6875rem; font-weight: 700;
+        color: #181818; background: #F3F2F1; border: 1px solid #E4E2E0; border-radius: .4rem; padding: .1rem .4rem;
+    }
+    .bu-chip.is-soft { color: #6B6B6B; background: #fff; border-style: dashed; }
+    .bu-text { font-size: 0.7188rem; line-height: 1.55; color: #111; margin-top: .25rem; }
+    .bu-download {
+        margin-top: auto; align-self: flex-start;
+        display: inline-flex; align-items: center; gap: .4rem; padding: .5rem .85rem; border-radius: .7rem;
+        font-size: 0.75rem; font-weight: 800; color: #181818; background: #fff; border: 1px solid #DADADA;
+        transition: all .15s ease;
+    }
+    .bu-download:hover { background: #5F5A55; border-color: #5F5A55; color: #fff; }
+    .bu-notes { margin-top: .875rem; display: grid; gap: .45rem; }
+    .bu-notes li { display: flex; align-items: flex-start; gap: .5rem; font-size: 0.7188rem; line-height: 1.5; color: #111; }
+    .bu-notes li .iconify { flex: 0 0 auto; font-size: .95rem; color: #4A4643; margin-top: .1rem; }
+    /* One row, not a tall column: stacked, step 1 ran past the footer on a
+       laptop screen and the dialog had to scroll. */
+    .bu-drop {
+        margin-top: .875rem; border: 2px dashed #D4D0CD; border-radius: 1.1rem; background: #fff;
+        padding: .875rem 1.25rem; display: flex; align-items: center; gap: .875rem;
+        cursor: pointer; transition: border-color .2s ease, background-color .2s ease;
+    }
+    .bu-drop-text { flex: 1 1 auto; min-width: 0; }
+    .bu-drop:hover { border-color: #8A817A; background: #F3F2F1; }
+    .bu-drop-icon {
+        width: 2.75rem; height: 2.75rem; border-radius: 9999px; flex: 0 0 auto;
+        display: inline-flex; align-items: center; justify-content: center;
+        background: #fff; color: #4A4643; font-size: 1.6rem; box-shadow: 0 6px 16px -8px rgba(24,24,24,.35);
+    }
+    .bu-drop-title { font-size: 0.8438rem; font-weight: 800; color: #111; }
+    .bu-drop-sub { font-size: 0.7188rem; color: #6B6B6B; }
+    .bu-browse {
+        flex: 0 0 auto; display: inline-flex; align-items: center; padding: .45rem .95rem; border-radius: .7rem;
+        font-size: 0.75rem; font-weight: 800; color: #fff; background: #5F5A55;
+    }
+    #bulkDropZone.drag-over { border-color: #8A817A; background-color: #F3F2F1; }
+    /* Add Student and Import Now are green. Hex, not bg-emerald-600:
+       faculty-palette.css turns that class gold. */
+    #addStudentSubmit, #bulkImportBtn { background-color: #15803D; box-shadow: 0 4px 6px -1px rgba(21, 128, 61, .25); }
+    #addStudentSubmit:hover, #bulkImportBtn:hover:not(:disabled) { background-color: #166534; }
     #bulkImportBtn:disabled {
         opacity:.6;
         cursor:not-allowed;
         transform:none;
     }
 
-    #studentsTable {
-        table-layout: fixed;
-        width: 100%;
-        border-collapse: collapse;
+    /* ── Student table ──
+       Written out rather than composed from utilities: public/css/app.css is a
+       frozen build, and faculty-palette.css turns green and red into gold and
+       wine, so the Active and Inactive chips carry their own hex values. */
+    .st-card { border: 1px solid #E4E2E0; border-radius: 1rem; overflow: hidden; background: #fff; }
+    #studentsTable { table-layout: fixed; width: 100%; border-collapse: collapse; }
+    #studentsTable th, #studentsTable td { vertical-align: middle; }
+    #studentsTable thead th {
+        background: #EFEFEF; color: #181818;
+        font-size: 0.6562rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+        padding: .9rem .9rem; text-align: left; white-space: nowrap;
     }
-    #studentsTable th,
-    #studentsTable td {
-        vertical-align: middle;
+    #studentsTable thead th.text-center { text-align: center; }
+    #studentsTable tbody tr { border-top: 1px solid #E4E2E0; transition: background-color .15s ease, box-shadow .15s ease; }
+    #studentsTable tbody tr:nth-child(even) { background: #fff; }
+    #studentsTable tbody tr[data-student-id]:hover { background: #dadada; }
+    #studentsTable td { padding: .8rem .9rem; }
+    #studentsTable .col-student { width: 31%; }
+    #studentsTable .col-id { width: 13%; }
+    #studentsTable .col-phone { width: 15%; }
+    #studentsTable .col-status { width: 12%; }
+    #studentsTable .col-joined { width: 14%; }
+    #studentsTable .col-action { width: 15%; }
+    /* Too narrow for six columns without sideways scrolling: Phone and Joined drop out. */
+    @media (max-width: 760px) {
+        #studentsTable :is(th, td):is(:nth-child(3), :nth-child(5)) { display: none; }
     }
-    #studentsTable .col-id { width: 9%; }
-    #studentsTable .col-name { width: 22%; }
-    #studentsTable .col-email { width: 20%; }
-    #studentsTable .col-phone { width: 13%; }
-    #studentsTable .col-status { width: 11%; }
-    #studentsTable .col-joined { width: 11%; }
-    #studentsTable .col-action { width: 14%; }
-    #studentsTable .cell-truncate {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        max-width: 100%;
-        display: block;
+    #studentsTable .cell-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; display: block; }
+
+    .st-id {
+        display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.7188rem; font-weight: 700;
+        color: #111;
     }
+    .st-name { font-size: 0.8438rem; font-weight: 800; color: #111; }
+    .st-email { font-size: 0.7188rem; color: #111; margin-top: .1rem; }
+    .st-muted { font-size: 0.75rem; color: #111; font-weight: 600; }
+    .st-dim { color: #111; }
+
+    .st-status {
+        display: inline-flex; align-items: center; gap: .4rem; white-space: nowrap;
+        font-size: 0.6875rem; font-weight: 800;
+    }
+    .st-status .dot { width: .45rem; height: .45rem; border-radius: 9999px; }
+    .st-status.is-active   { color: #15803D; }
+    .st-status.is-active .dot   { background: #16A34A; box-shadow: 0 0 0 3px rgba(22,163,74,.18); }
+    .st-status.is-inactive { color: #111; }
+    .st-status.is-inactive .dot { background: #DC2626; box-shadow: 0 0 0 3px rgba(220,38,38,.18); }
+    .st-status.is-pending  { color: #111; }
+    .st-status.is-pending .dot  { background: #C9A45C; }
+
+    .st-update {
+        display: inline-flex; align-items: center; gap: .35rem; white-space: nowrap;
+        border-radius: .6rem; padding: .4rem .8rem; font-size: 0.7188rem; font-weight: 800;
+        color: #111; background: #fff; border: 1px solid #111; transition: all .15s ease;
+    }
+    /* Dark gray under the pointer; the row's hover only hints at it. */
+    #studentsTable tbody tr[data-student-id]:hover .st-update { background: #EFEFEF; border-color: #111; color: #181818; }
+    .st-update:hover,
+    #studentsTable tbody tr[data-student-id]:hover .st-update:hover { background: #4B4B4B; border-color: #4B4B4B; color: #fff; }
+    /* Bulk Upload and Add Student turn light gray on hover, like Update and search. */
+    .ms-light-hover.ms-light-hover:hover { background: #dadada; color: #181818; opacity: 1; }
+
+    .st-pager { display: flex; align-items: center; gap: .375rem; flex-wrap: wrap; }
+    .st-page {
+        min-width: 2.35rem; height: 2.35rem; padding: 0 .8rem; border-radius: .7rem;
+        display: inline-flex; align-items: center; justify-content: center; gap: .25rem;
+        font-size: 0.8125rem; font-weight: 700; color: #404040; background: #fff; border: 1px solid #E4E2E0;
+        transition: all .15s ease;
+    }
+    a.st-page:hover { color: #404040; border-color: #dadada; background: #EFEFEF; }
+    /* Gray, not black, for the page you are on. */
+    .st-page.is-current { background: #dadada; border-color: #BDBDBD; color: #111; }
+    .st-page.is-disabled { color: #404040; opacity: .4; background: #fff; cursor: not-allowed; }
 
     /* Expandable student search — icon-only until opened */
     #studentSearchWrap {
@@ -47,17 +152,19 @@
         height: 2.5rem;
         width: 2.5rem;
         border-radius: 0.75rem;
-        background: #f1f5f9;
-        border: 1px solid transparent;
+        background: #fff;
+        border: 1px solid #111;
         overflow: hidden;
         transition: width 0.25s ease, background-color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
     }
     #studentSearchWrap.is-open {
         width: 12.5rem;
         background: #fff;
-        border-color: #f9a8d4;
-        box-shadow: 0 0 0 3px rgba(219, 39, 119, 0.12);
+        border-color: #111;
+        box-shadow: 0 0 0 3px rgba(17,17,17, 0.10);
     }
+    #studentSearchWrap:not(.is-open):hover { background: #dadada; }
+    #studentSearchWrap:not(.is-open):hover .search-toggle { color: #181818; }
     #studentSearchWrap .search-toggle {
         width: 2.5rem;
         height: 2.5rem;
@@ -65,15 +172,14 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        color: #64748b;
+        color: #111;
         border: 0;
         background: transparent;
         cursor: pointer;
         border-radius: 0.75rem;
     }
-    #studentSearchWrap.is-open .search-toggle,
-    #studentSearchWrap .search-toggle:hover {
-        color: #db2777;
+    #studentSearchWrap.is-open .search-toggle {
+        color: #111;
     }
     #studentSearchInput {
         width: 0;
@@ -83,7 +189,7 @@
         outline: none;
         background: transparent;
         font-size: 0.875rem;
-        color: #334155;
+        color: #111;
         padding: 0;
         transition: width 0.25s ease, opacity 0.2s ease, padding 0.25s ease;
     }
@@ -93,16 +199,71 @@
         padding-right: 0.75rem;
     }
     #studentSearchWrap.is-open #studentSearchInput::placeholder {
-        color: #94a3b8;
+        color: #8C8C8C;
     }
+
+    /* Bulk upload preview. Written out rather than composed from utilities because
+       public/css/app.css is a frozen build — hover:border-brand and the
+       disabled: variants this needs are not in it and would silently do nothing. */
+    .bulk-pager-btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        padding: 0.25rem 0.5rem; border-radius: 0.5rem;
+        border: 1px solid #E4E2E0; background: #fff; color: #404040;
+        transition: color 0.2s, border-color 0.2s, opacity 0.2s;
+    }
+    .bulk-pager-btn:hover:not(:disabled) { color: #404040; border-color: #dadada; background: #dadada; }
+    .bulk-pager-btn:disabled { opacity: 0.4; cursor: default; }
+
+    /* Add Student / Bulk Upload with no block assigned. Same reason as above: the
+       frozen build has no disabled: variants to compose this from. */
+    /* Black text across the section; only the Active status keeps its green.
+       :hover is listed so the tabs' hover:text-* utilities cannot win. */
+    .ms-ink, .ms-ink:hover { color: #111; }
+    /* Block tab names are black, no maroon. */
+    .ms-wine { color: #111; }
+
+    /* No maroon anywhere on Manage Students. faculty-palette.css warms slate
+       toward wine and turns red into wine; here slate text is neutral gray,
+       the pinkish slate-200 fills and the wine-black modal backdrop are gray,
+       and error reds are a true red rather than wine. body outranks the
+       palette's single-class rules. */
+    body .text-slate-300 { color: #BDBDBD; }
+    body .text-slate-400, body .hover\:text-slate-400:hover { color: #7A7A7A; }
+    body .text-slate-500 { color: #5F5F5F; }
+    body .text-slate-600, body .hover\:text-slate-600:hover { color: #4A4A4A; }
+    body .text-slate-700 { color: #333; }
+    body .text-slate-800 { color: #222; }
+    body :is(.bg-slate-200, .hover\:bg-slate-200:hover) { background-color: #E4E2E0; }
+    body .bg-slate-900\/60 { background-color: rgba(17, 17, 17, .6); }
+    body :is(.text-red-400, .text-red-500, .hover\:text-red-500:hover) { color: #DC2626; }
+    body :is(.text-red-600, .text-red-700) { color: #B91C1C; }
+    body :is(.bg-red-50, .hover\:bg-red-50:hover) { background-color: #FEF2F2; }
+    body .border-red-200 { border-color: #FECACA; }
+
+    /* Add/Update Student modals: plain neutral gray, none of the warm tint
+       .gray-accents gives slate fills. Ids outrank its class rules. */
+    :is(#createStudentModal, #updateStudentModal) :is(input, select) { background-color: #F5F5F5; border-color: #E5E5E5; }
+    :is(#createStudentModal, #updateStudentModal) input[readonly] { background-color: #EBEBEB; }
+    :is(#createStudentModal, #updateStudentModal) :is(input, select):focus { border-color: #9CA3AF; --tw-ring-color: rgba(156, 163, 175, .3); }
+    :is(#createStudentModal, #updateStudentModal) :is(.bg-brand-soft, .bg-slate-50) { background-color: #F5F5F5; }
+    :is(#createStudentModal, #updateStudentModal) :is(.border-amber-100, .border-slate-100) { border-color: #E5E5E5; }
+
+    /* md:p-6 and md:px-6 are missing from the frozen build, so the dean page's
+       1.5rem desktop padding around the table and toolbar is written out here. */
+    @media (min-width: 768px) {
+        .ms-table-wrap { padding: 1.5rem; }
+        .ms-toolbar { padding-left: 1.5rem; padding-right: 1.5rem; }
+    }
+
+    .intake-disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
 </style>
 @endpush
 
 @section('content')
-<div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+<div class="rounded-2xl shadow-sm border border-slate-100 overflow-hidden" style="background: #fff;">
 
     <!-- Block tabs + toolbar: [Search icon] [Bulk] [Add Student] -->
-    <div class="px-4 md:px-6 pt-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div class="ms-toolbar px-4 md:px-6 pt-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div class="flex flex-wrap gap-2 min-w-0">
             @forelse(($classes ?? collect()) as $classTab)
                 @php
@@ -114,26 +275,26 @@
                 <a href="{{ route('faculty.students', ['class' => $classTab->letter]) }}"
                    class="inline-flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-sm font-bold border border-b-0 transition
                    {{ $isActive
-                        ? 'bg-white text-brand border-slate-200 -mb-px relative z-10'
-                        : 'bg-slate-50 text-slate-500 border-transparent hover:text-slate-700 hover:bg-slate-100' }}">
-                    <span>{{ $classTab->name }}</span>
-                    <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full
-                        {{ $isClosed ? 'bg-slate-200 text-slate-600' : 'bg-brand-soft text-brand' }}">
+                        ? 'bg-white ms-ink border-slate-200 -mb-px relative z-10'
+                        : 'bg-slate-50 ms-ink border-transparent hover:bg-slate-100' }}">
+                    <span class="ms-wine">{{ $classTab->name }}</span>
+                    <span class="text-[0.6875rem] font-semibold px-2 py-0.5 rounded-full
+                        {{ $isClosed ? 'bg-slate-200' : 'bg-brand-soft' }} ms-ink">
                         {{ $taken }}/{{ $cap }}
                     </span>
                     @if(!$isClosed)
-                        <span class="text-[10px] uppercase tracking-wide text-emerald-600">Open</span>
+                        <span class="text-[0.625rem] uppercase tracking-wide ms-ink">Open</span>
                     @endif
                 </a>
             @empty
-                <p class="text-sm text-slate-500 pb-1">
+                <p class="text-sm ms-ink pb-1">
                     Blocks hold up to {{ $classCapacity ?? 40 }} students.
                 </p>
             @endforelse
         </div>
 
         <div class="flex items-center gap-2 pb-1 sm:pb-3 shrink-0 ml-auto">
-            <div id="studentSearchWrap" class="shrink-0">
+            <div id="studentSearchWrap" class="shrink-0 {{ ($search ?? '') !== '' ? 'is-open' : '' }}">
                 <button
                     type="button"
                     class="search-toggle"
@@ -147,30 +308,43 @@
                     id="studentSearchInput"
                     type="text"
                     placeholder="Search students..."
+                    value="{{ $search ?? '' }}"
                     oninput="filterStudentsTable(this.value)"
                     onkeydown="if (event.key === 'Escape') collapseStudentSearch(true)"
                 >
             </div>
+            @php
+                // No block, or a block not open yet — see Faculty::intakeLockReason().
+                $canEnrol = empty($intakeLock);
+            @endphp
             <button
                 type="button"
-                onclick="openModal('bulkUploadModal')"
-                title="Bulk Upload"
+                @if ($canEnrol) onclick="openModal('bulkUploadModal')" @else disabled @endif
+                title="{{ $canEnrol ? 'Bulk Upload' : $intakeLock }}"
                 aria-label="Bulk Upload"
-                class="h-10 shrink-0 bg-emerald-600 text-white px-4 rounded-xl text-sm font-bold hover:bg-emerald-700 transition shadow-md shadow-emerald-600/20 inline-flex items-center gap-2 whitespace-nowrap"
+                class="h-10 shrink-0 bg-brand text-white px-4 rounded-xl text-sm font-bold transition shadow-md shadow-brand/20 inline-flex items-center gap-2 whitespace-nowrap {{ $canEnrol ? 'ms-light-hover' : 'intake-disabled' }}"
             >
                 <span class="iconify text-base" data-icon="mdi:upload"></span>
                 Bulk Upload
             </button>
             <button
                 type="button"
-                onclick="openModal('createStudentModal')"
-                class="h-10 bg-brand text-white px-4 rounded-xl text-sm font-bold hover:opacity-95 transition shadow-md shadow-brand/20 inline-flex items-center gap-2 whitespace-nowrap"
+                @if ($canEnrol) onclick="openModal('createStudentModal')" @else disabled @endif
+                title="{{ $canEnrol ? 'Add Student' : $intakeLock }}"
+                class="h-10 bg-brand text-white px-4 rounded-xl text-sm font-bold transition shadow-md shadow-brand/20 inline-flex items-center gap-2 whitespace-nowrap {{ $canEnrol ? 'ms-light-hover' : 'intake-disabled' }}"
             >
                 <span class="iconify text-base" data-icon="mdi:account-plus-outline"></span>
                 Add Student
             </button>
         </div>
     </div>
+
+    @if (!empty($intakeLock))
+        <div class="mx-6 mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 flex items-start gap-2">
+            <span class="iconify text-base shrink-0" data-icon="mdi:alert-outline"></span>
+            <span>{{ $intakeLock }}</span>
+        </div>
+    @endif
 
     @if (session('success'))
         <div id="successAlert" class="mx-6 mt-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
@@ -179,35 +353,20 @@
     @endif
 
     <!-- DataTable -->
-    <div class="p-4 md:p-6">
-        <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <table id="studentsTable" class="w-full text-sm min-w-[720px]">
+    <div class="ms-table-wrap p-4 md:p-6">
+        <div class="st-card overflow-x-auto">
+            <table id="studentsTable" style="min-width: 47.5rem">
                 <thead>
-                    <tr class="bg-gradient-to-r from-pink-50 to-rose-50 border-b border-pink-100">
-                    <th class="col-id px-3 py-3 text-left text-[10px] font-extrabold uppercase tracking-wider text-slate-600">
-                        ID Number
-                    </th>
-                    <th class="col-name px-3 py-3 text-left text-[10px] font-extrabold uppercase tracking-wider text-slate-600">
-                        Student Name
-                    </th>
-                    <th class="col-email px-3 py-3 text-left text-[10px] font-extrabold uppercase tracking-wider text-slate-600">
-                        Email
-                    </th>
-                    <th class="col-phone px-3 py-3 text-left text-[10px] font-extrabold uppercase tracking-wider text-slate-600">
-                        Phone
-                    </th>
-                    <th class="col-status px-3 py-3 text-left text-[10px] font-extrabold uppercase tracking-wider text-slate-600">
-                        Status
-                    </th>
-                    <th class="col-joined px-3 py-3 text-left text-[10px] font-extrabold uppercase tracking-wider text-slate-600">
-                        Joined
-                    </th>
-                    <th class="col-action px-3 py-3 text-center text-[10px] font-extrabold uppercase tracking-wider text-slate-600">
-                        Action
-                    </th>
-                </tr>
+                    <tr>
+                        <th class="col-student">Student</th>
+                        <th class="col-id">ID Number</th>
+                        <th class="col-phone">Phone</th>
+                        <th class="col-status">Status</th>
+                        <th class="col-joined">Joined</th>
+                        <th class="col-action text-center">Action</th>
+                    </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-100">
+                <tbody>
                 @forelse ($students ?? [] as $student)
                     @php
                         $user = $student->user;
@@ -230,74 +389,65 @@
                         $displayName = $displayName !== '' ? $displayName : ($user->name ?? 'Student');
 
                         $status = $user->status ?? 'active';
+                        $statusChip = match ($status) {
+                            'active'  => ['class' => 'is-active', 'label' => 'Active'],
+                            'pending' => ['class' => 'is-pending', 'label' => 'Pending'],
+                            default   => ['class' => 'is-inactive', 'label' => 'Inactive'],
+                        };
                     @endphp
 
                     <tr
                         data-student-id="{{ $student->student_number }}"
                         data-user-id="{{ $user->user_id ?? '' }}"
-                        class="hover:bg-pink-50/60 transition-all duration-200"
                     >
-                        <td class="px-3 py-2.5">
-                            <span class="font-mono text-xs text-slate-600 font-semibold cell-truncate" title="{{ $student->student_number }}">
-                                {{ $student->student_number }}
-                            </span>
-                        </td>
-
-                        <td class="px-3 py-2.5">
-                            <div class="flex items-center gap-2 min-w-0">
-                                <img
-                                    src="https://ui-avatars.com/api/?name={{ urlencode($displayName) }}&background=DB2777&color=fff&size=32"
-                                    class="w-8 h-8 rounded-lg shadow-sm border border-pink-100 shrink-0"
-                                    alt="{{ $displayName }}"
-                                >
+                        <td>
+                            <div class="flex items-center gap-3 min-w-0">
+                                @include('partials.user-avatar', [
+                                    'user'         => $user,
+                                    'name'         => $displayName,
+                                    'size'         => 'w-9 h-9',
+                                    'rounded'      => 'rounded-full',
+                                    'extraClasses' => 'bg-brand-soft text-brand text-[0.6875rem] font-bold border border-amber-200',
+                                ])
                                 <div class="min-w-0 flex-1">
-                                    <p class="font-bold text-slate-800 text-sm cell-truncate" title="{{ $displayName }}">
+                                    <p class="st-name cell-truncate" title="{{ $displayName }}">
                                         {{ $primaryName }}@if($secondaryName !== ''), {{ $secondaryName }}@endif
                                     </p>
+                                    <p class="st-email cell-truncate" title="{{ $user->email ?? '' }}">{{ $user->email ?? '—' }}</p>
                                 </div>
                             </div>
                         </td>
 
-                        <td class="px-3 py-2.5">
-                            <span class="text-slate-500 text-xs cell-truncate" title="{{ $user->email ?? '' }}">
-                                {{ $user->email ?? '—' }}
-                            </span>
+                        <td>
+                            <span class="st-id" title="{{ $student->student_number }}">{{ $student->student_number }}</span>
                         </td>
 
-                        <td class="px-3 py-2.5">
-                            <span class="font-medium text-slate-700 text-xs cell-truncate" title="{{ $user->phone_number ?? '' }}">
-                                {{ $user->phone_number ?? '—' }}
-                            </span>
-                        </td>
-
-                        <td class="px-3 py-2.5">
-                            @if ($status === 'active')
-                                <span class="inline-flex items-center gap-1.5 rounded-full bg-green-50 border border-green-200 px-2 py-0.5 text-[11px] font-bold text-green-700 whitespace-nowrap">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                                    Active
-                                </span>
-
-                            @elseif ($status === 'pending')
-                                <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[11px] font-bold text-amber-700 whitespace-nowrap">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                                    Pending
-                                </span>
-
+                        <td>
+                            @if ($user?->phone_display)
+                                <span class="st-muted cell-truncate" title="{{ $user->phone_display }}">{{ $user->phone_display }}</span>
                             @else
-                                <span class="inline-flex items-center gap-1.5 rounded-full bg-red-50 border border-red-200 px-2 py-0.5 text-[11px] font-bold text-red-700 whitespace-nowrap">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
-                                    Inactive
-                                </span>
+                                <span class="st-muted st-dim">—</span>
                             @endif
                         </td>
 
-                        <td class="px-3 py-2.5 text-slate-500 text-xs whitespace-nowrap">
-                            {{ optional($user->created_at)->format('M d, Y') }}
+                        <td>
+                            <span class="st-status {{ $statusChip['class'] }}">
+                                <span class="dot"></span>
+                                {{ $statusChip['label'] }}
+                            </span>
                         </td>
 
-                        <td class="px-3 py-2.5">
+                        <td>
+                            <span class="st-muted inline-flex items-center gap-1.5 whitespace-nowrap">
+                                <span class="iconify text-sm text-amber-500" data-icon="mdi:calendar-blank-outline"></span>
+                                {{ optional($user->created_at)->format('M d, Y') }}
+                            </span>
+                        </td>
+
+                        <td>
                             <div class="flex justify-center">
                                 <button
+                                    type="button"
                                     onclick="openUpdateModal(this)"
                                     data-user-id="{{ $user->user_id ?? '' }}"
                                     data-student-id="{{ $student->student_number }}"
@@ -307,8 +457,9 @@
                                     data-email="{{ $user->email ?? '' }}"
                                     data-phone-number="{{ $user->phone_number ?? '' }}"
                                     data-status="{{ $status }}"
-                                    class="inline-flex items-center rounded-lg bg-pink-50 px-3 py-1.5 text-[11px] font-bold text-pink-700 border border-pink-200 hover:bg-pink-100 transition-all duration-200 whitespace-nowrap"
+                                    class="st-update"
                                 >
+                                    <span class="iconify text-sm" data-icon="mdi:pencil-outline"></span>
                                     Update
                                 </button>
                             </div>
@@ -316,75 +467,70 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="py-10 text-center">
+                        <td colspan="6" class="py-12 text-center">
                             <div class="flex flex-col items-center gap-2">
-                                <span class="iconify text-5xl text-slate-300" data-icon="mdi:account-group-outline"></span>
-
-                                <p class="font-semibold text-slate-500">
-                                    No students in {{ $activeClass->name ?? 'this block' }} yet
-                                </p>
-
-                                <p class="text-xs text-slate-400">
-                                    Use Add Student or Bulk Upload — seats fill the open class (max {{ $classCapacity ?? 40 }}).
-                                </p>
+                                <div class="w-14 h-14 rounded-2xl bg-brand-soft flex items-center justify-center">
+                                    <span class="iconify text-3xl text-brand" data-icon="mdi:account-group-outline"></span>
+                                </div>
+                                @if(($search ?? '') !== '')
+                                    <p class="font-semibold ms-ink">
+                                        No students in {{ $activeClass->name ?? 'this block' }} match "{{ $search }}"
+                                    </p>
+                                    <p class="text-xs ms-ink">Try a student number, name, email or phone number.</p>
+                                @else
+                                    <p class="font-semibold ms-ink">
+                                        No students in {{ $activeClass->name ?? 'this block' }}
+                                    </p>
+                                    <p class="text-xs ms-ink">
+                                        Use Add Student or Bulk Upload — seats fill the open class (max {{ $classCapacity ?? 40 }}).
+                                    </p>
+                                @endif
                             </div>
                         </td>
                     </tr>
-
                 @endforelse
-            </tbody>
-        </table>
+                </tbody>
+            </table>
         </div>
 
-        <!-- Pagination Links -->
-        @if($students->hasPages())
-        <div class="mt-6 flex items-center justify-between">
-            <div class="text-sm text-slate-600">
-                Showing <span class="font-semibold">{{ $students->firstItem() }}</span> to <span class="font-semibold">{{ $students->lastItem() }}</span> of <span class="font-semibold">{{ $students->total() }}</span> students
-            </div>
-            <div class="flex gap-2">
+        <!-- Pagination -->
+        @if($students->total() > 0)
+        <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+            <p class="text-[0.8125rem] ms-ink">
+                Showing <span class="font-bold">{{ $students->firstItem() }}</span>–<span class="font-bold">{{ $students->lastItem() }}</span>
+                of <span class="font-bold">{{ $students->total() }}</span> students
+            </p>
+            @if($students->hasPages())
+            <nav class="st-pager" aria-label="Student pages">
                 @if ($students->onFirstPage())
-                    <span class="px-4 py-2 rounded-xl bg-slate-100 text-slate-400 text-sm font-semibold cursor-not-allowed">
-                        Previous
-                    </span>
+                    <span class="st-page is-disabled"><span class="iconify" data-icon="mdi:chevron-left"></span> Previous</span>
                 @else
-                    <a href="{{ $students->previousPageUrl() }}" class="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition">
-                        Previous
-                    </a>
+                    <a href="{{ $students->previousPageUrl() }}" class="st-page"><span class="iconify" data-icon="mdi:chevron-left"></span> Previous</a>
                 @endif
 
-                <div class="flex gap-1">
-                    @foreach ($students->getUrlRange(1, $students->lastPage()) as $page => $url)
-                        @if ($page == $students->currentPage())
-                            <span class="w-10 h-10 flex items-center justify-center rounded-xl bg-brand text-white text-sm font-bold shadow-md shadow-brand/20">
-                                {{ $page }}
-                            </span>
-                        @else
-                            <a href="{{ $url }}" class="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition">
-                                {{ $page }}
-                            </a>
-                        @endif
-                    @endforeach
-                </div>
+                @foreach ($students->getUrlRange(1, $students->lastPage()) as $page => $url)
+                    @if ($page == $students->currentPage())
+                        <span class="st-page is-current" aria-current="page">{{ $page }}</span>
+                    @else
+                        <a href="{{ $url }}" class="st-page">{{ $page }}</a>
+                    @endif
+                @endforeach
 
                 @if ($students->hasMorePages())
-                    <a href="{{ $students->nextPageUrl() }}" class="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition">
-                        Next
-                    </a>
+                    <a href="{{ $students->nextPageUrl() }}" class="st-page">Next <span class="iconify" data-icon="mdi:chevron-right"></span></a>
                 @else
-                    <span class="px-4 py-2 rounded-xl bg-slate-100 text-slate-400 text-sm font-semibold cursor-not-allowed">
-                        Next
-                    </span>
+                    <span class="st-page is-disabled">Next <span class="iconify" data-icon="mdi:chevron-right"></span></span>
                 @endif
-            </div>
+            </nav>
+            @endif
         </div>
         @endif
     </div>
 
 <!-- ==================== BULK UPLOAD MODAL ==================== -->
 <div id="bulkUploadModal" class="fixed inset-0 z-50 hidden">
-    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeModal('bulkUploadModal')"></div>
-    <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl border border-slate-100" style="width: 820px; max-width: 94vw; max-height: 92vh; overflow-y: auto;">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeBulkModal()"></div>
+    <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl border border-slate-100" style="width: 51.25rem; max-width: 94vw; max-height: 92vh; overflow-y: auto;">
 
         <!-- Modal Header -->
         <div class="bg-emerald-50 px-6 py-4 border-b border-emerald-100 flex justify-between items-center sticky top-0 z-10">
@@ -394,7 +540,7 @@
                 </div>
                 <div>
                     <h4 class="font-bold text-emerald-800 text-lg leading-none">Bulk Upload Students</h4>
-                    <p class="text-xs text-emerald-600 mt-0.5">Upload the official block list, or the template, to add many students at once</p>
+                    <p class="text-xs text-emerald-600 mt-0.5">Upload the official student list, or the template, to add many students at once</p>
                 </div>
             </div>
             <button onclick="closeBulkModal()" class="text-slate-400 hover:text-red-500 hover:bg-red-50 w-8 h-8 rounded-full transition flex items-center justify-center">
@@ -407,58 +553,104 @@
             <!-- Step indicator -->
             <div class="flex items-center gap-2 text-xs" id="bulkStepIndicator">
                 <span class="flex items-center gap-1.5 font-semibold text-emerald-700" id="stepBadge1">
-                    <span class="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">1</span>
+                    <span class="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[0.625rem] font-bold">1</span>
                     Upload Excel
                 </span>
                 <span class="text-slate-300 font-bold">›</span>
                 <span class="flex items-center gap-1.5 font-semibold text-slate-400" id="stepBadge2">
-                    <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-[10px] font-bold">2</span>
+                    <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-[0.625rem] font-bold">2</span>
                     Preview
                 </span>
                 <span class="text-slate-300 font-bold">›</span>
                 <span class="flex items-center gap-1.5 font-semibold text-slate-400" id="stepBadge3">
-                    <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-[10px] font-bold">3</span>
+                    <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-[0.625rem] font-bold">3</span>
                     Results
                 </span>
             </div>
 
-            <!-- Step 1: Drop zone + template -->
+            <!-- Step 1: Drop zone + the two file formats it reads -->
             <div id="bulkStep1">
-                <!-- Excel Format Info -->
-                <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 flex gap-3 items-start">
-                    <span class="iconify text-blue-500 text-xl mt-0.5 shrink-0" data-icon="mdi:microsoft-excel"></span>
-                    <div class="text-xs text-blue-700 leading-relaxed">
-                        <p class="font-bold mb-1">Upload the registrar's official block list as-is</p>
-                        <span>The letterhead, the <em>Female</em> / <em>Male</em> dividers and the trailing marker are skipped. Only four columns are read:</span>
-                        <code class="bg-blue-100 px-1 rounded">STUD NO.</code>
-                        <code class="bg-blue-100 px-1 rounded">NAME</code>
-                        <code class="bg-blue-100 px-1 rounded">EMAIL</code>
-                        <code class="bg-blue-100 px-1 rounded">CONTACT #</code>
-                        <span class="block mt-1">Course, year level, date enrolled and status are ignored. Names written <code class="bg-blue-100 px-1 rounded">LAST, FIRST M.</code> are split automatically.</span>
-                        <p class="font-bold mt-2 mb-1">Or use the template below:</p>
-                        <code class="bg-blue-100 px-1 rounded">student_id, first_name, last_name, email</code>
-                        <span class="mx-1 text-blue-400">+</span>
-                        optional: <code class="bg-blue-100 px-1 rounded">middle_name, phone_number</code>
-                        <br><span class="text-blue-500 mt-1 block">Each student gets their own generated password, emailed to them with their sign-in details.</span>
+                <p class="bu-lead">Choose either format — both import the same way.</p>
+
+                <div class="bu-grid">
+                    <!-- Registrar's list -->
+                    <div class="bu-card">
+                        <div class="bu-card-head">
+                            <span class="bu-badge"><span class="iconify" data-icon="mdi:file-document-outline"></span></span>
+                            <div class="min-w-0">
+                                <p class="bu-card-title">Registrar's block list</p>
+                                <p class="bu-card-sub">Upload it as-is, no editing needed</p>
+                            </div>
+                        </div>
+                        <p class="bu-label">Columns read</p>
+                        <div class="bu-chips">
+                            <code class="bu-chip">STUD NO.</code>
+                            <code class="bu-chip">NAME</code>
+                            <code class="bu-chip">EMAIL</code>
+                            <code class="bu-chip">CONTACT #</code>
+                        </div>
+                        <p class="bu-text">
+                            The letterhead, the <em>Female</em> / <em>Male</em> dividers and every other column are skipped.
+                            Names written <code class="bu-chip">LAST, FIRST M.</code> are split for you.
+                        </p>
+                    </div>
+
+                    <!-- HMS template -->
+                    <div class="bu-card">
+                        <div class="bu-card-head">
+                            <span class="bu-badge"><span class="iconify" data-icon="mdi:table-large"></span></span>
+                            <div class="min-w-0">
+                                <p class="bu-card-title">HMS template</p>
+                                <p class="bu-card-sub">A blank sheet with the right headers</p>
+                            </div>
+                        </div>
+                        <p class="bu-label">Required</p>
+                        <div class="bu-chips">
+                            <code class="bu-chip">student_id</code>
+                            <code class="bu-chip">first_name</code>
+                            <code class="bu-chip">last_name</code>
+                            <code class="bu-chip">email</code>
+                        </div>
+                        <p class="bu-label">Optional</p>
+                        <div class="bu-chips">
+                            <code class="bu-chip is-soft">middle_name</code>
+                            <code class="bu-chip is-soft">phone_number</code>
+                        </div>
+                        <button type="button" onclick="downloadExcelTemplate()" class="bu-download">
+                            <span class="iconify text-base" data-icon="mdi:tray-arrow-down"></span>
+                            Download template (.xlsx)
+                        </button>
                     </div>
                 </div>
 
-                <!-- Download template -->
-                <button onclick="downloadExcelTemplate()" class="flex items-center gap-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-4 py-2 rounded-xl transition mt-3">
-                    <span class="iconify text-base" data-icon="mdi:file-download-outline"></span>
-                    Download Excel Template (.xlsx)
-                </button>
+                {{-- The one thing about the registrar's list that costs a student their
+                     account, said before the file is picked because the fix is to the
+                     spreadsheet. A plain note rather than an alert: it is how the import
+                     works, not something that has gone wrong. --}}
+                <ul class="bu-notes">
+                    <li>
+                        <span class="iconify" data-icon="mdi:email-outline"></span>
+                        <span>Every student needs an email address. Rows without one are skipped and listed on the Results step; the rest of the file still imports.</span>
+                    </li>
+                    <li>
+                        <span class="iconify" data-icon="mdi:key-outline"></span>
+                        <span>Each student gets their own password, emailed to them with their sign-in details.</span>
+                    </li>
+                </ul>
 
                 <!-- Drop Zone -->
                 <div id="bulkDropZone"
-                    class="mt-4 border-2 border-dashed border-slate-300 rounded-2xl p-10 flex flex-col items-center justify-center gap-3 cursor-pointer transition hover:border-emerald-400 hover:bg-emerald-50/40"
+                    class="bu-drop"
                     onclick="document.getElementById('bulkExcelInput').click()"
                     ondragover="bulkDragOver(event)"
                     ondragleave="bulkDragLeave(event)"
                     ondrop="bulkDrop(event)">
-                    <span class="iconify text-5xl text-slate-300" data-icon="mdi:microsoft-excel"></span>
-                    <p class="text-sm font-semibold text-slate-600">Drag & drop your Excel file here</p>
-                    <p class="text-xs text-slate-400">or click to browse — max 5MB, .xlsx / .xls files</p>
+                    <span class="bu-drop-icon"><span class="iconify" data-icon="mdi:cloud-upload-outline"></span></span>
+                    <div class="bu-drop-text">
+                        <p class="bu-drop-title">Drag &amp; drop your Excel file here</p>
+                        <p class="bu-drop-sub">.xlsx or .xls, up to 5MB</p>
+                    </div>
+                    <span class="bu-browse">Browse files</span>
                     <input id="bulkExcelInput" name="excel_file" type="file" accept=".xlsx,.xls,.ods" class="hidden" onchange="bulkFileSelected(this.files[0])">
                 </div>
                 <p id="bulkFileInfo" class="text-xs text-slate-500 mt-2 hidden"></p>
@@ -470,11 +662,22 @@
                     <p class="text-sm font-bold text-slate-700">Preview <span id="bulkPreviewCount" class="text-emerald-600"></span></p>
                     <button onclick="bulkResetToStep1()" class="text-xs text-slate-500 hover:text-brand underline">Change file</button>
                 </div>
-                <div class="overflow-x-auto rounded-xl border border-slate-200 max-h-56">
+                {{-- Shown only when the file actually has rows without an address, and
+                     saying how many: a warning that appears every time is one nobody
+                     reads by the third block. --}}
+                <div id="bulkNoEmailNote" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-3 flex gap-2.5 items-start mb-3">
+                    <span class="iconify text-amber-500 text-lg mt-0.5 shrink-0" data-icon="mdi:email-off-outline"></span>
+                    <div class="text-xs text-amber-800 leading-relaxed">
+                        <p class="font-bold"><span id="bulkNoEmailCount"></span> Students without an email address cannot be approved or have an account created.</p>
+                        <span class="block mt-0.5 text-amber-700">They are marked below and will be skipped. Everyone else still imports.</span>
+                    </div>
+                </div>
+                <div class="overflow-x-auto rounded-xl border border-slate-200">
                     <table class="w-full text-left text-xs">
                         <thead class="bg-slate-50 sticky top-0">
                             <tr>
                                 <th class="px-3 py-2 font-bold text-slate-500 uppercase tracking-widest">#</th>
+                                <th class="px-3 py-2 font-bold text-slate-500 uppercase tracking-widest">Row</th>
                                 <th class="px-3 py-2 font-bold text-slate-500 uppercase tracking-widest">Student ID</th>
                                 <th class="px-3 py-2 font-bold text-slate-500 uppercase tracking-widest">Last Name</th>
                                 <th class="px-3 py-2 font-bold text-slate-500 uppercase tracking-widest">First Name</th>
@@ -485,7 +688,22 @@
                         <tbody id="bulkPreviewBody" class="divide-y divide-slate-100"></tbody>
                     </table>
                 </div>
-                <p class="text-xs text-slate-400 mt-2">Showing first 10 rows. All rows will be imported.</p>
+                <div class="flex items-center justify-between gap-3 mt-2">
+                    <p class="text-xs text-slate-400">Every row is imported, not just this page. &ldquo;Row&rdquo; is the row number in your Excel file.</p>
+                    <div id="bulkPreviewPager" class="hidden items-center gap-1 shrink-0">
+                        <button type="button" onclick="bulkPreviewGo(bulkPreviewPage - 1)" id="bulkPreviewPrev"
+                            class="bulk-pager-btn"
+                            aria-label="Previous page">
+                            <span class="iconify text-base" data-icon="mdi:chevron-left"></span>
+                        </button>
+                        <span id="bulkPreviewPageLabel" class="text-xs text-slate-500 font-semibold px-1 whitespace-nowrap"></span>
+                        <button type="button" onclick="bulkPreviewGo(bulkPreviewPage + 1)" id="bulkPreviewNext"
+                            class="bulk-pager-btn"
+                            aria-label="Next page">
+                            <span class="iconify text-base" data-icon="mdi:chevron-right"></span>
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <!-- Step 3: Results -->
@@ -524,7 +742,7 @@
         <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center sticky bottom-0">
             <button onclick="closeBulkModal()" class="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-200 transition font-semibold text-sm">Close</button>
             <div class="flex gap-3">
-                <button id="bulkImportBtn" onclick="startBulkImport()" class="hidden px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:scale-105 transition shadow-md shadow-emerald-600/20 flex items-center gap-2">
+                <button id="bulkImportBtn" onclick="startBulkImport()" class="hidden px-6 py-2 text-white rounded-xl font-bold text-sm hover:scale-105 transition flex items-center gap-2">
                     <span class="iconify" data-icon="mdi:cloud-upload"></span>
                     <span id="bulkImportBtnLabel">Import Now</span>
                 </button>
@@ -539,8 +757,8 @@
 <!-- ==================== CREATE STUDENT MODAL ==================== -->
 <div id="createStudentModal" class="fixed inset-0 z-50 hidden">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeModal('createStudentModal')"></div>
-    <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100" style="width: 760px; max-width: 92vw; max-height: 90vh; overflow-y: auto;">
-        <div class="bg-brand-soft px-6 py-4 border-b border-brand/10 flex justify-between items-center sticky top-0 z-10">
+    <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100" style="width: 47.5rem; max-width: 92vw; max-height: 90vh; overflow-y: auto;">
+        <div class="bg-brand-soft px-6 py-4 border-b border-amber-100 flex justify-between items-center sticky top-0 z-10">
             <h4 class="font-bold text-brand text-lg">Add Student</h4>
             <button onclick="closeModal('createStudentModal')" class="text-slate-400 hover:text-brand hover:bg-white w-8 h-8 rounded-full transition flex items-center justify-center">
                 <span class="iconify text-xl" data-icon="mdi:close"></span>
@@ -556,7 +774,7 @@
             <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Student ID</label>
-                    <input name="student_id" type="text" placeholder="e.g. 2024-001" required class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                    <input name="student_id" type="text" inputmode="numeric" pattern="\d{1,10}" maxlength="10" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 10)" title="Numbers only, up to 10 digits" placeholder="e.g. 2400689" required class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
                 </div>
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Last Name</label>
@@ -567,31 +785,31 @@
                     <input name="first_name" type="text" placeholder="e.g. Jane" required class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Middle Initial</label>
-                    <input name="middle_name" type="text" placeholder="e.g. A." class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Middle Name</label>
+                    <input name="middle_name" type="text" placeholder="e.g. Santos" pattern="\p{L}[\p{L}\s'\-]*\p{L}" title="Enter the complete middle name, not an initial." class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Email <span class="text-emerald-600 normal-case tracking-normal font-semibold">(real address — the welcome is sent here)</span></label>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Email <span class="text-emerald-600 normal-case tracking-normal font-semibold">(active email address — the welcome is sent here)</span></label>
                     <input name="email" type="email" placeholder="e.g. student@gmail.com" required class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
-                    <p class="mt-1 text-[11px] text-slate-400">Their sign-in details are emailed here as soon as the account is created.</p>
+                    <p class="mt-1 text-[0.6875rem] text-slate-400">Their sign-in details are emailed here as soon as the account is created.</p>
                 </div>
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Phone Number</label>
                     <div class="relative">
                         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 text-xs font-medium">+63</span>
-                        <input name="phone_number" type="text" placeholder="912 345 6789" class="w-full h-10 pl-12 pr-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                        <input name="phone_number" type="text" inputmode="numeric" autocomplete="tel-national" pattern="9[0-9]{9}" title="10 digits after +63, starting with 9 (e.g. 9123456789)" data-ph-phone placeholder="912 345 6789" class="w-full h-10 pl-12 pr-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
                     </div>
                 </div>
                 <div class="md:col-span-2">
                     <div class="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
                         <span class="iconify text-base text-slate-400 shrink-0 mt-0.5" data-icon="mdi:key-outline"></span>
-                        <span>A password is generated for this student and emailed to them with their sign-in details. Nobody types it, so no two students share one.</span>
+                        <span>No need to make a password. The system creates one for this student and sends it to their email, along with how to log in.</span>
                     </div>
                 </div>
             </div>
             <div class="px-6 py-3 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 sticky bottom-0">
                 <button type="button" onclick="closeModal('createStudentModal')" class="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-200 transition font-semibold text-sm">Cancel</button>
-                <button type="submit" class="px-5 py-2 bg-brand text-white rounded-xl font-bold text-sm hover:scale-105 transition shadow-md shadow-brand/20">Add Student</button>
+                <button type="submit" id="addStudentSubmit" class="px-5 py-2 text-white rounded-xl font-bold text-sm hover:scale-105 transition">Add Student</button>
             </div>
         </form>
     </div>
@@ -600,14 +818,14 @@
 <!-- ==================== UPDATE STUDENT MODAL ==================== -->
 <div id="updateStudentModal" class="fixed inset-0 z-50 hidden">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeModal('updateStudentModal')"></div>
-    <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100" style="width: 760px; max-width: 92vw; max-height: 90vh; overflow-y: auto;">
-        <div class="bg-brand-soft px-6 py-4 border-b border-brand/10 flex justify-between items-center sticky top-0 z-10">
+    <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100" style="width: 47.5rem; max-width: 92vw; max-height: 90vh; overflow-y: auto;">
+        <div class="bg-brand-soft px-6 py-4 border-b border-amber-100 flex justify-between items-center sticky top-0 z-10">
             <h4 class="font-bold text-brand text-lg">Update Student</h4>
             <button onclick="closeModal('updateStudentModal')" class="text-slate-400 hover:text-brand hover:bg-white w-8 h-8 rounded-full transition flex items-center justify-center">
                 <span class="iconify text-xl" data-icon="mdi:close"></span>
             </button>
         </div>
-        <form method="POST" id="updateStudentForm" onsubmit="return validateUpdatePasswords()">
+        <form method="POST" id="updateStudentForm" onsubmit="return validateUpdatePasswords() && confirmStatusChange(this)">
             @csrf
             @method('PUT')
             <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -629,13 +847,14 @@
                 </div>
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Email</label>
-                    <input id="updateEmail" type="text" readonly class="w-full h-10 px-3 bg-slate-100 border border-slate-200 rounded-xl text-sm text-slate-500 focus:outline-none">
+                    <input id="updateEmail" name="email" type="email" required placeholder="student@example.com" class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                    <p class="mt-1 text-[0.6875rem] text-slate-400">Editable so a typo from the Excel import can be corrected. Fixing it re-sends the account email to the new address.</p>
                 </div>
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Phone Number</label>
                     <div class="relative">
                         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 text-xs font-medium">+63</span>
-                        <input id="updatePhoneNumber" name="phone_number" type="text" placeholder="912 345 6789" class="w-full h-10 pl-12 pr-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                        <input id="updatePhoneNumber" name="phone_number" type="text" inputmode="numeric" autocomplete="tel-national" pattern="9[0-9]{9}" title="10 digits after +63, starting with 9 (e.g. 9123456789)" data-ph-phone placeholder="912 345 6789" class="w-full h-10 pl-12 pr-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
                     </div>
                 </div>
                 <div>
@@ -646,7 +865,7 @@
                             <span class="iconify text-lg" data-icon="mdi:eye-off-outline"></span>
                         </button>
                     </div>
-                    <p id="updatePasswordHelp" class="mt-1 text-[11px] text-red-500 hidden">Password must be at least 8 characters.</p>
+                    <p id="updatePasswordHelp" class="mt-1 text-[0.6875rem] text-red-500 hidden">Password must be at least 8 characters.</p>
                 </div>
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Confirm Password</label>
@@ -656,7 +875,7 @@
                             <span class="iconify text-lg" data-icon="mdi:eye-off-outline"></span>
                         </button>
                     </div>
-                    <p id="updatePasswordMatch" class="mt-1 text-[11px] text-red-500 hidden">Passwords do not match.</p>
+                    <p id="updatePasswordMatch" class="mt-1 text-[0.6875rem] text-red-500 hidden">Passwords do not match.</p>
                 </div>
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Status</label>
@@ -676,6 +895,7 @@
 
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="{{ asset('js/hms-swal-theme.js') }}?v={{ filemtime(public_path('js/hms-swal-theme.js')) }}"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
     const updateBaseUrl = "{{ url('/faculty/students') }}";
@@ -689,7 +909,7 @@
 
     function closeModal(modalId) {
         document.getElementById(modalId).classList.add('hidden');
-        document.body.style.overflow = 'auto';
+        document.body.style.overflow = '';
     }
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -708,8 +928,8 @@
             html: `<p class="text-sm text-slate-500">${successMessage}</p>`,
             timer: 2500,
             showConfirmButton: false,
-            backdrop: 'rgba(15, 23, 42, 0.35)',
-            iconColor: '#DB2777',
+            backdrop: 'rgba(42,17,24, 0.35)',
+            iconColor: '#C9A45C',
             customClass: {
                 popup: 'rounded-2xl p-6 bg-white shadow-2xl',
                 title: 'text-lg font-bold text-slate-800',
@@ -726,8 +946,8 @@
             title: 'Action Failed',
             html: `<p class="text-sm text-slate-500">${errorMessage}</p>`,
             confirmButtonText: 'Okay',
-            backdrop: 'rgba(15, 23, 42, 0.35)',
-            iconColor: '#EF4444',
+            backdrop: 'rgba(42,17,24, 0.35)',
+            iconColor: '#4A4643',
             customClass: {
                 popup: 'rounded-2xl p-6 bg-white shadow-2xl',
                 title: 'text-lg font-bold text-slate-800',
@@ -742,8 +962,16 @@
     // ===================== BULK UPLOAD LOGIC =====================
     let bulkSelectedFile = null;
     const bulkExcelUrl = "{{ route('faculty.students.bulk') }}";
+    // Set once an import adds students. The roster behind the modal is stale
+    // until the page reloads, but the Imported / Failed results stay open until
+    // the faculty closes the modal themselves, so the reload waits for that.
+    let bulkReloadUrl = null;
 
     function closeBulkModal() {
+        if (bulkReloadUrl) {
+            window.location.href = bulkReloadUrl;
+            return;
+        }
         closeModal('bulkUploadModal');
         setTimeout(bulkResetToStep1, 300);
     }
@@ -754,6 +982,11 @@
         document.getElementById('bulkFileInfo').classList.add('hidden');
         document.getElementById('bulkFileInfo').textContent = '';
         document.getElementById('bulkPreviewBody').innerHTML = '';
+        // Dropped here too, or the next file opens on the previous roster's page.
+        bulkPreviewStudents = [];
+        bulkPreviewPage = 1;
+        document.getElementById('bulkPreviewPager').classList.add('hidden');
+        document.getElementById('bulkPreviewPager').classList.remove('flex');
         document.getElementById('bulkResultsBody').innerHTML = '';
         document.getElementById('bulkResultsTableWrap').classList.add('hidden');
         document.getElementById('bulkImportBtn').classList.add('hidden');
@@ -801,7 +1034,7 @@
         const nameLower = file.name.toLowerCase();
         if (!nameLower.endsWith('.xlsx') && !nameLower.endsWith('.xls') && !nameLower.endsWith('.ods') && !nameLower.endsWith('.csv')) {
             Swal.fire({ icon:'error', title:'Invalid file', text:'Please upload an Excel or CSV file.', timer:2500, showConfirmButton:false,
-                iconColor:'#EF4444', customClass:{popup:'rounded-2xl p-6 bg-white shadow-2xl', title:'text-lg font-bold text-slate-800'}, buttonsStyling:false });
+                iconColor:'#4A4643', customClass:{popup:'rounded-2xl p-6 bg-white shadow-2xl', title:'text-lg font-bold text-slate-800'}, buttonsStyling:false });
             return;
         }
         bulkSelectedFile = file;
@@ -931,6 +1164,74 @@
         return { headerRow: headerRow, students: students };
     }
 
+    /*
+       The preview pages rather than scrolls. A block list runs to forty-odd students
+       and the modal cannot show them all at once; the earlier version cut the list to
+       ten rows and said so in a caption, which read as "only ten were found". Every
+       parsed student is held here and the table renders one page of them.
+    */
+    const BULK_PREVIEW_PAGE_SIZE = 10;
+    let bulkPreviewStudents = [];
+    let bulkPreviewPage = 1;
+
+    function bulkPreviewPageCount() {
+        return Math.max(1, Math.ceil(bulkPreviewStudents.length / BULK_PREVIEW_PAGE_SIZE));
+    }
+
+    function bulkPreviewGo(page) {
+        const pages = bulkPreviewPageCount();
+        bulkPreviewPage = Math.min(Math.max(1, page), pages);
+
+        const start = (bulkPreviewPage - 1) * BULK_PREVIEW_PAGE_SIZE;
+        const slice = bulkPreviewStudents.slice(start, start + BULK_PREVIEW_PAGE_SIZE);
+
+        const tbody = document.getElementById('bulkPreviewBody');
+        tbody.innerHTML = '';
+        const cell = v => String(v || '—').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+
+        slice.forEach((s, i) => {
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-slate-50';
+            tr.innerHTML = `
+                <td class="px-3 py-1.5 text-slate-400">${start + i + 1}</td>
+                <td class="px-3 py-1.5 text-slate-400">${s.row}</td>
+                <td class="px-3 py-1.5 font-mono text-slate-700">${cell(s.student_number)}</td>
+                <td class="px-3 py-1.5">${cell(s.last_name)}</td>
+                <td class="px-3 py-1.5">${cell(s.first_name)}</td>
+                <td class="px-3 py-1.5 ${s.email ? 'text-slate-500' : 'text-amber-700 font-semibold'}">${s.email ? cell(s.email) : 'no email'}</td>
+                <td class="px-3 py-1.5 text-slate-500">${cell(s.phone_number)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // How many of them have no address, across the whole file rather than the
+        // page on screen: the faculty is deciding about the upload, not the page.
+        const missing = bulkPreviewStudents.filter((row) => !row.email).length;
+        const note = document.getElementById('bulkNoEmailNote');
+        if (note) {
+            note.classList.toggle('hidden', missing === 0);
+            note.classList.toggle('flex', missing > 0);
+            const label = document.getElementById('bulkNoEmailCount');
+            if (label) label.textContent = missing === 1 ? '1 student has no email address.' : missing + ' students have no email address.';
+        }
+
+        // A single page needs no controls, and hiding them keeps the small-file case
+        // looking the way it did before paging existed.
+        const pager = document.getElementById('bulkPreviewPager');
+        pager.classList.toggle('hidden', pages <= 1);
+        pager.classList.toggle('flex', pages > 1);
+
+        const from = bulkPreviewStudents.length ? start + 1 : 0;
+        const to = start + slice.length;
+        document.getElementById('bulkPreviewPageLabel').textContent = `${from}–${to} of ${bulkPreviewStudents.length}`;
+        document.getElementById('bulkPreviewPrev').disabled = bulkPreviewPage <= 1;
+        document.getElementById('bulkPreviewNext').disabled = bulkPreviewPage >= pages;
+
+        // Back to the top of the list when the page changes, or row eleven starts
+        // halfway down the scroll box.
+        tbody.parentElement.parentElement.scrollTop = 0;
+    }
+
     function bulkParsePreview(file) {
         const reader = new FileReader();
         reader.onload = function(e) {
@@ -940,10 +1241,16 @@
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];
 
-                const allRows = XLSX.utils.sheet_to_json(worksheet, {header: 1, defval: ""});
+                // range: 0 forces the grid to start at sheet row 1. Without it SheetJS
+                // starts at the sheet's used range instead — the registrar's list
+                // declares A2:I59, so every row came back one short of the number
+                // Excel shows, and the preview disagreed with the server's results
+                // table by one. PhpSpreadsheet's toArray() always starts at row 1, so
+                // this is what makes the two agree.
+                const allRows = XLSX.utils.sheet_to_json(worksheet, {header: 1, defval: "", range: 0});
                 if (!allRows.length) {
                     Swal.fire({icon:'warning', title:'Empty File', text:'The file has no data rows.', timer:2500, showConfirmButton:false,
-                        iconColor:'#F59E0B', customClass:{popup:'rounded-2xl p-6 bg-white shadow-2xl', title:'text-lg font-bold text-slate-800'}, buttonsStyling:false });
+                        iconColor:'#C9A45C', customClass:{popup:'rounded-2xl p-6 bg-white shadow-2xl', title:'text-lg font-bold text-slate-800'}, buttonsStyling:false });
                     return;
                 }
 
@@ -955,7 +1262,7 @@
                 if (parsed.headerRow === null) {
                     Swal.fire({icon:'error', title:'Columns Not Found',
                         html:`<p class="text-sm text-slate-500">This sheet needs a student number column, and either a <b>Name</b> column or separate first and last name columns.</p>`,
-                        confirmButtonText:'Okay', iconColor:'#EF4444',
+                        confirmButtonText:'Okay', iconColor:'#4A4643',
                         customClass:{popup:'rounded-2xl p-6 bg-white shadow-2xl', title:'text-lg font-bold text-slate-800',
                             confirmButton:'mt-4 bg-brand text-white px-4 py-2 rounded-lg font-semibold'}, buttonsStyling:false });
                     return;
@@ -963,26 +1270,12 @@
 
                 if (parsed.students.length === 0) {
                     Swal.fire({icon:'warning', title:'Empty File', text:'The file has no data rows.', timer:2500, showConfirmButton:false,
-                        iconColor:'#F59E0B', customClass:{popup:'rounded-2xl p-6 bg-white shadow-2xl', title:'text-lg font-bold text-slate-800'}, buttonsStyling:false });
+                        iconColor:'#C9A45C', customClass:{popup:'rounded-2xl p-6 bg-white shadow-2xl', title:'text-lg font-bold text-slate-800'}, buttonsStyling:false });
                     return;
                 }
 
-                const tbody = document.getElementById('bulkPreviewBody');
-                tbody.innerHTML = '';
-                parsed.students.slice(0, 10).forEach(s => {
-                    const tr = document.createElement('tr');
-                    tr.className = 'hover:bg-slate-50';
-                    const cell = v => String(v || '—').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
-                    tr.innerHTML = `
-                        <td class="px-3 py-2 text-slate-400">${s.row}</td>
-                        <td class="px-3 py-2 font-mono text-slate-700">${cell(s.student_number)}</td>
-                        <td class="px-3 py-2">${cell(s.last_name)}</td>
-                        <td class="px-3 py-2">${cell(s.first_name)}</td>
-                        <td class="px-3 py-2 text-slate-500">${cell(s.email)}</td>
-                        <td class="px-3 py-2 text-slate-500">${cell(s.phone_number)}</td>
-                    `;
-                    tbody.appendChild(tr);
-                });
+                bulkPreviewStudents = parsed.students;
+                bulkPreviewGo(1);
 
                 document.getElementById('bulkPreviewCount').textContent = `(${parsed.students.length} student${parsed.students.length!==1?'s':''})`;
                 document.getElementById('bulkImportBtn').classList.remove('hidden');
@@ -990,7 +1283,7 @@
             } catch (err) {
                 console.error(err);
                 Swal.fire({icon:'error', title:'Parse Error', text:'Could not read file as Excel.', timer:2500, showConfirmButton:false,
-                    iconColor:'#EF4444', customClass:{popup:'rounded-2xl p-6 bg-white shadow-2xl', title:'text-lg font-bold text-slate-800'}, buttonsStyling:false });
+                    iconColor:'#4A4643', customClass:{popup:'rounded-2xl p-6 bg-white shadow-2xl', title:'text-lg font-bold text-slate-800'}, buttonsStyling:false });
             }
         };
         reader.readAsArrayBuffer(file);
@@ -1034,11 +1327,11 @@
                     // email did not go, and not created at all.
                     let statusCell;
                     if (!ok) {
-                        statusCell = '<span class="inline-flex items-center gap-1 text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full text-[10px] font-bold">✗ Failed</span>';
+                        statusCell = '<span class="inline-flex items-center gap-1 text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full text-[0.625rem] font-bold">✗ Failed</span>';
                     } else if (r.emailed) {
-                        statusCell = '<span class="inline-flex items-center gap-1 text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full text-[10px] font-bold">✓ Added &amp; emailed</span>';
+                        statusCell = '<span class="inline-flex items-center gap-1 text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full text-[0.625rem] font-bold">✓ Added &amp; emailed</span>';
                     } else {
-                        statusCell = '<span class="inline-flex items-center gap-1 text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full text-[10px] font-bold">! Added, no email</span>';
+                        statusCell = '<span class="inline-flex items-center gap-1 text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full text-[0.625rem] font-bold">! Added, no email</span>';
                     }
 
                     const note = ok ? (r.emailed ? (r.email || '') : (r.reason || '')) : (r.reason || '');
@@ -1060,12 +1353,36 @@
             bulkSetStep(3);
 
             if (data.created > 0) {
-                setTimeout(() => {
-                    const letter = data.open_class || '';
-                    window.location.href = letter
-                        ? @json(route('faculty.students')) + '?class=' + encodeURIComponent(letter)
-                        : window.location.href;
-                }, 1000);
+                /* Where students went past a full block - a new Block tab, or the
+                   faculty holding the next block - is in the server's message. A
+                   two-second toast of the count alone hid it, so a class of 42
+                   read as "nothing happened to Block B". That case waits for OK. */
+                const blockNews = (data.handed_over || 0) > 0 || (data.classes_opened || []).length > 0;
+                const escMsg = String(data.message || '').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Import Successful',
+                    html: blockNews
+                        ? `<p class="text-sm text-slate-500">${escMsg}</p>`
+                        : `<p class="text-sm text-slate-500">${data.created} student${data.created === 1 ? '' : 's'} imported.</p>`,
+                    timer: blockNews ? undefined : 2000,
+                    showConfirmButton: blockNews,
+                    confirmButtonText: 'OK',
+                    backdrop: 'rgba(42,17,24, 0.35)',
+                    // Green, like every other success dialog (hms-swal-theme.js).
+                    iconColor: '#16A34A',
+                    confirmButtonColor: '#16A34A',
+                    customClass: {
+                        popup: 'rounded-2xl p-6 bg-white shadow-2xl',
+                        title: 'text-lg font-bold text-slate-800',
+                        htmlContainer: 'mt-1',
+                    },
+                });
+
+                const letter = data.open_class || '';
+                bulkReloadUrl = letter
+                    ? @json(route('faculty.students')) + '?class=' + encodeURIComponent(letter)
+                    : window.location.href;
             }
 
         } catch (err) {
@@ -1073,7 +1390,7 @@
             label.textContent = 'Import Now';
             Swal.fire({icon:'error', title:'Import Failed',
                 html:`<p class="text-sm text-slate-500">${err.message}</p>`,
-                confirmButtonText:'Okay', iconColor:'#EF4444',
+                confirmButtonText:'Okay', iconColor:'#4A4643',
                 customClass:{popup:'rounded-2xl p-6 bg-white shadow-2xl', title:'text-lg font-bold text-slate-800',
                     confirmButton:'mt-4 bg-brand text-white px-4 py-2 rounded-lg font-semibold hover:bg-brand-dark'},
                 buttonsStyling:false});
@@ -1121,6 +1438,32 @@
         return !(tooShort || mismatch);
     }
 
+    // Flipping a student between Active and Inactive decides whether they can sign
+    // in, so the change asks first. Saving with the status untouched goes straight through.
+    function confirmStatusChange(form) {
+        const select = document.getElementById('updateStatus');
+        if (select.value === select.dataset.original) return true;
+
+        const activating = select.value === 'active';
+        const name = [document.getElementById('updateFirstName').value, document.getElementById('updateLastName').value]
+            .filter(Boolean).join(' ') || 'This student';
+
+        Swal.fire({
+            icon: activating ? 'question' : 'warning',
+            title: activating ? 'Activate this student?' : 'Deactivate this student?',
+            text: activating
+                ? `${name} will be able to sign in again.`
+                : `${name} will be signed out and will not be able to sign in until reactivated.`,
+            showCancelButton: true,
+            confirmButtonText: activating ? 'Yes, activate' : 'Yes, deactivate',
+            cancelButtonText: 'Cancel',
+            reverseButtons: true,
+        }).then((result) => {
+            if (result.isConfirmed) form.submit();
+        });
+        return false;
+    }
+
     function openUpdateModal(button) {
         const form = document.getElementById('updateStudentForm');
         const userId = button.getAttribute('data-user-id');
@@ -1138,8 +1481,9 @@
         document.getElementById('updateFirstName').value = firstName;
         document.getElementById('updateMiddleName').value = middleName;
         document.getElementById('updateEmail').value = email;
-        document.getElementById('updatePhoneNumber').value = phone.replace('+63', '');
+        document.getElementById('updatePhoneNumber').value = window.normalizePhPhone(phone);
         document.getElementById('updateStatus').value = status;
+        document.getElementById('updateStatus').dataset.original = status;
         document.getElementById('updatePassword').value = '';
         document.getElementById('updatePasswordConfirm').value = '';
         document.getElementById('updatePasswordHelp').classList.add('hidden');
@@ -1151,6 +1495,9 @@
         openModal('createStudentModal');
     @endif
 
+    /* Rows on screen filter as you type; once typing pauses, the page reloads with
+       ?q= so the server searches every page of the class, not just this one. */
+    let studentSearchTimer = null;
     function filterStudentsTable(query) {
         const q = (query || '').trim().toLowerCase();
         const rows = document.querySelectorAll('#studentsTable tbody tr[data-student-id]');
@@ -1158,7 +1505,26 @@
             const text = row.textContent.toLowerCase();
             row.style.display = !q || text.includes(q) ? '' : 'none';
         });
+
+        clearTimeout(studentSearchTimer);
+        studentSearchTimer = setTimeout(() => {
+            const url = new URL(window.location.href);
+            if ((url.searchParams.get('q') || '').trim().toLowerCase() === q) return;
+            if (q) url.searchParams.set('q', (query || '').trim());
+            else url.searchParams.delete('q');
+            url.searchParams.delete('page');
+            window.location.assign(url.toString());
+        }, 500);
     }
+
+    // After a search reload, put the cursor back at the end of the query.
+    document.addEventListener('DOMContentLoaded', function () {
+        const input = document.getElementById('studentSearchInput');
+        if (input && input.value) {
+            input.focus();
+            input.setSelectionRange(input.value.length, input.value.length);
+        }
+    });
 
     function toggleStudentSearch() {
         const wrap = document.getElementById('studentSearchWrap');

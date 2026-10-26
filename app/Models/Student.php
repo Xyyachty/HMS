@@ -18,6 +18,9 @@ class Student extends UserInformation
 {
     use HasFactory;
 
+    /** A student ID is the school number: digits only, at most 10. */
+    public const NUMBER_PATTERN = '/^\d{1,10}$/';
+
     protected static function booted(): void
     {
         static::addGlobalScope('student', function (Builder $query) {

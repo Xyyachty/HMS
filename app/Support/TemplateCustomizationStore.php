@@ -21,10 +21,22 @@ class TemplateCustomizationStore
         HotelTemplateBuilder::USER_ELEMENTS_KEY => 'userElements',
         HotelTemplateBuilder::DELETED_KEY => 'deleted',
         HotelTemplateBuilder::NAV_LINKS_KEY => 'navLinks',
+        HotelTemplateBuilder::BRAND_NAME_KEY => 'brandName',
+        HotelTemplateBuilder::ROOM_CARD_STYLE_KEY => 'roomCardStyle',
+        HotelTemplateBuilder::MENU_CARD_STYLE_KEY => 'menuCardStyle',
+        HotelTemplateBuilder::SITE_COLORS_KEY => 'siteColors',
         HotelTemplateBuilder::ROOMS_KEY => 'rooms',
         HotelTemplateBuilder::MENUS_KEY => 'menus',
         HotelTemplateBuilder::CARD_IMAGES_KEY => 'cardImages',
         HotelTemplateBuilder::HERO_SLIDES_KEY => 'heroSlides',
+        HotelTemplateBuilder::PARTNERS_KEY => 'partners',
+        HotelTemplateBuilder::EXPERIENCES_KEY => 'experiences',
+        HotelTemplateBuilder::HOME_HIGHLIGHTS_KEY => 'homeHighlights',
+        HotelTemplateBuilder::AMENITY_SLIDER_KEY => 'amenitySlider',
+        HotelTemplateBuilder::HOTEL_INFO_KEY => 'hotelInfo',
+        HotelTemplateBuilder::SOCIAL_LINKS_KEY => 'socialLinks',
+        HotelTemplateBuilder::TYPOGRAPHY_KEY => 'typography',
+        HotelTemplateBuilder::GUEST_AUTH_KEY => 'guestAuth',
     ];
 
     /** Editor customization key => DB column on template_elements */
@@ -619,6 +631,19 @@ class TemplateCustomizationStore
 
         $byCollection = $items->groupBy('collection');
 
+        // Every content image for this template in one query, keyed by the same
+        // element_key the collection loop below looks up. That loop used to run a
+        // query per item per collection — 432 round trips on a four-role team,
+        // which is what made the editor take tens of seconds to open. Ordered
+        // descending so the lowest id wins the key, matching the first() this
+        // replaces, since element_key carries no unique constraint.
+        $contentImages = TemplateImage::query()
+            ->where('team_role_template_id', $templateId)
+            ->where('version_id', $versionId)
+            ->where('kind', 'content')
+            ->orderByDesc('template_image_id')
+            ->pluck('image_path', 'element_key');
+
         // deleted
         $out[HotelTemplateBuilder::DELETED_KEY] = [];
         foreach ($byCollection->get('deleted', collect()) as $item) {
@@ -642,8 +667,20 @@ class TemplateCustomizationStore
             'rooms' => HotelTemplateBuilder::ROOMS_KEY,
             'menus' => HotelTemplateBuilder::MENUS_KEY,
             'navLinks' => HotelTemplateBuilder::NAV_LINKS_KEY,
+            'brandName' => HotelTemplateBuilder::BRAND_NAME_KEY,
+            'roomCardStyle' => HotelTemplateBuilder::ROOM_CARD_STYLE_KEY,
+            'menuCardStyle' => HotelTemplateBuilder::MENU_CARD_STYLE_KEY,
+            'siteColors' => HotelTemplateBuilder::SITE_COLORS_KEY,
             'cardImages' => HotelTemplateBuilder::CARD_IMAGES_KEY,
             'heroSlides' => HotelTemplateBuilder::HERO_SLIDES_KEY,
+            'partners' => HotelTemplateBuilder::PARTNERS_KEY,
+            'experiences' => HotelTemplateBuilder::EXPERIENCES_KEY,
+            'homeHighlights' => HotelTemplateBuilder::HOME_HIGHLIGHTS_KEY,
+            'amenitySlider' => HotelTemplateBuilder::AMENITY_SLIDER_KEY,
+            'hotelInfo' => HotelTemplateBuilder::HOTEL_INFO_KEY,
+            'socialLinks' => HotelTemplateBuilder::SOCIAL_LINKS_KEY,
+            'typography' => HotelTemplateBuilder::TYPOGRAPHY_KEY,
+            'guestAuth' => HotelTemplateBuilder::GUEST_AUTH_KEY,
         ] as $collection => $jsonKey) {
             $meta = $byCollection->get($collection . '_meta', collect())->first();
             $payload = $meta ? self::fieldsMap($meta) : [];
@@ -661,14 +698,9 @@ class TemplateCustomizationStore
                     $row['amenities'] = $amenities;
                 }
                 // Prefer image_path from template_images if present
-                $imgRow = TemplateImage::query()
-                    ->where('team_role_template_id', $templateId)
-                    ->where('version_id', $versionId)
-                    ->where('kind', 'content')
-                    ->where('element_key', $collection . ':' . ($item->item_ref ?? $item->sort_order))
-                    ->first();
-                if ($imgRow) {
-                    $row['img'] = self::publicUrlIfNeeded($imgRow->image_path);
+                $imgPath = $contentImages->get($collection . ':' . ($item->item_ref ?? $item->sort_order));
+                if ($imgPath !== null) {
+                    $row['img'] = self::publicUrlIfNeeded($imgPath);
                 }
                 $list[] = $row;
             }

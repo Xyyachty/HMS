@@ -42,6 +42,7 @@ class DepartmentTemplatePage
                     // "id" is the member shape the department Blade views read.
                     return (object) [
                         'id' => $user?->user_id,
+                        'user' => $user,
                         'name' => $displayName,
                         'email' => $user?->email,
                         'roles' => $member->roles->pluck('role')->toArray(),
@@ -59,12 +60,22 @@ class DepartmentTemplatePage
         // syncNavBadges() in builder/ops-shell keeps them fresh after that.
         $navBadges = HotelNavBadges::forRole($groupMembership, $role);
 
+        // Scoped to the team, like the dashboard. Filtering on faculty and role alone
+        // listed every other team's rows under the same faculty on these pages.
         $tasks = $facultyId
-            ? Task::where('faculty_id', $facultyId)->where('role', $role)->where('status', 'active')->get()
+            ? Task::where('faculty_id', $facultyId)
+                ->forTeam($groupName)
+                ->where('role', $role)
+                ->where('status', 'active')
+                ->get()
             : collect();
 
         $tasksByRole = $facultyId
-            ? Task::where('faculty_id', $facultyId)->where('status', 'active')->get()->groupBy('role')
+            ? Task::where('faculty_id', $facultyId)
+                ->forTeam($groupName)
+                ->where('status', 'active')
+                ->get()
+                ->groupBy('role')
             : collect();
 
         $selectedTemplate = null;
@@ -73,11 +84,13 @@ class DepartmentTemplatePage
         $templateLayout = HotelTemplateBuilder::defaultLayout();
         $templatePayload = null;
         $canEditTemplate = false;
+        $conceptApproved = false;
 
         $editablePages = HotelTemplateBuilder::editablePagesForRole($role);
         $preferredPage = HotelTemplateBuilder::preferredPageForRole($role);
 
         if ($groupMembership) {
+            $conceptApproved = HotelConceptDesk::hasApprovedConcept($groupName, $facultyId);
             $roleTemplate = HotelTemplateBuilder::ensureTemplate($groupMembership, $role);
             $canEditTemplate = HotelTemplateBuilder::canEdit($authUser, $groupMembership, $role);
             $templatePayload = HotelTemplateBuilder::payload($roleTemplate, $canEditTemplate);
@@ -102,7 +115,12 @@ class DepartmentTemplatePage
             }
         }
 
+        // The team's assigned tasks for the editor sidebar, first paint. The page
+        // polls students.tasks.assigned for the same list afterwards.
+        $assignedTasks = AssignedTaskList::forMember($groupMembership);
+
         return compact(
+            'assignedTasks',
             'tasks',
             'groupMembers',
             'group',
@@ -116,9 +134,14 @@ class DepartmentTemplatePage
             'templateLayout',
             'templatePayload',
             'canEditTemplate',
+            'conceptApproved',
             'editablePages',
             'preferredPage',
             'navBadges'
-        ) + ['builderRole' => $role];
+        ) + [
+            'builderRole' => $role,
+            // The Simulation seat, kept apart from the Customization seats above.
+            'simulationSeats' => SimulationPhase::seatsFor($groupMembership),
+        ];
     }
 }

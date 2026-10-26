@@ -1,5 +1,15 @@
+@php
+    /* The background the team picked for their site, turned into the same
+       palette the landing page derives, so the staff pages follow the hotel
+       instead of staying stock near-black. Null until a team picks a colour,
+       and then the shell keeps the stock palette it has always had. */
+    $opsSitePalette = \App\Support\SitePalette::forBackground(
+        \App\Support\SitePalette::siteBackground($templateCustomizations ?? []),
+        ($selectedTemplate ?? null) === '2' ? '2' : '1'
+    );
+@endphp
 <!DOCTYPE html>
-<html lang="en" data-ops-theme="{{ ($selectedTemplate ?? null) === '2' ? '2' : '1' }}">
+<html lang="en" data-ops-theme="{{ ($selectedTemplate ?? null) === '2' ? '2' : '1' }}"@if($opsSitePalette) data-ops-site-themed="1"@endif>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -63,6 +73,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    @include('partials.swal-theme')
+    <script src="{{ asset('js/hms-swal-theme.js') }}?v={{ filemtime(public_path('js/hms-swal-theme.js')) }}"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -70,9 +82,9 @@
         * { box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background: #050507; color: #fff; }
 
-        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar { width: 0.25rem; height: 0.25rem; }
         ::-webkit-scrollbar-track { background: #0a0a0c; }
-        ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 0.625rem; }
         ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
 
         .topbar {
@@ -91,45 +103,43 @@
         }
 
         .logo-icon {
-            width: 32px; height: 32px;
-            background: {{ $theme['logo_gradient'] }};
-            border-radius: 8px;
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: {{ $theme['logo_shadow'] }};
+            width: 2rem; height: 2rem;
+            border-radius: 50%;
+            object-fit: contain;
         }
 
         .module-badge {
             background: {{ $theme['badge_bg'] }};
             border: 1px solid {{ $theme['badge_border'] }};
             color: {{ $theme['badge_color'] }};
-            font-size: 10px;
-            padding: 4px 10px;
-            border-radius: 6px;
+            font-size: 0.625rem;
+            padding: 0.25rem 0.625rem;
+            border-radius: 0.375rem;
             font-weight: 600;
             text-transform: uppercase;
         }
 
         .module-switcher { position: relative; flex-shrink: 0; }
         .module-switcher .module-badge {
-            display: inline-flex; align-items: center; gap: 6px;
+            display: inline-flex; align-items: center; gap: 0.375rem;
             cursor: pointer; transition: filter 0.15s;
         }
         .module-switcher .module-badge:hover { filter: brightness(1.25); }
         .module-menu {
-            position: absolute; top: calc(100% + 10px); left: 0; width: 230px;
-            background: #18181b; border: 1px solid #27272a; border-radius: 12px;
-            padding: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); z-index: 999;
+            position: absolute; top: calc(100% + 0.625rem); left: 0; width: 14.375rem;
+            background: #18181b; border: 1px solid #27272a; border-radius: 0.75rem;
+            padding: 0.5rem; box-shadow: 0 10px 40px rgba(0,0,0,0.5); z-index: 999;
             display: none; animation: dropIn 0.2s ease-out;
         }
         .module-menu.show { display: block; }
         .module-menu-label {
-            padding: 4px 12px 8px; font-size: 10px; letter-spacing: 0.12em;
+            padding: 0.25rem 0.75rem 0.5rem; font-size: 0.625rem; letter-spacing: 0.12em;
             text-transform: uppercase; color: #52525b; font-weight: 700;
         }
         .module-menu a {
-            display: flex; align-items: center; gap: 10px;
-            padding: 9px 12px; border-radius: 6px;
-            color: #a1a1aa; font-size: 13px; text-decoration: none;
+            display: flex; align-items: center; gap: 0.625rem;
+            padding: 0.5625rem 0.75rem; border-radius: 0.375rem;
+            color: #a1a1aa; font-size: 0.8125rem; text-decoration: none;
             transition: all 0.15s;
         }
         .module-menu a:hover { background: #27272a; color: #fafafa; }
@@ -137,13 +147,13 @@
             background: {{ $theme['badge_bg'] }};
             color: {{ $theme['badge_color'] }};
         }
-        .module-menu a i { width: 16px; font-size: 13px; }
+        .module-menu a i { width: 1rem; font-size: 0.8125rem; }
         .module-menu .view-only-chip {
-            margin-left: auto; font-size: 9px; letter-spacing: 0.06em;
+            margin-left: auto; font-size: 0.5625rem; letter-spacing: 0.06em;
             text-transform: uppercase; font-weight: 700;
             color: #fbbf24; background: rgba(245,158,11,0.12);
             border: 1px solid rgba(245,158,11,0.25);
-            padding: 2px 6px; border-radius: 4px;
+            padding: 2px 0.375rem; border-radius: 0.25rem;
         }
 
         .sidebar-base {
@@ -158,65 +168,84 @@
         }
 
         .avatar {
-            width: 32px; height: 32px; border-radius: 6px;
+            width: 2rem; height: 2rem; border-radius: 0.375rem;
             background: linear-gradient(135deg, #06b6d4, #0891b2);
             display: flex; align-items: center; justify-content: center;
-            font-size: 12px; font-weight: 700; color: #fff;
+            font-size: 0.75rem; font-weight: 700; color: #fff;
         }
 
         .profile-dropdown {
-            position: absolute; top: calc(100% + 12px); right: 0; width: 220px;
-            background: #18181b; border: 1px solid #27272a; border-radius: 12px;
-            padding: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); z-index: 999;
+            position: absolute; top: calc(100% + 0.75rem); right: 0; width: 13.75rem;
+            background: #18181b; border: 1px solid #27272a; border-radius: 0.75rem;
+            padding: 0.5rem; box-shadow: 0 10px 40px rgba(0,0,0,0.5); z-index: 999;
             display: none; animation: dropIn 0.2s ease-out;
         }
         @keyframes dropIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
         .profile-dropdown.show { display: block; }
 
         .dd-item {
-            display: flex; align-items: center; gap: 10px;
-            padding: 10px 12px; border-radius: 6px;
-            color: #a1a1aa; font-size: 13px; cursor: pointer;
+            display: flex; align-items: center; gap: 0.625rem;
+            padding: 0.625rem 0.75rem; border-radius: 0.375rem;
+            color: #a1a1aa; font-size: 0.8125rem; cursor: pointer;
             transition: all 0.15s;
         }
         .dd-item:hover { background: #27272a; color: #fafafa; }
-        .dd-item i { width: 16px; font-size: 14px; color: #71717a; }
-        .dd-divider { height: 1px; background: #27272a; margin: 6px 0; }
+        .dd-item i { width: 1rem; font-size: 0.875rem; color: #71717a; }
+        .dd-divider { height: 1px; background: #27272a; margin: 0.375rem 0; }
         .dd-logout { color: #ef4444 !important; }
         .dd-logout i { color: #ef4444 !important; }
 
         .hdr-btn {
-            height: 36px; padding: 0 16px; border-radius: 8px;
-            font-size: 12px; font-weight: 600; cursor: pointer;
+            height: 2.25rem; padding: 0 1rem; border-radius: 0.5rem;
+            font-size: 0.75rem; font-weight: 600; cursor: pointer;
             font-family: 'Inter', sans-serif; border: none;
-            display: flex; align-items: center; gap: 6px; transition: all 0.2s;
+            display: flex; align-items: center; gap: 0.375rem; transition: all 0.2s;
             text-decoration: none;
         }
         .btn-secondary { background: #18181b; color: #d4d4d8; border: 1px solid #27272a; }
         .btn-secondary:hover { background: #27272a; color: #fff; }
 
         #toast {
-            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
-            background: #18181b; border: 1px solid #27272a; color: #fafafa; padding: 12px 24px; border-radius: 8px;
-            font-size: 13px; font-family: 'Inter', sans-serif; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(80px);
+            background: #18181b; border: 1px solid #27272a; color: #fafafa; padding: 0.75rem 1.5rem; border-radius: 0.5rem;
+            font-size: 0.8125rem; font-family: 'Inter', sans-serif; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s;
             opacity: 0; z-index: 9999;
         }
         #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
-        .status-bar { background: #09090b; border-top: 1px solid #18181b; }
 
         .topbar-row {
-            display: flex; align-items: center; gap: 12px;
-            width: 100%; height: 56px; padding: 0 16px; box-sizing: border-box;
+            display: flex; align-items: center; gap: 0.75rem;
+            width: 100%; height: 3.5rem; padding: 0 1rem; box-sizing: border-box;
         }
-        .topbar-brand { display: flex; align-items: center; gap: 10px; flex-shrink: 0; min-width: 0; }
+        .topbar-brand { display: flex; align-items: center; gap: 0.625rem; flex-shrink: 0; min-width: 0; }
         .topbar-mid { flex: 1 1 auto; min-width: 0; }
         .topbar-actions {
             display: flex; align-items: center; justify-content: flex-end;
-            gap: 8px; flex-shrink: 0; flex-wrap: nowrap;
+            gap: 0.5rem; flex-shrink: 0; flex-wrap: nowrap;
         }
         .topbar-actions #profileWrapper { margin-left: 2px; flex-shrink: 0; }
-        .topbar-actions .avatar { width: 26px; height: 26px; font-size: 10px; }
+        .topbar-actions .avatar { width: 1.625rem; height: 1.625rem; font-size: 0.625rem; }
+
+        /* Narrow screens: Staff Tools becomes a drawer behind a menu button, so
+           the page itself gets the full width. Every role's Simulation renders
+           through this shell, so this one block covers them all. */
+        .ops-nav-toggle, .ops-nav-backdrop { display: none; }
+        @media (max-width: 1023px) {
+            .ops-nav-toggle { display: flex; padding: 0 0.75rem; }
+            #leftSidebar {
+                position: fixed; top: 0; bottom: 0; left: 0; z-index: 70;
+                width: min(18rem, 85vw);
+                transform: translateX(-100%); transition: transform 0.25s ease;
+            }
+            body.ops-nav-open #leftSidebar { transform: none; box-shadow: 0 0 40px rgba(0,0,0,0.35); }
+            body.ops-nav-open .ops-nav-backdrop { display: block; position: fixed; inset: 0; z-index: 65; background: rgba(0,0,0,0.45); }
+        }
+        @media (max-width: 767px) {
+            .topbar-row { padding: 0 0.75rem; gap: 0.5rem; }
+            .hms-logo-text, .topbar-brand > .w-px, #opsPageTitleBadge, .hdr-btn .hdr-label { display: none; }
+            .topbar-actions .hdr-btn { padding: 0 0.75rem; }
+        }
 
         /* ── Template 2 shell theme (cream / forest green / Cormorant + DM Sans) ──
            Scoped entirely under the [data-ops-theme="2"] attribute set on <html>
@@ -256,7 +285,6 @@
         html[data-ops-theme="2"] #toast {
             background: #1a1a1a; border: 1px solid #2d2d2d; color: #f7f4ef;
         }
-        html[data-ops-theme="2"] .status-bar { background: #efe9e0; border-top: 1px solid #e2ddd5; color: #7a7570; }
 
         /* Shared left-sidebar partial (also used by the site editor, which never
            sets data-ops-theme) — overridden here by descendant selector only,
@@ -282,35 +310,42 @@
         }
     </style>
     @yield('head-extra')
+@if($opsSitePalette)
+    @include('students.builder.site-theme', ['p' => $opsSitePalette])
+@endif
+    @include('partials.portal-scale')
+@include('partials.no-horizontal-scroll')
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
 
     <header class="topbar topbar-row shrink-0 z-50">
         <div class="topbar-brand">
-            <div class="logo-icon shrink-0">
-                <i class="fas {{ $theme['icon'] }} text-white text-sm"></i>
-            </div>
+            <button type="button" class="hdr-btn btn-secondary ops-nav-toggle" id="opsNavToggle"
+                    onclick="toggleOpsNav()" aria-label="Open Staff Tools" aria-controls="leftSidebar" aria-expanded="false">
+                <i class="fas fa-bars"></i>
+            </button>
+            <img src="{{ asset('new_logo_in_chtm....png') }}" alt="College of Hospitality and Tourism Management logo" class="logo-icon shrink-0">
             <span class="hms-logo-text text-sm truncate">Hotel Management System</span>
             <div class="w-px h-5 bg-zinc-800 shrink-0"></div>
             @php
-                $myModules = \App\Support\HotelTemplateBuilder::modulesForRoles($studentRoles ?? []);
+                // Simulation's own switcher: stays inside Simulation when a
+                // multi-role member moves between their operations modules.
+                $myModules = \App\Support\HotelTemplateBuilder::modulesForRoles($studentRoles ?? [], $simulationSeats ?? null);
+                $simModules = array_values(array_filter($myModules, fn ($m) => !empty($m['simulation_url'])));
             @endphp
-            @if(count($myModules) > 1)
+            @if(count($simModules) > 1)
                 <div class="module-switcher" id="moduleSwitcher">
                     <span class="module-badge" onclick="toggleModuleMenu()" title="Switch module">
                         {{ $moduleLabel }}
-                        <i class="fas fa-chevron-down text-[8px]" id="moduleChevron"></i>
+                        <i class="fas fa-chevron-down text-[0.5rem]" id="moduleChevron"></i>
                     </span>
                     <div class="module-menu" id="moduleMenu">
                         <p class="module-menu-label">My Modules</p>
-                        @foreach($myModules as $module)
-                            <a href="{{ route($module['route']) }}"
+                        @foreach($simModules as $module)
+                            <a href="{{ $module['simulation_url'] }}"
                                class="{{ $module['role'] === $builderRole ? 'is-active' : '' }}">
                                 <i class="fas {{ $roleThemes[$module['role']]['icon'] ?? 'fa-layer-group' }}"></i>
                                 {{ $module['label'] }}
-                                @if(!$module['editable'])
-                                    <span class="view-only-chip">View only</span>
-                                @endif
                             </a>
                         @endforeach
                     </div>
@@ -324,16 +359,18 @@
         <div class="topbar-mid"></div>
 
         <div class="topbar-actions">
-            <a href="{{ route($backRoute ?? 'students.dashboard') }}" class="hdr-btn btn-secondary" title="Back to builder">
-                <i class="fas fa-arrow-left"></i> Back
+            {{-- Simulation's own Back: this shell is operations, not the editor,
+                 so it goes to Tasks rather than looping back into Customize. --}}
+            <a href="{{ route('students.dashboard', ['section' => 'tasks']) }}" class="hdr-btn btn-secondary" title="Back to Tasks">
+                <i class="fas fa-arrow-left"></i> <span class="hdr-label">Back to Tasks</span>
             </a>
+            @php $customizeRoute = \App\Support\HotelTemplateBuilder::routeNameForRole($builderRole); @endphp
+            @if($customizeRoute && \App\Support\HotelTemplateBuilder::editablePagesForRole($builderRole) !== [])
+                <a href="{{ route($customizeRoute) }}" class="hdr-btn btn-secondary" title="Open Customize">
+                    <i class="fas fa-palette"></i> <span class="hdr-label">Customize</span>
+                </a>
+            @endif
             <div class="relative" id="profileWrapper">
-                <?php
-                    $authUser = auth()->user();
-                    $profileName = $authUser?->name ?? 'Student';
-                    $nameParts = preg_split('/\s+/', trim($profileName));
-                    $initials = strtoupper(($nameParts[0][0] ?? 'S') . (count($nameParts) > 1 ? substr(end($nameParts), 0, 1) : ''));
-                ?>
                 <div class="profile-dropdown" id="profileDropdown">
                     <div class="dd-item" onclick="toast('Opening profile...')"><i class="fas fa-user-circle"></i> My Profile</div>
                     <div class="dd-item" onclick="toast('Opening settings...')"><i class="fas fa-cog"></i> Settings</div>
@@ -351,14 +388,11 @@
         <div id="leftSidebar" class="w-72 shrink-0 sidebar-base border-r overflow-y-auto">
             @include('students.frontdesk.left-sidebar.index')
         </div>
+        <div class="ops-nav-backdrop" onclick="toggleOpsNav(false)"></div>
 
         <div id="opsContentWrap" class="flex-1 min-w-0 content-bg overflow-y-auto">
             @yield('content')
         </div>
-    </div>
-
-    <div class="status-bar h-8 flex items-center px-6 gap-4 shrink-0 text-[10px] text-zinc-600">
-        <div class="flex items-center gap-2 text-green-500"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> <span>Online</span></div>
     </div>
 
     <div id="toast"></div>
@@ -381,6 +415,12 @@
             const chevron = document.getElementById('moduleChevron');
             if (chevron) chevron.style.transform = '';
         });
+
+        function toggleOpsNav(open) {
+            const isOpen = document.body.classList.toggle('ops-nav-open', open);
+            document.getElementById('opsNavToggle')?.setAttribute('aria-expanded', String(isOpen));
+        }
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') toggleOpsNav(false); });
 
         let toastTimer;
         function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.remove('show'), 2000); }
@@ -414,8 +454,15 @@
                 });
             } catch (e) { /* ignore */ }
         }
-        setInterval(syncGroupPresence, 8000);
+        /* Every poll on this page costs a database connection, and Supabase's pooler
+           hands out a limited number of them across all of us — see render.yaml. So
+           nothing polls while the tab is in the background, where nobody is reading
+           the answer anyway; coming back to the tab refreshes it immediately. */
+        setInterval(function () { if (!document.hidden) syncGroupPresence(); }, 20000);
         document.addEventListener('DOMContentLoaded', syncGroupPresence);
+        document.addEventListener('visibilitychange', function () {
+            if (!document.hidden) syncGroupPresence();
+        });
 
         // Staff Tools nav badges. One request for the whole sidebar, and it only goes
         // out when this page actually rendered a badge — a role with none bails first.
@@ -481,7 +528,10 @@
         // Anything that wants to force a refresh without a write.
         window.refreshNavBadges = syncNavBadges;
 
-        setInterval(syncNavBadges, 8000);
+        // Badges already refresh after every write (see the fetch wrapper above), so
+        // the timer is only there to catch a teammate's write. Backgrounded tabs sit
+        // it out — the visibilitychange handler below covers coming back.
+        setInterval(function () { if (!document.hidden) syncNavBadges(); }, 20000);
         document.addEventListener('DOMContentLoaded', syncNavBadges);
         // Coming back to the tab is the other moment the numbers are likely stale.
         window.addEventListener('focus', syncNavBadges);
@@ -490,5 +540,8 @@
         });
     </script>
     @yield('scripts')
+@include('partials.logout-confirm')
+@include('partials.session-guard')
+@include('partials.nav-loader')
 </body>
 </html>

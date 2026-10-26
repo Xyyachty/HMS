@@ -8,9 +8,11 @@ use App\Models\StudentGroup;
 /**
  * Authorization for guest complaints.
  *
- * Front Desk takes the complaint from the guest; Maintenance or Housekeeping works
- * it, and only for the department it was routed to. Everyone else on the team may
- * read the list but not change it — the same shape as HotelOrderAccess.
+ * Front Desk takes the complaint from the guest and closes it once the guest
+ * confirms the fix; Housekeeping, Maintenance, Room Management or Restaurant
+ * Services works it, and only for the department it was routed to. Everyone else
+ * on the team may read the list but not change it — the same shape as
+ * HotelOrderAccess.
  */
 class HotelComplaintAccess
 {
@@ -19,8 +21,10 @@ class HotelComplaintAccess
 
     /** Team role that owns each department's queue. */
     public const DEPARTMENT_ROLES = [
-        'maintenance'  => 'maintenance',
-        'housekeeping' => 'housekeeping',
+        'housekeeping'          => 'housekeeping',
+        'maintenance'           => 'maintenance',
+        'room_management'       => 'room_management',
+        'restaurant_management' => 'restaurant_management',
     ];
 
     public static function membership(): ?StudentGroup
@@ -31,16 +35,18 @@ class HotelComplaintAccess
     }
 
     /**
-     * A member's own team role, plus whatever role they are signed into the hotel
-     * site as — the same rule the menu and orders use.
+     * The Simulation-phase roles this member covers — the Room & Maintenance seat
+     * runs both — plus whatever role they are signed into the hotel site as.
      */
     public static function roles(StudentGroup $membership): array
     {
-        $roles = StudentGroupSync::roleKeys($membership);
+        $roles = StudentGroupSync::simulationRoleKeys($membership);
 
         $sim = HotelSimulationAuth::current();
         if (is_array($sim) && ($sim['type'] ?? null) === 'staff' && is_array($sim['roles'] ?? null)) {
-            $roles = array_merge($roles, $sim['roles']);
+            // The logged-in-as teammate's Simulation seat (their Customization seat on a
+            // session older than the split), not yet expanded for this phase.
+            $roles = array_merge($roles, HotelTemplateBuilder::rolesForPhase($sim['simulation_roles'] ?? $sim['roles'], HotelTemplateBuilder::PHASE_SIMULATION));
         }
 
         return $roles;
@@ -52,7 +58,7 @@ class HotelComplaintAccess
     }
 
     /**
-     * Departments this member may work. An administrator covers both; everyone else
+     * Departments this member may work. An administrator covers all four; everyone else
      * only the queue their own role owns.
      */
     public static function handledDepartments(StudentGroup $membership): array

@@ -1,0 +1,180 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\HotelAddon;
+use App\Models\HotelAmenity;
+use App\Models\HotelMenuItem;
+use App\Models\HotelRoom;
+use App\Models\StudentGroup;
+use App\Support\HotelAddonDesk;
+use App\Support\HotelAmenityDesk;
+use App\Support\HotelRoomDefaults;
+use Illuminate\Http\Request;
+
+/**
+ * The catalogue behind a faculty's preview of a team's site.
+ *
+ * The template draws its rooms, menu, facilities and add-ons from the database at
+ * runtime, through endpoints that resolve the team from the signed-in student. A
+ * faculty reviewing a submission is not a student: those calls answered with an
+ * empty list, and every screen fell back to the template's own built-in
+ * placeholders — which is why a review of "Create Your Room Categories" showed
+ * Classic, Superior, Deluxe, Premium and Family with nothing in them, whatever
+ * the student had actually submitted.
+ *
+ * These are the same reads, with the team named in the URL and checked against
+ * the faculty who owns it. Read-only by construction: there is no write here, and
+ * the preview renders with editing off.
+ *
+ * They deliberately do not seed. ensureFor / ensureCategoriesFor write a team's
+ * starting inventory on first read, which is right when the team's own member
+ * opens the page and wrong when a faculty looks at it — a review must show what
+ * is there, not create it.
+ */
+class FacultyPreviewController extends Controller
+{
+    /**
+     * Whose teams the viewer may preview: a faculty their own, a dean any
+     * faculty's, named by ?faculty= since a dean owns none.
+     */
+    public static function facultyIdFor(Request $request): ?int
+    {
+        $user = auth()->user();
+
+        if ($user?->role === 'dean') {
+            return $request->integer('faculty') ?: null;
+        }
+
+        return $user?->faculty?->user_information_id;
+    }
+
+    /** The team named in the URL, or 404 if it is not this viewer's to see. */
+    private function team(string $group): StudentGroup
+    {
+        $facultyId = self::facultyIdFor(request());
+        if (!$facultyId) {
+            abort(403);
+        }
+
+        $membership = StudentGroup::where('faculty_id', $facultyId)
+            ->where('group_name', $group)
+            ->first();
+
+        if (!$membership) {
+            abort(404, 'That team does not belong to you.');
+        }
+
+        return $membership;
+    }
+
+    public function rooms(Request $request, string $group)
+    {
+        $membership = $this->team($group);
+
+        $rooms = HotelRoom::with(['activeBooking.guest', 'activeBooking.payments', 'activeBooking.foodOrders', 'activeBooking.charges', 'activeBooking.addons', 'openBookings'])
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->orderBy('hotel_room_id')
+            ->get();
+
+        // Only faculty read this feed, so it is where the review learns what the
+        // team changed against the Rooms page it started with.
+        $review = HotelRoomDefaults::reviewFor(HotelRoomDefaults::categoriesFor($membership), $rooms);
+
+        return response()->json([
+            'rooms' => $rooms->map(fn (HotelRoom $room) => $room->toTemplateArray()
+                + ['reviewState' => $review['rooms'][$room->hotel_room_id] ?? null]),
+            // The point of the whole controller: the categories the team actually
+            // has, including one added this morning with no rooms in it yet.
+            'categories' => $review['categories'],
+            'removed_categories' => $review['removed'],
+        ]);
+    }
+
+    public function menus(Request $request, string $group)
+    {
+        $membership = $this->team($group);
+
+        $rows = HotelMenuItem::where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->orderBy('hotel_menu_item_id')
+            ->get();
+        // Only faculty read this feed, so it is where the review learns what the
+        // team changed against the house menu it started with.
+        $review = \App\Support\HotelMenuAccess::reviewFor($rows, $membership);
+        $items = $rows->map(fn (HotelMenuItem $item) => $item->toTemplateArray()
+            + ['reviewState' => $review['items'][$item->hotel_menu_item_id] ?? null]);
+
+        /* The courses too, not just the dishes. Without them the review renders the
+           five constants, so a course the team named itself has no tab and its dishes
+           fall into whichever one is first — the faculty would be reviewing a menu the
+           student never built. */
+        return response()->json([
+            'items' => $items,
+            'categories' => \App\Support\HotelMenuDefaults::categoriesForTeam(
+                $membership->group_name,
+                $membership->faculty_id
+            ),
+            'category_review' => (object) $review['categories'],
+            'removed_items' => $review['removed_items'],
+            'removed_categories' => $review['removed_categories'],
+        ]);
+    }
+
+    public function amenities(Request $request, string $group)
+    {
+        $membership = $this->team($group);
+
+        $amenities = HotelAmenity::with('services')
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->orderBy('hotel_amenity_id')
+            ->get();
+
+        $repairs = HotelAmenityDesk::latestRepairsFor($membership);
+        // Only faculty read this feed, so it is where the review learns which
+        // facilities differ from the template's starting five.
+        $review = \App\Support\HotelAmenityAccess::reviewStates($amenities);
+
+        return response()->json([
+            'items' => $amenities
+                ->map(fn (HotelAmenity $amenity) => $amenity->toTemplateArray(
+                    $repairs[$amenity->hotel_amenity_id] ?? null
+                ) + [
+                    'reviewState' => $review['states'][$amenity->hotel_amenity_id] ?? null,
+                    'reviewFields' => $review['fields'][$amenity->hotel_amenity_id] ?? [],
+                    'reviewPhotos' => $review['photos'][$amenity->hotel_amenity_id] ?? [],
+                ])
+                ->values(),
+            'removed_defaults' => $review['removed'],
+        ]);
+    }
+
+    public function addons(Request $request, string $group)
+    {
+        $membership = $this->team($group);
+
+        $addons = HotelAddon::where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->orderBy('hotel_addon_id')
+            ->get();
+
+        $reserved = HotelAddonDesk::reservedFor($membership);
+
+        return response()->json([
+            'items' => $addons
+                ->map(fn (HotelAddon $addon) => $addon->toTemplateArray(
+                    $reserved[$addon->hotel_addon_id] ?? 0
+                ))
+                ->values(),
+        ]);
+    }
+
+    public function promos(Request $request, string $group)
+    {
+        $membership = $this->team($group);
+
+        return response()->json(\App\Models\HotelPromo::siteFeed($membership->group_name, $membership->faculty_id));
+    }
+}

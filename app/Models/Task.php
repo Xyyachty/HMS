@@ -8,12 +8,19 @@ use Illuminate\Database\Eloquent\Model;
 
 class Task extends Model
 {
+    /** Said when a task is handed in with no change saved on it. */
+    public const NO_CHANGES_MESSAGE = "You haven't made any changes to this task yet. Please customize something before submitting.";
+
     use HasFactory;
 
     protected $primaryKey = 'task_id';
 
     protected $fillable = [
         'faculty_id',
+        // The team this task was assigned to. Null only on rows that predate
+        // per-team assignment; those stay visible to whoever holds the role.
+        'group_name',
+        'group_id',
         'student_id',
         'assigned_to',
         'role',
@@ -22,8 +29,14 @@ class Task extends Model
         'kind',
         'title',
         'description',
+        // The four activities this task is worked through as, copied off the
+        // checklist when it was assigned: [['text' => …, 'done' => bool], …].
+        'activities',
+        // First save on this task in the Template Editor: Not Started -> In Progress.
+        'started_at',
+        // Last hand-in; approval rewrites updated_at, so this is the one to rank by.
+        'submitted_at',
         'due_date',
-        'priority',
         'status',
         'feedback',
         'feedback_at',
@@ -40,8 +53,72 @@ class Task extends Model
         // has to respect it rather than treating everything as midnight.
         'due_date' => 'datetime',
         'feedback_at' => 'datetime',
+        'started_at' => 'datetime',
+        'submitted_at' => 'datetime',
         'revision_count' => 'integer',
+        'activities' => 'array',
     ];
+
+    /**
+     * Whether this database has the `activities` column yet.
+     *
+     * The column arrives in a migration of its own, so between pulling the code
+     * and running that migration a write carrying activities would be an INSERT
+     * against a column that is not there. Answered once per request.
+     */
+    public static function supportsActivities(): bool
+    {
+        static $has = null;
+
+        if ($has === null) {
+            $has = \Illuminate\Support\Facades\Schema::hasColumn('tasks', 'activities');
+        }
+
+        return $has;
+    }
+
+    /**
+     * The activities as a list of ['text' => string, 'done' => bool].
+     *
+     * Shaped here rather than trusted from the column: rows written before the
+     * column existed hold null, and an older row could hold plain strings.
+     *
+     * @return list<array{text: string, done: bool}>
+     */
+    public function activityList(): array
+    {
+        $raw = is_array($this->activities) ? $this->activities : [];
+        $out = [];
+
+        foreach ($raw as $item) {
+            if (is_string($item)) {
+                $out[] = ['text' => $item, 'done' => false];
+                continue;
+            }
+            if (is_array($item) && filled($item['text'] ?? null)) {
+                $out[] = ['text' => (string) $item['text'], 'done' => (bool) ($item['done'] ?? false)];
+            }
+        }
+
+        return $out;
+    }
+
+    /** How many of the activities are ticked. */
+    public function activitiesDoneCount(): int
+    {
+        return count(array_filter($this->activityList(), fn ($a) => $a['done']));
+    }
+
+    /**
+     * Whether the student has begun this task: Not Started becomes In Progress.
+     *
+     * Stamped by the Template Editor's first save on the task. A row ticked under
+     * the old step checklist, before the checkboxes went, counts as begun too.
+     */
+    public function getIsStartedAttribute(): bool
+    {
+        return $this->started_at !== null || $this->activitiesDoneCount() > 0;
+    }
 
     public function feedbackBy()
     {
@@ -57,6 +134,28 @@ class Task extends Model
         return $this->status === 'active' && filled($this->feedback);
     }
 
+    /**
+     * Handed in and waiting on faculty: submitted, with no verdict yet. Approval
+     * stamps feedback_at, so 'archived' alone is not "completed". The hotel
+     * concept is excluded — its row is archived by the concept review itself,
+     * which never stamps feedback_at. Same rule as
+     * FacultyController::pendingReviewTaskQuery.
+     */
+    public function getAwaitingReviewAttribute(): bool
+    {
+        return $this->status === 'archived' && $this->feedback_at === null && !$this->is_hotel_concept;
+    }
+
+    /**
+     * Handed in again after faculty sent it back: awaiting review like any other
+     * submission, but labelled Resubmitted so faculty know it is a revision.
+     * revision_count goes up on every send-back (FacultyController).
+     */
+    public function getIsResubmittedAttribute(): bool
+    {
+        return $this->awaiting_review && (int) $this->revision_count > 0;
+    }
+
     public function faculty()
     {
         return $this->belongsTo(Faculty::class, 'faculty_id', 'user_information_id');
@@ -70,6 +169,23 @@ class Task extends Model
     public function assignedTo()
     {
         return $this->belongsTo(User::class, 'assigned_to', 'user_id');
+    }
+
+    /**
+     * The snapshot a review's "Before" shows, or null for the stock template.
+     *
+     * One place for it, because the review panel and the After preview's
+     * outlines both compare against it and must agree.
+     */
+    public function reviewBeforeVersionId(): ?int
+    {
+        if (\App\Support\TaskChecklist::reviewsAgainstStock((string) $this->title)) {
+            return null;
+        }
+
+        $id = $this->previous_version_id;
+
+        return $id && TeamRoleTemplateVersion::whereKey($id)->exists() ? (int) $id : null;
     }
 
     protected static function booted(): void
@@ -95,10 +211,54 @@ class Task extends Model
         return $query->where('status', 'active');
     }
 
+    /**
+     * The tasks one team may read.
+     *
+     * Faculty assign to a single team, so a row states its team and is filtered on
+     * it directly — the same way every hotel_* table scopes by group_name. Rows with
+     * no team are the ones created before assignment was team-scoped; they carry no
+     * submission and so no feedback, and stay visible to whoever holds the role
+     * rather than disappearing from every dashboard at once. Delete this null branch
+     * once those rows are gone and the scope becomes a plain equality.
+     */
+    public function scopeForTeam($query, ?string $groupName)
+    {
+        return $query->where(function ($q) use ($groupName) {
+            $q->whereNull('group_name');
+
+            if (filled($groupName)) {
+                $q->orWhere('group_name', $groupName);
+            }
+        });
+    }
+
     /** The one task that gates the rest of the simulation. */
     public function getIsHotelConceptAttribute(): bool
     {
         return $this->kind === HotelConceptDesk::TASK_KIND;
+    }
+
+    /**
+     * Rows saved under a title TaskChecklist no longer hands out — the
+     * simulation tasks that moved to the Simulation area. Old rows keep only a
+     * copy of the title they were assigned under, so this is a title check
+     * rather than a column: nothing marks a row this way at write time. Applied
+     * on read so a student's Task panel does not resurrect work that predates
+     * the split, without touching or deleting the rows themselves.
+     */
+    public function scopeWithoutSimulation($query)
+    {
+        $titles = \App\Support\TaskChecklist::LEGACY_OPS_TITLES;
+        if ($titles === []) {
+            return $query;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($titles), '?'));
+
+        return $query->where(function ($q) use ($titles, $placeholders) {
+            $q->whereNull('title')
+                ->orWhereRaw("LOWER(title) NOT IN ({$placeholders})", $titles);
+        });
     }
 
     /**
@@ -117,14 +277,17 @@ class Task extends Model
     }
 
     /**
-     * Highest priority first. Written as a CASE rather than MySQL's FIELD(),
-     * which does not exist in PostgreSQL.
+     * A team's deadline, out of its task rows: the nearest due date still owed
+     * (an active row), else the latest one faculty set on work already handed in.
+     * Null only when faculty never set a due date — reading active rows alone
+     * said "None set" as soon as the team submitted its dated work.
      */
-    public function scopeOrderByPriority($query)
+    public static function teamDeadline($tasks): ?\Illuminate\Support\Carbon
     {
-        return $query->orderByRaw(
-            "CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 ELSE 4 END"
-        );
+        $dated = collect($tasks)->filter(fn ($task) => $task->due_date !== null);
+
+        return $dated->where('status', 'active')->sortBy('due_date')->first()?->due_date
+            ?? $dated->sortByDesc('due_date')->first()?->due_date;
     }
 
     /**

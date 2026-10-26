@@ -17,21 +17,22 @@ use Illuminate\Support\Facades\DB;
  *
  * A team proposes two concepts, and each one moves through states of its own:
  *
- *   draft          proposed; the whole team improves it
- *   submitted      handed to faculty; the team keeps improving it while they read
- *   needs_revision sent back with feedback; the whole team edits again
+ *   draft          proposed; any team member keeps improving it
+ *   submitted      handed to faculty; locked for the whole team while they read
+ *   needs_revision sent back with feedback; unlocked for the whole team again
  *   approved       the team's official concept, final and read-only
- *   not_selected   the other one, once faculty picked; still editable, never official
+ *   not_selected   the other one, once faculty picked; closed, never official
  *
- * Everything except approved stays open, because the team is asked to keep
- * improving both proposals right up until faculty chooses between them. Approval
- * is the one irreversible step: it settles which concept the team builds.
+ * Only draft and needs_revision stay open. Submitted locks the moment it is
+ * handed over — faculty reads exactly what was submitted, not a moving target —
+ * and approval is the one irreversible step: it settles which concept the team
+ * builds.
  *
  * The states are per concept because faculty judges each one separately — one can
  * come back for another round while the other waits. What is shared is the
- * handover: Front Desk submits the pair in one action, because the point of two
- * concepts is that faculty compares them, and the choice itself, which lands on
- * both concepts at once.
+ * handover: Front Desk submits the pair in one action, because the point of
+ * two concepts is that faculty compares them, and the choice itself, which lands
+ * on both concepts at once.
  *
  * This class exists because each transition touches two places at once — the
  * concept rows and the team's task rows — and three unrelated callers need the
@@ -61,7 +62,35 @@ class HotelConceptDesk
      */
     public const TASK_KIND = 'hotel_concept';
     public const TASK_TITLE = 'Propose Two Hotel Concepts';
-    public const TASK_DESCRIPTION = 'Propose two hotel concepts your team could build: for each one, its name, its type and what makes it different. Front Desk writes the first version of each, then the whole team can improve them before Front Desk submits both to your faculty, who reviews each concept separately.';
+    public const TASK_DESCRIPTION = "Propose two hotel concepts your team could build, different from each other in theme and in identity. For each one give the hotel's name, its type, its theme, the guests it is for, the colours it would be built in, the design style that goes with them, and a short description tying the seven together. Write both here, improve them as often as you like, then submit the pair to your faculty, who reviews each concept separately and approves one.\n\nSteps:\n1. Create two hotel concepts - two different themes and identities, not one idea written twice.\n2. Name each one and set its type, its theme and the guests it is for.\n3. Describe the colours and the design style each concept would be built in.\n4. Submit both concepts, then answer the decision - revise a returned concept, or note the approved one your team will build.";
+
+    /**
+     * The four steps this one activity is worked through as.
+     *
+     * Written here as well as on the checklist entry that names it, because the
+     * row is seeded for every Front Desk student the moment they hold the role
+     * (ensureTaskFor) rather than waiting to be ticked out of a list.
+     *
+     * @var list<string>
+     */
+    public const TASK_ACTIVITIES = [
+        'Create two hotel concepts - two different themes and identities, not one idea written twice.',
+        'Name each one and set its type, its theme and the guests it is for.',
+        'Describe the colours and the design style each concept would be built in.',
+        'Submit both concepts, then answer the decision - revise a returned concept, or note the approved one your team will build.',
+    ];
+
+    /** What finishing it means, in the sentence the review screens print. */
+    public const TASK_COMPLETION = 'Both concepts carry all seven details, both are submitted, and your faculty has approved one of them.';
+
+    /** The four in the shape a task row stores them. */
+    public static function taskActivities(): array
+    {
+        return array_map(
+            fn (string $text) => ['text' => $text, 'done' => false],
+            self::TASK_ACTIVITIES
+        );
+    }
 
     public const STATUS_DRAFT = 'draft';
     public const STATUS_SUBMITTED = 'submitted';
@@ -72,8 +101,8 @@ class HotelConceptDesk
     /** The badge each state prints, and the only accepted values. */
     public const STATUSES = [
         self::STATUS_DRAFT => 'Draft',
-        self::STATUS_SUBMITTED => 'With faculty for review',
-        self::STATUS_NEEDS_REVISION => 'Needs revision',
+        self::STATUS_SUBMITTED => 'Under Review',
+        self::STATUS_NEEDS_REVISION => 'Revision Required',
         self::STATUS_APPROVED => 'Approved',
         self::STATUS_NOT_SELECTED => 'Not selected',
     ];
@@ -81,13 +110,13 @@ class HotelConceptDesk
     /**
      * States in which a concept is open for edits.
      *
-     * The team keeps improving a concept while it sits with faculty and after it
-     * comes back for revision. The choice closes both concepts at once: the
+     * A concept locks the moment it is submitted — faculty is reading exactly
+     * what was handed in, not a moving target — and unlocks again only if it
+     * comes back needing revision. The choice closes both concepts at once: the
      * approved one because it is final, the other because it is out of the run.
      */
     private const EDITABLE_STATUSES = [
         self::STATUS_DRAFT,
-        self::STATUS_SUBMITTED,
         self::STATUS_NEEDS_REVISION,
     ];
 
@@ -115,32 +144,42 @@ class HotelConceptDesk
     /**
      * Who may write a concept.
      *
-     * Front Desk alone proposes each first version — that is their task. Once a
-     * concept exists it belongs to the team, so every member may improve it, which
-     * is the point of the workflow. That stays true while it sits with faculty and
-     * after it comes back for revision. Faculty's choice ends it either way: the
+     * The task is seeded on Front Desk's row, but the concepts are the team's own
+     * identity work — any current member of the team may propose or improve
+     * either one, not just whoever holds the role. $isTeamMember is a plain
+     * membership check (are they on this team at all), not a role check.
+     *
+     * Editing is open while a concept is a draft and again after it comes back
+     * for revision. It locks the moment it is submitted — faculty reads exactly
+     * what was handed in — and faculty's choice ends it for good either way: the
      * approved concept is final, the other is out of the run.
      */
-    public static function canEdit(?HotelConcept $concept, array $roleKeys): bool
+    public static function canEdit(?HotelConcept $concept, bool $isTeamMember): bool
     {
-        if (!$concept) {
-            return in_array(self::OWNING_ROLE, $roleKeys, true);
+        if (!$isTeamMember) {
+            return false;
         }
 
-        return in_array(self::status($concept), self::EDITABLE_STATUSES, true);
+        return $concept
+            ? in_array(self::status($concept), self::EDITABLE_STATUSES, true)
+            : true;
     }
 
     /**
      * Whether the team can hand their concepts in.
      *
-     * Both slots have to be filled: faculty is being asked to weigh two proposals
-     * against each other, and one is not a choice. Beyond that there has to be
-     * something new to hand in — a pair already sitting with faculty and untouched
-     * since, or a pair already decided, submits nothing.
+     * Any team member may edit, but Front Desk alone submits — the pair is
+     * everyone's to write, the handover to faculty stays one role's call.
+     * $isFrontDesk means both: on this team, and holding OWNING_ROLE on it.
+     *
+     * Both slots have to be filled: faculty is being asked to weigh two
+     * proposals against each other, and one is not a choice. Beyond that there
+     * has to be something new to hand in — a pair already sitting with faculty
+     * and untouched since, or a pair already decided, submits nothing.
      */
-    public static function canSubmit(Collection $concepts, array $roleKeys): bool
+    public static function canSubmit(Collection $concepts, bool $isFrontDesk): bool
     {
-        if (!in_array(self::OWNING_ROLE, $roleKeys, true)) {
+        if (!$isFrontDesk) {
             return false;
         }
 
@@ -173,6 +212,47 @@ class HotelConceptDesk
     public static function isDecided(Collection $concepts): bool
     {
         return self::approvedConcept($concepts) !== null;
+    }
+
+    /**
+     * Whether this team has faculty approval to move past the concept stage.
+     *
+     * Front Desk cannot pick a Default Template until faculty has approved one
+     * of the team's two proposed concepts — the website is built on top of the
+     * approved concept, so choosing a template before that exists would let a
+     * team skip the review step entirely.
+     */
+    public static function hasApprovedConcept(?string $groupName, ?int $facultyId): bool
+    {
+        return self::isDecided(self::conceptsFor($groupName, $facultyId));
+    }
+
+    /**
+     * Whether Front Desk has handed a concept in - under review, sent back,
+     * or decided. Only a draft has never been submitted.
+     *
+     * This is what lets faculty set the rest of the customization tasks, so
+     * work can be lined up while the concept is reviewed. Starting that work
+     * still waits for the approval (hasApprovedConcept).
+     */
+    public static function isSubmitted(Collection $concepts): bool
+    {
+        return $concepts->contains(fn ($concept) => self::status($concept) !== self::STATUS_DRAFT);
+    }
+
+    /**
+     * Handed in and waiting on faculty: every concept is submitted, none sent
+     * back or decided. The concept task's row reads Under Review while this holds.
+     */
+    public static function isUnderReview(Collection $concepts): bool
+    {
+        return $concepts->isNotEmpty()
+            && $concepts->every(fn ($concept) => self::status($concept) === self::STATUS_SUBMITTED);
+    }
+
+    public static function hasSubmittedConcept(?string $groupName, ?int $facultyId): bool
+    {
+        return self::isSubmitted(self::conceptsFor($groupName, $facultyId));
     }
 
     /**
@@ -226,22 +306,30 @@ class HotelConceptDesk
         ], true))->values();
     }
 
-    /** Why an edit was refused, so the dashboard can say something useful. */
-    public static function editRefusal(?HotelConcept $concept, array $roleKeys): string
+    /**
+     * Why an edit was refused, so the dashboard can say something useful.
+     *
+     * Only reached with a concept in hand: canEdit lets a blank slot through for
+     * any team member, so a refusal always means either the caller is not on the
+     * team, or this slot's status has already left EDITABLE_STATUSES.
+     */
+    public static function editRefusal(?HotelConcept $concept, bool $isTeamMember): string
     {
-        if (!$concept) {
-            return 'Only the Front Desk members of this team can propose a hotel concept.';
+        if (!$isTeamMember) {
+            return 'Only members of this team can write a hotel concept.';
         }
 
-        return self::status($concept) === self::STATUS_NOT_SELECTED
-            ? 'Your faculty chose the other concept, so this one is closed.'
-            : 'Your faculty approved this concept, so it is final and can no longer be edited.';
+        return match (self::status($concept)) {
+            self::STATUS_SUBMITTED => 'This Hotel Concept has been submitted and is awaiting faculty review. Editing is temporarily disabled.',
+            self::STATUS_NOT_SELECTED => 'Your faculty chose the other concept, so this one is closed.',
+            default => 'Your faculty approved this concept, so it is final and can no longer be edited.',
+        };
     }
 
     /** Why a submit was refused. */
-    public static function submitRefusal(Collection $concepts, array $roleKeys): string
+    public static function submitRefusal(Collection $concepts, bool $isFrontDesk): string
     {
-        if (!in_array(self::OWNING_ROLE, $roleKeys, true)) {
+        if (!$isFrontDesk) {
             return 'Only the Front Desk members of this team can submit the concepts to your faculty.';
         }
 
@@ -329,11 +417,30 @@ class HotelConceptDesk
                 ])->save();
             }
 
+            // Seeded before tasks carried their activities. Filled in rather than
+            // rewritten, so a student who has already ticked one keeps the tick.
+            if (Task::supportsActivities() && $existing->activityList() === []) {
+                $existing->forceFill(['activities' => self::taskActivities()])->save();
+            }
+
+            // Seeded before tasks named their team, or the member has since moved.
+            // Stamp it now so it reads as this team's rather than as everyone's.
+            if (blank($existing->group_name) && filled($membership->group_name)) {
+                $existing->forceFill([
+                    'group_name' => $membership->group_name,
+                    'group_id' => $membership->group_id,
+                ])->save();
+            }
+
             return;
         }
 
-        Task::create([
+        $payload = [
             'faculty_id' => $membership->faculty_id,
+            // Named like any other task so the team reads it as theirs and nobody
+            // else picks it up, rather than being inferred from student_id.
+            'group_name' => $membership->group_name,
+            'group_id' => $membership->group_id,
             'student_id' => $membership->student_id,
             'assigned_to' => Student::whereKey($membership->student_id)->value('user_id'),
             'role' => self::OWNING_ROLE,
@@ -343,9 +450,14 @@ class HotelConceptDesk
             // No due date: this one is not on the faculty's schedule, it gates
             // everything else the team builds.
             'due_date' => null,
-            'priority' => 'high',
             'status' => 'active',
-        ]);
+        ];
+
+        if (Task::supportsActivities()) {
+            $payload['activities'] = self::taskActivities();
+        }
+
+        Task::create($payload);
     }
 
     /** Seed the task for every Front Desk member of one team. */
@@ -404,7 +516,7 @@ class HotelConceptDesk
                 'Submitted ' . $submitting
                     ->map(fn (HotelConcept $c) => self::slotLabel($c->slot) . ' "' . $c->title . '"')
                     ->implode(' and ')
-                    . ' of team "' . $membership->group_name . '" to faculty for review.'
+                    . ' of ' . \App\Models\Group::label($membership->group_name) . ' to faculty for review.'
             );
         });
 
@@ -488,7 +600,7 @@ class HotelConceptDesk
                 ActivityLog::CONCEPT_REVIEWED,
                 ($revise ? 'Requested changes on' : 'Approved')
                     . ' ' . self::slotLabel($concept->slot) . ' "' . $concept->title
-                    . '" of team "' . $membership->group_name . '"'
+                    . '" of ' . \App\Models\Group::label($membership->group_name)
                     . ($notSelected
                         ? ' as the official concept; ' . self::slotLabel($notSelected->slot) . ' not selected.'
                         : '.')

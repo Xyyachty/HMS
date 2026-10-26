@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\FacultyClass;
+use App\Models\HotelAmenityReservation;
 use App\Models\HotelComplaint;
 use App\Models\HotelConcept;
 use App\Models\HotelDineInTable;
@@ -23,8 +24,9 @@ use Illuminate\Support\Facades\DB;
  * at event time — the bell then only ever reads its own user's rows.
  *
  * Audience model:
- *   Dean    — org-level events only (enrollment, a block opening, teams formed).
- *             Never per-task chatter, which would drown the feed.
+ *   Dean    — org-level events (enrollment, a block opening, teams formed), plus
+ *             each customization task a student hands in, which the dean
+ *             oversees. Not the rest of the per-task chatter.
  *   Faculty — everything inside their own faculty.
  *   Student — what is addressed to them or to their team.
  *
@@ -158,6 +160,37 @@ class Notifier
             ->all();
     }
 
+    /** "Ana Cruz, Ben Reyes and Carla Santos" for a list of student ids. */
+    private static function studentNames(array $studentIds): string
+    {
+        return User::whereIn('user_id', static::userIdsForStudents($studentIds))
+            ->pluck('name')
+            ->filter()
+            ->join(', ', ' and ');
+    }
+
+    /** Each student's role(s) on a team, as labels: student id => "Front Desk and Maintenance". */
+    private static function roleLabelsOnTeam(string $groupName, int $facultyId, array $studentIds): array
+    {
+        return StudentGroup::with('roles')
+            ->where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
+            ->whereIn('student_id', $studentIds)
+            ->get()
+            ->mapWithKeys(fn (StudentGroup $member) => [
+                (int) $member->student_id => $member->roles
+                    ->map(fn ($r) => HotelTemplateBuilder::ROLES[$r->role] ?? $r->role)
+                    ->join(', ', ' and '),
+            ])
+            ->all();
+    }
+
+    /** The moment an event happened, as people in Manila read it. */
+    private static function stamp(): string
+    {
+        return now('Asia/Manila')->format('M j, Y g:i A');
+    }
+
     /* ── Events ─────────────────────────────────────────────────────────── */
 
     /** The new student's own welcome. Split out so bulk imports can reuse it. */
@@ -169,7 +202,9 @@ class Notifier
             [$studentUser->user_id],
             UserNotification::STUDENT_ADDED,
             'Welcome to ' . $className,
-            'Your student account is ready. You have been enrolled in ' . $className . '.',
+            'Your student account is ready. '
+                . ($actor?->name ? $actor->name . ' enrolled you in ' : 'You are enrolled in ') . $className . '. '
+                . 'You will get a notification when your faculty places you on a team.',
             route('students.dashboard'),
             $actor
         );
@@ -188,8 +223,12 @@ class Notifier
         static::push(
             [$newUser->user_id],
             UserNotification::STUDENT_ADDED,
-            'Your account is ready',
-            'A ' . $role . ' account was created for you. Sign in to get started.',
+            // Only ever read once they are signed in, so no "sign in" prompt here.
+            'Welcome to HMS',
+            ($actor?->name ?: 'The Dean') . ' set up your ' . $role . ' account. '
+                . ($role === 'faculty'
+                    ? 'Start by adding your students in Manage Students.'
+                    : 'You will get a notification when your faculty places you on a team.'),
             $home,
             $actor
         );
@@ -208,8 +247,11 @@ class Notifier
                 static::deanUserIds()
             ),
             UserNotification::STUDENT_ADDED,
-            $count . ' student(s) imported',
-            'A bulk import added ' . $count . ' student account(s).',
+            $count . ' ' . \Illuminate\Support\Str::plural('student', $count) . ' imported',
+            ($actor?->name ?: 'A faculty member') . ' imported ' . $count . ' student '
+                . \Illuminate\Support\Str::plural('account', $count) . ' into '
+                . \App\Models\Faculty::blockLabel(\App\Models\Faculty::whereKey($facultyId)->value('block'))
+                . ' on ' . static::stamp() . '.',
             route('faculty.students'),
             $actor
         );
@@ -235,7 +277,7 @@ class Notifier
             ),
             UserNotification::STUDENT_ADDED,
             'New student enrolled',
-            $studentName . ' was added to ' . $className . '.',
+            $studentName . ' was added to ' . $className . ($actor?->name ? ' by ' . $actor->name : '') . ' on ' . static::stamp() . '.',
             route('faculty.students', array_filter(['class' => $class?->letter])),
             $actor
         );
@@ -259,24 +301,36 @@ class Notifier
         );
     }
 
+    /** A faculty's block filled up, so the faculty holding the next block can start enrolling. */
+    public static function blockOpened(?User $actor, \App\Models\Faculty $full, \App\Models\Faculty $next): void
+    {
+        $fullBlock = 'Block ' . strtoupper((string) $full->block);
+        $nextBlock = 'Block ' . strtoupper((string) $next->block);
+
+        static::push(
+            array_merge(array_filter([$next->user_id]), static::deanUserIds()),
+            UserNotification::CLASS_OPENED,
+            $nextBlock . ' is now open',
+            $fullBlock . ' is full, so ' . $nextBlock . ' is now open. You can add students and create teams.',
+            route('faculty.students'),
+            $actor
+        );
+    }
+
     /** One or more teams were formed. */
     public static function teamCreated(?User $actor, string $groupName, int $facultyId, array $studentIds): void
     {
-        static::push(
-            static::userIdsForStudents($studentIds),
-            UserNotification::TEAM_CREATED,
-            'You joined team ' . $groupName,
-            'Your faculty placed you on team "' . $groupName . '". Open your dashboard to see your role.',
-            route('students.dashboard'),
-            $actor
-        );
+        static::teamJoined($actor, $groupName, $facultyId, $studentIds, UserNotification::TEAM_CREATED);
 
+        $team = \App\Models\Group::label($groupName);
         static::push(
             static::deanUserIds(),
             UserNotification::TEAM_CREATED,
-            'New team created',
-            'Team "' . $groupName . '" was created with ' . count($studentIds) . ' member(s).',
-            route('dean.dashboard'),
+            $team . ' created',
+            ($actor?->name ?: 'A faculty member') . ' created ' . $team . ' with ' . count($studentIds) . ' '
+                . \Illuminate\Support\Str::plural('member', count($studentIds))
+                . (($names = static::studentNames($studentIds)) !== '' ? ': ' . $names : '') . '.',
+            route('dean.faculties', ['team' => $groupName, 'faculty' => $facultyId]),
             $actor
         );
     }
@@ -286,57 +340,127 @@ class Notifier
     {
         $newUserIds = static::userIdsForStudents($studentIds);
 
-        static::push(
-            $newUserIds,
-            UserNotification::TEAM_MEMBER_ADDED,
-            'You joined team ' . $groupName,
-            'Your faculty added you to team "' . $groupName . '".',
-            route('students.dashboard'),
-            $actor
-        );
+        static::teamJoined($actor, $groupName, $facultyId, $studentIds, UserNotification::TEAM_MEMBER_ADDED);
 
         // Existing team mates hear about the newcomers.
         $existing = array_diff(static::teamUserIds($groupName, $facultyId), $newUserIds);
         static::push(
             $existing,
             UserNotification::TEAM_MEMBER_ADDED,
-            'New teammate on ' . $groupName,
-            count($studentIds) . ' student(s) joined your team.',
-            route('students.dashboard'),
+            'New teammate on ' . \App\Models\Group::label($groupName),
+            (static::studentNames($studentIds) ?: count($studentIds) . ' student(s)') . ' joined '
+                . \App\Models\Group::label($groupName) . '.',
+            route('students.dashboard', ['section' => 'group']),
             $actor
         );
     }
 
     /**
-     * Faculty published task assignments. One notification per student, listing
-     * how many tasks landed on them — not one per task row, which fans out to
+     * Faculty published task assignments. One notification per student, naming
+     * the tasks that landed on them — not one per task row, which fans out to
      * four rows per team and would spam the bell.
+     *
+     * @param  array<int, list<string>>  $titlesPerUserId  user id => task titles
      */
-    public static function tasksAssigned(?User $actor, array $tasksPerUserId): void
+    public static function tasksAssigned(?User $actor, array $titlesPerUserId, $dueDate = null): void
     {
-        foreach ($tasksPerUserId as $userId => $count) {
+        // Due dates are kept as the wall-clock time faculty typed, so no zone shift.
+        $due = $dueDate ? ' Due ' . \Illuminate\Support\Carbon::parse($dueDate)->format('M j, Y g:i A') . '.' : '';
+
+        foreach ($titlesPerUserId as $userId => $titles) {
+            $titles = array_values(array_unique($titles));
+            $count = count($titles);
             static::push(
                 [$userId],
                 UserNotification::TASK_ASSIGNED,
-                $count === 1 ? 'New task assigned' : $count . ' new tasks assigned',
-                'Your faculty assigned you ' . $count . ' task(s). Check your dashboard for details.',
-                route('students.dashboard'),
+                $count === 1 ? 'New task: "' . $titles[0] . '"' : $count . ' new tasks assigned',
+                ($actor?->name ?: 'Your faculty') . ' assigned you '
+                    . collect($titles)->map(fn ($t) => '"' . $t . '"')->join(', ', ' and ') . '.' . $due
+                    . ' Open Tasks to start.',
+                route('students.dashboard', ['section' => 'tasks']),
                 $actor
             );
         }
     }
 
-    /** A student submitted a task for review. */
-    public static function taskSubmitted(?User $actor, Task $task, ?string $studentName = null): void
+    /** A student's welcome onto a team, naming the role(s) they were given. */
+    private static function teamJoined(?User $actor, string $groupName, int $facultyId, array $studentIds, string $type): void
+    {
+        $team = \App\Models\Group::label($groupName);
+        $roles = static::roleLabelsOnTeam($groupName, $facultyId, $studentIds);
+        $userIds = Student::whereIn('user_information_id', $studentIds)->pluck('user_id', 'user_information_id');
+
+        foreach ($studentIds as $studentId) {
+            $role = $roles[(int) $studentId] ?? '';
+            static::push(
+                array_filter([$userIds[$studentId] ?? null]),
+                $type,
+                'You joined ' . $team,
+                ($actor?->name ?: 'Your faculty') . ' placed you on ' . $team
+                    . ($role !== '' ? ' as ' . $role . '. ' : '. Your faculty will give you a role. ')
+                    . 'Open Team Overview to see your teammates.',
+                route('students.dashboard', ['section' => 'group']),
+                $actor
+            );
+        }
+    }
+
+    /**
+     * Faculty assigned tasks to one or more teams. Every dean hears it, one
+     * notification per team naming the tasks, the faculty and the due date.
+     *
+     * @param array<string, array<string, true>> $titlesByTeam team name => task titles (as keys)
+     */
+    public static function teamTasksAssigned(?User $actor, array $titlesByTeam, $dueDate = null): void
+    {
+        $who = $actor?->name ?? 'A faculty member';
+        $due = $dueDate ? ' Due ' . \Illuminate\Support\Carbon::parse($dueDate)->format('M d, Y g:i A') . '.' : '';
+
+        foreach ($titlesByTeam as $team => $titles) {
+            $titles = array_keys($titles);
+            static::push(
+                static::deanUserIds(),
+                UserNotification::TASK_ASSIGNED,
+                count($titles) === 1 ? 'Task assigned to ' . \App\Models\Group::label($team) : count($titles) . ' tasks assigned to ' . \App\Models\Group::label($team),
+                $who . ' assigned ' . collect($titles)->map(fn ($t) => '"' . $t . '"')->join(', ', ' and ')
+                    . ' to ' . \App\Models\Group::label($team) . '.' . $due,
+                route('dean.faculties', array_filter(['team' => $team, 'faculty' => $actor?->faculty?->user_information_id])),
+                $actor
+            );
+        }
+    }
+
+    /**
+     * A student submitted a task for review. Faculty owns the verdict; every dean
+     * hears it too, named in full (student, team, task, when) and linked to a
+     * read-only review page of their own.
+     */
+    public static function taskSubmitted(?User $actor, Task $task, ?string $studentName = null, ?string $groupName = null): void
     {
         $who = $studentName ?: ($actor?->name ?? 'A student');
 
         static::push(
             array_filter([static::facultyUserId($task->faculty_id)]),
             UserNotification::TASK_SUBMITTED,
-            'Task submitted for review',
-            $who . ' submitted "' . $task->title . '" (' . $task->role_label . ').',
-            route('faculty.tasks'),
+            \App\Models\Group::label($groupName ?: $task->group_name) . ' submitted a task for review',
+            $who . ' (' . $task->role_label . ') submitted "' . $task->title . '" on ' . static::stamp()
+                . '. Open it to approve the work or ask for changes.',
+            // Manage Teams, with this task's review open.
+            route('faculty.role', ['review' => $task->task_id]),
+            $actor
+        );
+
+        $team = $groupName ?: $task->group_name;
+
+        static::push(
+            static::deanUserIds(),
+            UserNotification::TASK_SUBMITTED,
+            ($team ? \App\Models\Group::label($team) : 'A team') . ' submitted a task for review',
+            $who . ($team ? ' of ' . \App\Models\Group::label($team) : '') . ' submitted "' . $task->title . '" ('
+                . $task->role_label . ') on ' . static::stamp() . '. '
+                . (User::whereKey(static::facultyUserId($task->faculty_id))->value('name') ?: 'Their faculty')
+                . ' will review it; you can view it read-only.',
+            route('dean.tasks.review', $task),
             $actor
         );
     }
@@ -352,13 +476,50 @@ class Notifier
         static::push(
             array_filter([$recipient]),
             UserNotification::TASK_FEEDBACK,
-            $revise ? 'Changes requested on your task' : 'Your task was approved',
+            $revise ? 'Changes requested: "' . $task->title . '"' : 'Task approved: "' . $task->title . '"',
             $revise
-                ? 'Feedback on "' . $task->title . '": ' . (string) $task->feedback
-                : '"' . $task->title . '" was approved by your faculty.',
-            route('students.dashboard'),
+                ? ($actor?->name ?: 'Your faculty') . ' asked for changes on "' . $task->title . '": '
+                    . trim((string) $task->feedback) . ' Make the changes and submit it again.'
+                : ($actor?->name ?: 'Your faculty') . ' approved "' . $task->title . '" on ' . static::stamp() . '. No action needed.',
+            route('students.dashboard', ['section' => 'tasks', 'task' => $task->task_id]),
             $actor
         );
+    }
+
+    /**
+     * Faculty confirmed who runs which Simulation desk. Each member hears their
+     * own desk, and whether the team can start now or is still waiting on
+     * approvals, so nobody has to open the dashboard to find out.
+     *
+     * @param  array<int|string, list<string>>  $seatByStudentId  student id => Simulation seat(s)
+     */
+    public static function simulationRolesConfirmed(?User $actor, array $seatByStudentId): void
+    {
+        try {
+            $userIds = Student::whereIn('user_information_id', array_keys($seatByStudentId))
+                ->pluck('user_id', 'user_information_id');
+
+            foreach ($seatByStudentId as $studentId => $seats) {
+                // A member of a team short of students can run several desks.
+                $seats = (array) $seats;
+                $label = collect($seats)
+                    ->map(fn ($seat) => HotelTemplateBuilder::seatLabel($seat, HotelTemplateBuilder::PHASE_SIMULATION))
+                    ->join(', ', ' and ');
+                $plural = count($seats) > 1;
+
+                static::push(
+                    array_filter([$userIds[$studentId] ?? null]),
+                    UserNotification::SIMULATION_ROLES,
+                    ($plural ? 'Your simulation roles: ' : 'Your simulation role: ') . $label,
+                    "Your faculty confirmed your team's simulation roles. You run the " . $label . ($plural ? ' desks. ' : ' desk. ')
+                        . 'Press Start Simulation on your Tasks page whenever you are ready.',
+                    route('students.dashboard', ['section' => 'tasks']),
+                    $actor
+                );
+            }
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     /**
@@ -382,8 +543,9 @@ class Notifier
             count($concepts) === 1
                 ? 'Hotel concept submitted for review'
                 : 'Hotel concepts submitted for review',
-            'Team ' . $membership->group_name . ' submitted ' . $titles . ' for your review.',
-            route('faculty.role', ['tab' => 'teams']),
+            ($actor?->name ? $actor->name . ' of ' : '') . \App\Models\Group::label($membership->group_name)
+                . ' submitted ' . $titles . ' on ' . static::stamp() . '. Open them to approve one or ask for changes.',
+            route('faculty.role', ['tab' => 'teams', 'team' => $membership->group_name, 'focus' => 'concept']),
             $actor
         );
     }
@@ -408,9 +570,11 @@ class Notifier
     ): void {
         $which = HotelConceptDesk::slotLabel($concept->slot) . ' "' . $concept->title . '"';
 
+        $by = $actor?->name ?: 'your faculty';
         $body = $revise
-            ? 'Feedback on ' . $which . ': ' . (string) $concept->faculty_feedback
-            : $which . ' was approved by your faculty as your official hotel concept.'
+            ? ucfirst($by) . ' asked for changes on ' . $which . ': ' . trim((string) $concept->faculty_feedback)
+                . ' Edit the concept and submit it again.'
+            : $which . ' was approved by ' . $by . ' as your official hotel concept.'
                 . ($notSelected
                     ? ' ' . HotelConceptDesk::slotLabel($notSelected->slot) . ' "' . $notSelected->title . '" was not selected.'
                     : '');
@@ -422,7 +586,7 @@ class Notifier
                 ? 'Changes requested on ' . HotelConceptDesk::slotLabel($concept->slot)
                 : HotelConceptDesk::slotLabel($concept->slot) . ' approved as your hotel concept',
             $body,
-            route('students.dashboard'),
+            route('students.dashboard', ['section' => 'group', 'focus' => 'concepts']),
             $actor
         );
     }
@@ -445,9 +609,10 @@ class Notifier
         static::push(
             array_filter([static::facultyUserId($facultyId)]),
             UserNotification::SITE_PUBLISHED,
-            'Team ' . $groupName . ' published their site',
-            $who . ' published team "' . $groupName . '" hotel website' . $where . '.',
-            route('faculty.role'),
+            \App\Models\Group::label($groupName) . ' published their site',
+            $who . ' published ' . \App\Models\Group::label($groupName) . "'s hotel website" . $where
+                . ' on ' . static::stamp() . '. Open the team to see it.',
+            route('faculty.role', ['tab' => 'teams', 'team' => $groupName]),
             $actor
         );
     }
@@ -483,6 +648,44 @@ class Notifier
      * The Front Desk seated a guest at a table. Restaurant Management is the only
      * audience — they are the ones about to take the order.
      */
+    /**
+     * A function room event has been booked. Goes to Housekeeping, who have to prepare,
+     * turn round and inspect the hall — not to Front Desk, who just took the booking.
+     */
+    public static function amenityEventBooked(?User $actor, HotelAmenityReservation $reservation): void
+    {
+        static::push(
+            static::teamRoleUserIds($reservation->group_name, (int) $reservation->faculty_id, ['housekeeping']),
+            UserNotification::AMENITY_BOOKED,
+            'Event booked · ' . $reservation->amenity_name,
+            trim(($reservation->event_type ? $reservation->event_type . ' for ' : 'An event for ')
+                . ($reservation->guest_count ? $reservation->guest_count . ' guests ' : '')
+                . 'on ' . optional($reservation->scheduled_on)->format('M j') . ', '
+                . $reservation->timeLabel() . '.'),
+            route('students.housekeeping.amenities'),
+            $actor
+        );
+    }
+
+    /**
+     * The kitchen has catering to cook for an event. Restaurant Services see the ticket on
+     * their own board either way; this is the nudge that it landed there without them
+     * taking the order themselves.
+     */
+    public static function cateringOrderReceived(?User $actor, HotelAmenityReservation $reservation): void
+    {
+        static::push(
+            static::teamRoleUserIds($reservation->group_name, (int) $reservation->faculty_id, ['restaurant_management']),
+            UserNotification::CATERING_ORDER,
+            'Catering order · ' . $reservation->amenity_name,
+            ($reservation->cateringPackage?->name ?: 'A catering package')
+                . ' for ' . ($reservation->guest_count ?: '?') . ' guests on '
+                . optional($reservation->scheduled_on)->format('M j') . '.',
+            route('students.restaurant.manage', ['nav' => 'orders']),
+            $actor
+        );
+    }
+
     public static function tableAssigned(?User $actor, HotelDineInTable $table): void
     {
         static::push(

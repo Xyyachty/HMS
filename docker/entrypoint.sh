@@ -63,6 +63,28 @@ else
     echo "[entrypoint] migrations skipped (RUN_MIGRATIONS=false)"
 fi
 
+# ---------------------------------------------------------------------------
+# Seeders
+#
+# Creates the dean account the app cannot be administered without. The seeder
+# only creates it when no dean exists, so profile edits survive every deploy.
+#
+# Non-fatal for the same reason as the migrations above: a database that is
+# briefly unreachable should leave the site up, not dead.
+#
+# Set RUN_SEEDERS=false to skip entirely.
+# ---------------------------------------------------------------------------
+if [ "${RUN_SEEDERS:-true}" = "true" ]; then
+    echo "[entrypoint] running seeders"
+    if php artisan db:seed --force --no-interaction 2>&1 | tail -20; then
+        echo "[entrypoint] seeders ok"
+    else
+        echo "[entrypoint] WARNING: seeders failed - check DB_PG_* variables"
+    fi
+else
+    echo "[entrypoint] seeders skipped (RUN_SEEDERS=false)"
+fi
+
 # Only meaningful when MEDIA_DISK=public. On Render the media disk is Supabase
 # Storage, so nothing is served from the local filesystem.
 php artisan storage:link >/dev/null 2>&1 || true
@@ -76,6 +98,15 @@ php artisan storage:link >/dev/null 2>&1 || true
 # ---------------------------------------------------------------------------
 echo "[entrypoint] apache configtest:"
 apache2ctl configtest 2>&1 | sed 's/^/[entrypoint]   /'
+
+# The two checks below each boot the whole framework, and the second renders the
+# landing page with its database queries. Apache does not accept a request until
+# they finish, so on the free plan — where the service sleeps after 15 minutes and
+# every visitor after that pays the full start-up — they were adding their cost to
+# a wait the visitor sits and watches. They answer "why is it broken", which is a
+# question worth asking on a deploy that failed and not on every wake, so they are
+# opt-in: set BOOT_DIAGNOSTICS=true to get them back.
+if [ "${BOOT_DIAGNOSTICS:-false}" = "true" ]; then
 
 echo "[entrypoint] database check:"
 php -r '
@@ -125,10 +156,8 @@ try {
     echo "  FATAL " . get_class($e) . ": " . $e->getMessage() . "\n";
 }' 2>&1 | sed 's/^/[entrypoint] /'
 
-echo "[entrypoint] handing over to: $*"
-
-# Once Apache is up, fetch the landing page from inside the container. A non-200
-# here is the app failing, not the platform, and the body carries the reason.
+# Runs in the background, so it never delays Apache, but it still costs a request
+# and a framework boot on a container that is busy serving the visitor who woke it.
 (
     sleep 8
     code=$(curl -s -o /tmp/probe.html -w '%{http_code}' "http://127.0.0.1:${PORT}/" || echo "000")
@@ -138,5 +167,9 @@ echo "[entrypoint] handing over to: $*"
         head -40 /tmp/probe.html 2>/dev/null | sed 's/^/[entrypoint]   /'
     fi
 ) &
+
+fi
+
+echo "[entrypoint] handing over to: $*"
 
 exec "$@"

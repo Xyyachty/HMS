@@ -42,6 +42,7 @@ class User extends Authenticatable
         'email_verified_at',
         'avatar',
         'last_seen_at',
+        'must_change_password',
     ];
 
     /**
@@ -56,6 +57,26 @@ class User extends Authenticatable
         }
 
         return $value;
+    }
+
+    /**
+     * Phone number as stored: the 10 digits after +63 ("9123456789"), which is what
+     * the forms show beside their +63 label. Spaces, dashes and a leading +63 / 63 / 0
+     * are dropped; empty stays "" (see cleanOptional()).
+     */
+    public static function normalizePhone(?string $value): string
+    {
+        $digits = preg_replace('/\D/', '', static::cleanOptional($value));
+
+        if (strlen($digits) === 12 && str_starts_with($digits, '63')) {
+            return substr($digits, 2);
+        }
+
+        if (strlen($digits) === 11 && str_starts_with($digits, '0')) {
+            return substr($digits, 1);
+        }
+
+        return $digits;
     }
 
     /** @deprecated Use cleanOptional() — kept so older calls still avoid NULL. */
@@ -102,10 +123,12 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'last_seen_at' => 'datetime',
+        'must_change_password' => 'boolean',
+        'tour_completed_at' => 'datetime',
     ];
 
     /**
-     * Profile image URL, or generated initials avatar when none is uploaded.
+     * Profile image URL, or the generic blank-person picture when none is uploaded.
      */
     public function getAvatarUrlAttribute(): string
     {
@@ -113,12 +136,24 @@ class User extends Authenticatable
             return \App\Support\HotelImageStore::url($this->avatar);
         }
 
-        $label = trim(implode(' ', array_filter([
-            $this->first_name,
-            $this->last_name,
-        ]))) ?: ($this->name ?? 'User');
+        return asset('images/default-avatar.svg');
+    }
 
-        return 'https://ui-avatars.com/api/?name=' . urlencode($label) . '&background=DB2777&color=fff&size=128&font-size=0.4';
+    /**
+     * Phone number in the Philippine mobile format, "+63 912 345 6789". Stored
+     * numbers come as "9123456789" (the form shows +63 beside the box), "09123456789"
+     * (spreadsheets) or "+639123456789"; anything that is not a PH mobile is shown as typed.
+     */
+    public function getPhoneDisplayAttribute(): string
+    {
+        $raw = trim((string) $this->phone_number);
+        $digits = preg_replace('/\D/', '', $raw);
+
+        if (preg_match('/^(?:63|0)?(9\d{2})(\d{3})(\d{4})$/', $digits, $m)) {
+            return "+63 {$m[1]} {$m[2]} {$m[3]}";
+        }
+
+        return $raw;
     }
 
     protected static function booted(): void
@@ -152,6 +187,51 @@ class User extends Authenticatable
     public function tasks()
     {
         return $this->hasMany(Task::class, 'assigned_to', 'user_id');
+    }
+
+    /**
+     * Which portal this account belongs to — 'dean', 'faculty', 'student' — or null
+     * for none. Read from the account itself, never the URL: EnsureRole gates every
+     * portal's routes on it, and sign-in and the guest pages use it to pick the
+     * dashboard. Older rows without a role are known by their profile row.
+     */
+    public function portal(): ?string
+    {
+        if ($this->role === 'dean') {
+            return 'dean';
+        }
+        if ($this->role === 'faculty' || $this->faculty) {
+            return 'faculty';
+        }
+        if ($this->role === 'student' || $this->student) {
+            return 'student';
+        }
+
+        return null;
+    }
+
+    /**
+     * A faculty account the dean has created but its owner has not yet signed in to.
+     * Unlike 'pending' (a student waiting for approval), it does not stop a sign-in:
+     * the first one, with the emailed temporary password, is what activates it.
+     */
+    public const PENDING_ACTIVATION = 'pending_activation';
+
+    /** First sign-in on a Pending Activation account: mark it, and its faculty row, Active. */
+    public function activate(): void
+    {
+        $this->forceFill(['status' => 'active'])->save();
+        $this->faculty?->forceFill(['status' => 'active'])->save();
+    }
+
+    /** Route name of this account's own dashboard, or null when it has no portal. */
+    public function dashboardRoute(): ?string
+    {
+        return [
+            'dean' => 'dean.dashboard',
+            'faculty' => 'faculty.dashboard',
+            'student' => 'students.dashboard',
+        ][$this->portal()] ?? null;
     }
 
 }

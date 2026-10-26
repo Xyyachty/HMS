@@ -1,22 +1,29 @@
 @extends('dean.layouts.app')
 
-@section('page_title', 'List of Teams Information')
+@section('page_title', 'Teams Overview')
+@section('page_subtitle', 'View only: the teams of every faculty and the hotel concept each team is building.')
 @section('faculties_active', 'active')
 
 @section('content')
-<div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+<div id="deanTeamsOverview" class="ink-all bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
 
     <!-- Header -->
     <div class="p-6 border-b border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-rose-50/40">
         <div>
-            <h3 class="text-lg font-bold text-slate-800">Teams</h3>
-            <p class="text-sm text-slate-500 mt-1">All groups created by faculty members.</p>
+            <h3 class="text-lg font-bold text-slate-800">Teams by Faculty</h3>
+            <p class="text-sm text-slate-500 mt-1">Each faculty is listed once, with the teams they created beneath.</p>
         </div>
     </div>
 
     @if (session('success'))
         <div class="mx-6 mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
             {{ session('success') }}
+        </div>
+    @endif
+
+    @if (session('warning'))
+        <div class="mx-6 mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+            {{ session('warning') }}
         </div>
     @endif
 
@@ -44,10 +51,10 @@
             <table id="teamsTable" class="w-full text-sm text-slate-700">
                 <thead>
                     <tr class="bg-slate-50 border-b border-slate-200">
-                        <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Faculty</th>
                         <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Team Name</th>
                         <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Hotel Concept</th>
                         <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Members</th>
+                        <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Task Completion</th>
                         <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Created</th>
                         <th class="text-left px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Action</th>
                     </tr>
@@ -72,6 +79,25 @@
                                 ? $faculty->studentGroups->groupBy('group_name')
                                 : collect();
                         @endphp
+                        {{-- One header row per faculty, so the name is not repeated on
+                             every team row beneath it. A faculty with no teams is skipped. --}}
+                        @if ($facultyGroups->isNotEmpty())
+                            <tr class="faculty-group-row">
+                                <td colspan="6" class="px-5 py-2.5">
+                                    <div class="flex items-center gap-2.5">
+                                        @include('partials.user-avatar', [
+                                            'user'         => $faculty->user,
+                                            'name'         => $displayName,
+                                            'size'         => 'w-8 h-8',
+                                            'rounded'      => 'rounded-full',
+                                            'extraClasses' => 'bg-brand text-white text-xs font-bold',
+                                        ])
+                                        <span class="font-bold text-slate-800 text-sm">{{ $displayName }}</span>
+                                        <span class="text-[0.6875rem] font-semibold text-slate-400">&middot; {{ $facultyGroups->count() }} {{ Str::plural('team', $facultyGroups->count()) }}</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endif
                         @forelse ($facultyGroups as $groupName => $groupMembers)
                             @php
                                 $createdAt = optional($groupMembers->first()->created_at)->format('M d, Y');
@@ -91,17 +117,11 @@
                                     ];
                                 })->values()->toJson();
                                 $activityLogs = $teamActivityByFacultyGroup[$faculty->user_information_id][$groupName] ?? [];
+                                $teamKey = $faculty->user_information_id . '|' . $groupName;
+                                $completion = $teamProgress[$teamKey] ?? null;
                             @endphp
-                            <tr class="hover:bg-slate-50 transition-colors">
-                                <td class="px-5 py-3.5">
-                                    <div class="flex items-center gap-2.5">
-                                        <div class="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 text-xs font-bold flex-shrink-0">
-                                            {{ strtoupper(substr($displayName, 0, 1)) }}
-                                        </div>
-                                        <span class="font-semibold text-slate-800 text-sm">{{ $displayName }}</span>
-                                    </div>
-                                </td>
-                                <td class="px-5 py-3.5">
+                            <tr data-team-key="{{ $teamKey }}" class="hover:bg-slate-50 transition-colors">
+                                <td class="px-5 py-3.5 pl-10">
                                     <span class="font-semibold text-slate-700">{{ $groupName }}</span>
                                 </td>
                                 <td class="px-5 py-3.5">
@@ -112,24 +132,28 @@
                                             <p class="font-semibold text-slate-700 text-sm">
                                                 {{ \App\Support\HotelConceptDesk::slotLabel($concept->slot) }}: {{ $concept->title }}
                                             </p>
-                                            <p class="text-[11px] text-slate-400">
+                                            <p class="text-[0.6875rem] text-slate-400">
                                                 {{ $concept->hotel_type_label }} · {{ \App\Support\HotelConceptDesk::statusLabel($concept) }}
                                             </p>
                                         </div>
                                     @empty
-                                        <span class="text-xs text-slate-400">Not proposed yet</span>
+                                        <span class="text-xs text-slate-400">Not proposed</span>
                                     @endforelse
                                 </td>
                                 <td class="px-5 py-3.5">
-                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-600 border border-blue-100 rounded-full text-xs font-bold">
+                                    <span class="inline-flex items-center gap-1 text-xs font-bold">
                                         <span class="iconify" data-icon="mdi:account-multiple-outline"></span>
                                         {{ $memberCount }} {{ Str::plural('member', $memberCount) }}
                                     </span>
                                 </td>
+                                <td class="px-5 py-3.5">
+                                    <span data-team-pill>@include('partials.team-completion', ['done' => $completion['done'] ?? 0, 'total' => $completion['total'] ?? 0])</span>
+                                </td>
                                 <td class="px-5 py-3.5 text-slate-500 text-sm">{{ $createdAt }}</td>
                                 <td class="px-5 py-3.5">
-                                    <button onclick='openTeamModal({{ json_encode($groupName) }}, {{ $membersJson }}, {{ json_encode($createdAt) }}, {{ json_encode($activityLogs) }}, {{ (int) $faculty->user_information_id }})'
-                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-600 border border-rose-200 rounded-lg text-xs font-bold hover:bg-rose-100 transition">
+                                    <button data-team-view="{{ $groupName }}" data-faculty-id="{{ (int) $faculty->user_information_id }}"
+                                        onclick='openTeamModal({{ json_encode($groupName) }}, {{ $membersJson }}, {{ json_encode($createdAt) }}, {{ json_encode($activityLogs) }}, {{ (int) $faculty->user_information_id }})'
+                                        class="view-btn inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border rounded-lg text-xs font-bold transition" style="border-color: #111;">
                                         <span class="iconify" data-icon="mdi:eye-outline"></span> View
                                     </button>
                                 </td>
@@ -157,211 +181,224 @@
         </div>
     </div>
 
-    <!-- Complied Panel -->
-    <div id="fpanel-complied" class="hidden">
-        <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="bg-slate-50/50 text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
-                        <th class="px-6 py-4">Task</th>
-                        <th class="px-6 py-4">Student Name</th>
-                        <th class="px-6 py-4">Role</th>
-                        <th class="px-6 py-4">Faculty</th>
-                        <th class="px-6 py-4">Due Date</th>
-                        <th class="px-6 py-4">Date Completed</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-50">
-                    @forelse($completedTasks as $task)
-                        @php
-                            $roleLabels = [
-                                'front_desk' => 'Front Desk',
-                                'restaurant_management' => 'Restaurant',
-                                'room_management' => 'Room',
-                                'maintenance' => 'Maintenance',
-                                'housekeeping' => 'Housekeeping',
-                            ];
-                            $facultyName = trim(implode(' ', array_filter([
-                                $task->faculty?->user?->last_name,
-                                $task->faculty?->user?->first_name,
-                            ])));
-                            $facultyName = $facultyName !== ''
-                                ? $facultyName
-                                : ($task->faculty?->user?->name ?? '—');
+    <!-- Complied Panel: handed-in work, one closed row per team so the page stays short -->
+    @php
+        $cpAll = collect($compliedGroups ?? []);
+        $cpApproved = $cpAll->sum('approved');
+        $cpWaiting = $cpAll->sum('waiting');
+    @endphp
+    <div id="fpanel-complied" class="hidden cp-wrap">
+        <div class="cp-top">
+            <p class="cp-sub">
+                Work the students handed in. <b class="is-approved">Approved</b> = faculty checked and accepted it.
+                <b class="is-waiting">Waiting</b> = handed in, not checked yet. Click a team to see its work.
+            </p>
+            <div class="cp-strip">
+                <span><b>{{ $cpApproved + $cpWaiting }}</b> handed in</span>
+                <span class="is-approved"><span class="iconify" data-icon="mdi:check-circle"></span><b>{{ $cpApproved }}</b> approved</span>
+                <span class="is-waiting"><span class="iconify" data-icon="mdi:timer-sand"></span><b>{{ $cpWaiting }}</b> waiting</span>
+            </div>
+        </div>
 
-                            $studentUser = $task->student?->user ?? $task->assignedTo;
-                            $studentName = trim(implode(' ', array_filter([
-                                $studentUser?->last_name,
-                                $studentUser?->first_name,
-                                $studentUser?->middle_name,
-                            ])));
-                            if ($studentName === '') {
-                                $studentName = $studentUser?->name ?? '—';
-                            }
-                        @endphp
-                        <tr class="hover:bg-slate-50/50 transition-colors">
-                            <td class="px-6 py-4">
-                                <p class="text-sm font-bold text-slate-700">{{ $task->title }}</p>
-                                @if($task->description)
-                                    <p class="text-xs text-slate-400 mt-0.5 line-clamp-2">{{ $task->description }}</p>
-                                @endif
-                            </td>
-                            <td class="px-6 py-4 text-sm font-semibold text-slate-700">{{ $studentName }}</td>
-                            <td class="px-6 py-4">
-                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-brand-soft text-brand border border-brand/10">
-                                    {{ $roleLabels[$task->role] ?? $task->role }}
+        @if($cpAll->isNotEmpty())
+            <div class="cp-tools">
+                <div class="cp-chips" role="group" aria-label="Show">
+                    <button type="button" class="cp-chip is-on" data-cp-filter="all">All</button>
+                    <button type="button" class="cp-chip" data-cp-filter="approved">Approved</button>
+                    <button type="button" class="cp-chip" data-cp-filter="waiting">Waiting</button>
+                </div>
+                <label class="cp-search">
+                    <span class="iconify" data-icon="mdi:magnify"></span>
+                    <input type="search" id="cpSearch" placeholder="Find a team, student or task">
+                </label>
+            </div>
+        @endif
+
+        <div class="cp-list">
+            @forelse($cpAll as $group)
+                <details class="cp-team" data-cp-team>
+                    <summary class="cp-team-head">
+                        <span class="iconify cp-caret" data-icon="mdi:chevron-right"></span>
+                        <span class="cp-team-id">
+                            <span class="cp-team-name">{{ $group['team'] }}</span>
+                            <span class="cp-team-meta">{{ collect([$group['block'], $group['faculty']])->filter()->implode(' · ') }}</span>
+                        </span>
+                        <span class="cp-team-count">
+                            <span class="is-approved">{{ $group['approved'] }} approved</span>
+                            @if($group['waiting'])
+                                <span class="is-waiting">{{ $group['waiting'] }} waiting</span>
+                            @endif
+                        </span>
+                    </summary>
+                    <ul class="cp-rows">
+                        <li class="cp-rows-head" aria-hidden="true">
+                            <span></span><span>Task</span><span>Handed in by</span><span>Handed in on</span><span>Faculty check</span>
+                        </li>
+                        @foreach($group['rows'] as $row)
+                            <li class="cp-row" data-cp-status="{{ $row['approved'] ? 'approved' : 'waiting' }}"
+                                data-cp-search="{{ mb_strtolower($group['team'] . ' ' . $row['student'] . ' ' . $row['title'] . ' ' . $row['department']) }}">
+                                <span class="cp-dot {{ $row['approved'] ? 'is-approved' : 'is-waiting' }}"
+                                      title="{{ $row['approved'] ? 'Approved' : 'Waiting for faculty' }}">
+                                    <span class="iconify" data-icon="{{ $row['approved'] ? 'mdi:check-circle' : 'mdi:timer-sand' }}"></span>
                                 </span>
-                            </td>
-                            <td class="px-6 py-4 text-sm text-slate-600 font-medium">{{ $facultyName }}</td>
-                            <td class="px-6 py-4 text-xs text-slate-500">
-                                @if($task->due_date)
-                                    <span class="flex items-center gap-1">
-                                        <span class="iconify" data-icon="mdi:calendar-outline"></span>
-                                        {{ $task->due_date->format('M d, Y g:i A') }}
-                                    </span>
-                                @else
-                                    <span class="text-slate-300">—</span>
-                                @endif
-                            </td>
-                            <td class="px-6 py-4 text-xs text-slate-500">
-                                <span class="flex items-center gap-1">
-                                    <span class="iconify text-green-500" data-icon="mdi:check-circle-outline"></span>
-                                    {{ optional($task->updated_at)->format('M d, Y') ?? '—' }}
+                                <span class="cp-task">
+                                    {{ $row['title'] }}
+                                    <span class="cp-dept">{{ $row['department'] }}</span>
                                 </span>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="6" class="px-6 py-12 text-center">
-                                <div class="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                                    <span class="iconify text-slate-300 text-2xl" data-icon="mdi:clipboard-check-outline"></span>
-                                </div>
-                                <p class="text-sm font-semibold text-slate-400">No complied tasks yet.</p>
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                                <span class="cp-who">{{ $row['student'] }}</span>
+                                <span class="cp-when">
+                                    {{ $row['handed_in'] ?? '—' }}
+                                    @if($row['timing'] === 'late')<span class="cp-late">late</span>@endif
+                                </span>
+                                <span class="cp-verdict {{ $row['approved'] ? 'is-approved' : 'is-waiting' }}">
+                                    @if($row['approved'])
+                                        Approved{{ $row['approved_by'] ? ' by ' . $row['approved_by'] : '' }}
+                                        @if($row['approved_at'])<span class="cp-verdict-at">{{ $row['approved_at'] }}</span>@endif
+                                    @else
+                                        Waiting for faculty
+                                    @endif
+                                </span>
+                            </li>
+                        @endforeach
+                    </ul>
+                </details>
+            @empty
+                <div class="cp-empty">
+                    <span class="iconify" data-icon="mdi:tray-arrow-up"></span>
+                    <p class="cp-empty-title">Nothing handed in</p>
+                    <p class="cp-empty-sub">When a student hands in a task, it shows up here under their team.</p>
+                </div>
+            @endforelse
+            <div id="cpNoMatch" class="cp-empty hidden">
+                <span class="iconify" data-icon="mdi:magnify-remove-outline"></span>
+                <p class="cp-empty-title">No work matches</p>
+                <p class="cp-empty-sub">Try another name, or show All.</p>
+            </div>
         </div>
     </div>
 
 </div>
 
 <!-- Team Info Modal -->
-<div id="teamInfoModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+{{-- Same layout as the faculty Team Details dialog, read-only: the dean
+     oversees the work, the team's own faculty gives the verdict. --}}
+<div id="teamInfoModal" class="ink-all fixed inset-0 z-50 hidden flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeTeamModal()"></div>
-    <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-h-[90vh] flex flex-col" style="max-width: 52rem;">
-        <!-- Modal Header -->
-        <div class="bg-rose-50 px-4 py-3 border-b border-rose-100 flex justify-between items-center rounded-t-2xl flex-shrink-0">
-            <h4 class="font-bold text-rose-700 text-sm flex items-center gap-1.5 min-w-0">
-                <span class="iconify text-base shrink-0" data-icon="mdi:account-group-outline"></span>
-                <span class="truncate">Team Details<span id="modalTeamNameSuffix" class="font-semibold text-rose-500/80"></span></span>
-            </h4>
-            <button onclick="closeTeamModal()" class="text-slate-400 hover:text-rose-500 hover:bg-white w-7 h-7 rounded-full transition flex items-center justify-center shrink-0">
-                <span class="iconify text-lg" data-icon="mdi:close"></span>
+    <div class="tm-box relative bg-white shadow-2xl flex flex-col overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="modalTeamName">
+        <div class="tm-head">
+            <span class="tm-head-icon"><span class="iconify" data-icon="mdi:account-group-outline"></span></span>
+            <div class="min-w-0">
+                <p class="tm-kicker">Team details</p>
+                <h3 id="modalTeamName" class="tm-title">Team</h3>
+                <p id="modalTeamSummary" class="tm-sub"></p>
+            </div>
+            <button type="button" onclick="closeTeamModal()" class="tm-close">
+                <span class="iconify" data-icon="mdi:close"></span> Close
             </button>
         </div>
 
-        <!-- Modal Body -->
-        <div class="overflow-y-auto flex-1 p-4 space-y-4">
-            <!-- Front Desk's hotel concept + its edit history (loaded when the modal opens) -->
-            <div>
-                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Hotel Concept</p>
-                <div id="teamModalConceptBody" class="space-y-3">
-                    <div class="px-3 py-6 text-center text-xs text-slate-400">Loading hotel concept…</div>
-                </div>
-            </div>
+        <div class="tm-body">
+            <nav class="tm-nav" aria-label="Team details sections">
+                <button type="button" onclick="switchTeamModalTab('members')" id="team-tab-members" class="tm-tab">
+                    <span class="tm-tab-icon"><span class="iconify" data-icon="mdi:account-group-outline"></span></span>
+                    <span class="tm-tab-copy">
+                        <span class="tm-tab-title">Team Members &amp; Roles</span>
+                        <span class="tm-tab-desc">Who is in the team and what each one does</span>
+                        <span id="teamTabCountMembers" class="tm-tab-count"></span>
+                    </span>
+                </button>
+                <button type="button" onclick="switchTeamModalTab('concept')" id="team-tab-concept" class="tm-tab">
+                    <span class="tm-tab-icon"><span class="iconify" data-icon="mdi:lightbulb-outline"></span></span>
+                    <span class="tm-tab-copy">
+                        <span class="tm-tab-title">Hotel Concept</span>
+                        <span class="tm-tab-desc">The hotel ideas the team proposed</span>
+                    </span>
+                </button>
+                <button type="button" onclick="switchTeamModalTab('tasks')" id="team-tab-tasks" class="tm-tab">
+                    <span class="tm-tab-icon"><span class="iconify" data-icon="mdi:clipboard-text-clock-outline"></span></span>
+                    <span class="tm-tab-copy">
+                        <span class="tm-tab-title">Team Task Activity</span>
+                        <span class="tm-tab-desc">Every task given to the team and how far it is</span>
+                        <span id="teamTabCountTasks" class="tm-tab-count"></span>
+                    </span>
+                </button>
+            </nav>
 
-            <!-- Members Table -->
-            <div>
-                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Team Members & Roles</p>
-                <div class="border border-slate-200 rounded-lg overflow-hidden">
-                    <table class="w-full text-sm" style="table-layout: fixed;">
-                        <colgroup>
-                            <col style="width: 2.5rem;">
-                            <col>
-                            <col style="width: 10rem;">
-                            <col style="width: 6.5rem;">
-                        </colgroup>
-                        <thead>
-                            <tr class="bg-slate-50 border-b border-slate-200">
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">#</th>
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Member</th>
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Role</th>
-                                <th class="text-center px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Activity</th>
-                            </tr>
-                        </thead>
-                        <tbody id="teamModalMembersBody" class="divide-y divide-slate-100">
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            <div class="tm-content">
+                <!-- Members -->
+                <div id="team-panel-members">
+                    <div class="tm-panel-head">
+                        <h4 class="tm-panel-title">Team Members &amp; Roles</h4>
+                        <p class="tm-panel-note">Each card shows a student and the part of the hotel they handle. Choose See activity to read everything that student has done.</p>
+                    </div>
+                    <div id="teamModalMembersBody" class="tm-member-grid"></div>
 
-            <!-- Selected member's centralized activity log (expandable section) -->
-            <div id="memberActivityPanel" class="hidden">
-                <div class="flex items-center justify-between gap-2 mb-1.5">
-                    <p class="text-[10px] font-bold uppercase tracking-wider text-rose-600" id="memberActivityPanelTitle">Member Activity</p>
-                    <button type="button" onclick="closeMemberActivityPanel()"
-                        class="text-[10px] font-bold text-slate-400 hover:text-slate-600 transition">Hide</button>
+                    <!-- Selected member's centralized activity log -->
+                    <div id="memberActivityPanel" class="hidden">
+                        <div class="tm-card mt-5">
+                            <div class="tm-card-head">
+                                <p class="tm-card-title" id="memberActivityPanelTitle">Member Activity</p>
+                                <button type="button" onclick="closeMemberActivityPanel()" class="tm-btn tm-btn-sm">
+                                    <span class="iconify" data-icon="mdi:chevron-up"></span> Hide
+                                </button>
+                            </div>
+                            <div id="memberActivityPanelBody" class="tm-activity-list"></div>
+                        </div>
+                    </div>
                 </div>
-                <div class="border border-rose-200 rounded-lg overflow-hidden">
-                    <div id="memberActivityPanelBody" class="max-h-72 overflow-y-auto divide-y divide-slate-100 bg-white"></div>
-                </div>
-            </div>
 
-            <!-- Team task activity (assignment history) -->
-            <div>
-                <div class="flex items-center justify-between gap-2 mb-1.5">
-                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Team Task Activity</p>
-                    <span id="teamModalActivityMeta" class="text-[10px] font-semibold text-slate-400"></span>
+                <!-- Front Desk's hotel concepts and their edit history (loaded when the modal opens) -->
+                <div id="team-panel-concept" class="hidden">
+                    <div class="tm-panel-head">
+                        <h4 class="tm-panel-title">Hotel Concept</h4>
+                        <p class="tm-panel-note">The team proposes two hotel ideas and their faculty approves one. You can read both here, with every change the team made.</p>
+                    </div>
+                    <div id="teamModalConceptBody" class="tm-concept-grid">
+                        <div class="tm-empty tm-span-all">Loading hotel concept…</div>
+                    </div>
                 </div>
-                <div class="border border-slate-200 rounded-lg overflow-hidden">
-                    <table class="w-full text-sm" style="table-layout: fixed;">
-                        <colgroup>
-                            <col>
-                            <col style="width: 7rem;">
-                            <col style="width: 6.5rem;">
-                            <col style="width: 6rem;">
-                        </colgroup>
-                        <thead>
-                            <tr class="bg-slate-50 border-b border-slate-200">
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Task</th>
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Role</th>
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                                <th class="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Updated</th>
-                            </tr>
-                        </thead>
-                        <tbody id="teamModalActivityBody" class="divide-y divide-slate-100">
-                        </tbody>
-                    </table>
-                    <div id="teamModalActivityPager" class="hidden px-3 py-2 border-t border-slate-100 bg-slate-50/60 flex items-center justify-between gap-2">
-                        <button type="button" id="teamModalActivityPrev"
-                            class="px-3 py-1 rounded-lg text-xs font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition">
-                            Previous
-                        </button>
-                        <span id="teamModalActivityPageLabel" class="text-[11px] font-semibold text-slate-500"></span>
-                        <button type="button" id="teamModalActivityNext"
-                            class="px-3 py-1 rounded-lg text-xs font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition">
-                            Next
-                        </button>
+
+                <!-- Every task the team has been given, at any stage. View only. -->
+                <div id="team-panel-tasks" class="hidden">
+                    <div class="tm-panel-head">
+                        <h4 class="tm-panel-title">Team Task Activity</h4>
+                        <p class="tm-panel-note">Every task this team has been given, who has it, when it is due and how far it is.</p>
+                    </div>
+                    <div id="teamModalActivityStats" class="tm-stats"></div>
+                    <div class="tm-card">
+                        {{-- Same layout as the faculty table: one tab per department and
+                             student, filled by renderTeamModalActivityPage(). --}}
+                        <div id="teamModalActivityTabs" class="tm-role-tabs"></div>
+                        <table class="tm-table">
+                            <colgroup>
+                                <col>
+                                <col style="width: 10.5rem;">
+                                <col style="width: 8.5rem;">
+                                <col style="width: 7.5rem;">
+                                <col style="width: 9rem;">
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th>Task</th>
+                                    <th>Due Date</th>
+                                    <th>Status</th>
+                                    <th>Handed in</th>
+                                    <th class="text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="teamModalActivityBody"></tbody>
+                        </table>
                     </div>
                 </div>
             </div>
-        </div>
-
-        <!-- Modal Footer -->
-        <div class="px-4 py-2.5 border-t border-slate-100 flex justify-end rounded-b-2xl flex-shrink-0 bg-slate-50/50">
-            <button onclick="closeTeamModal()" class="px-3.5 py-1.5 rounded-lg bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition font-semibold text-xs">
-                Close
-            </button>
         </div>
     </div>
 </div>
 
 <!-- Create Faculty Modal -->
-<div id="createFacultyModal" class="fixed inset-0 z-50 hidden">
+<div id="createFacultyModal" class="ink-all fixed inset-0 z-50 hidden">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeModal('createFacultyModal')"></div>
-    <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100" style="width: 760px; max-width: 92vw; max-height: 90vh; overflow-y: auto;">
+    <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100" style="width: 47.5rem; max-width: 92vw; max-height: 90vh; overflow-y: auto;">
         <div class="bg-rose-50 px-6 py-4 border-b border-rose-100 flex justify-between items-center sticky top-0 z-10">
             <h4 class="font-bold text-rose-600 text-lg">Add Faculty Account</h4>
             <button onclick="closeModal('createFacultyModal')" class="text-slate-400 hover:text-rose-500 hover:bg-white w-8 h-8 rounded-full transition flex items-center justify-center">
@@ -377,7 +414,7 @@
                 </div>
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Middle Name</label>
-                    <input name="middle_name" type="text" value="{{ old('middle_name') }}" class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition">
+                    <input name="middle_name" type="text" value="{{ old('middle_name') }}" pattern="\p{L}[\p{L}\s'\-]*\p{L}" title="Enter the complete middle name, not an initial." class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition">
                 </div>
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Last Name</label>
@@ -385,46 +422,34 @@
                 </div>
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Email</label>
-                    <input name="email" type="email" value="{{ old('email') }}" required class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition">
+                    <input name="email" type="email" value="{{ old('email') }}" placeholder="name@gmail.com" required class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition">
                 </div>
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Phone Number</label>
-                    <input name="phone_number" type="text" value="{{ old('phone_number') }}" class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition">
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 text-xs font-medium">+63</span>
+                        <input name="phone_number" type="text" inputmode="numeric" autocomplete="tel-national" pattern="9[0-9]{9}" title="10 digits after +63, starting with 9 (e.g. 9123456789)" data-ph-phone placeholder="912 345 6789" value="{{ old('phone_number') }}" class="w-full h-10 pl-12 pr-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition">
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Block</label>
-                    <select name="block" required class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition appearance-none">
-                        <option value="">Select block</option>
-                        @forelse (($availableBlocks ?? []) as $letter)
-                            <option value="{{ $letter }}" {{ old('block') === $letter ? 'selected' : '' }}>Block {{ $letter }}</option>
-                        @empty
-                            <option value="" disabled>No blocks available</option>
-                        @endforelse
-                    </select>
-                </div>
+                {{-- No block to choose. It is always the next free class letter, so
+                     there was nothing to decide here and picking one already taken
+                     stopped the account being created. It is assigned on save and
+                     can be changed from User Management afterwards. --}}
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Status</label>
-                    <select name="status" class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition appearance-none">
-                        <option value="active" {{ old('status', 'active') === 'active' ? 'selected' : '' }}>Active</option>
-                        <option value="inactive" {{ old('status') === 'inactive' ? 'selected' : '' }}>Inactive</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Password</label>
-                    <div class="relative">
-                        <input name="password" type="password" required class="w-full h-10 px-3 pr-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition">
-                        <button type="button" onclick="togglePassword(this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                            <span class="iconify text-lg" data-icon="mdi:eye-off-outline"></span>
-                        </button>
+                    {{-- Not a choice: Pending Activation until the faculty member first
+                         signs in with the emailed password, which makes it Active. That
+                         sign-in is not blocked. Deactivating is on the update form. --}}
+                    <div class="w-full h-10 px-3 bg-slate-100 border border-slate-200 rounded-xl text-sm flex items-center gap-2 text-slate-500 font-semibold">
+                        <span class="w-1.5 h-1.5 rounded-full" style="background:#C9A45C"></span> Pending Activation
                     </div>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Confirm Password</label>
-                    <div class="relative">
-                        <input name="password_confirmation" type="password" required class="w-full h-10 px-3 pr-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition">
-                        <button type="button" onclick="togglePassword(this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                            <span class="iconify text-lg" data-icon="mdi:eye-off-outline"></span>
-                        </button>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Password</label>
+                    {{-- Not typed by the dean: generated on save and sent to the faculty
+                         member's Gmail with the welcome email. --}}
+                    <div class="w-full h-10 px-3 bg-slate-100 border border-slate-200 rounded-xl text-sm flex items-center gap-2 text-slate-500 font-semibold">
+                        <span class="iconify" data-icon="mdi:email-lock-outline"></span> Sent to their Gmail
                     </div>
                 </div>
             </div>
@@ -437,32 +462,141 @@
 </div>
 
 @push('styles')
+@include('partials.team-dialog-styles')
 <style>
+    /* Black text across Teams Overview and its popups. Beats every text-* colour
+       utility, hover ones included; white text on filled buttons and avatars and
+       icon colours are left alone. */
+    .ink-all [class*="text-"]:not(.text-white):not(.iconify),
+    .ink-all [class*="text-"]:not(.text-white):not(.iconify):hover,
+    .glass-header h2,
+    .glass-header h2 + p { color: #111; }
+
+    /* Teams Overview is white throughout, like faculty Team Setup & Members:
+       the header, notices, the active tab, table heads and tiles drop their
+       soft fill and keep only their border. An id outranks the .gray-accents
+       fills. Hover rows stay light gray. */
+    #deanTeamsOverview :is(.bg-rose-50\/40, .bg-slate-50, .bg-slate-50\/50, .bg-slate-100, .bg-amber-50, .bg-emerald-50, .bg-brand-soft) { background-color: #fff; }
+    #deanTeamsOverview :is(.hover\:bg-slate-50, .hover\:bg-slate-50\/50):hover { background-color: #F3F2F1; }
+
     #teamsTable {
         border-collapse: collapse;
         width: 100%;
     }
     #teamsTable thead tr {
-        background: #F8FAFC;
+        background: #fff;
     }
     #teamsTable tbody tr {
-        border-bottom: 1px solid #F1F5F9;
+        border-bottom: 1px solid #E4E2E0;
         transition: background 0.15s;
     }
     #teamsTable tbody tr:last-child {
         border-bottom: none;
     }
     #teamsTable tbody tr:hover {
-        background: #F8FAFC;
+        background: #F3F2F1;
+    }
+    /* A hovered View button turns light gray, like Update on Manage User. */
+    #teamsTable .view-btn:hover { background: #dadada; }
+    /* The faculty header above each set of teams. */
+    #teamsTable tbody tr.faculty-group-row,
+    #teamsTable tbody tr.faculty-group-row:hover {
+        background: #fff;
+        border-top: 1px solid #E4E2E0;
+    }
+
+    /* ── Complied tab ──
+       Written out rather than with utilities: the frozen app.css lacks most of
+       them, and the gray scheme repaints any brand colour. One closed row per
+       team keeps the page short; a team opens to one line per task. */
+    .cp-wrap { padding: 1rem 1.5rem 1.5rem; }
+    .cp-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; }
+    .cp-sub { font-size: 0.7812rem; color: #4A4643; line-height: 1.5; max-width: 72ch; }
+    .cp-sub b { font-weight: 800; }
+    .cp-sub .is-approved, .cp-strip .is-approved { color: #15803D; }
+    .cp-sub .is-waiting, .cp-strip .is-waiting { color: #B45309; }
+    .cp-strip { display: flex; gap: 1rem; font-size: 0.7812rem; color: #4A4643; white-space: nowrap; }
+    .cp-strip > span { display: inline-flex; align-items: center; gap: .25rem; }
+    .cp-strip b { font-size: 0.9375rem; font-weight: 800; color: inherit; }
+    .cp-strip > span:first-child b { color: #181818; }
+    .cp-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; margin-top: .75rem; }
+    .cp-chips { display: flex; flex-wrap: wrap; gap: .375rem; }
+    .cp-chip { padding: .3rem .8rem; border-radius: 999px; border: 1px solid #E4E2E0; background: #fff; font-size: 0.75rem; font-weight: 700; color: #4A4643; transition: background .2s, color .2s; }
+    .cp-chip:hover { background: #F3F2F1; }
+    .cp-chip.is-on { background: #4A4643; border-color: #4A4643; color: #fff; }
+    .cp-search { display: flex; align-items: center; gap: .5rem; height: 2.25rem; padding: 0 .75rem; border: 1px solid #E4E2E0; border-radius: .75rem; background: #fff; min-width: 15rem; color: #8A817A; }
+    .cp-search input { border: 0; outline: 0; background: transparent; font-size: 0.8125rem; color: #181818; width: 100%; }
+    .cp-list { margin-top: .75rem; border: 1px solid #E4E2E0; border-radius: .875rem; overflow: hidden; background: #fff; }
+    .cp-team + .cp-team { border-top: 1px solid #E4E2E0; }
+    .cp-team.hidden { display: none; }
+    .cp-team-head { display: grid; grid-template-columns: 1rem minmax(0, 1fr) auto; align-items: center; gap: .75rem; padding: .625rem 1rem; cursor: pointer; list-style: none; transition: background .15s; }
+    .cp-team-head::-webkit-details-marker { display: none; }
+    .cp-team-head:hover { background: #F9F8F7; }
+    .cp-team[open] > .cp-team-head { background: #F9F8F7; border-bottom: 1px solid #F3F2F1; }
+    .cp-caret { color: #8A817A; transition: transform .2s; }
+    .cp-team[open] .cp-caret { transform: rotate(90deg); }
+    .cp-team-id { min-width: 0; display: flex; align-items: baseline; gap: .5rem; }
+    .cp-team-name { font-size: 0.8438rem; font-weight: 800; color: #181818; white-space: nowrap; }
+    .cp-team-meta { font-size: 0.75rem; color: #8A817A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cp-team-count { display: flex; gap: .375rem; justify-content: flex-end; font-size: 0.6875rem; font-weight: 800; white-space: nowrap; }
+    .cp-team-count span { padding: 1px 0.5rem; border-radius: 999px; }
+    .cp-team-count .is-approved { background: #F0FDF4; color: #15803D; }
+    .cp-team-count .is-waiting { background: #FFFBEB; color: #B45309; }
+    .cp-rows { list-style: none; margin: 0; padding: 0 0 .25rem; max-height: 22rem; overflow-y: auto; }
+    .cp-row, .cp-rows-head { display: grid; grid-template-columns: 1.25rem minmax(0, 1.6fr) minmax(0, 1fr) 11.5rem minmax(0, 1.3fr); gap: .75rem; align-items: center; padding: .45rem 1rem .45rem 2.75rem; font-size: 0.7812rem; color: #4A4643; }
+    .cp-rows-head { padding-top: .5rem; padding-bottom: .25rem; font-size: 0.6562rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #8A817A; }
+    .cp-row:hover { background: #FAFAF9; }
+    .cp-row.hidden { display: none; } /* .cp-row's grid would otherwise outrank .hidden */
+    .cp-dot { display: flex; font-size: 1rem; }
+    .cp-dot.is-approved { color: #15803D; }
+    .cp-dot.is-waiting { color: #B45309; }
+    .cp-task { font-weight: 700; color: #181818; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cp-dept { margin-left: .25rem; padding: 0 0.375rem; border-radius: 999px; background: #F3F2F1; color: #4A4643; font-size: 0.6562rem; font-weight: 700; }
+    .cp-who { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cp-when { white-space: nowrap; font-size: 0.75rem; }
+    .cp-late { margin-left: .25rem; padding: 0 0.375rem; border-radius: 0.375rem; background: #FFFBEB; color: #B45309; font-size: 0.6562rem; font-weight: 800; }
+    .cp-verdict { font-size: 0.75rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cp-verdict.is-approved { color: #15803D; }
+    .cp-verdict.is-waiting { color: #B45309; }
+    .cp-verdict-at { display: block; font-weight: 500; color: #8A817A; font-size: 0.6875rem; }
+    .cp-empty { text-align: center; padding: 2rem 1rem; color: #8A817A; }
+    .cp-empty > .iconify { font-size: 1.75rem; }
+    .cp-empty-title { font-size: 0.875rem; font-weight: 700; color: #4A4643; margin-top: .25rem; }
+    .cp-empty-sub { font-size: 0.7812rem; margin-top: .125rem; }
+    @media (max-width: 1023px) {
+        /* One task per small block: name, then who, when and the check under it. */
+        .cp-row { grid-template-columns: 1.25rem minmax(0, 1fr); gap: .125rem .625rem; align-items: start; padding: .625rem 1rem; }
+        .cp-rows-head { display: none; }
+        .cp-task, .cp-who, .cp-when, .cp-verdict { grid-column: 2; white-space: normal; }
+        .cp-who, .cp-when { font-size: 0.75rem; }
+        .cp-who::before { content: 'By '; color: #8A817A; }
+        .cp-when::before { content: 'On '; color: #8A817A; }
+        .cp-verdict-at { display: inline; margin-left: .25rem; }
+    }
+    @media (max-width: 767px) {
+        .cp-wrap { padding: 1rem; }
+        .cp-search { min-width: 0; width: 100%; }
+        .cp-team-id { flex-direction: column; gap: 0; }
+        .cp-team-count { grid-column: 2; justify-content: flex-start; }
     }
 </style>
 @endpush
 
 @push('scripts')
+@include('partials.team-completion-live')
 <script>
     let teamModalActivityLogs = [];
-    let teamModalActivityPage = 1;
-    const TEAM_MODAL_ACTIVITY_PER_PAGE = 5;
+    // The department tab open in Team Task Activity ("role|student"); null picks one.
+    let teamModalActivityTab = null;
+    // Status colour per DeanController::teamTaskRow() status, from the shared
+    // status-badge-* / status-fill-* classes. Submitted is the students' Pending.
+    const TASK_STATUS_KEYS = {
+        not_started: 'not_started',
+        in_progress: 'in_progress',
+        needs_revision: 'revision',
+        submitted: 'pending',
+        completed: 'completed',
+    };
 
     function escHtml(s) {
         return String(s == null ? '' : s)
@@ -472,108 +606,197 @@
             .replace(/"/g, '&quot;');
     }
 
+    const STAT_COLOURS = { pending: '#D97706', completed: '#16A34A', in_progress: '#2563EB' };
+
+    /* Three counts over the team's tasks, so the dean sees at a glance how the
+       team is doing. */
+    function renderTeamModalActivityStats(logs) {
+        const box = document.getElementById('teamModalActivityStats');
+        const keyOf = (l) => TASK_STATUS_KEYS[l.status] || 'not_started';
+        const waiting = logs.filter((l) => keyOf(l) === 'pending').length;
+        const done = logs.filter((l) => keyOf(l) === 'completed').length;
+        const working = logs.length - waiting - done;
+
+        const tabCount = document.getElementById('teamTabCountTasks');
+        if (tabCount) tabCount.textContent = logs.length ? logs.length + (logs.length === 1 ? ' task' : ' tasks') : '';
+        if (!box) return;
+
+        const stat = (key, icon, num, label) =>
+            '<div class="tm-stat">'
+                + '<span class="tm-stat-icon status-badge-' + key + '"><span class="iconify" data-icon="' + icon + '"></span></span>'
+                // Inline colour: this page's own black-text rule outranks status-text-*.
+                + '<div><p class="tm-stat-num" style="color:' + STAT_COLOURS[key] + '">' + num + '</p><p class="tm-stat-label">' + label + '</p></div>'
+            + '</div>';
+
+        box.innerHTML = logs.length
+            ? stat('pending', 'mdi:clock-alert-outline', waiting, 'Waiting for faculty review')
+                + stat('completed', 'mdi:check-circle-outline', done, 'Completed')
+                + stat('in_progress', 'mdi:progress-pencil', working, 'Still being worked on')
+            : '';
+    }
+
     function renderTeamModalActivityPage() {
         const activityBody = document.getElementById('teamModalActivityBody');
-        const pager = document.getElementById('teamModalActivityPager');
-        const meta = document.getElementById('teamModalActivityMeta');
-        const pageLabel = document.getElementById('teamModalActivityPageLabel');
-        const prevBtn = document.getElementById('teamModalActivityPrev');
-        const nextBtn = document.getElementById('teamModalActivityNext');
+        const tabs = document.getElementById('teamModalActivityTabs');
         const logs = teamModalActivityLogs;
-        const total = logs.length;
-        const totalPages = Math.max(1, Math.ceil(total / TEAM_MODAL_ACTIVITY_PER_PAGE));
+        const keyOf = (l) => TASK_STATUS_KEYS[l.status] || 'not_started';
 
-        if (teamModalActivityPage > totalPages) teamModalActivityPage = totalPages;
-        if (teamModalActivityPage < 1) teamModalActivityPage = 1;
+        renderTeamModalActivityStats(logs);
 
-        if (total === 0) {
-            activityBody.innerHTML = '<tr><td colspan="4" class="px-3 py-6 text-center text-xs text-slate-400">No activity logs for this team yet.</td></tr>';
-            if (pager) pager.classList.add('hidden');
-            if (meta) meta.textContent = '';
+        if (logs.length === 0) {
+            tabs.innerHTML = '';
+            activityBody.innerHTML = '<tr><td colspan="5"><div class="tm-empty">'
+                + '<span class="iconify" data-icon="mdi:clipboard-outline"></span>'
+                + 'No tasks have been given to this team.</div></td></tr>';
             return;
         }
 
-        const start = (teamModalActivityPage - 1) * TEAM_MODAL_ACTIVITY_PER_PAGE;
-        const pageLogs = logs.slice(start, start + TEAM_MODAL_ACTIVITY_PER_PAGE);
-        const end = start + pageLogs.length;
+        // One group per department and student, in desk order, as on the
+        // faculty page: the student is named once in the group's header.
+        const ROLE_ORDER = ['front_desk', 'room_management', 'restaurant_management', 'housekeeping', 'maintenance'];
+        const groups = new Map();
+        logs.forEach((log) => {
+            const key = (log.role || '') + '|' + (log.student || '');
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push(log);
+        });
+        const rank = (key) => { const i = ROLE_ORDER.indexOf(key.split('|')[0]); return i === -1 ? ROLE_ORDER.length : i; };
+        const ordered = [...groups.entries()].sort((a, b) => rank(a[0]) - rank(b[0]));
 
-        activityBody.innerHTML = pageLogs.map(function (log) {
-            const isDone = log.status === 'archived';
-            const statusBadge = isDone
-                ? '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Completed</span>'
-                : '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100 text-[10px] font-bold"><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>Assigned</span>';
+        const taskRow = function (log, index) {
+            const key = keyOf(log);
+            const isDone = key === 'pending' || key === 'completed';
+            const statusBadge = '<span class="tm-badge status-badge-' + key + '">'
+                + '<span class="tm-dot status-fill-' + key + '"></span>' + escHtml(log.status_label) + '</span>';
+            // View only: the team's live site as last saved, in a new tab.
+            const action = log.preview_url
+                ? '<a href="' + escHtml(log.preview_url) + '" target="_blank" rel="noopener" class="tm-btn tm-btn-sm"'
+                    + ' title="See the team site as its students last saved it">'
+                    + '<span class="iconify" data-icon="mdi:eye-outline"></span>' + (isDone ? 'View work' : 'View progress') + '</a>'
+                : '<span class="tm-muted">No site change</span>';
 
-            return '<tr class="hover:bg-slate-50 transition-colors">' +
-                '<td class="px-3 py-2">' +
-                    '<p class="text-xs font-semibold text-slate-800 truncate" title="' + escHtml(log.title) + '">' + escHtml(log.title) + '</p>' +
-                    (log.description
-                        ? '<p class="text-[10px] text-slate-400 truncate" title="' + escHtml(log.description) + '">' + escHtml(log.description) + '</p>'
-                        : '') +
+            return '<tr>' +
+                '<td>' +
+                    '<p class="tm-task-name"><span class="tm-task-no">Task ' + String(index + 1).padStart(2, '0') + '</span>' + escHtml(log.title || 'Untitled task') + '</p>' +
+                    (log.description ? '<p class="tm-muted tm-ellipsis">' + escHtml(log.description) + '</p>' : '') +
                 '</td>' +
-                '<td class="px-3 py-2 text-[11px] font-semibold text-slate-600 whitespace-nowrap">' + escHtml(log.role_label || log.role || '—') + '</td>' +
-                '<td class="px-3 py-2">' + statusBadge + '</td>' +
-                '<td class="px-3 py-2 text-[11px] text-slate-500 whitespace-nowrap">' + escHtml(log.updated_at || '—') + '</td>' +
+                '<td' + (log.due_date ? '' : ' class="tm-muted"') + '>' + escHtml(log.due_date || 'No due date') + '</td>' +
+                '<td>' + statusBadge + '</td>' +
+                '<td' + (log.submitted_at ? '' : ' class="tm-muted"') + '>' + escHtml(log.submitted_at || 'Not submitted') + '</td>' +
+                '<td class="text-center">' + action + '</td>' +
             '</tr>';
-        }).join('');
+        };
 
-        if (meta) meta.textContent = 'Showing ' + (start + 1) + '-' + end + ' of ' + total;
-        if (pageLabel) pageLabel.textContent = 'Page ' + teamModalActivityPage + ' of ' + totalPages;
-        if (pager) pager.classList.toggle('hidden', total <= TEAM_MODAL_ACTIVITY_PER_PAGE);
-        if (prevBtn) prevBtn.disabled = teamModalActivityPage <= 1;
-        if (nextBtn) nextBtn.disabled = teamModalActivityPage >= totalPages;
+        // Opens on the first department with work waiting for faculty, else the first one.
+        if (!groups.has(teamModalActivityTab)) {
+            const waitingGroup = ordered.find(([, items]) => items.some((l) => keyOf(l) === 'pending'));
+            teamModalActivityTab = (waitingGroup || ordered[0])[0];
+        }
+        tabs.innerHTML = ordered.map(function ([key, items]) {
+            const waiting = items.filter((l) => keyOf(l) === 'pending').length;
+            return '<button type="button" data-activity-tab="' + escHtml(key) + '"'
+                    + ' class="tm-role-tab' + (key === teamModalActivityTab ? ' is-active' : '') + '"'
+                    + ' title="' + escHtml(items[0].student || 'Not assigned') + '">'
+                + escHtml(items[0].role_label || items[0].role || 'Other')
+                + '<span class="tm-role-tab-count">' + items.length + '</span>'
+                + (waiting ? '<span class="tm-role-tab-alert" title="' + waiting + ' waiting for faculty"></span>' : '')
+            + '</button>';
+        }).join('');
+        tabs.onclick = function (e) {
+            const btn = e.target.closest('[data-activity-tab]');
+            if (!btn) return;
+            teamModalActivityTab = btn.getAttribute('data-activity-tab');
+            renderTeamModalActivityPage();
+        };
+
+        activityBody.innerHTML = ordered.filter(([key]) => key === teamModalActivityTab).map(function ([, items]) {
+            const waiting = items.filter((l) => keyOf(l) === 'pending').length;
+            return '<tr class="tm-group-row"><td colspan="5">'
+                    + '<div class="tm-group-head">'
+                        + '<div class="min-w-0">'
+                            + '<p class="tm-group-title">' + escHtml(items[0].role_label || items[0].role || 'Other') + '</p>'
+                            + '<p class="tm-group-student">'
+                                + '<img src="{{ asset('images/default-avatar.svg') }}" alt="" class="tm-avatar tm-avatar-sm">'
+                                + '<span class="tm-ellipsis">' + escHtml(items[0].student || 'Not assigned') + '</span></p>'
+                        + '</div>'
+                        + '<span class="tm-muted" style="white-space:nowrap;">' + items.length + (items.length === 1 ? ' task' : ' tasks')
+                            + (waiting ? ' · <b style="color:#B45309;">' + waiting + ' waiting for faculty</b>' : '') + '</span>'
+                    + '</div>'
+                + '</td></tr>'
+                + items.map(taskRow).join('');
+        }).join('');
     }
 
     function openTeamModal(groupName, members, createdAt, activityLogs, facultyId) {
         const logs = Array.isArray(activityLogs) ? activityLogs : [];
+        members = Array.isArray(members) ? members : [];
         loadTeamHotelConcept(facultyId, groupName);
-        const nameSuffix = document.getElementById('modalTeamNameSuffix');
-        if (nameSuffix) {
-            nameSuffix.textContent = groupName ? ' — ' + groupName : '';
-        }
 
-        const tbody = document.getElementById('teamModalMembersBody');
-        if (!members || members.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="px-3 py-6 text-center text-xs text-slate-400">No members found.</td></tr>';
+        // "Team 3" stays as it is; only a bare name gets the word (Group::label).
+        document.getElementById('modalTeamName').textContent = !groupName ? 'Team' : (/^team\s/i.test(groupName) ? groupName : 'Team ' + groupName);
+        document.getElementById('modalTeamSummary').textContent = [
+            members.length + (members.length === 1 ? ' member' : ' members'),
+            createdAt ? 'Created ' + createdAt : '',
+        ].filter(Boolean).join(' · ');
+        document.getElementById('teamTabCountMembers').textContent = members.length
+            ? members.length + (members.length === 1 ? ' member' : ' members') : '';
+
+        const grid = document.getElementById('teamModalMembersBody');
+        if (members.length === 0) {
+            grid.innerHTML = '<div class="tm-empty" style="grid-column: 1 / -1;">'
+                + '<span class="iconify" data-icon="mdi:account-off-outline"></span>'
+                + 'This team has no members.</div>';
         } else {
-            tbody.innerHTML = members.map(function (m, i) {
-                const roleLabels = m.role_labels || [m.role_label || m.role || '—'];
-                const roleBadges = roleLabels.map(function (rl) {
-                    return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-100">' + escHtml(rl) + '</span>';
-                }).join(' ');
+            grid.innerHTML = members.map(function (m, i) {
+                const roleLabels = m.role_labels || [m.role_label || m.role];
+                const roleChips = roleLabels.filter(Boolean).map(function (rl) {
+                    return '<span class="tm-chip"><span class="iconify" data-icon="mdi:briefcase-outline"></span>' + escHtml(rl) + '</span>';
+                }).join('') || '<span class="tm-muted">No role</span>';
                 const activityBtn = m.user_id
-                    ? '<button type="button" data-activity-user="' + Number(m.user_id) + '"' +
-                        ' data-activity-name="' + escHtml(m.name) + '"' +
-                        ' class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 hover:bg-rose-100 transition"' +
-                        ' title="View this member\'s activity logs">' +
-                        '<span class="iconify text-xs" data-icon="mdi:clipboard-text-clock-outline"></span> Activity' +
-                      '</button>'
-                    : '<span class="text-[10px] text-slate-300">—</span>';
-                return '<tr class="hover:bg-slate-50 transition-colors">' +
-                    '<td class="px-3 py-2 text-[11px] text-slate-400 font-medium">' + (i + 1) + '</td>' +
-                    '<td class="px-3 py-2">' +
-                        '<div class="flex items-center gap-2 min-w-0">' +
-                            '<div class="w-7 h-7 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 text-[10px] font-bold flex-shrink-0">' +
-                                String(m.name || '?').charAt(0).toUpperCase() +
-                            '</div>' +
-                            '<span class="text-xs font-semibold text-slate-700 truncate" title="' + escHtml(m.name) + '">' + escHtml(m.name) + '</span>' +
-                        '</div>' +
-                    '</td>' +
-                    '<td class="px-3 py-2">' +
-                        '<div class="flex flex-wrap gap-1">' + roleBadges + '</div>' +
-                    '</td>' +
-                    '<td class="px-3 py-2 text-center">' + activityBtn + '</td>' +
-                '</tr>';
+                    ? '<button type="button" data-activity-user="' + Number(m.user_id) + '"'
+                        + ' data-activity-name="' + escHtml(m.name) + '" class="tm-btn"'
+                        + ' title="Show everything this student has done">'
+                        + '<span class="iconify" data-icon="mdi:clipboard-text-clock-outline"></span> See activity'
+                      + '</button>'
+                    : '';
+                return '<div class="tm-member" data-member-card="' + Number(m.user_id || 0) + '">'
+                    + '<div class="tm-member-top">'
+                        + '<img src="{{ asset('images/default-avatar.svg') }}" alt="" class="tm-avatar">'
+                        + '<div class="min-w-0">'
+                            + '<p class="tm-member-name" title="' + escHtml(m.name) + '">' + escHtml(m.name) + '</p>'
+                            + '<p class="tm-member-no">Member ' + (i + 1) + '</p>'
+                        + '</div>'
+                    + '</div>'
+                    + '<div class="tm-chips">' + roleChips + '</div>'
+                    + activityBtn
+                + '</div>';
             }).join('');
         }
 
         closeMemberActivityPanel();
 
         teamModalActivityLogs = logs;
-        teamModalActivityPage = 1;
+        teamModalActivityTab = null;
         renderTeamModalActivityPage();
 
+        switchTeamModalTab('members');
         document.getElementById('teamInfoModal').classList.remove('hidden');
         document.body.style.overflow = 'hidden';
+    }
+
+    /* Team Details sections: Members & Roles / Hotel Concept / Team Task Activity */
+    function switchTeamModalTab(tabId) {
+        const tabs = ['members', 'concept', 'tasks'];
+        const current = tabs.includes(tabId) ? tabId : 'members';
+
+        tabs.forEach(function (tab) {
+            document.getElementById('team-panel-' + tab)?.classList.toggle('hidden', tab !== current);
+
+            const btn = document.getElementById('team-tab-' + tab);
+            if (!btn) return;
+            btn.classList.toggle('is-on', tab === current);
+            btn.setAttribute('aria-current', tab === current ? 'true' : 'false');
+        });
     }
 
     /* Front Desk's hotel concept for the open team. Fetched rather than inlined:
@@ -584,7 +807,7 @@
         const body = document.getElementById('teamModalConceptBody');
         if (!body) return;
 
-        body.innerHTML = '<div class="px-3 py-6 text-center text-xs text-slate-400">Loading hotel concept…</div>';
+        body.innerHTML = '<div class="tm-empty tm-span-all">Loading hotel concept…</div>';
 
         const url = TEAM_CONCEPT_URL
             + '?faculty_id=' + encodeURIComponent(facultyId || '')
@@ -600,7 +823,7 @@
             }))
             .then(data => { body.innerHTML = renderTeamConceptSlots(data); })
             .catch(err => {
-                body.innerHTML = '<div class="px-3 py-6 text-center text-xs text-rose-500 font-semibold">'
+                body.innerHTML = '<div class="tm-empty is-error tm-span-all">'
                     + escHtml(err.message || 'Could not load the hotel concept.') + '</div>';
             });
     }
@@ -609,88 +832,75 @@
        faculty see. */
     const CONCEPT_STATUS_CLASSES = {
         draft: 'bg-slate-100 text-slate-600 border-slate-200',
-        submitted: 'bg-amber-50 text-amber-700 border-amber-200',
-        needs_revision: 'bg-rose-50 text-rose-700 border-rose-200',
-        approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        submitted: 'status-badge-pending',
+        needs_revision: 'status-badge-revision',
+        approved: 'status-badge-completed',
         not_selected: 'bg-slate-100 text-slate-500 border-slate-300',
     };
 
-    /* Both of a team's concepts, each with its own history. Read-only: the dean
-       oversees the work, the team's own faculty gives the verdict. */
+    /* Both of a team's concepts side by side, each with its own history. Read-only:
+       the dean oversees the work, the team's own faculty gives the verdict. */
     function renderTeamConceptSlots(data) {
         return (data.slots || []).map(function (entry) {
-            return '<div class="mb-4">'
-                + '<p class="text-[10px] font-bold uppercase tracking-[0.15em] text-rose-500 mb-1">' + escHtml(entry.slot_label) + '</p>'
-                + renderTeamHotelConcept(entry)
+            if (!entry.concept) {
+                return '<div class="tm-concept-empty">'
+                    + '<p class="tm-card-title">' + escHtml(entry.slot_label) + '</p>'
+                    + '<p class="tm-panel-note mt-1">This team has not proposed this concept.</p>'
+                + '</div>';
+            }
+            return '<div class="tm-card">'
+                + '<div class="tm-card-head"><p class="tm-card-title">' + escHtml(entry.slot_label) + '</p></div>'
+                + '<div class="tm-concept-body">' + renderTeamHotelConcept(entry) + '</div>'
             + '</div>';
-        }).join('') || '<div class="px-3 py-6 text-center text-xs text-slate-400">This team has no hotel concepts yet.</div>';
+        }).join('') || '<div class="tm-empty tm-span-all"><span class="iconify" data-icon="mdi:lightbulb-off-outline"></span>This team has no hotel concepts.</div>';
     }
 
+    /* One concept and its edit history, inside its card. */
     function renderTeamHotelConcept(data) {
         const concept = data.concept;
         const history = Array.isArray(data.history) ? data.history : [];
-        const status = concept ? (concept.status || 'draft') : 'draft';
+        const status = concept.status || 'draft';
+        const statusBadge = '<span class="tm-badge ' + (CONCEPT_STATUS_CLASSES[status] || CONCEPT_STATUS_CLASSES.draft) + '">'
+            + escHtml(concept.status_label) + '</span>';
 
-        const statusBadge = concept
-            ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-bold '
-                + (CONCEPT_STATUS_CLASSES[status] || CONCEPT_STATUS_CLASSES.draft) + '">'
-                + escHtml(concept.status_label) + '</span>'
-            : '';
-
-        const conceptBlock = concept
-            ? '<div class="rounded-lg border border-slate-200 bg-slate-50/70 p-3">' +
-                '<div class="flex items-start justify-between gap-2 flex-wrap">' +
-                    '<p class="text-sm font-bold text-slate-800">' + escHtml(concept.title) + '</p>' +
-                    '<div class="flex items-center gap-1.5 flex-wrap">' + statusBadge +
-                        '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-100">'
-                            + escHtml(concept.hotel_type_label) + '</span>' +
-                    '</div>' +
-                '</div>' +
-                '<p class="text-xs text-slate-600 mt-2 whitespace-pre-line">' + escHtml(concept.description) + '</p>' +
-                '<p class="text-[10px] text-slate-400 mt-2">Last updated'
-                    + (concept.updated_by ? ' by <span class="font-semibold text-slate-500">' + escHtml(concept.updated_by) + '</span>' : '')
-                    + (concept.updated_at ? ' on ' + escHtml(concept.updated_at) : '') + '</p>' +
-                (concept.faculty_feedback
-                    ? '<div class="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2">'
-                        + '<p class="text-[10px] font-bold uppercase tracking-wider text-amber-700">Faculty feedback</p>'
-                        + '<p class="text-[11px] text-amber-800 mt-0.5 whitespace-pre-line">' + escHtml(concept.faculty_feedback) + '</p>'
-                      + '</div>'
-                    : '') +
-              '</div>'
-            : '<div class="rounded-lg border border-dashed border-slate-200 px-3 py-6 text-center">' +
-                '<p class="text-xs font-bold text-slate-400">Not proposed yet.</p>' +
-              '</div>';
+        const conceptBlock =
+            '<div class="tm-chips">' + statusBadge + '<span class="tm-chip">' + escHtml(concept.hotel_type_label) + '</span></div>'
+            + '<p class="tm-concept-name mt-2">' + escHtml(concept.title) + '</p>'
+            + (concept.tagline ? '<p class="tm-concept-tagline">' + escHtml(concept.tagline) + '</p>' : '')
+            + '<p class="tm-concept-desc">' + escHtml(concept.description) + '</p>'
+            + ((concept.updated_by || concept.updated_at)
+                ? '<p class="tm-concept-meta">Last changed'
+                    + (concept.updated_by ? ' by <b>' + escHtml(concept.updated_by) + '</b>' : '')
+                    + (concept.updated_at ? ' on ' + escHtml(concept.updated_at) : '') + '</p>'
+                : '')
+            + (concept.faculty_feedback
+                ? '<div class="tm-note"><p class="tm-note-label">Faculty feedback</p>'
+                    + '<p class="tm-note-text">' + escHtml(concept.faculty_feedback) + '</p></div>'
+                : '');
 
         const historyRows = history.length
             ? history.map(function (entry) {
                 const changes = (entry.changes || []).map(function (change) {
-                    return '<li class="text-[11px] text-slate-500">' +
-                        '<span class="font-semibold text-slate-600">' + escHtml(change.label) + ':</span> ' +
-                        '<span class="line-through text-slate-400">' + (escHtml(change.from) || '—') + '</span> ' +
-                        '<span class="text-slate-400">to</span> ' +
-                        '<span class="text-slate-700">' + escHtml(change.to) + '</span>' +
-                    '</li>';
+                    return '<li class="mt-1"><b>' + escHtml(change.label) + ':</b> '
+                        + '<s class="tm-muted">' + (escHtml(change.from) || 'empty') + '</s> to '
+                        + escHtml(change.to) + '</li>';
                 }).join('');
 
-                return '<div class="px-3 py-2.5">' +
-                    '<div class="flex items-start justify-between gap-2 flex-wrap">' +
-                        '<p class="text-xs font-bold text-slate-700">' + escHtml(entry.editor) +
-                            ' <span class="font-semibold text-slate-400">— ' + escHtml(entry.action_label) + '</span></p>' +
-                        '<span class="text-[10px] text-slate-400">' + escHtml(entry.created_at) + ' · ' + escHtml(entry.created_at_human) + '</span>' +
-                    '</div>' +
-                    (changes
-                        ? '<ul class="mt-1.5 space-y-1">' + changes + '</ul>'
-                        : '<p class="mt-1.5 text-[11px] text-slate-500"><span class="font-semibold text-slate-600">'
-                            + escHtml(entry.title) + '</span> · ' + escHtml(entry.hotel_type_label) + '</p>') +
-                '</div>';
+                return '<div class="tm-history-row">'
+                    + '<p><b>' + escHtml(entry.editor) + '</b> ' + escHtml(entry.action_label) + '</p>'
+                    + '<p class="tm-muted">' + escHtml(entry.created_at) + ' (' + escHtml(entry.created_at_human) + ')</p>'
+                    + (changes
+                        ? '<ul>' + changes + '</ul>'
+                        : '<p class="mt-1">' + escHtml(entry.title) + ', ' + escHtml(entry.hotel_type_label) + '</p>')
+                + '</div>';
             }).join('')
-            : '<div class="px-3 py-6 text-center text-xs text-slate-400">No edits recorded yet.</div>';
+            : '<div class="tm-history-row tm-muted">No changes recorded.</div>';
 
-        return conceptBlock +
-            '<div>' +
-                '<p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Concept Edit History</p>' +
-                '<div class="border border-slate-200 rounded-lg divide-y divide-slate-100 max-h-60 overflow-y-auto">' + historyRows + '</div>' +
-            '</div>';
+        return conceptBlock
+            + '<div class="tm-history">'
+                + '<p class="tm-field-label">Changes made so far</p>'
+                + '<div class="tm-history-list">' + historyRows + '</div>'
+            + '</div>';
     }
 
     /* Centralized activity log — same table and endpoint the faculty portal reads. */
@@ -699,6 +909,7 @@
     function closeMemberActivityPanel() {
         const panel = document.getElementById('memberActivityPanel');
         if (panel) panel.classList.add('hidden');
+        document.querySelectorAll('[data-member-card].is-on').forEach((c) => c.classList.remove('is-on'));
     }
 
     /* Delegated: the buttons are rebuilt whenever the team modal opens, and an
@@ -717,8 +928,12 @@
         if (!panel || !body) return;
 
         panel.classList.remove('hidden');
-        if (title) title.textContent = (memberName || 'Member') + ' — Activity Logs';
-        body.innerHTML = '<div class="px-3 py-6 text-center text-xs text-slate-400">Loading activity…</div>';
+        document.querySelectorAll('[data-member-card]').forEach((c) => {
+            c.classList.toggle('is-on', c.getAttribute('data-member-card') === String(userId));
+        });
+        if (title) title.textContent = 'What ' + (memberName || 'this member') + ' has done';
+        body.innerHTML = '<div class="tm-empty">Loading activity…</div>';
+        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
         fetch(MEMBER_ACTIVITY_URL.replace('__ID__', String(userId)), {
             credentials: 'same-origin',
@@ -734,32 +949,30 @@
                 body.innerHTML = renderActivityRows(data.logs || []);
             })
             .catch(function (err) {
-                body.innerHTML = '<div class="px-3 py-6 text-center text-xs text-rose-500 font-semibold">'
+                body.innerHTML = '<div class="tm-empty is-error">'
                     + escHtml(err.message || 'Could not load activity logs.') + '</div>';
             });
     }
 
     function renderActivityRows(logs) {
         if (!logs.length) {
-            return '<div class="px-3 py-6 text-center text-xs text-slate-400">No recorded activity for this member yet.</div>';
+            return '<div class="tm-empty">No activity recorded for this member.</div>';
         }
         return logs.map(function (log) {
-            return '<div class="px-3 py-2.5 flex items-start gap-2.5 hover:bg-slate-50/70 transition">' +
-                '<span class="mt-0.5 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-100 whitespace-nowrap">' +
-                    escHtml(log.activity_label || log.activity || '—') +
-                '</span>' +
-                '<div class="min-w-0 flex-1">' +
-                    '<p class="text-xs text-slate-700">' + escHtml(log.description || '—') + '</p>' +
-                    '<p class="text-[10px] text-slate-400 mt-0.5">' + escHtml(log.created_at || '') +
-                        (log.created_at_human ? ' · ' + escHtml(log.created_at_human) : '') + '</p>' +
-                '</div>' +
-            '</div>';
+            return '<div class="tm-activity-row">'
+                + '<span class="tm-chip">' + escHtml(log.activity_label || log.activity || 'Activity') + '</span>'
+                + '<div class="min-w-0 flex-1">'
+                    + '<p class="tm-activity-desc">' + escHtml(log.description || '') + '</p>'
+                    + '<p class="tm-activity-time">' + escHtml(log.created_at || '')
+                        + (log.created_at_human ? ' (' + escHtml(log.created_at_human) + ')' : '') + '</p>'
+                + '</div>'
+            + '</div>';
         }).join('');
     }
 
     function closeTeamModal() {
         document.getElementById('teamInfoModal').classList.add('hidden');
-        document.body.style.overflow = 'auto';
+        document.body.style.overflow = '';
     }
 
     function switchFacultyTab(tab) {
@@ -774,8 +987,59 @@
         document.getElementById('fpanel-complied').classList.toggle('hidden', tab !== 'complied');
     }
 
+    /* ?team=<name>&faculty=<id> - a notification about one team opens its details. */
+    document.addEventListener('DOMContentLoaded', () => {
+        const params = new URLSearchParams(window.location.search);
+        const team = (params.get('team') || '').toLowerCase(); // group_name is citext
+        if (!team) return;
+        const btn = Array.from(document.querySelectorAll('[data-team-view]')).find((b) =>
+            b.dataset.teamView.toLowerCase() === team && b.dataset.facultyId === params.get('faculty'));
+        if (!btn) return;
+        btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        btn.click();
+    });
+
+    /* Complied tab: the status chips and the search narrow the rows; a team with
+       nothing left showing hides, a team with matches opens, and a note says when
+       nothing matches at all. */
+    (function () {
+        const panel = document.getElementById('fpanel-complied');
+        if (!panel) return;
+        let filter = 'all';
+        const search = document.getElementById('cpSearch');
+
+        function apply() {
+            const q = (search?.value || '').trim().toLowerCase();
+            let shown = 0;
+            panel.querySelectorAll('[data-cp-team]').forEach(function (team) {
+                let teamShown = 0;
+                team.querySelectorAll('.cp-row').forEach(function (row) {
+                    const ok = (filter === 'all' || row.dataset.cpStatus === filter)
+                        && (q === '' || (row.dataset.cpSearch || '').includes(q));
+                    row.classList.toggle('hidden', !ok);
+                    if (ok) teamShown++;
+                });
+                team.classList.toggle('hidden', teamShown === 0);
+                // Narrowing opens the teams that still match, so the hits are on
+                // screen; back to All with no search folds every team again.
+                team.open = (filter !== 'all' || q !== '') && teamShown > 0;
+                shown += teamShown;
+            });
+            document.getElementById('cpNoMatch')?.classList.toggle('hidden', shown > 0 || !panel.querySelector('[data-cp-team]'));
+        }
+
+        panel.querySelectorAll('[data-cp-filter]').forEach(function (chip) {
+            chip.addEventListener('click', function () {
+                filter = chip.dataset.cpFilter;
+                panel.querySelectorAll('[data-cp-filter]').forEach(c => c.classList.toggle('is-on', c === chip));
+                apply();
+            });
+        });
+        search?.addEventListener('input', apply);
+    })();
+
     function openModal(id) { document.getElementById(id).classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
-    function closeModal(id) { document.getElementById(id).classList.add('hidden'); document.body.style.overflow = 'auto'; }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); document.body.style.overflow = ''; }
 
     function togglePassword(btn) {
         const input = btn.parentElement.querySelector('input');
@@ -789,27 +1053,6 @@
         }
     }
 
-    document.addEventListener('DOMContentLoaded', function () {
-        const prevBtn = document.getElementById('teamModalActivityPrev');
-        const nextBtn = document.getElementById('teamModalActivityNext');
-        if (prevBtn) {
-            prevBtn.addEventListener('click', function () {
-                if (teamModalActivityPage > 1) {
-                    teamModalActivityPage -= 1;
-                    renderTeamModalActivityPage();
-                }
-            });
-        }
-        if (nextBtn) {
-            nextBtn.addEventListener('click', function () {
-                const totalPages = Math.max(1, Math.ceil(teamModalActivityLogs.length / TEAM_MODAL_ACTIVITY_PER_PAGE));
-                if (teamModalActivityPage < totalPages) {
-                    teamModalActivityPage += 1;
-                    renderTeamModalActivityPage();
-                }
-            });
-        }
-    });
 </script>
 @endpush
 @endsection

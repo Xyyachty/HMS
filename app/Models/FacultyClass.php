@@ -30,6 +30,37 @@ class FacultyClass extends Model
         return $this->hasMany(Student::class, 'faculty_class_id', 'faculty_class_id');
     }
 
+    /**
+     * The block this tab is, as faculty and students see it.
+     *
+     * Tabs are lettered per faculty from A, but a faculty's first tab is their own
+     * block: a Block B faculty's tab "A" is Block B, and the tab after it, opened
+     * when no faculty holds the next block, is Block C. The stored letter stays
+     * as it is, since URLs and filters key on it.
+     */
+    public function getBlockLetterAttribute(): string
+    {
+        $letter = strtoupper(trim((string) $this->letter)) ?: 'A';
+        $block = strtoupper(trim((string) $this->faculty?->block));
+        if ($block === '' || $block === 'A') {
+            return $letter;
+        }
+
+        // nextLetter() has no inverse, so step both up together. Bounded for bad data.
+        for ($walk = 'A', $i = 0; $i < 1000 && $walk !== $letter; $i++) {
+            $walk = static::nextLetter($walk);
+            $block = static::nextLetter($block);
+        }
+
+        return $block;
+    }
+
+    /** Always "Block X", whatever older rows stored ("Class A"). */
+    public function getNameAttribute(): string
+    {
+        return 'Block ' . $this->block_letter;
+    }
+
     public function isOpen(): bool
     {
         return $this->status === 'open';
@@ -66,7 +97,7 @@ class FacultyClass extends Model
             if ($classes->isEmpty()) {
                 static::create([
                     'faculty_id' => $facultyId,
-                    'name' => 'Class A',
+                    'name' => 'Block A',
                     'letter' => 'A',
                     'capacity' => self::CAPACITY,
                     'status' => 'open',
@@ -93,7 +124,7 @@ class FacultyClass extends Model
             if ($kept->isEmpty()) {
                 static::create([
                     'faculty_id' => $facultyId,
-                    'name' => 'Class A',
+                    'name' => 'Block A',
                     'letter' => 'A',
                     'capacity' => self::CAPACITY,
                     'status' => 'open',
@@ -127,8 +158,10 @@ class FacultyClass extends Model
                 }
             }
 
-            // If every kept class is full, open the next letter.
-            if (!$openAssigned) {
+            // If every kept class is full, open the next letter — unless another
+            // faculty holds the next block, which takes over from here instead.
+            // See Faculty::intakeFaculty().
+            if (!$openAssigned && !Faculty::find($facultyId)?->nextBlockFaculty()) {
                 $last = $kept->last()['model'];
                 static::openNextClass($facultyId, $last);
             }
@@ -198,7 +231,7 @@ class FacultyClass extends Model
                     'letter' => 'A',
                 ],
                 [
-                    'name' => 'Class A',
+                    'name' => 'Block A',
                     'capacity' => self::CAPACITY,
                     'status' => 'open',
                     'sort_order' => 1,
@@ -233,6 +266,80 @@ class FacultyClass extends Model
             'status' => 'open',
             'sort_order' => $sortOrder,
         ]);
+    }
+
+    /**
+     * Hand this block, with its students and their teams, to another faculty. Used
+     * when a faculty ran the next block only because nobody held it, and the dean
+     * has since made a faculty for it.
+     *
+     * The receiving faculty must have no students yet: their own block letter
+     * becomes this block's, and this row becomes their first tab. Every team-owned
+     * row (each table carrying faculty_id and group_name) follows its team.
+     *
+     * @throws \RuntimeException with a message fit for the dean when it cannot move.
+     */
+    public function handOverTo(Faculty $to): void
+    {
+        $fromId = (int) $this->faculty_id;
+        $toId = (int) $to->user_information_id;
+        $block = $this->block_letter;
+
+        if ($fromId === $toId) {
+            throw new \RuntimeException('Block ' . $block . ' is already theirs.');
+        }
+        if ($to->students()->exists()) {
+            throw new \RuntimeException('Block ' . $block . ' can only go to a faculty with no students yet.');
+        }
+
+        DB::transaction(function () use ($fromId, $toId, $to, $block) {
+            $studentIds = $this->students()->pluck('user_information_id')->all();
+
+            $teams = DB::table('student_groups')
+                ->where('faculty_id', $fromId)
+                ->whereIn('student_id', $studentIds)
+                ->distinct()
+                ->pluck('group_name')
+                ->all();
+
+            // A team is moved whole, so it must sit entirely inside this block.
+            $mixed = DB::table('student_groups')
+                ->where('faculty_id', $fromId)
+                ->whereIn('group_name', $teams)
+                ->whereNotIn('student_id', $studentIds)
+                ->value('group_name');
+            if ($mixed !== null) {
+                throw new \RuntimeException(\App\Models\Group::label($mixed) . ' has students in Block ' . $block
+                    . ' and in another block. Move them into one block first.');
+            }
+
+            $clash = DB::table('groups')->where('faculty_id', $toId)->whereIn('group_name', $teams)->value('group_name');
+            if ($clash !== null) {
+                throw new \RuntimeException('The receiving faculty already has a team named "' . $clash . '".');
+            }
+
+            // Their empty tabs give way; this block becomes their first tab.
+            static::where('faculty_id', $toId)->delete();
+            $this->update(['faculty_id' => $toId, 'letter' => 'A', 'sort_order' => 1, 'name' => 'Block ' . $block]);
+
+            Student::whereIn('user_information_id', $studentIds)->update(['faculty_id' => $toId]);
+
+            if ($teams !== []) {
+                foreach (Group::teamOwnedTables() as $name) {
+                    DB::table($name)->where('faculty_id', $fromId)->whereIn('group_name', $teams)
+                        ->update(['faculty_id' => $toId]);
+                }
+            }
+
+            // A student's own tasks outside any team follow them too.
+            DB::table('tasks')->where('faculty_id', $fromId)->whereNull('group_name')
+                ->whereIn('student_id', $studentIds)->update(['faculty_id' => $toId]);
+
+            $to->update(['block' => $block]);
+
+            static::reconcileForFaculty($fromId);
+            static::reconcileForFaculty($toId);
+        });
     }
 
     public static function nextLetter(string $letter): string

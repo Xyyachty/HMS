@@ -14,11 +14,12 @@
     'border', 'border-radius', 'box-shadow', 'opacity',
     'position', 'top', 'left', 'right', 'bottom', 'width', 'height', 'max-width',
     'min-width', 'min-height', 'z-index', 'transform', 'display', 'overflow',
+    'white-space',
   ];
 
   const USER_KEY = '__userElements';
   const DELETED_KEY = '__deleted';
-  const SITE_CONTENT_KEYS = ['__navLinks', '__rooms', '__menus', '__cardImages'];
+  const SITE_CONTENT_KEYS = ['__navLinks', '__brandName', '__roomCardStyle', '__menuCardStyle', '__siteColors', '__rooms', '__menus', '__cardImages', '__heroSlides', '__hotelInfo', '__socialLinks', '__typography', '__guestAuth'];
 
   let designMode = false;
   let selectedEl = null;
@@ -78,14 +79,63 @@
     return editablePages.indexOf(getCurrentPage()) !== -1;
   }
 
-  function blockEditToast() {
+  /**
+   * Which page's owner may redesign a tagged section, whichever page it renders on.
+   *
+   * Rooms and the Restaurant menu each get a preview strip embedded on the Home
+   * page (data-hms-section="rooms" / "dining"), so Front Desk owning the Home
+   * page must not also unlock those other roles' sections just because they
+   * render there.
+   *
+   * The footer is the opposite case: it is one block repeated under every page,
+   * carrying the hotel's name, its contact details and its social links, so a
+   * change to it is a change to the whole site. It belongs to Front Desk, the
+   * role that owns the site's identity, and 'home' is how that is said here.
+   *
+   * Anything without one of these tags is the page's own content and stays
+   * governed by canEditCurrentPage() alone.
+   */
+  const SECTION_OWNER_PAGE = { rooms: 'rooms', dining: 'restaurant', footer: 'home' };
+
+  function sectionOwnerPage(el) {
+    let node = el;
+    while (node && node !== document.body) {
+      if (node.hasAttribute && node.hasAttribute('data-hms-section')) {
+        return SECTION_OWNER_PAGE[node.getAttribute('data-hms-section')] || null;
+      }
+      node = node.parentElement;
+    }
+    return null;
+  }
+
+  function canEditElement(el) {
+    if (!canEditCurrentPage()) return false;
+    if (!Array.isArray(editablePages)) return true;
+    const ownerPage = sectionOwnerPage(el);
+    if (!ownerPage) return true;
+    return editablePages.indexOf(ownerPage) !== -1;
+  }
+
+  /* Why an element is out of bounds, when the page alone does not explain it.
+     A section owned by another page is the confusing case: a student standing on
+     their own page would otherwise be told they may only redesign that page. */
+  function sectionBlockMessage(el) {
+    const ownerPage = sectionOwnerPage(el);
+    if (!ownerPage || !canEditCurrentPage()) return null;
+    if (!Array.isArray(editablePages) || editablePages.indexOf(ownerPage) !== -1) return null;
+    return ownerPage === 'home'
+      ? 'The footer shows under every page, so Front Desk edits it. Your own page is yours.'
+      : 'That section belongs to the ' + ownerPage + ' page, so the role that owns it edits it.';
+  }
+
+  function blockEditToast(message) {
     const pages = Array.isArray(editablePages) && editablePages.length
       ? editablePages.join(', ')
       : 'your assigned pages';
     postToParent({
       type: 'edit-blocked',
       page: getCurrentPage(),
-      message: 'You can only redesign: ' + pages + '. Teammates still see your synced work.',
+      message: message || ('You can only redesign: ' + pages + '. Teammates still see your synced work.'),
     });
   }
 
@@ -103,6 +153,12 @@
 
   function uid(prefix) {
     return (prefix || 'hms') + '-' + Math.random().toString(36).slice(2, 10);
+  }
+
+  // For a value going inside a double-quoted attribute selector, where CSS.escape
+  // (an identifier escaper) would mangle ordinary spaces in a category name.
+  function cssAttrValue(value) {
+    return String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   }
 
   function getSelector(el) {
@@ -136,6 +192,17 @@
         parts.unshift('#' + cssEscape(node.id));
         break;
       }
+      /* A card that names what it is anchors the key to that name, not to where it
+         sits. The Rooms page renders one card per category and only the selected
+         tab's card is in the DOM, so "article:nth-of-type(1)" means "whichever
+         category is on screen" — edits saved on Classic were reappearing on top of
+         Executive. */
+      const identity = node.getAttribute('data-hms-category');
+      if (identity) {
+        parts.unshift(node.tagName.toLowerCase() + '[data-hms-category="' + cssAttrValue(identity) + '"]');
+        break;
+      }
+
       let part = node.tagName.toLowerCase();
       const parent = node.parentElement;
       if (parent) {
@@ -159,7 +226,7 @@
     }
     return id;
   }
-
+  
   function isEditorChrome(el) {
     return !!(el && (
       el.id === 'hms-editor-ui'
@@ -172,6 +239,20 @@
       || el.hasAttribute('data-hms-spacer')
       || el.tagName === 'HMS-SPACER'
     ));
+  }
+
+  /**
+   * The header is structure, not canvas. Its layout is fixed for every team:
+   * nothing inside it may be selected, moved, resized, restyled or deleted.
+   * Students change its content — logo, hotel name, link labels — through the
+   * template's own click-to-edit dialogs, which run as ordinary React handlers
+   * because <nav> carries data-hms-no-edit.
+   *
+   * .nav-bar is position:fixed with a hard-coded .hero top offset, so a drag
+   * used to pin it in viewport coordinates and leave the page misaligned.
+   */
+  function isHeaderLocked(el) {
+    return !!(el && el.nodeType === 1 && el.closest && el.closest('.nav-bar'));
   }
 
   function isLayoutContainer(el) {
@@ -203,32 +284,11 @@
     if (el.hasAttribute('data-hms-user') || el.hasAttribute('data-hms-bg-target') || el.hasAttribute('data-hms-section') || el.hasAttribute('data-hms-move-root')) {
       return el;
     }
-    if (el.classList.contains('nav-bar') || el.classList.contains('hero-bg')) return el;
+    if (el.classList.contains('hero-bg')) return el;
 
     // An element that declares its own text is already the unit being edited, so
-    // never widen past it. The hotel name is a bare <span> sitting in .nav-bar but
-    // outside .nav-links-desktop, which the brand branch below collapses to the
-    // whole <nav> — so renaming the hotel wrote the new name onto the navigation
-    // bar itself, wiping what it contained and keying the change to the wrong
-    // element in the faculty review.
+    // never widen past it.
     if (el.getAttribute('data-hms-text') === '1') return el;
-
-    // Prefer whole header/nav when clicking brand or nav links.
-    const nav = el.closest && el.closest('.nav-bar');
-    if (nav && (el.tagName === 'SPAN' || el.tagName === 'BUTTON' || el.tagName === 'A' || el.tagName === 'I')) {
-      // Keep individual link text editable when it's clearly a nav-link label;
-      // otherwise select the whole header bar.
-      if (el.classList.contains('nav-link') || (el.closest && el.closest('.nav-link'))) {
-        return el.classList.contains('nav-link') ? el : el.closest('.nav-link');
-      }
-      if (el.closest('.nav-links-desktop') && (el.tagName === 'BUTTON' || el.tagName === 'A')) {
-        return el;
-      }
-      // Brand / empty header chrome → whole nav
-      if (!el.closest('.nav-links-desktop') || el.tagName === 'SPAN') {
-        return nav;
-      }
-    }
 
     let node = el;
     if (isInlineTextTag(node.tagName) || node.tagName === 'SPAN') {
@@ -277,18 +337,41 @@
     };
   }
 
+  /* A layer a component paints and repaints - the photographs a carousel
+     rotates through, say. It is not content and it is not a container a student
+     arranges: it is where a component draws, so it is passed over and the thing
+     behind it is what a click selects. */
+  /* Pinned where the page puts it. Everything else about it still edits - its
+     colours, its spacing, the pictures inside it - but it does not move, because
+     what sits above and inside it is placed relative to where it is. */
+  function isMoveLocked(el) {
+    // The element itself, never what it contains: a headline or a button inside
+    // a pinned section is still the student's to place.
+    if (!el || el.nodeType !== 1 || !el.hasAttribute) return false;
+    if (el.hasAttribute('data-hms-no-move')) return true;
+    const root = resolveEditableRoot(el);
+    return !!(root && root !== el && root.hasAttribute && root.hasAttribute('data-hms-no-move'));
+  }
+
+  function isBackgroundLayer(el) {
+    return !!(el && el.nodeType === 1 && el.hasAttribute && el.hasAttribute('data-hms-bg-layer'));
+  }
+
   function isEditableTarget(el, allowContainers) {
     if (!el || el === document.body || el === document.documentElement) return false;
     if (isEditorChrome(el)) return false;
     if (el.id === 'hms-user-canvas' || el.id === 'hms-section-rail') return false;
     if (el.closest('[data-hms-no-edit]')) return false;
+    if (isBackgroundLayer(el)) return false;
 
     const tag = el.tagName;
     if (['SCRIPT', 'STYLE', 'LINK', 'META', 'NOSCRIPT', 'HTML', 'HEAD'].includes(tag)) return false;
 
     if (el.hasAttribute('data-hms-user')) return true;
 
-    if (el.classList.contains('nav-bar') || el.hasAttribute('data-hms-bg-target') || el.hasAttribute('data-hms-section')) {
+    if (isHeaderLocked(el)) return false;
+
+    if (el.hasAttribute('data-hms-bg-target') || el.hasAttribute('data-hms-section')) {
       return true;
     }
 
@@ -302,6 +385,7 @@
   }
 
   function findEditable(start, allowContainers) {
+    if (isHeaderLocked(start)) return null;
     let el = start;
     while (el && el !== document.body) {
       if (isEditorChrome(el) || el.id === 'hms-user-canvas' || el.id === 'hms-section-rail') {
@@ -333,8 +417,11 @@
 
         if (event.altKey) {
           let container = node;
+          // Alt+click walks straight to the nearest layout container, skipping
+          // isEditableTarget entirely — without this it hands back the header.
+          if (isHeaderLocked(container)) return null;
           while (container && container !== document.body) {
-            if (container.hasAttribute('data-hms-no-edit')) {
+            if (container.hasAttribute('data-hms-no-edit') || isBackgroundLayer(container)) {
               container = container.parentElement;
               continue;
             }
@@ -363,8 +450,9 @@
 
     if (event.altKey) {
       let container = textParent || event.target;
+      if (isHeaderLocked(container)) return null;
       while (container && container !== document.body) {
-        if (container.hasAttribute('data-hms-no-edit')) {
+        if (container.hasAttribute('data-hms-no-edit') || isBackgroundLayer(container)) {
           container = container.parentElement;
           continue;
         }
@@ -383,7 +471,7 @@
   function findEditableParent(el) {
     let parent = el && el.parentElement;
     while (parent && parent !== document.body) {
-      if (isEditorChrome(parent)) return null;
+      if (isEditorChrome(parent) || isHeaderLocked(parent)) return null;
       const hit = isEditableTarget(parent, true);
       if (hit === true) return parent;
       if (hit && hit.nodeType === 1 && hit !== el) return hit;
@@ -516,7 +604,7 @@
     box.style.width = width + 'px';
     box.style.height = height + 'px';
     const moveHandle = ui.querySelector('.hms-move-handle');
-    moveHandle.style.display = 'flex';
+    moveHandle.style.display = isMoveLocked(el) ? 'none' : 'flex';
     moveHandle.style.left = Math.max(8, Math.min(window.innerWidth - 80, left + width / 2)) + 'px';
     moveHandle.style.top = Math.max(28, top) + 'px';
 
@@ -598,7 +686,12 @@
       });
       removeFlowSpacer(el);
     }
-    el.style.removeProperty('transform');
+    /* 'none', not removed: a saved move also lives in the free-position sheet
+       with !important, so removing the inline value still left the element
+       translated. The "natural" box then already included the move, the offset
+       came out 0, and resizing or dragging a moved element threw it back to its
+       default place. */
+    setPosImportant(el, 'transform', 'none');
     // Force reflow then measure natural in-flow box.
     void el.offsetWidth;
     const natural = getVisualRect(el);
@@ -617,13 +710,18 @@
       if (!entry || entry.freePosition !== true) return;
       // A free-position rule is a page's own layout; it must not move the element
       // another page happens to match with the same selector.
-      if (!entryBelongsToCurrentPage(entry)) return;
+      if (!entryBelongsToCurrentPage(entry, id)) return;
       let sel = id;
+      let probe = null;
       try {
-        document.querySelector(sel);
+        probe = document.querySelector(sel);
       } catch (err) {
         return;
       }
+      // A team that dragged the header before it was locked still has a saved
+      // "#root > nav" rule; emitting it would move the header the editor can no
+      // longer touch.
+      if (isHeaderLocked(probe)) return;
       const decls = [];
       if (entry.moveMode === 'transform' || (entry.transform && !entry.keepFixed && entry.position !== 'fixed')) {
         if (entry.transform) decls.push('transform:' + entry.transform + ' !important');
@@ -675,7 +773,6 @@
     // Prefer a large section/main so moves aren't clamped back into a tiny text wrapper.
     const section = el.closest('[data-hms-section], .hero, .hero-split, main, [data-hms-page]');
     if (section) return section;
-    if (el.classList.contains('nav-bar')) return document.body;
     let node = el.parentElement;
     while (node && node !== document.body) {
       if (node.id === 'root' || node === document.body) break;
@@ -732,7 +829,9 @@
   function selectElement(el) {
     clearSelection();
     el = resolveEditableRoot(el);
-    if (!el) {
+    // The one choke point every selection path passes through — clicks, the
+    // Design Panel, addElement(), and the public API.
+    if (!el || isHeaderLocked(el)) {
       postToParent({ type: 'element-deselected' });
       return;
     }
@@ -897,25 +996,130 @@
     return el.childElementCount === 0 || el.getAttribute('data-hms-text') === '1';
   }
 
+  /* Text the page owns rather than the student: the hotel's name, the line built
+     from it, and the tool chrome a component paints (a carousel's dots, a
+     "Change image" button). A text edit saved on an ancestor writes into the
+     first text node it finds, which in the footer is the name itself and in the
+     hero is a button's label, so an edit made once would sit on top of what the
+     page renders and win every re-render after. Those slots are read and written
+     past; the rest of the element still edits. */
+  function lockedSlotOwner(node) {
+    const el = node && node.nodeType === 3 ? node.parentElement : node;
+    return (el && el.closest
+      && el.closest('[data-hms-brand-name],[data-hms-brand-text],[data-hms-no-edit]')) || null;
+  }
+
+  function isBrandLocked(node) {
+    return !!lockedSlotOwner(node);
+  }
+
+  /**
+   * Carry a name stranded in an old per-element edit over to the one value the
+   * whole site reads. Only from the name's own slot: the copyright line is
+   * built from the name rather than being it, and adopting that whole sentence
+   * would name the hotel "2026 Something. All rights reserved."
+   */
+  function adoptStrandedBrandName(text, slot) {
+    const owner = lockedSlotOwner(slot);
+    if (!owner || !owner.hasAttribute('data-hms-brand-name')) return;
+    const name = String(text == null ? '' : text).trim();
+    if (!name) return;
+    const content = window.HMSSiteContent;
+    if (!content || typeof content.setBrandName !== 'function') return;
+    if (typeof content.hasStoredBrandName === 'function' && content.hasStoredBrandName()) return;
+    content.setBrandName(name);
+  }
+
+  /** The node an element's text is read from and written back into. */
+  function textSlot(el) {
+    if (!el) return null;
+    return textIsWholeElement(el) ? el : firstTextNode(el);
+  }
+
+  /* A heading set as separate lines (the hero titles: "A Sanctuary of" over
+     "Timeless Luxury"), marked data-hms-lines. Each child element is one line,
+     read and written on its own. Through textSlot() only the first line was
+     ever saved, so whatever was typed into the second was gone on reload. */
+  function textLines(el) {
+    if (!el || el.getAttribute('data-hms-lines') !== '1') return null;
+    const lines = Array.from(el.children);
+    // How many lines the heading was drawn with. Clearing a line in the editor
+    // can delete its element outright, and the text then read as one line.
+    el._hmsLineCount = Math.max(el._hmsLineCount || 0, lines.length);
+    return lines.length ? lines : null;
+  }
+
+  /* A line of a lined heading can itself break (Enter). '\n' already separates
+     the lines in the saved text, so a break inside one is saved as U+2028. */
+  const LINE_BREAK = '\u2028';
+
   /** Read the editable text of an element, including multi-child ones. */
   function readEditableText(el) {
-    if (textIsWholeElement(el)) return el.innerText;
-    const node = firstTextNode(el);
-    return node ? node.nodeValue : null;
+    const lines = textLines(el);
+    if (lines) {
+      const parts = lines.map((line) => line.textContent.replace(/\u200B/g, '').split('\n')
+        .map((part) => part.replace(/\s+/g, ' ').trim()).join(LINE_BREAK));
+      // A deleted line is saved as an empty one, never left to the template.
+      while (parts.length < el._hmsLineCount) parts.push('');
+      return parts.join('\n');
+    }
+    const slot = textSlot(el);
+    if (!slot || isBrandLocked(slot)) return null;
+    return (slot === el ? el.innerText : slot.nodeValue).replace(/\u200B/g, '');
   }
 
   /** Write text back into the same slot readEditableText took it from. */
   function writeEditableText(el, text) {
-    if (textIsWholeElement(el)) {
+    const lines = textLines(el);
+    if (lines) {
+      const parts = String(text == null ? '' : text).split('\n');
+      // One part is an edit saved before lines were tracked: it only ever held
+      // the first line, so the others keep the template's words.
+      const count = parts.length === 1 ? 1 : lines.length;
+      for (let i = 0; i < count; i++) {
+        const value = (i === lines.length - 1 ? parts.slice(i).join(' ') : (parts[i] || '')).split(LINE_BREAK).join('\n');
+        if (lines[i].textContent !== value) lines[i].textContent = value;
+        if (value.indexOf('\n') !== -1) lines[i].style.whiteSpace = 'pre-line';
+      }
+      return;
+    }
+    const slot = textSlot(el);
+    if (!slot || isBrandLocked(slot)) return;
+    // A saved line break only shows where white-space keeps it.
+    if (String(text).indexOf('\n') !== -1 && !/^pre/.test(window.getComputedStyle(el).whiteSpace)) {
+      setPosImportant(el, 'white-space', 'pre-line');
+    }
+    if (slot === el) {
       el.textContent = text;
       return;
     }
-    const node = firstTextNode(el);
-    if (node) node.nodeValue = text;
+    slot.nodeValue = text;
+  }
+
+  /* Where an element sits, as an entry records it. A pinned element keeps
+     everything else it has been given and simply has none of this. */
+  const PLACEMENT_PROPS = ['position', 'top', 'left', 'right', 'bottom', 'transform'];
+
+  function stripPlacement(entry) {
+    if (!entry) return false;
+    let had = false;
+    PLACEMENT_PROPS.forEach((prop) => {
+      if (entry[prop] != null) { delete entry[prop]; had = true; }
+    });
+    if (entry.freePosition) { had = true; }
+    if (entry.moveMode) { had = true; }
+    if (entry.keepFixed) { had = true; }
+    entry.freePosition = false;
+    delete entry.moveMode;
+    delete entry.keepFixed;
+    return had;
   }
 
   function saveElementState(el) {
     if (!el) return;
+    // Last line of defence: nothing header-shaped is ever written to customizations,
+    // and nothing a component repaints for itself.
+    if (isHeaderLocked(el) || isBackgroundLayer(el)) return;
     if (!canEditCurrentPage()) {
       blockEditToast();
       return;
@@ -954,6 +1158,10 @@
       entry.freePosition = true;
     }
 
+    if (isMoveLocked(el)) {
+      stripPlacement(entry);
+    }
+
     // Images owned by the shared site-content store (e.g. the brand logo) keep
     // their src there so one change updates every place that renders it.
     // Styling and moving them still records normally.
@@ -980,6 +1188,25 @@
     notifyChanged();
   }
 
+  /* Undo what a stored entry had already painted on, without touching what the
+     component itself sets - a slide's own photograph is written inline by the
+     page, so background-image is left exactly as it is. */
+  function clearPlacementStyles(el) {
+    if (!el || !el.style) return;
+    PLACEMENT_PROPS.forEach((prop) => el.style.removeProperty(prop));
+    el.removeAttribute('data-hms-free-position');
+    el.removeAttribute('data-hms-move-mode');
+    el.removeAttribute('data-hms-keep-fixed');
+  }
+
+  function clearAppliedStyles(el) {
+    if (!el || !el.style) return;
+    STYLE_PROPS.forEach((prop) => {
+      if (prop === 'background-image') return;
+      el.style.removeProperty(prop);
+    });
+  }
+
   function applyEntry(el, entry) {
     if (!el || !entry) return;
     if (entry.deleted || entry.display === 'none') {
@@ -1002,6 +1229,13 @@
         ['position', 'left', 'top', 'right', 'bottom'].forEach(function (p) {
           if (!entry.keepFixed) el.style.removeProperty(p);
         });
+        /* Not clamped here. Where a student put something is a decision, and
+           this runs again on every render - on coming back to a page, the hero's
+           photographs are still loading and the box everything is measured
+           against is not its final size, so clamping now nudges the element by
+           a different amount each time and it drifts. The drop clamps, which is
+           the moment the student can see what happened, so what is stored is
+           already inside its section. */
       } else if (entry.keepFixed || entry.position === 'fixed') {
         el.setAttribute('data-hms-keep-fixed', '1');
         ensurePositioningContext(el);
@@ -1020,7 +1254,12 @@
       el.className = entry.iconClass;
       if (selected) el.classList.add('hms-edit-selected');
     }
-    if (entry.text != null && !['IMG', 'I', 'SVG', 'INPUT', 'TEXTAREA'].includes(el.tagName)) {
+    /* Never into the text being typed. The builder autosaves each pause and
+       hands the saved template back in, and rewriting the text node under the
+       caret threw it to the start of the line - and the saved copy can be a
+       keystroke behind. The edit saves itself when it ends. */
+    const typing = textEditEl && (el === textEditEl || el.contains(textEditEl) || textEditEl.contains(el));
+    if (entry.text != null && !typing && !['IMG', 'I', 'SVG', 'INPUT', 'TEXTAREA'].includes(el.tagName)) {
       writeEditableText(el, entry.text);
     }
   }
@@ -1042,11 +1281,20 @@
     return null;
   }
 
+  /* A key saved before category cards were keyed by name addresses a position, so it
+     now matches whichever category happens to be on screen. Honouring it paints one
+     category's title and price over another's, so the card is left to render its own
+     content instead. Only keys that name no category are suspect. */
+  function isPositionalCategoryKey(id, el) {
+    return String(id).indexOf('data-hms-category') === -1
+      && !!(el && el.closest && el.closest('[data-hms-category]'));
+  }
+
   function findByKey(id) {
     if (!id || id === USER_KEY || id === DELETED_KEY) return null;
     try {
       let el = document.querySelector(id);
-      if (el) return el;
+      if (el) return isPositionalCategoryKey(id, el) ? null : el;
     } catch (e) { /* ignore */ }
     const entry = customizations[id];
     if (entry && entry.hmsId) {
@@ -1101,6 +1349,10 @@
     canvas.innerHTML = '';
     let restored = null;
     (customizations[USER_KEY] || []).forEach((item) => {
+      // A row that is not a record at all. One of those used to throw here, and
+      // a throw in this pass costs the whole page its saved work, not just this
+      // element.
+      if (!item || typeof item !== 'object') return;
       const itemPage = item.page || 'home';
       if (itemPage !== page) return;
       const el = buildUserElement(item);
@@ -1165,9 +1417,10 @@
       if (!id) return;
       // Same selector-collision problem: hiding "the second card" on the restaurant
       // page must not hide the second room card too.
-      if (typeof entry !== 'string' && !entryBelongsToCurrentPage(entry)) return;
+      if (typeof entry !== 'string' && !entryBelongsToCurrentPage(entry, id)) return;
       const el = findByKey(id);
-      if (el) el.style.display = 'none';
+      // A legacy entry for "#root > nav" would hide the whole header.
+      if (el && !isHeaderLocked(el)) el.style.display = 'none';
     });
   }
 
@@ -1179,21 +1432,103 @@
    * and a room name on the rooms page, so an edit to one was landing on the other.
    * An entry with no page is left alone: those predate the field and have always been
    * applied wherever they matched.
+   *
+   * The footer is the exception: it is one block under every page, owned by Home
+   * (SECTION_OWNER_PAGE), so a footer link renamed on Home has to read the same
+   * under Rooms. Its key is a selector through the <footer> element itself.
    */
-  function entryBelongsToCurrentPage(entry) {
+  function entryBelongsToCurrentPage(entry, id) {
     if (!entry || !entry.page) return true;
     const page = getCurrentPage();
-    return !page || entry.page === page;
+    if (!page || entry.page === page) return true;
+    return entry.page === 'home' && /(^|[\s>])footer(?=[\s>:.\[]|$)/.test(String(id || ''));
   }
 
   function applyAllCustomizations() {
+    /* `applying` silences the observer that would otherwise see this function's
+       own writes and call it again. It has to come back down whatever happens:
+       left raised by a throw, nothing is ever re-applied again for the rest of
+       the visit, and every later render quietly loses the team's work. */
     applying = true;
+    try {
+      applyAllCustomizationsInner();
+    } finally {
+      applying = false;
+    }
+    updateHandles();
+  }
+
+  /* Run one step of the pass. A single entry, or a single stage, must not be
+     able to cost the page everything else that was saved. */
+  function attempt(what, fn) {
+    try {
+      fn();
+    } catch (err) {
+      if (window.console && console.warn) console.warn('[hms] ' + what + ' failed', err);
+    }
+  }
+
+  function applyAllCustomizationsInner() {
     let migrated = false;
-    Object.keys(customizations).forEach((id) => {
+    Object.keys(customizations).forEach((id) => attempt('entry ' + id, () => {
       if (id === USER_KEY || id === DELETED_KEY || SITE_CONTENT_KEYS.indexOf(id) !== -1) return;
-      if (!entryBelongsToCurrentPage(customizations[id])) return;
+      if (!entryBelongsToCurrentPage(customizations[id], id)) return;
       let el = findByKey(id);
       if (!el) return;
+
+      // Header edits saved before the header was locked — a hotel name typed
+      // onto "#root > nav" by the old rename path, or a drag that pinned the
+      // bar in viewport coordinates. Drop them on load; the `migrated` flag
+      // below autosaves the cleaned set, so no migration command is needed.
+      // The footer name span is included because it is React-driven now and a
+      // stale text entry would fight every re-render.
+      if (isHeaderLocked(el) || el.hasAttribute('data-hms-brand-name')) {
+        delete customizations[id];
+        migrated = true;
+        return;
+      }
+
+      /* A translation saved together with the coordinates it replaced. Both
+         describe where the element sits and they disagree, so which one wins
+         depends on the order things are applied in. The translation is the one
+         the student made; the coordinates are what it was moved away from. */
+      if (customizations[id].moveMode === 'transform' && customizations[id].transform) {
+        ['position', 'left', 'top', 'right', 'bottom'].forEach(function (prop) {
+          if (customizations[id][prop] != null) {
+            delete customizations[id][prop];
+            migrated = true;
+          }
+        });
+      }
+
+      // A drag saved before the element was pinned. The rest of the entry - its
+      // colours, its spacing - is the student's work and stays.
+      if (isMoveLocked(el) && stripPlacement(customizations[id])) {
+        clearPlacementStyles(el);
+        migrated = true;
+      }
+
+      /* A slide dragged out of place, or hidden, before the carousel's layers
+         were left to the carousel. Kept, the hero jumps or goes blank when that
+         slide's turn comes round and the slider looks stuck. */
+      if (isBackgroundLayer(el)) {
+        delete customizations[id];
+        clearAppliedStyles(el);
+        el.removeAttribute('data-hms-free-position');
+        el.removeAttribute('data-hms-move-mode');
+        migrated = true;
+        return;
+      }
+
+      // A name typed into the footer back when the header and the footer were
+      // edited apart. It was a rename, so keep it: adopt it as the team's one
+      // name, unless the team has since set one properly, and drop the entry's
+      // text either way. The rest of the entry - a drag, a colour - stays.
+      if (customizations[id].text != null && isBrandLocked(textSlot(el))) {
+        adoptStrandedBrandName(customizations[id].text, textSlot(el));
+        delete customizations[id].text;
+        migrated = true;
+      }
 
       // Re-key legacy ephemeral [data-hms-id="el-…"] entries to structural selectors.
       let key = id;
@@ -1210,14 +1545,25 @@
       captureOriginalState(el, key);
       el.setAttribute('data-edit-id', key);
       applyEntry(el, customizations[key]);
-    });
-    applyDeleted();
-    renderUserElements();
-    cleanOrphanSpacers();
-    rebuildFreePosSheet();
-    applying = false;
-    updateHandles();
+    }));
+    attempt('applyDeleted', applyDeleted);
+    attempt('renderUserElements', renderUserElements);
+    attempt('cleanOrphanSpacers', cleanOrphanSpacers);
+    attempt('rebuildFreePosSheet', rebuildFreePosSheet);
     if (migrated) notifyChanged();
+  }
+
+  /* One pass now and a few as the page settles: a mount that lands after the
+     first pass is still covered, and the passes are identical because each one
+     reads the stored values rather than measuring what is on screen. */
+  function reapplyThroughSettle() {
+    applyAllCustomizations();
+    [16, 120, 400].forEach(function (delay) {
+      setTimeout(function () {
+        if (dragState || resizeState || textEditEl) return;
+        applyAllCustomizations();
+      }, delay);
+    });
   }
 
   function scheduleReapply() {
@@ -1257,7 +1603,7 @@
   }
 
   function promoteToAbsolute(el) {
-    if (!el) return;
+    if (!el || isHeaderLocked(el)) return;
     el = resolveEditableRoot(el) || el;
     clearNestedFreePositions(el);
     const cs = window.getComputedStyle(el);
@@ -1309,6 +1655,7 @@
 
   function onMoveHandleDown(e) {
     if (!designMode || !canEdit || !selectedEl) return;
+    if (isHeaderLocked(selectedEl) || isMoveLocked(selectedEl)) return;
     if (!canEditCurrentPage()) return;
     if (e.button !== 0) return;
 
@@ -1369,27 +1716,28 @@
     const sx = closestSnap(desiredX, candidates.xs, 6);
     const sy = closestSnap(desiredY, candidates.ys, 6);
 
+    /* Off a guide, the element follows the cursor exactly. It used to round
+       to an 8px grid, which made it step behind the pointer and jitter. */
     if (sx) {
       left += sx.delta;
       guideXEl.style.left = sx.target + 'px';
       guideXEl.style.display = 'block';
-    } else {
-      left = Math.round(left / 8) * 8;
-      if (guideXEl) guideXEl.style.display = 'none';
+    } else if (guideXEl) {
+      guideXEl.style.display = 'none';
     }
     if (sy) {
       top += sy.delta;
       guideYEl.style.top = sy.target + 'px';
       guideYEl.style.display = 'block';
-    } else {
-      top = Math.round(top / 8) * 8;
-      if (guideYEl) guideYEl.style.display = 'none';
+    } else if (guideYEl) {
+      guideYEl.style.display = 'none';
     }
     return { left, top, dx: left - state.left, dy: top - state.top };
   }
 
   function onResizeStart(e) {
     if (!designMode || !canEdit || !selectedEl) return;
+    if (isHeaderLocked(selectedEl)) return;
     e.preventDefault();
     e.stopPropagation();
     const el = resolveEditableRoot(selectedEl) || selectedEl;
@@ -1397,6 +1745,16 @@
     const r = getVisualRect(el);
     const cs = window.getComputedStyle(el);
     const isText = isBlockTextTag(el.tagName) || isInlineTextTag(el.tagName) || el.getAttribute('data-hms-text') === '1';
+    // The hotel logo is drawn with object-fit: contain, so its own pixels never
+    // stretch - but the box the student drags could still end up a different
+    // shape than the picture inside it, which reads as a squished logo even
+    // though the raster itself is untouched. Locking this box to the logo's own
+    // width/height ratio keeps the box (and so the visible logo) proportioned to
+    // whatever image the student uploaded, at any size they resize it to.
+    const isLogo = el.tagName === 'IMG' && el.getAttribute('data-hms-content-kind') === 'brand';
+    const logoRatio = isLogo
+      ? ((el.naturalWidth && el.naturalHeight) ? (el.naturalWidth / el.naturalHeight) : (r.width / Math.max(1, r.height)))
+      : 0;
     resizeState = {
       el: el,
       dir: e.currentTarget.getAttribute('data-dir'),
@@ -1409,9 +1767,47 @@
       startFontSize: parseFloat(cs.fontSize) || 16,
       isText: isText,
       isCorner: false,
+      isLogo: isLogo,
+      aspectRatio: logoRatio,
       historyStarted: false,
     };
     resizeState.isCorner = ['nw', 'ne', 'sw', 'se'].indexOf(resizeState.dir) !== -1;
+  }
+
+  /* Cards clip their own overflow, so a child dragged past the edge is not moved
+     out of the card, it is cut off and disappears. A dragged element therefore
+     tracks the pointer freely — clipping is lifted for the duration — and is
+     pulled back inside its card once, on drop. Clamping every pointer move
+     instead pulled the element out from under the cursor the moment it met an
+     edge, leaving the move handle behind. */
+  const DRAG_BOUNDS_SELECTOR = '.room-card, .menu-food-card, .menu-card';
+
+  function getDragBoundsHost(el) {
+    const host = el && el.closest ? el.closest(DRAG_BOUNDS_SELECTOR) : null;
+    if (!host || host === el) return null;
+    const rect = host.getBoundingClientRect();
+    return rect.width && rect.height ? host : null;
+  }
+
+  /* Pulls an element back inside its card. Used on drop, and on load to repair
+     a move saved out of bounds — without it such an element stays clipped and
+     cannot be grabbed back. An element larger than its card pins to the
+     top-left edge rather than letting the clamp invert. */
+  function clampTransformIntoBounds(el) {
+    const host = getDragBoundsHost(el);
+    if (!host) return;
+    const bounds = host.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    let dx = 0;
+    let dy = 0;
+    if (r.left < bounds.left) dx = bounds.left - r.left;
+    else if (r.right > bounds.right) dx = Math.max(bounds.right - r.right, bounds.left - r.left);
+    if (r.top < bounds.top) dy = bounds.top - r.top;
+    else if (r.bottom > bounds.bottom) dy = Math.max(bounds.bottom - r.bottom, bounds.top - r.top);
+    if (!dx && !dy) return;
+    const t = getElementTranslate(el);
+    setElementTranslate(el, t.x + dx, t.y + dy);
   }
 
   function onPointerMove(e) {
@@ -1427,7 +1823,7 @@
         ensureStableId(el);
         clearNestedFreePositions(el);
 
-        if (el.hasAttribute('data-hms-user') || el.classList.contains('nav-bar')) {
+        if (el.hasAttribute('data-hms-user')) {
           dragState.mode = 'fixed';
           const er = getVisualRect(el);
           setPosImportant(el, 'position', 'fixed');
@@ -1438,7 +1834,6 @@
           setPosImportant(el, 'margin', '0');
           setPosImportant(el, 'transform', 'none');
           el.setAttribute('data-hms-free-position', '1');
-          if (el.classList.contains('nav-bar')) el.setAttribute('data-hms-keep-fixed', '1');
           dragState.left = er.left;
           dragState.top = er.top;
           dragState.startRect = er;
@@ -1450,6 +1845,10 @@
           dragState.left = 0;
           dragState.top = 0;
           dragState.startRect = getVisualRect(el);
+          // Let the name be seen outside its card while it is being dragged;
+          // the card clips it otherwise and the drag looks like a deletion.
+          dragState.boundsHost = getDragBoundsHost(el);
+          if (dragState.boundsHost) dragState.boundsHost.classList.add('hms-drag-unclipped');
         }
         dragState.historyStarted = true;
         suppressNextClick = true;
@@ -1483,13 +1882,17 @@
         beginHistoryStep();
         const el = resizeState.el;
         if (!el.hasAttribute('data-hms-user')) {
-          normalizeToTransformMove(el);
+          const base = normalizeToTransformMove(el);
+          resizeState.baseX = base.x;
+          resizeState.baseY = base.y;
         } else {
           promoteToAbsolute(el);
+          resizeState.startLeft = parseFloat(el.style.left) || 0;
+          resizeState.startTop = parseFloat(el.style.top) || 0;
         }
         setPosImportant(el, 'max-width', 'none');
         setPosImportant(el, 'min-width', '0');
-        setPosImportant(el, 'min-height', '0');
+        if (!resizeState.isText) setPosImportant(el, 'min-height', '0');
         setPosImportant(el, 'width', resizeState.width + 'px');
         if (!resizeState.isText || resizeState.isCorner) {
           setPosImportant(el, 'height', resizeState.height + 'px');
@@ -1509,6 +1912,19 @@
       if (dir.includes('s')) height = Math.max(16, resizeState.height + dy);
       if (dir.includes('w')) width = Math.max(16, resizeState.width - dx);
       if (dir.includes('n')) height = Math.max(16, resizeState.height - dy);
+
+      if (resizeState.isLogo && resizeState.aspectRatio) {
+        // A vertical-only handle drives height; every other handle (including
+        // the horizontal-only ones) drives width - either way the other side
+        // is derived from the ratio instead of the raw drag, so the box can
+        // never end up a shape the uploaded logo doesn't have.
+        if (dir === 'n' || dir === 's') {
+          width = Math.max(16, height * resizeState.aspectRatio);
+        } else {
+          height = Math.max(16, width / resizeState.aspectRatio);
+        }
+      }
+
       width = Math.round(width / snap) * snap;
       height = Math.round(height / snap) * snap;
 
@@ -1523,17 +1939,35 @@
         setPosImportant(el, 'height', 'auto');
         setPosImportant(el, 'max-width', 'none');
         setPosImportant(el, 'min-width', '0');
-        setPosImportant(el, 'white-space', 'nowrap');
+        setPosImportant(el, 'white-space', 'pre');
       } else if (resizeState.isText) {
-        setPosImportant(el, 'width', width + 'px');
-        setPosImportant(el, 'height', height + 'px');
+        /* Text wraps to the new width and is never cut off: a side handle sets
+           the width, a top or bottom handle the least height, and the box still
+           grows to fit every line. A fixed height with overflow hidden clipped
+           the lines a longer heading wrapped onto. */
+        if (dir.includes('e') || dir.includes('w')) setPosImportant(el, 'width', width + 'px');
+        if (dir.includes('n') || dir.includes('s')) setPosImportant(el, 'min-height', height + 'px');
+        setPosImportant(el, 'height', 'auto');
         setPosImportant(el, 'max-width', 'none');
         setPosImportant(el, 'min-width', '0');
-        setPosImportant(el, 'white-space', 'normal');
-        setPosImportant(el, 'overflow', 'hidden');
+        setPosImportant(el, 'white-space', 'pre-line');
+        setPosImportant(el, 'overflow', 'visible');
       } else {
         setPosImportant(el, 'width', width + 'px');
         setPosImportant(el, 'height', height + 'px');
+      }
+      /* A left or top handle moves that edge and keeps the opposite one where it
+         was; growing the box from its top-left corner made it slide away from
+         the handle being dragged. */
+      if (!(resizeState.isText && resizeState.isCorner)) {
+        const shiftX = dir.includes('w') ? resizeState.width - width : 0;
+        const shiftY = dir.includes('n') ? resizeState.height - height : 0;
+        if (resizeState.baseX != null) {
+          setElementTranslate(el, resizeState.baseX + shiftX, resizeState.baseY + shiftY);
+        } else if (resizeState.startLeft != null) {
+          setPosImportant(el, 'left', (resizeState.startLeft + shiftX) + 'px');
+          setPosImportant(el, 'top', (resizeState.startTop + shiftY) + 'px');
+        }
       }
       updateHandles();
     }
@@ -1582,7 +2016,13 @@
         if (dragState.mode === 'transform') {
           const t = getElementTranslate(el);
           setElementTranslate(el, t.x, t.y);
-        } else if (el && (el.classList.contains('nav-bar') || el.getAttribute('data-hms-keep-fixed') === '1')) {
+          clampTransformIntoBounds(el);
+          // Say which kind of move this was, so saveElementState records a
+          // translation alone rather than one on top of stale coordinates.
+          if (el && !el.hasAttribute('data-hms-user')) {
+            el.setAttribute('data-hms-move-mode', 'transform');
+          }
+        } else if (el && el.getAttribute('data-hms-keep-fixed') === '1') {
           const er = getVisualRect(el);
           setPosImportant(el, 'position', 'fixed');
           setPosImportant(el, 'left', er.left + 'px');
@@ -1599,6 +2039,7 @@
         updateHandles();
         setTimeout(function () { suppressNextClick = false; }, 0);
       }
+      if (dragState.boundsHost) dragState.boundsHost.classList.remove('hms-drag-unclipped');
       dragState = null;
       hideSmartGuides();
     }
@@ -1641,9 +2082,19 @@
       postToParent({ type: 'element-deselected' });
       return;
     }
-    if (!canEditCurrentPage()) {
+    // Clicking the selected element again is an explicit deselect. This hides
+    // the selection box and Move handle instead of immediately selecting the
+    // same element again. Alt+click remains reserved for selecting a parent.
+    const current = selectedEl ? (resolveEditableRoot(selectedEl) || selectedEl) : null;
+    const clicked = resolveEditableRoot(el) || el;
+    if (!e.altKey && current && clicked === current) {
       clearSelection();
-      blockEditToast();
+      postToParent({ type: 'element-deselected' });
+      return;
+    }
+    if (!canEditElement(el)) {
+      clearSelection();
+      blockEditToast(sectionBlockMessage(el));
       return;
     }
     selectElement(el);
@@ -1657,37 +2108,121 @@
 
   function onDblClick(e) {
     if (!designMode || !canEdit) return;
-    if (!canEditCurrentPage()) {
+    // The header has its own click-to-edit dialogs; never open a caret in it.
+    if (isHeaderLocked(e.target)) return;
+    const el = findEditableAtPoint(e);
+    if (!canEditElement(el)) {
       e.preventDefault();
       e.stopPropagation();
-      blockEditToast();
+      blockEditToast(sectionBlockMessage(el));
       return;
     }
-    const el = findEditableAtPoint(e);
     if (!el || ['IMG', 'I', 'SVG', 'INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) return;
     e.preventDefault();
     e.stopPropagation();
     selectElement(el);
     beginHistoryStep();
-    el.contentEditable = 'true';
-    el.focus();
+    /* A lined heading is edited line by line, each line its own editing host.
+       Made editable as a whole, clearing a line let the browser delete that
+       line's element, and what was typed next landed inside the line above:
+       still gold and italic on screen (the browser carries the formatting
+       over), but saved as one line, so the hero's second line came back white
+       after a reload. A host cannot delete itself. */
+    const lines = textLines(el); // also counts the lines before any can go
+    const hosts = lines || [el];
+    hosts.forEach((host) => {
+      host.contentEditable = 'true';
+      // An emptied line keeps a height, so the caret has somewhere to sit.
+      if (lines) host.style.minHeight = '1em';
+    });
+    const host = lines ? (lines.find((line) => line.contains(e.target)) || lines[0]) : el;
+    host.focus();
+    /* A button takes focus without a caret, so what was typed went nowhere, or
+       into the text edited before it. Select the text when the caret is not
+       already inside: the label only, so a button's icon is kept. */
+    const sel = window.getSelection();
+    if (sel && !(sel.anchorNode && host.contains(sel.anchorNode))) {
+      const slot = lines ? host : textSlot(el);
+      const range = document.createRange();
+      range.selectNodeContents(slot && slot.nodeType === 3 ? slot : (lines ? host : el));
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
     textEditEl = el;
     let liveSaveTimer = null;
     const onInput = () => {
       clearTimeout(liveSaveTimer);
       liveSaveTimer = setTimeout(() => saveElementState(el), 500);
     };
+    // Space is a button's own activation key, and Chrome drops it instead of
+    // typing it: "New Label" was saved as "NewLabel".
+    const onKeyDown = (ev) => {
+      // Enter breaks the line where the caret is. Left to the browser it added
+      // a <div> or <br> that the text is not saved from, and in a lined heading
+      // it split one line into two and shifted every line after it.
+      if (ev.key === 'Enter') { ev.preventDefault(); insertLineBreak(el); onInput(); return; }
+      if (ev.key !== ' ' || el.tagName !== 'BUTTON') return;
+      ev.preventDefault();
+      document.execCommand('insertText', false, ' ');
+    };
     const finish = () => {
       clearTimeout(liveSaveTimer);
       textEditEl = null;
-      el.contentEditable = 'false';
-      el.removeEventListener('blur', finish);
+      hosts.forEach((h) => {
+        h.contentEditable = 'false';
+        if (lines) h.style.removeProperty('min-height');
+      });
+      el.removeEventListener('focusout', onFocusOut);
       el.removeEventListener('input', onInput);
+      el.removeEventListener('keydown', onKeyDown);
       saveElementState(el);
       selectElement(el);
     };
+    // Clicking from one line of a lined heading into the next is still the same edit.
+    const onFocusOut = (ev) => {
+      if (ev.relatedTarget && el.contains(ev.relatedTarget)) return;
+      finish();
+    };
     el.addEventListener('input', onInput);
-    el.addEventListener('blur', finish);
+    el.addEventListener('keydown', onKeyDown);
+    el.addEventListener('focusout', onFocusOut);
+  }
+
+  /* A '\n' at the caret, inside the line it is on, shown by pre-line. A break
+     at the very end gets a zero-width space after it, or the new empty line
+     would not show until something is typed on it; reading drops it again. */
+  function insertLineBreak(el) {
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return;
+    const range = sel.getRangeAt(0);
+    if (!el.contains(range.startContainer)) return;
+    const lines = textLines(el);
+    const holder = lines ? lines.find((line) => line.contains(range.startContainer)) : el;
+    if (!holder) return;
+    range.deleteContents();
+    /* Written into the text node the caret is in rather than inserted as a node
+       of its own: splitting the node left the words after the caret outside the
+       one text node some elements are saved from. */
+    let node = range.startContainer;
+    let offset = range.startOffset;
+    if (node.nodeType !== 3) {
+      const text = document.createTextNode('');
+      node.insertBefore(text, node.childNodes[offset] || null);
+      node = text;
+      offset = 0;
+    }
+    node.nodeValue = node.nodeValue.slice(0, offset) + '\n' + node.nodeValue.slice(offset);
+    const rest = document.createRange();
+    rest.setStart(node, offset + 1);
+    rest.setEnd(holder, holder.childNodes.length);
+    if (!rest.toString().replace(/\u200B/g, '')) node.nodeValue += '\u200B';
+    if (lines) holder.style.whiteSpace = 'pre-line';
+    else if (!/^pre/.test(window.getComputedStyle(el).whiteSpace)) setPosImportant(el, 'white-space', 'pre-line');
+    const caret = document.createRange();
+    caret.setStart(node, offset + 1);
+    caret.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(caret);
   }
 
   function ensureFileInput() {
@@ -1742,6 +2277,7 @@
 
   function applyImageToSelected(url, recordHistory) {
     if (!selectedEl || !url) return;
+    if (isHeaderLocked(selectedEl)) return;
     if (recordHistory !== false) beginHistoryStep();
 
     // Shared-content images (brand logo) persist through the site-content store
@@ -1832,6 +2368,9 @@
     if (!canEdit) return;
     if (!selectedEl && data.id) selectedEl = findByKey(data.id);
     if (!selectedEl) return;
+    // A stale "#root > nav" id still held by the Design Panel is the one way a
+    // style command could still reach the header.
+    if (isHeaderLocked(selectedEl)) return;
     beginHistoryStep();
 
     if (data.style) {
@@ -1921,7 +2460,7 @@
   }
 
   function deleteSelected() {
-    if (!canEdit || !selectedEl) return;
+    if (!canEdit || !selectedEl || isHeaderLocked(selectedEl)) return;
     if (!canEditCurrentPage()) {
       blockEditToast();
       return;
@@ -1956,7 +2495,7 @@
   }
 
   function duplicateSelected() {
-    if (!canEdit || !selectedEl) return;
+    if (!canEdit || !selectedEl || isHeaderLocked(selectedEl)) return;
     if (!canEditCurrentPage()) {
       blockEditToast();
       return;
@@ -2001,7 +2540,7 @@
   }
 
   function changeLayer(direction) {
-    if (!canEdit || !selectedEl) return;
+    if (!canEdit || !selectedEl || isHeaderLocked(selectedEl)) return;
     beginHistoryStep();
     promoteToAbsolute(selectedEl);
     const cur = parseInt(window.getComputedStyle(selectedEl).zIndex, 10) || 1;
@@ -2022,9 +2561,10 @@
 
   function nudgeSelected(dx, dy) {
     if (!selectedEl || !canEditCurrentPage()) return false;
+    if (isHeaderLocked(selectedEl)) return false;
     beginHistoryStep();
     selectedEl = resolveEditableRoot(selectedEl) || selectedEl;
-    if (selectedEl.hasAttribute('data-hms-user') || selectedEl.classList.contains('nav-bar')) {
+    if (selectedEl.hasAttribute('data-hms-user')) {
       promoteToAbsolute(selectedEl);
       const parent = selectedEl.offsetParent || selectedEl.parentElement || document.body;
       const pr = parent.getBoundingClientRect();
@@ -2042,6 +2582,7 @@
 
   function alignSelected(direction) {
     if (!selectedEl || !canEditCurrentPage()) return;
+    if (isHeaderLocked(selectedEl)) return;
     selectedEl = resolveEditableRoot(selectedEl) || selectedEl;
     beginHistoryStep();
 
@@ -2139,14 +2680,6 @@
       pointer-events: auto; cursor: pointer;
     }
     #hms-user-canvas [data-hms-user] { pointer-events: none; }
-    body.hms-design-mode .nav-bar {
-      z-index: 2500 !important;
-      pointer-events: auto !important;
-    }
-    body.hms-design-mode .nav-bar,
-    body.hms-design-mode .nav-bar * {
-      cursor: pointer;
-    }
     body.hms-design-mode [data-hms-id],
     body.hms-design-mode h1, body.hms-design-mode h2, body.hms-design-mode h3,
     body.hms-design-mode h4, body.hms-design-mode h5, body.hms-design-mode h6,
@@ -2154,7 +2687,6 @@
     body.hms-design-mode strong, body.hms-design-mode button,
     body.hms-design-mode a, body.hms-design-mode img, body.hms-design-mode i,
     body.hms-design-mode input, body.hms-design-mode textarea,
-    body.hms-design-mode .nav-bar,
     body.hms-design-mode [data-hms-section],
     body.hms-design-mode [data-hms-bg-target] {
       cursor: pointer;
@@ -2213,6 +2745,8 @@
       display: none; position: fixed; z-index: 99997; pointer-events: none;
       background: #ec4899; box-shadow: 0 0 0 1px rgba(236,72,153,.35);
     }
+    .hms-drag-unclipped { overflow: visible !important; }
+    #hms-section-rail .hms-rail-colors { text-transform: none; gap: 5px; }
     .hms-smart-guide.vertical { top: 0; bottom: 0; width: 1px; }
     .hms-smart-guide.horizontal { left: 0; right: 0; height: 1px; }
     body.hms-design-mode::after {
@@ -2274,24 +2808,33 @@
   function rebuildSectionRail() {
     const sections = getSections();
     const rail = ensureSectionRail();
-    if (!designMode || !sections.length) {
+    // Amenities and Experience have no marked sections, but the colours button
+    // below still has to be reachable from them.
+    if (!designMode || (!sections.length && !canEdit)) {
       rail.style.display = 'none';
       return;
     }
     rail.innerHTML = '';
-    sections.forEach((section) => {
-      const id = section.getAttribute('data-hms-section') || 'section';
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.textContent = id;
-      btn.className = id === activeSectionId ? 'active' : '';
-      btn.addEventListener('click', (e) => {
+
+    // Background colours belong to the whole site, not to whichever element is
+    // selected, so the rail carries them rather than the Design Panel — the rail
+    // is already the site-wide control strip and is only shown in design mode.
+    // Front Desk alone may set them (see HMSSiteContent.canEditSiteColors), so
+    // every other role gets a rail without the button rather than a dialog that
+    // refuses every swatch.
+    if (canEdit && window.HMSSiteContent && window.HMSSiteContent.canEditSiteColors()) {
+      const colors = document.createElement('button');
+      colors.type = 'button';
+      colors.className = 'hms-rail-colors';
+      colors.title = 'Background colours';
+      colors.innerHTML = '<i class="fa-solid fa-palette"></i> colours';
+      colors.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        focusSection(id);
+        window.dispatchEvent(new CustomEvent('hms-card-color', { detail: 'site' }));
       });
-      rail.appendChild(btn);
-    });
+      rail.appendChild(colors);
+    }
     rail.style.display = 'inline-flex';
   }
 
@@ -2370,11 +2913,197 @@
     }
   });
 
+  /**
+   * Take the parent to a page, even when it asked before the page could listen.
+   *
+   * The template is a React app compiled in the browser by Babel, and it
+   * registers __HMS_NAVIGATE__ only once it has mounted. The builder posts its
+   * navigate on the iframe's load event, which fires first — so the message was
+   * arriving at an app that could not yet answer it, and was dropped in silence.
+   * That is why every role opened on the home page whatever section it owned.
+   *
+   * The request is held instead and retried until the app is up, and given up on
+   * after a few seconds so a page that never mounts does not leave a timer
+   * running for the life of the tab.
+   */
+  function navigateTemplateTo(page) {
+    if (!page) return;
+
+    if (typeof window.__HMS_NAVIGATE__ === 'function') {
+      window.__HMS_NAVIGATE__(page);
+      return;
+    }
+
+    let waited = 0;
+    const tick = setInterval(function () {
+      waited += 100;
+      if (typeof window.__HMS_NAVIGATE__ === 'function') {
+        clearInterval(tick);
+        window.__HMS_NAVIGATE__(page);
+      } else if (waited >= 8000) {
+        clearInterval(tick);
+      }
+    }, 100);
+  }
+
+  /**
+   * An assigned task, opened from the editor sidebar: go to the page it is done
+   * on and bring the part of it that needs customizing into view.
+   *
+   * Held as pending across a page change, because hms-page-change scrolls to the
+   * top and resets section focus ~80ms after landing — focusing any earlier is
+   * undone. The highlight is an overlay box rather than a class on the section:
+   * React re-renders the template freely and would drop a class it did not set.
+   */
+  let pendingTaskFocus = null;
+  // The area of a task just opened from the sidebar, outlined for a moment.
+  let flashTaskArea = null;
+  let flashTaskTimer = null;
+  let taskFocusOverlays = [];
+  let taskFocusTick = null;
+
+  /* The header has no data-hms-section, and the branding task is three separate
+     pieces of it. Outlining the whole bar told a student where to look but not
+     what to change, so the header is outlined piece by piece instead: the logo,
+     the hotel name, and each of the links. */
+  const HEADER_TASK_PARTS = [
+    '.nav-bar [data-hms-brand-logo]',
+    '.nav-bar [data-hms-brand-name]',
+    '.nav-bar [data-hms-nav-link]',
+  ];
+  const TASK_OUTLINE_COLOR = '#22c55e';
+
+  /** The elements to outline for a task area. */
+  function resolveTaskFocusTargets(page, section) {
+    if (section === 'header') {
+      const parts = Array.from(document.querySelectorAll(HEADER_TASK_PARTS.join(', ')));
+      if (parts.length) return parts;
+      const bar = document.querySelector('.nav-bar');
+      return bar ? [bar] : [];
+    }
+    let target = null;
+    if (section) target = document.querySelector('[data-hms-section="' + section + '"]');
+    // No section named, or this template has none by that name (Template 2 has
+    // no promos strip): the page itself is the area.
+    if (!target) target = document.querySelector('main[data-hms-page="' + page + '"]');
+    return target ? [target] : [];
+  }
+
+  /* The header is position: fixed, and its pieces are not — the outline has to
+     be fixed too, or it is left behind the moment the page scrolls. */
+  function inFixedLayer(el) {
+    for (let node = el; node && node !== document.body; node = node.parentElement) {
+      if (window.getComputedStyle(node).position === 'fixed') return true;
+    }
+    return false;
+  }
+
+  function taskFocusBox(el, small) {
+    const rect = el.getBoundingClientRect();
+    // Hidden at this width — the desktop links collapse into the phone menu.
+    if (rect.width === 0 || rect.height === 0) return null;
+    const fixed = inFixedLayer(el);
+    const box = document.createElement('div');
+    box.setAttribute('data-hms-no-edit', '1');
+    box.setAttribute('aria-hidden', 'true');
+    Object.assign(box.style, {
+      position: fixed ? 'fixed' : 'absolute',
+      left: rect.left + (fixed ? 0 : window.scrollX) + 'px',
+      top: rect.top + (fixed ? 0 : window.scrollY) + 'px',
+      width: rect.width + 'px',
+      height: rect.height + 'px',
+      pointerEvents: 'none',
+      zIndex: '2147483000',
+      borderRadius: small ? '10px' : '6px',
+      // Outside a small piece so it does not cover the words; inside a whole
+      // section so the edges are not cut off by the side of the window.
+      outline: '2px solid ' + TASK_OUTLINE_COLOR,
+      outlineOffset: small ? '5px' : '-3px',
+    });
+    document.body.appendChild(box);
+    return box;
+  }
+
+  /* Redrawn on a short tick while anything is outlined: a rename resizes the
+     link, React may swap the node, and the page can scroll or resize under it.
+     Overlays rather than a class on the element, because React drops classes it
+     did not set. */
+  function redrawTaskFocus() {
+    taskFocusOverlays.forEach(function (box) { box.remove(); });
+    taskFocusOverlays = [];
+
+    const page = getCurrentPage();
+    const seen = new Set();
+    const area = flashTaskArea;
+    if (area && area.page === page) {
+      const small = area.section === 'header';
+      resolveTaskFocusTargets(area.page, area.section).forEach(function (el) {
+        if (seen.has(el)) return;
+        seen.add(el);
+        const box = taskFocusBox(el, small);
+        if (box) taskFocusOverlays.push(box);
+      });
+    }
+
+    const active = !!flashTaskArea;
+    if (active && !taskFocusTick) taskFocusTick = setInterval(redrawTaskFocus, 500);
+    if (!active && taskFocusTick) {
+      clearInterval(taskFocusTick);
+      taskFocusTick = null;
+    }
+  }
+
+  function flashTaskFocus(focus) {
+    clearTimeout(flashTaskTimer);
+    flashTaskArea = focus;
+    redrawTaskFocus();
+    flashTaskTimer = setTimeout(function () {
+      flashTaskArea = null;
+      redrawTaskFocus();
+    }, 2400);
+  }
+
+  function applyTaskFocus(focus) {
+    const targets = resolveTaskFocusTargets(focus.page, focus.section);
+    const target = targets.length ? targets[0] : null;
+
+    if (focus.section && focus.section !== 'header' && target && target.hasAttribute('data-hms-section')) {
+      // Also select it as the active section, so Design mode's section chrome
+      // lands on the part the task is about.
+      if (designMode) focusSection(focus.section, { scroll: false });
+    }
+
+    if (target && focus.section && focus.section !== 'header') {
+      const y = target.getBoundingClientRect().top + window.scrollY - 80;
+      window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+      // Measure after the smooth scroll has moved things.
+      setTimeout(function () { flashTaskFocus(focus); }, 450);
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setTimeout(function () { flashTaskFocus(focus); }, 350);
+    }
+  }
+
+  function focusTaskArea(page, section) {
+    if (!page) return;
+    const focus = { page: page, section: section || null };
+    if (getCurrentPage() === page && typeof window.__HMS_NAVIGATE__ === 'function') {
+      pendingTaskFocus = null;
+      applyTaskFocus(focus);
+      return;
+    }
+    pendingTaskFocus = focus;
+    navigateTemplateTo(page);
+  }
+
   window.addEventListener('message', function (event) {
     const data = event.data || {};
     if (!data || data.source !== 'hms-parent') return;
 
     switch (data.type) {
+      case 'focus-task-area':
+        focusTaskArea(data.page, data.section);
+        break;
       case 'set-mode':
         setDesignMode(data.mode === 'design' || data.mode === 'build');
         break;
@@ -2391,9 +3120,13 @@
         clearSelection();
         break;
       case 'navigate-page':
-        if (typeof window.__HMS_NAVIGATE__ === 'function' && data.page) {
-          window.__HMS_NAVIGATE__(data.page);
-        }
+        navigateTemplateTo(data.page);
+        break;
+      /* Background Colours, opened from the Design Panel instead of by hunting for
+         the pill floating over the canvas. Same dialog either way — the event is
+         what the pill dispatches. */
+      case 'open-site-colors':
+        window.dispatchEvent(new CustomEvent('hms-card-color', { detail: 'site' }));
         break;
       case 'apply-edit':
         if (!canEditCurrentPage()) {
@@ -2405,6 +3138,47 @@
       case 'load-customizations':
         customizations = normalizeCustomizations(data.customizations || {});
         applyAllCustomizations();
+        break;
+      /* The hotel's name, words, social profiles and site type are edited in the
+         builder's own form rather than by clicking the page, so the panel hands
+         them in here. Written through HMSSiteContent so they land in the same
+         customizations the rest of the editor saves, and so one write reaches
+         every page at once. */
+      case 'set-site-identity':
+        if (!canEdit) {
+          blockEditToast();
+          break;
+        }
+        if (window.HMSSiteContent) {
+          if (data.hotelInfo && typeof window.HMSSiteContent.setHotelInfo === 'function') {
+            window.HMSSiteContent.setHotelInfo(data.hotelInfo);
+          }
+          if (data.socialLinks && typeof window.HMSSiteContent.setSocialLinks === 'function') {
+            window.HMSSiteContent.setSocialLinks(data.socialLinks);
+          }
+          if (data.typography && typeof window.HMSSiteContent.setTypography === 'function') {
+            window.HMSSiteContent.setTypography(data.typography);
+          }
+        }
+        break;
+      /* The panel draws its form from whatever the site currently holds, so it
+         asks for that once the frame is up rather than keeping its own copy. */
+      case 'request-site-identity':
+        if (window.HMSSiteContent && window.parent && window.parent !== window) {
+          window.parent.postMessage({
+            source: 'hms-template',
+            type: 'site-identity',
+            hotelInfo: window.HMSSiteContent.getHotelInfo ? window.HMSSiteContent.getHotelInfo() : {},
+            socialLinks: window.HMSSiteContent.getSocialLinks ? window.HMSSiteContent.getSocialLinks() : [],
+            typography: window.HMSSiteContent.getTypography ? window.HMSSiteContent.getTypography() : {},
+            defaults: window.HMSSiteContent.hotelDefaults ? window.HMSSiteContent.hotelDefaults() : {},
+            // Renaming the hotel belongs to whoever owns Home, the way it does
+            // when the name is edited in the header; the panel greys the field
+            // for everybody else rather than dropping their keystrokes.
+            canEditName: window.HMSSiteContent.canEditBrandName ? window.HMSSiteContent.canEditBrandName() : false,
+            canEdit: window.HMSSiteContent.canEditSiteIdentity ? window.HMSSiteContent.canEditSiteIdentity() : false,
+          }, '*');
+        }
         break;
       case 'request-customizations':
         persistUserElements();
@@ -2495,10 +3269,28 @@
     window.__HMS_CURRENT_PAGE__ = currentPage;
     clearSelection();
     activeSectionId = null;
+    /* Put the page's own work back on, rather than waiting for the observer to
+       notice the new markup. The page that was just left and the one arriving
+       keep separate entries, so everything on screen belongs to the page that
+       has gone; one missed mutation and the arriving page shows none of its
+       own, which reads as a design that reset itself. React mounts over the
+       next few frames, so this runs again as it settles - re-applying is
+       reading the same saved values twice, and lands in the same place. */
+    reapplyThroughSettle();
     renderUserElements();
     setTimeout(syncSectionMode, 80);
     updateEditHint();
     postToParent({ type: 'page-changed', page: currentPage, canEditPage: canEditCurrentPage() });
+    // A task's outlines belong to its page; redraw for the page now showing.
+    redrawTaskFocus();
+
+    // An assigned task was waiting on this page: focus it once React has mounted
+    // the page and the section reset above has run.
+    if (pendingTaskFocus && pendingTaskFocus.page === currentPage) {
+      const focus = pendingTaskFocus;
+      pendingTaskFocus = null;
+      setTimeout(function () { applyTaskFocus(focus); }, 250);
+    }
   });
 
   const root = document.getElementById('root') || document.body;

@@ -3,6 +3,8 @@
 namespace App\Support;
 
 use App\Models\HotelAddon;
+use App\Models\HotelAmenity;
+use App\Models\HotelAmenityVisit;
 use App\Models\HotelBooking;
 use App\Models\HotelComplaint;
 use App\Models\HotelFoodOrder;
@@ -20,8 +22,8 @@ use App\Models\StudentGroup;
  * Tables — has no badge at all rather than a permanent zero.
  *
  * Keys are per role, so the same key means different things to different desks:
- * "complaints" is unresolved work to Housekeeping and Maintenance, but to Front Desk
- * it is complaints the department has finished, which is news to pass to the guest.
+ * "complaints" is new work to the four complaint departments, but to Front Desk it is
+ * complaints a department has resolved, which still need confirming with the guest.
  */
 class HotelNavBadges
 {
@@ -36,22 +38,26 @@ class HotelNavBadges
             'front_desk' => [
                 'verify-guest' => self::awaitingCheckIn($membership),
                 'complaints'   => self::complaints($membership, null, 'Resolved'),
+                'amenities'    => self::guestsInsideAmenities($membership),
             ],
             'room_management' => [
                 'guest-details' => self::awaitingCheckIn($membership),
                 'manage-room'   => self::roomsOutOfService($membership),
+                'complaints'    => self::complaints($membership, 'room_management', 'Pending'),
             ],
             'restaurant_management' => [
                 'orders'      => self::openOrders($membership),
                 'manage-menu' => self::soldOutMenuItems($membership),
+                'complaints'  => self::complaints($membership, 'restaurant_management', 'Pending'),
             ],
             'housekeeping' => [
                 'inspections' => self::inspectionsOnHousekeeping($membership),
-                'complaints'  => self::complaints($membership, 'housekeeping', 'Open'),
+                'complaints'  => self::complaints($membership, 'housekeeping', 'Pending'),
                 'addons'      => self::addonsFullyLentOut($membership),
+                'amenities'   => self::amenitiesOnHousekeeping($membership),
             ],
             'maintenance' => [
-                'complaints' => self::complaints($membership, 'maintenance', 'Open'),
+                'complaints' => self::complaints($membership, 'maintenance', 'Pending'),
             ],
             default => [],
         };
@@ -75,6 +81,9 @@ class HotelNavBadges
         return HotelComplaint::where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
             ->when($department, fn ($query) => $query->where('department', $department))
+            // Front Desk only confirms guest complaints; staff-raised repairs finish at
+            // Resolved and would otherwise sit in its badge forever.
+            ->when(!$department, fn ($query) => $query->whereNull('hotel_room_inspection_id')->whereNull('hotel_amenity_id'))
             ->where('status', $status)
             ->count();
     }
@@ -119,6 +128,46 @@ class HotelNavBadges
         return HotelRoomInspection::where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
             ->whereIn('status', ['Pending', 'Awaiting Re-inspection'])
+            ->count();
+    }
+
+    /**
+     * Guests signed into a facility and not signed back out.
+     *
+     * Rows, not heads: one family in the pool is one thing on the desk to close, however
+     * many of them are swimming. Note this is the same badge key Housekeeping uses for a
+     * different count — keys are namespaced per role, and each desk's "amenities" badge
+     * answers its own question.
+     */
+    private static function guestsInsideAmenities(StudentGroup $membership): int
+    {
+        return HotelAmenityVisit::where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->inside()
+            ->count();
+    }
+
+    /**
+     * Broken facilities that are Housekeeping's move: either nobody has told Maintenance
+     * yet, or Maintenance is done and the repair still needs verifying.
+     *
+     * One under an open repair is not counted, for the same reason inspectionsOnHousekeeping
+     * skips "Awaiting Repair" — that ball is with Maintenance, and it comes back on its own
+     * when they close the complaint.
+     */
+    private static function amenitiesOnHousekeeping(StudentGroup $membership): int
+    {
+        $repairs = HotelAmenityDesk::latestRepairsFor($membership);
+
+        return HotelAmenity::where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->where('status', 'Under Maintenance')
+            ->get()
+            ->reject(function ($amenity) use ($repairs) {
+                $repair = $repairs[$amenity->hotel_amenity_id] ?? null;
+
+                return $repair && in_array($repair->status, HotelAmenity::OPEN_REPAIR_STATUSES, true);
+            })
             ->count();
     }
 

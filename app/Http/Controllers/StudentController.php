@@ -70,7 +70,7 @@ class StudentController extends Controller
                     'error' => $e->getMessage(),
                 ]);
 
-                return back()->withErrors(['avatar' => 'Could not upload the photo to storage. Please try again.']);
+                return back()->withErrors(['avatar' => 'Could not upload the photo. Please try again.']);
             }
 
             if ($user->avatar) {

@@ -1,0 +1,384 @@
+<?php
+
+namespace App\Support;
+
+use App\Models\HotelAmenity;
+use App\Models\HotelAmenityService;
+use App\Models\StudentGroup;
+
+/**
+ * Authorization + bootstrap for the hotel's facilities list.
+ *
+ * Housekeeping looks after the facilities, so only they may write to it. Everyone else —
+ * the other departments, and a guest browsing the team's site — reads the same rows,
+ * which is the whole point: the Amenities page of the site and the Housekeeping screen
+ * are one list, not two copies of one.
+ */
+class HotelAmenityAccess
+{
+    public const MANAGE_ROLE = 'housekeeping';
+
+    /** Roles that may add / edit amenities. */
+    public const MANAGE_ROLES = [self::MANAGE_ROLE, 'administrator'];
+
+    /**
+     * Roles that may sign a guest into a facility and back out of it.
+     *
+     * Deliberately not Housekeeping: they own what the facility *is* — its hours, its
+     * photo, whether it is open at all — while letting a guest in is desk work, done by
+     * whoever is standing in front of the guest. The same split the add-ons catalogue
+     * already makes, where Housekeeping owns the list and Front Desk attaches it to a stay.
+     */
+    public const REGISTER_ROLES = ['front_desk', 'administrator'];
+
+    public static function membership(): ?StudentGroup
+    {
+        $student = auth()->user()?->student;
+
+        return StudentGroupSync::membershipForStudent($student?->user_information_id);
+    }
+
+    /**
+     * A member may manage amenities when their own team role grants it, or when they are
+     * signed into the hotel site as Housekeeping staff.
+     */
+    public static function canManage(StudentGroup $membership): bool
+    {
+        return count(array_intersect(self::roles($membership), self::MANAGE_ROLES)) > 0;
+    }
+
+    /**
+     * A member may change the facilities when they hold the role. That is all.
+     *
+     * This briefly also required the "Customize Hotel Amenities" task to be
+     * assigned and to be theirs, which locked the section for every team whose
+     * faculty had not handed it out — including teams working ahead of the
+     * checklist, which is most of them. The task remains on the checklist as work
+     * to be reviewed; it no longer decides who may open the screen.
+     *
+     * Kept as its own name rather than folded into canManage() so the routes still
+     * read as "may this person customize", and so the rule has one place to change
+     * if it is ever tightened again.
+     */
+    public static function canCustomize(StudentGroup $membership, $user = null): bool
+    {
+        return self::canManage($membership);
+    }
+
+    /** A member may register guests into a facility when they are on the front desk. */
+    public static function canRegister(StudentGroup $membership): bool
+    {
+        return count(array_intersect(self::roles($membership), self::REGISTER_ROLES)) > 0;
+    }
+
+    /**
+     * A member may turn a hall or facility around between bookings when they cover
+     * Housekeeping *in Simulation* — the member whose Simulation seat is
+     * Housekeeping, not Room & Maintenance.
+     */
+    public static function canPrepare(StudentGroup $membership): bool
+    {
+        return count(array_intersect(self::simulationRoles($membership), self::MANAGE_ROLES)) > 0;
+    }
+
+    /**
+     * The member's own team roles, plus whatever they are signed into the hotel site as.
+     * Extracted so canManage and canRegister cannot drift apart.
+     */
+    public static function roles(StudentGroup $membership): array
+    {
+        $roles = StudentGroupSync::roleKeys($membership);
+
+        $sim = HotelSimulationAuth::current();
+        if (is_array($sim) && ($sim['type'] ?? null) === 'staff' && is_array($sim['roles'] ?? null)) {
+            $roles = array_merge($roles, $sim['roles']);
+        }
+
+        return $roles;
+    }
+
+    /** Same as roles(), but the team role is expanded for Simulation instead of Customization. */
+    public static function simulationRoles(StudentGroup $membership): array
+    {
+        $roles = StudentGroupSync::simulationRoleKeys($membership);
+
+        $sim = HotelSimulationAuth::current();
+        if (is_array($sim) && ($sim['type'] ?? null) === 'staff' && is_array($sim['roles'] ?? null)) {
+            // The logged-in-as teammate's Simulation seat (their Customization seat on a
+            // session older than the split), not yet expanded for this phase.
+            $roles = array_merge($roles, HotelTemplateBuilder::rolesForPhase($sim['simulation_roles'] ?? $sim['roles'], HotelTemplateBuilder::PHASE_SIMULATION));
+        }
+
+        return $roles;
+    }
+
+    /**
+     * First load for a team starts from the five facilities nearly every hotel has, so
+     * neither the Housekeeping table nor the site's Amenities page is ever empty. Runs
+     * once — after that the DB is the only source of truth, and a team that renamed,
+     * re-photographed or closed one of these is never overwritten.
+     */
+    /**
+     * The same five, for a team named rather than a membership row held.
+     *
+     * The Housekeeping screen seeds on first load, but it is not the only reader:
+     * the faculty preview and the team's public site query the table straight and
+     * seed nothing, so before any student had opened that screen both showed an
+     * empty Amenities page. Called where a team is built instead, so the five are
+     * there from the moment the team is.
+     *
+     * Any one membership row stands for the team — the facilities are keyed by
+     * (group_name, faculty_id), not by member.
+     */
+    public static function seedDefaultsForTeam(?string $groupName, ?int $facultyId): void
+    {
+        if (!filled($groupName) || !$facultyId) {
+            return;
+        }
+
+        $membership = StudentGroup::where('faculty_id', $facultyId)
+            ->where('group_name', $groupName)
+            ->first();
+
+        if ($membership) {
+            self::seedDefaults($membership);
+        }
+    }
+
+    public static function seedDefaults(StudentGroup $membership): void
+    {
+        $exists = HotelAmenity::where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->exists();
+
+        if ($exists) {
+            // Teams that were seeded before the Spa had a treatment list still need one,
+            // so this runs for them too. It carries its own guard.
+            self::seedSpaServices($membership);
+
+            return;
+        }
+
+        $now = now();
+        $rows = array_map(fn ($amenity) => array_merge($amenity, [
+            'group_name' => $membership->group_name,
+            'faculty_id' => $membership->faculty_id,
+            'group_id'   => $membership->group_id,
+            'status'     => 'Available',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]), self::defaultAmenities());
+
+        /* Every row padded to the same keys before the bulk insert. insert()
+           takes its column list from the first row and then writes each row's
+           own values against it, so one default carrying a key the others do
+           not - only the Function Room has a capacity - sent 14 values into 13
+           columns and the whole seed threw. That is why teams were coming up
+           with no facilities at all: not a seed that never ran, a seed that
+           could not finish. */
+        $columns = array_keys(array_merge(...$rows));
+        $blank = array_fill_keys($columns, null);
+
+        HotelAmenity::insert(array_map(
+            // array_replace, not array_merge: keys are strings here and merge
+            // would renumber nothing but is the wrong tool for "fill the gaps".
+            fn (array $row) => array_replace($blank, $row),
+            $rows
+        ));
+
+        self::seedSpaServices($membership);
+    }
+
+    /**
+     * The Spa is useless without something to book at it, so the treatments arrive with
+     * it. Attached to whichever amenity is the seeded Spa rather than created free-
+     * standing, because a service belongs to the facility that gives it.
+     */
+    private static function seedSpaServices(StudentGroup $membership): void
+    {
+        $spa = HotelAmenity::where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->where('name', 'Spa')
+            ->first();
+
+        if (!$spa) {
+            return;
+        }
+
+        $alreadyHasServices = HotelAmenityService::where('hotel_amenity_id', $spa->hotel_amenity_id)->exists();
+        if ($alreadyHasServices) {
+            return;
+        }
+
+        $now = now();
+        $rows = array_map(fn ($service) => array_merge($service, [
+            'group_name'       => $membership->group_name,
+            'faculty_id'       => $membership->faculty_id,
+            'group_id'         => $membership->group_id,
+            'hotel_amenity_id' => $spa->hotel_amenity_id,
+            'is_active'        => true,
+            'created_at'       => $now,
+            'updated_at'       => $now,
+        ]), [
+            ['name' => 'Swedish Massage', 'description' => 'Full-body relaxation massage with warm oil.', 'duration_minutes' => 60, 'price' => 1200],
+            ['name' => 'Foot Spa',        'description' => 'Soak, scrub and foot massage.',              'duration_minutes' => 45, 'price' => 800],
+            ['name' => 'Body Scrub',      'description' => 'Exfoliating salt scrub and rinse.',          'duration_minutes' => 60, 'price' => 1000],
+            ['name' => 'Facial',          'description' => 'Cleanse, steam and hydrating mask.',         'duration_minutes' => 45, 'price' => 950],
+        ]);
+
+        HotelAmenityService::insert($rows);
+    }
+
+    /**
+     * Hours and locations are starting points, not facts — every team edits them to match
+     * the hotel it is designing. Images are the same deterministic stand-in the add-ons,
+     * rooms and menu screens use, so a fresh list looks finished before anyone uploads.
+     *
+     * Each one carries the access type its docblock in HotelAmenity describes, because
+     * that is what decides how a guest gets at it: the pool and the gym keep a register,
+     * the spa is booked by treatment, the function room by the date, and the playground
+     * is walked into. Left unset they all defaulted to open, which is the one type
+     * nothing can be booked under.
+     */
+    /**
+     * How a team's facilities differ from the five the template starts with, for
+     * the faculty review: 'added' for one the team made, 'changed' for a starting
+     * one whose name, location, hours, description or photos are no longer the
+     * stock ones (with which of those parts moved), and how many starting ones
+     * were removed.
+     *
+     * The starting five are the rows seeded together, so they share the team's
+     * earliest created_at. A row keeps no reference to the default it came from,
+     * so each is matched to the default it still agrees with most; a facility
+     * renamed and re-photographed still matches on what it kept, and one changed
+     * in every field is changed whichever default it is read against.
+     *
+     * @param  \Illuminate\Support\Collection<int, HotelAmenity>  $amenities
+     * @return array{states: array<int, string>, fields: array<int, string[]>, photos: array<int, string[]>, removed: int}
+     */
+    public static function reviewStates($amenities): array
+    {
+        $defaults = self::defaultAmenities();
+        $seededAt = (string) $amenities->min('created_at');
+        $fields = fn ($row) => [
+            'name' => trim((string) ($row['name'] ?? '')),
+            'description' => trim((string) ($row['description'] ?? '')),
+            'location' => trim((string) ($row['location'] ?? '')),
+            'opens_at' => substr((string) ($row['opens_at'] ?? ''), 0, 5),
+            'closes_at' => substr((string) ($row['closes_at'] ?? ''), 0, 5),
+            'image' => (string) ($row['image'] ?? ''),
+        ];
+
+        $states = [];
+        $changed = [];
+        $newPhotos = [];
+        $unclaimed = array_keys($defaults);
+        $seeds = 0;
+        foreach ($amenities as $amenity) {
+            if ($seededAt === '' || (string) $amenity->created_at !== $seededAt) {
+                $states[$amenity->hotel_amenity_id] = 'added';
+                continue;
+            }
+            $seeds++;
+            $mine = $fields($amenity->getAttributes());
+            $best = null;
+            $bestScore = -1;
+            foreach ($unclaimed as $i) {
+                $score = count(array_intersect_assoc($mine, $fields($defaults[$i])));
+                if ($score > $bestScore) {
+                    [$best, $bestScore] = [$i, $score];
+                }
+            }
+            if ($best === null) {
+                $states[$amenity->hotel_amenity_id] = 'added';
+                continue;
+            }
+            $unclaimed = array_values(array_diff($unclaimed, [$best]));
+            $stock = $fields($defaults[$best]);
+            $photos = is_array($amenity->gallery) ? array_filter($amenity->gallery) : [];
+            // Which parts of the card moved, so each task's review boxes the
+            // part it is about rather than the whole card.
+            $moved = array_keys(array_filter([
+                'name' => $mine['name'] !== $stock['name'],
+                'location' => $mine['location'] !== $stock['location'],
+                'hours' => $mine['opens_at'] !== $stock['opens_at'] || $mine['closes_at'] !== $stock['closes_at'],
+                'description' => $mine['description'] !== $stock['description'],
+                'photos' => $mine['image'] !== $stock['image'] || $photos !== [],
+            ]));
+            if ($moved !== []) {
+                $states[$amenity->hotel_amenity_id] = 'changed';
+                $changed[$amenity->hotel_amenity_id] = $moved;
+            }
+            // The photographs the team put in, as the card's slider addresses
+            // them: the primary one if it is no longer the stock picture, and
+            // every gallery one, since the stock facilities carry none.
+            $added = $mine['image'] !== $stock['image'] && $mine['image'] !== '' ? [$mine['image']] : [];
+            $urls = array_values(array_filter(array_map(
+                fn ($path) => HotelImageStore::url(is_string($path) ? $path : ''),
+                array_merge($added, $photos)
+            )));
+            if ($urls !== []) {
+                $newPhotos[$amenity->hotel_amenity_id] = $urls;
+            }
+        }
+
+        return [
+            'states' => $states,
+            'fields' => $changed,
+            'photos' => $newPhotos,
+            'removed' => max(0, count($defaults) - $seeds),
+        ];
+    }
+
+    private static function defaultAmenities(): array
+    {
+        return [
+            [
+                'name'        => 'Swimming Pool',
+                'access_type' => 'registered',
+                'description' => 'Outdoor infinity pool with sun loungers, poolside towels and a shallow end for younger guests.',
+                'location'    => 'Rooftop, 8th Floor',
+                'opens_at'    => '06:00',
+                'closes_at'   => '20:00',
+                'image'       => 'https://picsum.photos/seed/swimmingpool/800/600.jpg',
+            ],
+            [
+                'name'        => 'Function Room',
+                'access_type' => 'event',
+                'capacity'    => 80,
+                'description' => 'Air-conditioned hall for meetings, seminars and receptions, with projector, sound system and flexible seating.',
+                'location'    => '2nd Floor, East Wing',
+                'opens_at'    => '08:00',
+                'closes_at'   => '22:00',
+                'image'       => 'https://picsum.photos/seed/functionroom/800/600.jpg',
+            ],
+            [
+                'name'        => 'Gym',
+                'access_type' => 'registered',
+                'description' => 'Fully equipped fitness centre with cardio machines, free weights and a stretching area.',
+                'location'    => 'Ground Floor, Annex',
+                'opens_at'    => '05:00',
+                'closes_at'   => '22:00',
+                'image'       => 'https://picsum.photos/seed/hotelgym/800/600.jpg',
+            ],
+            [
+                'name'        => 'Playground',
+                'access_type' => 'open',
+                'description' => 'Shaded outdoor play area with swings, slides and soft flooring, in view of the garden seating.',
+                'location'    => 'Garden Court',
+                'opens_at'    => '07:00',
+                'closes_at'   => '18:00',
+                'image'       => 'https://picsum.photos/seed/hotelplayground/800/600.jpg',
+            ],
+            [
+                'name'        => 'Spa',
+                'access_type' => 'appointment',
+                'description' => 'Massage and wellness treatments in private rooms, by appointment at the front desk.',
+                'location'    => '3rd Floor',
+                'opens_at'    => '10:00',
+                'closes_at'   => '21:00',
+                'image'       => 'https://picsum.photos/seed/hotelspa/800/600.jpg',
+            ],
+        ];
+    }
+}

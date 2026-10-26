@@ -27,6 +27,7 @@ class HotelConceptRevision extends Model
         'action',
         'field_changes',
         'title',
+        'tagline',
         'description',
         'hotel_type',
     ];
@@ -109,7 +110,7 @@ class HotelConceptRevision extends Model
             'description' => $this->description,
             'hotel_type' => $this->hotel_type,
             'hotel_type_label' => HotelConcept::typeLabel($this->hotel_type),
-            'created_at' => optional($this->created_at)->format('M d, Y g:i A'),
+            'created_at' => $this->created_at?->timezone('Asia/Manila')->format('M d, Y g:i A'),
             'created_at_human' => optional($this->created_at)->diffForHumans(),
         ];
     }

@@ -9,18 +9,96 @@
   const ROOMS_KEY = '__rooms';
   const MENUS_KEY = '__menus';
   const CARD_IMAGES_KEY = '__cardImages';
+  const DELETED_KEY = '__deleted';
   const HERO_SLIDES_KEY = '__heroSlides';
   const RESERVATION_NOTIFICATIONS_KEY = '__reservationNotifications';
   const ROOM_RESERVATIONS_KEY = '__roomReservations';
-  const CONTENT_KEYS = [NAV_KEY, ROOMS_KEY, MENUS_KEY, CARD_IMAGES_KEY, HERO_SLIDES_KEY, RESERVATION_NOTIFICATIONS_KEY, ROOM_RESERVATIONS_KEY];
+  const BRAND_NAME_KEY = '__brandName';
+  const ROOM_CARD_STYLE_KEY = '__roomCardStyle';
+  const MENU_CARD_STYLE_KEY = '__menuCardStyle';
+  const SITE_COLORS_KEY = '__siteColors';
+  const HOTEL_INFO_KEY = '__hotelInfo';
+  const SOCIAL_LINKS_KEY = '__socialLinks';
+  const TYPOGRAPHY_KEY = '__typography';
+  const PARTNERS_KEY = '__partners';
+  const EXPERIENCES_KEY = '__experiences';
+  const HOME_HIGHLIGHTS_KEY = '__homeHighlights';
+  const AMENITY_SLIDER_KEY = '__amenitySlider';
+  const GUEST_AUTH_KEY = '__guestAuth';
+  const CONTENT_KEYS = [NAV_KEY, BRAND_NAME_KEY, ROOM_CARD_STYLE_KEY, MENU_CARD_STYLE_KEY, SITE_COLORS_KEY, ROOMS_KEY, MENUS_KEY, CARD_IMAGES_KEY, HERO_SLIDES_KEY, HOTEL_INFO_KEY, SOCIAL_LINKS_KEY, TYPOGRAPHY_KEY, PARTNERS_KEY, EXPERIENCES_KEY, HOME_HIGHLIGHTS_KEY, AMENITY_SLIDER_KEY, GUEST_AUTH_KEY, RESERVATION_NOTIFICATIONS_KEY, ROOM_RESERVATIONS_KEY];
+
+  /**
+   * The hotel name shown in the header and the footer.
+   *
+   * Stored as a one-item collection rather than a plain string because
+   * TemplateCustomizationStore writes a scalar customization to
+   * template_elements.display_value and reads it back as an array — a string
+   * would not survive one save/reload round trip. The field has to be `label`
+   * so TemplateDiff::itemTitle() prints the name in the faculty review instead
+   * of the item id.
+   */
+  const BRAND_NAME_ID = 'brand-name';
+  const DEFAULT_BRAND_NAME = 'SPC HOTEL';
+  const BRAND_NAME_MAX = 60;
+  const NAV_LABEL_MAX = 24;
+
+  /** Same one-item-collection shape, for the same round-trip reason. */
+  const ROOM_CARD_STYLE_ID = 'room-card';
+  const MENU_CARD_STYLE_ID = 'menu-card';
+  const HOTEL_INFO_ID = 'hotel';
+  const TYPOGRAPHY_ID = 'type';
+
+  /** Per-field caps: a tagline is a line, a description is a paragraph. */
+  const HOTEL_INFO_FIELDS = ['tagline', 'description', 'phone', 'email', 'address', 'hours'];
+  const HOTEL_INFO_MAX = {
+    tagline: 140,
+    description: 1200,
+    phone: 40,
+    email: 120,
+    address: 200,
+    hours: 120,
+  };
+
+  /** Networks the footer knows an icon for; mirrors HotelTemplateBuilder::SOCIAL_NETWORKS. */
+  const SOCIAL_NETWORKS = {
+    facebook: 'Facebook',
+    instagram: 'Instagram',
+    x: 'X',
+    tiktok: 'TikTok',
+    youtube: 'YouTube',
+    linkedin: 'LinkedIn',
+    website: 'Website',
+  };
+  const SOCIAL_LINKS_MAX = 8;
+
+  const TYPOGRAPHY_FIELDS = ['family', 'size', 'color', 'headingColor'];
+  const HERO_SLIDE_COUNT = 5;
+
+  /** Offered in the builder; any CSS stack still works if one is typed in. */
+  const FONT_FAMILIES = [
+    { id: '', label: 'Template default' },
+    { id: "'Inter', system-ui, sans-serif", label: 'Inter' },
+    { id: "'Playfair Display', Georgia, serif", label: 'Playfair Display' },
+    { id: "'Montserrat', system-ui, sans-serif", label: 'Montserrat' },
+    { id: "'Lora', Georgia, serif", label: 'Lora' },
+    { id: "'Poppins', system-ui, sans-serif", label: 'Poppins' },
+    { id: "Georgia, 'Times New Roman', serif", label: 'Georgia' },
+    { id: "system-ui, -apple-system, 'Segoe UI', sans-serif", label: 'System' },
+  ];
 
   const DEFAULT_NAV = [
     { id: 'nav-home', key: 'home', label: 'Home' },
     { id: 'nav-rooms', key: 'rooms', label: 'Rooms' },
     { id: 'nav-restaurant', key: 'restaurant', label: 'Restaurant' },
     { id: 'nav-amenities', key: 'amenities', label: 'Amenities' },
-    { id: 'nav-experience', key: 'experience', label: 'Experience' },
+    { id: 'nav-experience', key: 'experience', label: 'Highlights' },
   ];
+
+  /* Default labels the nav used to ship with. A team that saved its nav while
+     one of these was the default stored it as its own label, so it is read
+     back as unset and picks up today's default. A label a team typed itself
+     is kept. */
+  const RETIRED_NAV_LABELS = { experience: ['Experience'] };
 
   const DEFAULT_MENUS = [
     { id: 'menu-1', name: 'Hokkaido Scallop Tartare', sub: 'yuzu, sea urchin, micro herbs', price: '\u20B11,800', category: 'Appetizers', img: 'https://picsum.photos/seed/scalloptartare/800/600.jpg' },
@@ -103,6 +181,19 @@
     return window.__HMS_BUILDER_ROLE__ || null;
   }
 
+  /**
+   * The Mini Portfolio — a team's hotel site opened by a guest with no login.
+   *
+   * Answered explicitly rather than by picking a builder role that happens to produce
+   * the right booleans, because neither existing value does: 'front_desk' switches
+   * Order Now on (room service needs a checked-in room and the server would refuse a
+   * guest), and null switches the Restaurant staff tools on through the early return
+   * in canUseRestaurantUi().
+   */
+  function isPublicSite() {
+    return window.__HMS_PUBLIC__ === true;
+  }
+
   function getAuthRoles() {
     const auth = window.__HMS_HOTEL_AUTH__;
     if (auth && Array.isArray(auth.roles)) return auth.roles.slice();
@@ -131,6 +222,7 @@
   }
 
   function canUseRoomManagementUi() {
+    if (isPublicSite()) return false;
     return canAccess('room_management_ui');
   }
 
@@ -141,6 +233,9 @@
    * module, so the server's can_manage answer decides on its own.
    */
   function canUseRestaurantUi() {
+    // Before the builder-role check: a guest has no builder role, and the early return
+    // below would otherwise hand them the Restaurant staff tools.
+    if (isPublicSite()) return false;
     if (!getBuilderRole()) return true;
     return canAccess('restaurant_ui');
   }
@@ -150,6 +245,8 @@
    * Room Management module so reservations stay exclusive to Front Desk.
    */
   function canReserveRooms() {
+    // Booking is the whole point of the public site, so this is the one that stays on.
+    if (isPublicSite()) return true;
     return !canUseRoomManagementUi();
   }
 
@@ -159,10 +256,23 @@
    * staff member's own roles do. Guests and other modules only browse the menu.
    */
   function canOrderMenu() {
+    // Room service is placed by Front Desk against a checked-in room. A visitor
+    // browsing the menu has neither, and the server would 403 the attempt.
+    if (isPublicSite()) return false;
     return canAccess('order_ui');
   }
 
   function canEditNav() {
+    return canEdit() && editablePages().indexOf('home') !== -1;
+  }
+
+  /**
+   * The hotel name belongs to Front Desk, like the navigation, not to every
+   * role like the logo. Because only one role's row can ever hold the key,
+   * filterCustomizationsForRole() strips it everywhere else and no
+   * last-write-wins claim (the claimSharedLogo() treatment) is needed.
+   */
+  function canEditBrandName() {
     return canEdit() && editablePages().indexOf('home') !== -1;
   }
 
@@ -171,10 +281,9 @@
   }
 
   function canEditRooms() {
-    // Room Management owns the Rooms page; Front Desk can also manage
-    // room cards from the Home "Available Rooms" section.
-    const pages = editablePages();
-    return canEdit() && (pages.indexOf('rooms') !== -1 || pages.indexOf('home') !== -1);
+    // Room Management owns the Rooms page exclusively. Front Desk sees room
+    // cards on the Home "Available Rooms" section too, but may not edit them.
+    return canEdit() && editablePages().indexOf('rooms') !== -1;
   }
 
   function canEditMenus() {
@@ -186,55 +295,478 @@
   }
 
   /**
-   * One logo for the whole site, under a single key — see cardImageKey('brand',
-   * 'logo'). It is deliberately not gated on a particular page: there is no page
-   * that owns it, and every role that can edit anything could already change the
-   * logo on its own section before this became shared, so gating it on Home
-   * would take that away rather than merely redirect it.
+   * The logo and the site's background colours are one site's worth each, shown
+   * on every page, so they belong to Front Desk alone — the role that already
+   * owns the site's name, its navigation and its words. Another role changing
+   * one of them would redesign pages it does not edit, and the most recent
+   * change would silently overwrite the team's.
    *
-   * A change therefore applies site-wide, and the most recent one wins — see
-   * HotelTemplateBuilder::claimSharedLogo().
+   * The server enforces the same rule: filterCustomizationsForRole() keeps
+   * brand:logo and __siteColors for front_desk only.
    */
+  function ownsSiteBranding() {
+    return currentRoles().indexOf('front_desk') !== -1;
+  }
+
   function canEditLogo() {
-    return canEdit();
+    return canEdit() && ownsSiteBranding();
+  }
+
+  /**
+   * The header carries exactly the five links in DEFAULT_NAV, in that order.
+   * Students rename them; they cannot add, remove or repoint one.
+   *
+   * Saved lists from before that rule still exist, so every read and every
+   * write goes through here: a saved label is kept when its `key` matches a
+   * canonical link, and everything else — extra links, missing links, saved
+   * ids — is discarded. Matching on `key` rather than `id` means a link that
+   * was repointed at another page loses its label instead of carrying it onto
+   * the wrong slot.
+   */
+  function reconcileNav(saved) {
+    const byKey = {};
+    (Array.isArray(saved) ? saved : []).forEach((item) => {
+      if (!item) return;
+      const key = String(item.key == null ? '' : item.key).trim();
+      if (!key || Object.prototype.hasOwnProperty.call(byKey, key)) return;
+      byKey[key] = item;
+    });
+    return DEFAULT_NAV.map((base) => {
+      const match = byKey[base.key];
+      let label = match && typeof match.label === 'string' ? match.label.trim() : '';
+      if ((RETIRED_NAV_LABELS[base.key] || []).includes(label)) label = '';
+      return { id: base.id, key: base.key, label: label || base.label };
+    });
   }
 
   function getNav() {
     const c = getCustomizations();
     const entry = c[NAV_KEY];
-    if (entry && Array.isArray(entry.items) && entry.items.length) {
-      return entry.items.map((item) => Object.assign({}, item));
-    }
-    return DEFAULT_NAV.map((item) => Object.assign({}, item));
+    return reconcileNav(entry && entry.items);
   }
 
   function setNav(items) {
     if (!canEditNav()) return false;
-    patch(NAV_KEY, {
-      page: 'home',
-      items: (items || []).map((item) => ({
-        id: item.id || uid('nav'),
-        key: item.key || 'home',
-        label: item.label || 'Link',
-      })),
+    patch(NAV_KEY, { page: 'home', items: reconcileNav(items) });
+    return true;
+  }
+
+  /**
+   * One colour for every room card, on the Home section and the Rooms page
+   * alike. Empty means the template's own colour, so a team that never touches
+   * this looks exactly as it does today.
+   */
+  function getRoomCardBg() {
+    const c = getCustomizations();
+    const entry = c[ROOM_CARD_STYLE_KEY];
+    const item = entry && Array.isArray(entry.items) ? entry.items[0] : null;
+    const bg = item && typeof item.bg === 'string' ? item.bg.trim() : '';
+    return bg;
+  }
+
+  function setRoomCardBg(bg) {
+    if (!canEditRoomCardStyle()) return false;
+    const clean = String(bg == null ? '' : bg).trim().slice(0, 32);
+    patch(ROOM_CARD_STYLE_KEY, {
+      page: 'rooms',
+      items: [{ id: ROOM_CARD_STYLE_ID, bg: clean }],
     });
     return true;
+  }
+
+  function canEditRoomCardStyle() {
+    return canEditRooms();
+  }
+
+  /**
+   * The menu card colour, like the room card colour. Front Desk owns the
+   * Restaurant Menu preview on Home and Restaurant Management owns the
+   * Restaurant page, and both show the same cards, so either may set it.
+   */
+  function getMenuCardBg() {
+    const c = getCustomizations();
+    const entry = c[MENU_CARD_STYLE_KEY];
+    const item = entry && Array.isArray(entry.items) ? entry.items[0] : null;
+    return item && typeof item.bg === 'string' ? item.bg.trim() : '';
+  }
+
+  /* The Restaurant hero's plate photograph rides on the same record: one
+     restaurant-owned style row, so it needs no storage of its own. Each setter
+     keeps the other's value. */
+  const PLATE_SHAPES = ['circle', 'rounded', 'square', 'rectangle'];
+
+  function menuCardStyleItem() {
+    const c = getCustomizations();
+    const entry = c[MENU_CARD_STYLE_KEY];
+    return (entry && Array.isArray(entry.items) && entry.items[0]) || {};
+  }
+
+  function patchMenuCardStyle(changes) {
+    const item = Object.assign({}, menuCardStyleItem(), changes, { id: MENU_CARD_STYLE_ID });
+    patch(MENU_CARD_STYLE_KEY, { page: 'restaurant', items: [item] });
+  }
+
+  function setMenuCardBg(bg) {
+    if (!canEditMenuCardStyle()) return false;
+    patchMenuCardStyle({ bg: String(bg == null ? '' : bg).trim().slice(0, 32) });
+    return true;
+  }
+
+  function getPlateShape() {
+    const shape = menuCardStyleItem().plateShape;
+    return PLATE_SHAPES.includes(shape) ? shape : 'circle';
+  }
+
+  function setPlateShape(shape) {
+    if (!canEditMenuCardStyle() || !PLATE_SHAPES.includes(shape)) return false;
+    patchMenuCardStyle({ plateShape: shape });
+    return true;
+  }
+
+  /**
+   * Background colours for the areas of the site that are chrome rather than
+   * anyone's page: the site background itself, the header, the footer, and the
+   * Rooms / Restaurant / Amenities / Experience areas.
+   *
+   * Front Desk's, for the same reason the logo is (see canEditLogo): the site's
+   * background is the whole site's, not one page's, so the role that owns the
+   * site's identity sets it and a change applies everywhere at once.
+   */
+  const SITE_COLOR_AREAS = ['site', 'header', 'footer', 'rooms', 'roomModal', 'dining', 'amenities', 'experience'];
+
+  function getSiteColors() {
+    const c = getCustomizations();
+    const entry = c[SITE_COLORS_KEY];
+    const items = entry && Array.isArray(entry.items) ? entry.items : [];
+    const out = {};
+    items.forEach((item) => {
+      if (!item || SITE_COLOR_AREAS.indexOf(item.id) === -1) return;
+      const bg = typeof item.bg === 'string' ? item.bg.trim() : '';
+      if (bg) out[item.id] = bg;
+    });
+    return out;
+  }
+
+  /**
+   * Every area here is Front Desk's, through canEditSiteColors(). The page map
+   * below stays so the rule survives if the colours are ever shared again:
+   * 'rooms', 'dining' and 'amenities' would then be their own role's alone.
+   */
+  const SITE_COLOR_AREA_PAGES = { dining: 'restaurant', amenities: 'amenities' };
+
+  function canEditSiteColorArea(area) {
+    if (!canEditSiteColors()) return false;
+    const page = SITE_COLOR_AREA_PAGES[area];
+    if (!page) return true;
+    return editablePages().indexOf(page) !== -1;
+  }
+
+  function setSiteColor(area, bg) {
+    if (!canEditSiteColorArea(area)) return false;
+    if (SITE_COLOR_AREAS.indexOf(area) === -1) return false;
+    const next = getSiteColors();
+    const clean = String(bg == null ? '' : bg).trim().slice(0, 32);
+    if (clean) next[area] = clean; else delete next[area];
+    patch(SITE_COLORS_KEY, {
+      page: 'home',
+      items: SITE_COLOR_AREAS
+        .filter((id) => next[id])
+        .map((id) => ({ id: id, bg: next[id] })),
+    });
+    return true;
+  }
+
+  function canEditSiteColors() {
+    return canEdit() && ownsSiteBranding();
+  }
+
+  function canEditMenuCardStyle() {
+    // Restaurant Services owns the Menu cards exclusively, same as Room
+    // Management owns room cards (see canEditRooms).
+    return canEdit() && editablePages().indexOf('restaurant') !== -1;
+  }
+
+  /**
+   * What the team's approved hotel concept says, handed down by the server as
+   * HMS_HOTEL_DEFAULTS. Every identity field falls back to this, so a site the
+   * team has not touched already reads as the concept faculty approved, and a
+   * field cleared in the builder goes back to tracking it.
+   */
+  function hotelDefaults() {
+    const d = window.HMS_HOTEL_DEFAULTS;
+    return {
+      name: d && typeof d.name === 'string' && d.name.trim() ? d.name.trim() : DEFAULT_BRAND_NAME,
+      tagline: d && typeof d.tagline === 'string' ? d.tagline.trim() : '',
+      description: d && typeof d.description === 'string' ? d.description.trim() : '',
+    };
+  }
+
+  function getBrandName() {
+    const c = getCustomizations();
+    const entry = c[BRAND_NAME_KEY];
+    const item = entry && Array.isArray(entry.items) ? entry.items[0] : null;
+    const name = item && typeof item.label === 'string' ? item.label.trim() : '';
+    return name || hotelDefaults().name;
+  }
+
+  /**
+   * Whether the team has ever stored a name of its own, as opposed to reading
+   * the concept faculty approved. The editor asks before adopting a name typed
+   * into the footer back when the two were separate: a team that has since
+   * named its hotel properly must not have that overwritten by an old edit.
+   */
+  function hasStoredBrandName() {
+    const c = getCustomizations();
+    const entry = c[BRAND_NAME_KEY];
+    const item = entry && Array.isArray(entry.items) ? entry.items[0] : null;
+    return !!(item && typeof item.label === 'string' && item.label.trim());
+  }
+
+  function setBrandName(name) {
+    if (!canEditBrandName()) return false;
+    const clean = String(name == null ? '' : name).trim().slice(0, BRAND_NAME_MAX);
+    if (!clean) return false;
+    patch(BRAND_NAME_KEY, {
+      page: 'home',
+      items: [{ id: BRAND_NAME_ID, label: clean }],
+    });
+    return true;
+  }
+
+  /* ── Guest sign in ──────────────────────────────────────────────────────
+     The words on the header's Sign in button and inside the guest sign-in /
+     sign-up dialog. Front Desk's, like the hotel name: the front door of the
+     hotel is the front desk's job. Same one-item collection shape as the hotel
+     information, for the same save/reload reason. A field left empty means
+     "use the template's own words", so getGuestAuth() hands back only what the
+     team typed and each template keeps its defaults. */
+
+  const GUEST_AUTH_ID = 'guest-auth';
+  const GUEST_AUTH_MAX = {
+    buttonLabel: 24,
+    signinTitle: 60,
+    signinIntro: 200,
+    signinSubmit: 24,
+    signupTitle: 60,
+    signupIntro: 200,
+    signupSubmit: 24,
+    buttonColor: 7,
+  };
+  const GUEST_AUTH_FIELDS = Object.keys(GUEST_AUTH_MAX);
+  // The button colour goes into a style attribute, so only a plain #rrggbb is kept.
+  const cleanGuestAuthField = (field, value) => {
+    const clean = String(value == null ? '' : value).trim().slice(0, GUEST_AUTH_MAX[field]);
+    return field === 'buttonColor' && !/^#[0-9a-f]{6}$/i.test(clean) ? '' : clean;
+  };
+
+  function canEditGuestAuth() {
+    return canEditBrandName();
+  }
+
+  function getGuestAuth() {
+    const c = getCustomizations();
+    const entry = c[GUEST_AUTH_KEY];
+    const item = entry && Array.isArray(entry.items) ? entry.items[0] : null;
+    const out = {};
+    GUEST_AUTH_FIELDS.forEach((field) => {
+      out[field] = item && typeof item[field] === 'string' ? cleanGuestAuthField(field, item[field]) : '';
+    });
+    return out;
+  }
+
+  function setGuestAuth(fields) {
+    if (!canEditGuestAuth()) return false;
+    if (!fields || typeof fields !== 'object') return false;
+    const current = getGuestAuth();
+    const next = { id: GUEST_AUTH_ID };
+    GUEST_AUTH_FIELDS.forEach((field) => {
+      const incoming = Object.prototype.hasOwnProperty.call(fields, field) ? fields[field] : current[field];
+      next[field] = cleanGuestAuthField(field, incoming);
+    });
+    patch(GUEST_AUTH_KEY, { page: 'home', items: [next] });
+    return true;
+  }
+
+  /* ── Hotel information ──────────────────────────────────────────────────
+     One record for the whole site: the words under the hotel's name and the
+     contact block the landing page and every footer show. Any site-owning role
+     may write it, like the logo and the background colours, because the hotel
+     has one phone number no matter whose page you are looking at. */
+
+  function canEditSiteIdentity() {
+    // Site-wide identity, not a page: anyone who may edit any page of the site
+    // may set it. The server re-checks on save (SITE_OWNING_ROLES).
+    return canEdit() && editablePages().length > 0;
+  }
+
+  function getHotelInfo() {
+    const c = getCustomizations();
+    const entry = c[HOTEL_INFO_KEY];
+    const item = entry && Array.isArray(entry.items) ? entry.items[0] : null;
+    const defaults = hotelDefaults();
+    const read = (field) => {
+      const value = item && typeof item[field] === 'string' ? item[field].trim() : '';
+      return value;
+    };
+
+    return {
+      // The name lives in __brandName, where the header and footer already read
+      // it; it is surfaced here so the builder can show one Hotel Information
+      // form rather than two.
+      name: getBrandName(),
+      tagline: read('tagline') || defaults.tagline,
+      description: read('description') || defaults.description,
+      phone: read('phone'),
+      email: read('email'),
+      address: read('address'),
+      hours: read('hours'),
+    };
+  }
+
+  /**
+   * Merge a partial edit into the stored record. Only the fields passed are
+   * touched, so the builder can save one input as the student leaves it
+   * without carrying the rest of the form along.
+   *
+   * A field set to the empty string is stored empty on purpose — that is how a
+   * team goes back to showing the approved concept's own words.
+   */
+  function setHotelInfo(patchFields) {
+    if (!canEditSiteIdentity()) return false;
+    if (!patchFields || typeof patchFields !== 'object') return false;
+
+    if (typeof patchFields.name === 'string') {
+      setBrandName(patchFields.name);
+    }
+
+    const c = getCustomizations();
+    const entry = c[HOTEL_INFO_KEY];
+    const current = (entry && Array.isArray(entry.items) ? entry.items[0] : null) || {};
+    const next = { id: HOTEL_INFO_ID };
+
+    HOTEL_INFO_FIELDS.forEach((field) => {
+      const incoming = Object.prototype.hasOwnProperty.call(patchFields, field)
+        ? patchFields[field]
+        : current[field];
+      next[field] = String(incoming == null ? '' : incoming).trim().slice(0, HOTEL_INFO_MAX[field] || 300);
+    });
+
+    patch(HOTEL_INFO_KEY, { page: 'home', items: [next] });
+    return true;
+  }
+
+  /* ── Social profiles ────────────────────────────────────────────────────
+     A list rather than a field per network, so a team shows only the networks
+     it actually uses instead of a row of dead icons. */
+
+  function getSocialLinks() {
+    const c = getCustomizations();
+    const entry = c[SOCIAL_LINKS_KEY];
+    const items = entry && Array.isArray(entry.items) ? entry.items : [];
+
+    return items
+      .map((item) => ({
+        id: item && item.id ? String(item.id) : uid('social'),
+        network: item && SOCIAL_NETWORKS[String(item.network)] ? String(item.network) : 'website',
+        url: item && typeof item.url === 'string' ? item.url.trim() : '',
+      }))
+      .filter((item) => item.url !== '');
+  }
+
+  function setSocialLinks(items) {
+    if (!canEditSiteIdentity()) return false;
+    const list = (Array.isArray(items) ? items : [])
+      .map((item) => ({
+        id: item && item.id ? String(item.id) : uid('social'),
+        network: item && SOCIAL_NETWORKS[String(item.network)] ? String(item.network) : 'website',
+        url: String(item && item.url != null ? item.url : '').trim().slice(0, 300),
+      }))
+      .filter((item) => item.url !== '')
+      .slice(0, SOCIAL_LINKS_MAX);
+
+    patch(SOCIAL_LINKS_KEY, { page: 'home', items: list });
+    return true;
+  }
+
+  /* ── Site typography ────────────────────────────────────────────────────
+     Applied as CSS custom properties on every page rather than per element, so
+     it reaches text nobody has selected — including sections this role cannot
+     edit. An empty field means "leave the template's own type alone". */
+
+  function getTypography() {
+    const c = getCustomizations();
+    const entry = c[TYPOGRAPHY_KEY];
+    const item = (entry && Array.isArray(entry.items) ? entry.items[0] : null) || {};
+    const read = (field) => (typeof item[field] === 'string' ? item[field].trim() : '');
+
+    return {
+      family: read('family'),
+      size: read('size'),
+      color: read('color'),
+      headingColor: read('headingColor'),
+    };
+  }
+
+  function setTypography(patchFields) {
+    if (!canEditSiteIdentity()) return false;
+    if (!patchFields || typeof patchFields !== 'object') return false;
+
+    const current = getTypography();
+    const next = { id: TYPOGRAPHY_ID };
+
+    TYPOGRAPHY_FIELDS.forEach((field) => {
+      const incoming = Object.prototype.hasOwnProperty.call(patchFields, field)
+        ? patchFields[field]
+        : current[field];
+      next[field] = String(incoming == null ? '' : incoming).trim().slice(0, 120);
+    });
+
+    patch(TYPOGRAPHY_KEY, { page: 'home', items: [next] });
+    return true;
+  }
+
+  /**
+   * Hero images are five named slots, not an appendable collection. Older
+   * drafts can contain duplicate records after repeated editor renders, so
+   * rebuild the list from the five template defaults and copy only the saved
+   * value for each matching slot. The positional fallback preserves drafts
+   * created before the canonical hero-slide-* ids were introduced.
+   */
+  function normalizeHeroSlides(items, fallback) {
+    const source = Array.isArray(items) ? items.filter((item) => item && typeof item === 'object') : [];
+    const defaults = Array.isArray(fallback) ? fallback.slice(0, HERO_SLIDE_COUNT) : [];
+
+    if (!defaults.length) {
+      const seen = Object.create(null);
+      return source.filter((item) => {
+        const id = String(item.id || '');
+        if (!id || seen[id]) return false;
+        seen[id] = true;
+        return true;
+      }).slice(0, HERO_SLIDE_COUNT).map((item) => Object.assign({}, item));
+    }
+
+    return defaults.map((defaultItem, index) => {
+      const canonicalId = defaultItem.id || ('hero-slide-' + (index + 1));
+      const saved = source.find((item) => item.id === canonicalId) || source[index] || {};
+      return Object.assign({}, defaultItem, saved, { id: canonicalId });
+    });
   }
 
   function getHeroSlides(fallback) {
     const c = getCustomizations();
     const entry = c[HERO_SLIDES_KEY];
     if (entry && Array.isArray(entry.items) && entry.items.length) {
-      return entry.items.map((item) => Object.assign({}, item));
+      return normalizeHeroSlides(entry.items, fallback);
     }
-    return (fallback || []).map((item) => Object.assign({}, item));
+    return normalizeHeroSlides(fallback, fallback);
   }
 
   function setHeroSlides(items) {
     if (!canEditHeroSlides()) return false;
     patch(HERO_SLIDES_KEY, {
       page: 'home',
-      items: (items || []).map((item) => Object.assign({}, item, {
+      items: normalizeHeroSlides(items).map((item) => Object.assign({}, item, {
         id: item.id || uid('slide'),
       })),
     });
@@ -246,6 +778,209 @@
       item.id === id ? Object.assign({}, item, patchData) : item
     ));
     setHeroSlides(list);
+  }
+
+  /* ── Partner brands ───────────────────────────────────────────────────────
+     The strip of names on the Home page, below the promos. Front Desk owns Home,
+     so it owns these; a logo for one is an ordinary card image keyed by the id
+     here, which is why a brand carries a name and nothing else.
+
+     The template's own six are passed in as the fallback rather than written to
+     the row at load: a team that has never touched the strip stores nothing, and
+     still sees a finished section. The first edit writes the whole list. */
+  const PARTNER_NAME_MAX = 40;
+
+  function canEditPartners() {
+    return canEdit() && editablePages().indexOf('home') !== -1;
+  }
+
+  function getPartners(fallback) {
+    const c = getCustomizations();
+    const entry = c[PARTNERS_KEY];
+    if (entry && Array.isArray(entry.items) && entry.items.length) {
+      return entry.items.map((item) => Object.assign({}, item));
+    }
+    return (fallback || []).map((item) => Object.assign({}, item));
+  }
+
+  function setPartners(items) {
+    if (!canEditPartners()) return false;
+    patch(PARTNERS_KEY, {
+      page: 'home',
+      items: (items || []).map((item) => ({
+        id: item.id || uid('partner'),
+        // "label", not "name": TemplateDiff::itemTitle() prints this field in the
+        // faculty review, and an id there tells a reviewer nothing.
+        label: String(item.label || item.name || '').trim().slice(0, PARTNER_NAME_MAX),
+      })),
+    });
+    return true;
+  }
+
+  function addPartner(name, fallbackDefaults) {
+    if (!canEditPartners()) return null;
+    const entry = { id: uid('partner'), label: String(name || 'New Brand').trim().slice(0, PARTNER_NAME_MAX) };
+    const list = getPartners(fallbackDefaults).concat([entry]);
+    return setPartners(list) ? entry : null;
+  }
+
+  function updatePartner(id, patchData, fallbackDefaults) {
+    const list = getPartners(fallbackDefaults).map((item) => (
+      item.id === id ? Object.assign({}, item, patchData) : item
+    ));
+    return setPartners(list);
+  }
+
+  function removePartner(id, fallbackDefaults) {
+    const list = getPartners(fallbackDefaults).filter((item) => item.id !== id);
+    return setPartners(list);
+  }
+
+  /* ── Experience gallery ───────────────────────────────────────────────────
+     The tiles on the Experience page. One entry per tile: the icon drawn over
+     it, its title and the description the preview panel shows beside it. The
+     photograph is an ordinary card image keyed by the tile's id, not by its
+     title, so renaming a tile keeps the picture that was uploaded for it.
+
+     The template's own twelve are passed in as the fallback rather than written
+     at load, the same way the partner strip works: a team that has never touched
+     the gallery stores nothing and still sees a finished page. */
+  const EXPERIENCE_TITLE_MAX = 60;
+  const EXPERIENCE_DESC_MAX = 240;
+  const EXPERIENCE_ICON_MAX = 40;
+
+  function getExperiences(fallback) {
+    const c = getCustomizations();
+    const entry = c[EXPERIENCES_KEY];
+    if (entry && Array.isArray(entry.items) && entry.items.length) {
+      return entry.items.map((item) => Object.assign({}, item));
+    }
+    return (fallback || []).map((item) => Object.assign({}, item));
+  }
+
+  function setExperiences(items) {
+    if (!canEditExperiences()) return false;
+    patch(EXPERIENCES_KEY, {
+      page: 'experience',
+      items: (items || []).map((item) => ({
+        id: item.id || uid('exp'),
+        icon: String(item.icon || 'fa-star').trim().slice(0, EXPERIENCE_ICON_MAX),
+        // "title", which TemplateDiff::itemTitle() prints in the faculty review.
+        title: String(item.title || '').trim().slice(0, EXPERIENCE_TITLE_MAX),
+        desc: String(item.desc || '').trim().slice(0, EXPERIENCE_DESC_MAX),
+      })),
+    });
+    return true;
+  }
+
+  function addExperience(data, fallbackDefaults) {
+    if (!canEditExperiences()) return null;
+    const entry = {
+      id: uid('exp'),
+      icon: String((data && data.icon) || 'fa-star'),
+      title: String((data && data.title) || 'New Experience').trim().slice(0, EXPERIENCE_TITLE_MAX),
+      desc: String((data && data.desc) || '').trim().slice(0, EXPERIENCE_DESC_MAX),
+    };
+    const list = getExperiences(fallbackDefaults).concat([entry]);
+    return setExperiences(list) ? entry : null;
+  }
+
+  function updateExperience(id, patchData, fallbackDefaults) {
+    const list = getExperiences(fallbackDefaults).map((item) => (
+      item.id === id ? Object.assign({}, item, patchData) : item
+    ));
+    return setExperiences(list);
+  }
+
+  function removeExperience(id, fallbackDefaults) {
+    const list = getExperiences(fallbackDefaults).filter((item) => item.id !== id);
+    // A gallery with nothing in it reads as a broken page, not as a choice.
+    if (!list.length) return false;
+    return setExperiences(list);
+  }
+
+  /* ── Home page Selected Highlights ────────────────────────────────────────
+     Which Highlights tiles the Home page shows, and in what order: ids into
+     __experiences, each with the title it had when picked so the faculty review
+     names it. Front Desk's, like the rest of Home. A team that never picks shows
+     the gallery's first four, as the section always did; a picked tile later
+     removed from the gallery simply drops out. */
+  const HOME_HIGHLIGHTS_MAX = 4;
+
+  function getHomeHighlights(experiences) {
+    const list = experiences || [];
+    const entry = getCustomizations()[HOME_HIGHLIGHTS_KEY];
+    if (entry && Array.isArray(entry.items) && entry.items.length) {
+      const picked = entry.items
+        .map((pick) => list.find((item) => pick && item.id === pick.id))
+        .filter(Boolean);
+      if (picked.length) return picked.slice(0, HOME_HIGHLIGHTS_MAX);
+    }
+    return list.slice(0, HOME_HIGHLIGHTS_MAX);
+  }
+
+  function setHomeHighlights(items) {
+    if (!canEditPartners()) return false;
+    const seen = Object.create(null);
+    const clean = (items || []).filter((item) => {
+      if (!item || !item.id || seen[item.id]) return false;
+      seen[item.id] = true;
+      return true;
+    }).slice(0, HOME_HIGHLIGHTS_MAX);
+    // An empty section reads as a broken page, not as a choice.
+    if (!clean.length) return false;
+    patch(HOME_HIGHLIGHTS_KEY, {
+      page: 'home',
+      items: clean.map((item) => ({
+        id: String(item.id),
+        title: String(item.title || '').trim().slice(0, EXPERIENCE_TITLE_MAX),
+      })),
+    });
+    return true;
+  }
+
+  /* ── Amenity slider speed ─────────────────────────────────────────────────
+     How long an amenity card holds each photograph before it fades to the next.
+     Housekeeping's, like the facilities themselves, and bounded to the three to
+     five seconds the brief asks for: faster reads as a flicker, slower and a
+     guest never sees the second picture.
+
+     One value for the whole section rather than one per amenity — a row of cards
+     ticking at different speeds reads as the page struggling, not as design. */
+  const AMENITY_SLIDER_ID = 'amenity-slider';
+  const AMENITY_SLIDE_DEFAULT = 4;
+  const AMENITY_SLIDE_MIN = 3;
+  const AMENITY_SLIDE_MAX = 5;
+
+  /**
+   * The Amenities section is opened by a task, not by holding the role: the
+   * server says whether this student is the one it landed on, and the same answer
+   * gates the speed control that sits beside the cards.
+   */
+  function canEditAmenities() {
+    // Owning the page is the whole test. It briefly also required the
+    // "Customize Hotel Amenities" task to be assigned and to be yours, which shut
+    // the section for every team whose faculty had not handed it out.
+    return canEdit() && editablePages().indexOf('amenities') !== -1;
+  }
+
+  function getAmenitySlideSeconds() {
+    const c = getCustomizations();
+    const entry = c[AMENITY_SLIDER_KEY];
+    const item = entry && Array.isArray(entry.items) ? entry.items[0] : null;
+    const value = item ? parseFloat(item.value) : NaN;
+    if (isNaN(value)) return AMENITY_SLIDE_DEFAULT;
+    return Math.min(AMENITY_SLIDE_MAX, Math.max(AMENITY_SLIDE_MIN, value));
+  }
+
+  function setAmenitySlideSeconds(seconds) {
+    if (!canEditAmenities()) return false;
+    const value = Math.min(AMENITY_SLIDE_MAX, Math.max(AMENITY_SLIDE_MIN, parseFloat(seconds) || AMENITY_SLIDE_DEFAULT));
+    patch(AMENITY_SLIDER_KEY, {
+      page: 'amenities',
+      items: [{ id: AMENITY_SLIDER_ID, value: String(value) }],
+    });
+    return true;
   }
 
   function getRooms(fallback) {
@@ -288,37 +1023,20 @@
     return true;
   }
 
-  function addNavLink(partial) {
-    const list = getNav();
-    const item = {
-      id: uid('nav'),
-      key: (partial && partial.key) || 'home',
-      label: (partial && partial.label) || 'New Link',
-    };
-    list.push(item);
-    setNav(list);
-    return item;
+  /** Rename one of the five fixed links. The page it points at never changes. */
+  function renameNavLink(key, label) {
+    const clean = String(label == null ? '' : label).trim().slice(0, NAV_LABEL_MAX);
+    if (!clean) return false;
+    return setNav(getNav().map((item) => (
+      item.key === key ? Object.assign({}, item, { label: clean }) : item
+    )));
   }
 
+  /** Kept for older callers; only the label is honoured. */
   function updateNavLink(id, patchData) {
-    const list = getNav().map((item) => (item.id === id ? Object.assign({}, item, patchData) : item));
-    setNav(list);
-  }
-
-  function removeNavLink(id) {
-    setNav(getNav().filter((item) => item.id !== id));
-  }
-
-  function moveNavLink(id, direction) {
-    const list = getNav();
-    const idx = list.findIndex((item) => item.id === id);
-    if (idx < 0) return;
-    const target = direction === 'left' ? idx - 1 : idx + 1;
-    if (target < 0 || target >= list.length) return;
-    const tmp = list[idx];
-    list[idx] = list[target];
-    list[target] = tmp;
-    setNav(list);
+    const item = getNav().find((link) => link.id === id);
+    if (!item || !patchData) return false;
+    return renameNavLink(item.key, patchData.label);
   }
 
   function addRoom(partial, fallbackDefaults) {
@@ -708,9 +1426,42 @@
 
   function setCardImage(kind, id, url) {
     if (!id || !url) return;
+    // The site logo is Front Desk's. It is reachable outside the header dialog
+    // too — the footer copy is a plain <img> the element editor can replace — so
+    // the rule is enforced here, where every write passes.
+    if (cardImageKey(kind, id) === cardImageKey('brand', 'logo') && !canEditLogo()) return;
     const map = getCardImages();
     map[cardImageKey(kind, id)] = String(url);
-    patch(CARD_IMAGES_KEY, { map: map });
+    const next = Object.assign({}, getCustomizations());
+    next[CARD_IMAGES_KEY] = { map: map };
+    undeleteContentImage(kind, id, next);
+    persist(next);
+  }
+
+  /**
+   * Choosing a new picture for an image means it should be seen. If the image
+   * was deleted in Design mode earlier, its "deleted" entry kept hiding it with
+   * display:none, so every new picture landed on an element nobody could see —
+   * the Restaurant hero plate stayed blank however many times it was changed.
+   * Drop the entries that point at this image and show it again.
+   */
+  function undeleteContentImage(kind, id, next) {
+    const esc = window.CSS && CSS.escape ? CSS.escape : (s) => String(s).replace(/"/g, '\\"');
+    const els = Array.prototype.slice.call(document.querySelectorAll(
+      '[data-hms-content-kind="' + esc(String(kind)) + '"][data-hms-content-id="' + esc(String(id)) + '"]'
+    ));
+    if (!els.length) return;
+    els.forEach((el) => el.style.removeProperty('display'));
+
+    const list = Array.isArray(next[DELETED_KEY]) ? next[DELETED_KEY] : [];
+    const kept = list.filter((entry) => {
+      const selector = typeof entry === 'string' ? entry : (entry && entry.id);
+      if (!selector) return true;
+      let hit = null;
+      try { hit = document.querySelector(selector); } catch (e) { return true; }
+      return els.indexOf(hit) === -1;
+    });
+    if (kept.length !== list.length) next[DELETED_KEY] = kept;
   }
 
   /** Open a file picker and return an image data-URL (works inside the builder iframe). */
@@ -743,13 +1494,25 @@
   function getSnapshot() {
     return {
       navLinks: getNav(),
+      brandName: getBrandName(),
+      roomCardBg: getRoomCardBg(),
+      menuCardBg: getMenuCardBg(),
+      siteColors: getSiteColors(),
+      hotelInfo: getHotelInfo(),
+      socialLinks: getSocialLinks(),
+      typography: getTypography(),
       rooms: getRooms(),
       menus: getMenus(),
       cardImages: getCardImages(),
       canEditNav: canEditNav(),
+      canEditSiteIdentity: canEditSiteIdentity(),
+      canEditBrandName: canEditBrandName(),
+      canEditLogo: canEditLogo(),
       canEditRooms: canEditRooms(),
       canEditMenus: canEditMenus(),
       canEditExperiences: canEditExperiences(),
+      canEditPartners: canEditPartners(),
+      canEditAmenities: canEditAmenities(),
     };
   }
 
@@ -783,25 +1546,67 @@
 
   window.HMSSiteContent = {
     NAV_KEY,
+    BRAND_NAME_KEY,
+    ROOM_CARD_STYLE_KEY,
+    MENU_CARD_STYLE_KEY,
+    SITE_COLORS_KEY,
+    SITE_COLOR_AREAS,
     ROOMS_KEY,
     MENUS_KEY,
     CARD_IMAGES_KEY,
     RESERVATION_NOTIFICATIONS_KEY,
     CONTENT_KEYS,
     DEFAULT_NAV,
+    DEFAULT_BRAND_NAME,
     DEFAULT_MENUS,
+    NAV_LABEL_MAX,
+    BRAND_NAME_MAX,
     getNav,
     setNav,
-    addNavLink,
+    renameNavLink,
     updateNavLink,
-    removeNavLink,
-    moveNavLink,
+    getBrandName,
+    hasStoredBrandName,
+    setBrandName,
+    GUEST_AUTH_KEY,
+    GUEST_AUTH_MAX,
+    getGuestAuth,
+    setGuestAuth,
+    canEditGuestAuth,
+    HOTEL_INFO_KEY,
+    SOCIAL_LINKS_KEY,
+    TYPOGRAPHY_KEY,
+    HOTEL_INFO_FIELDS,
+    SOCIAL_NETWORKS,
+    FONT_FAMILIES,
+    hotelDefaults,
+    getHotelInfo,
+    setHotelInfo,
+    getSocialLinks,
+    setSocialLinks,
+    getTypography,
+    setTypography,
+    canEditSiteIdentity,
+    getRoomCardBg,
+    setRoomCardBg,
+    canEditRoomCardStyle,
+    getMenuCardBg,
+    setMenuCardBg,
+    getPlateShape,
+    setPlateShape,
+    PLATE_SHAPES,
+    canEditMenuCardStyle,
+    getSiteColors,
+    setSiteColor,
+    canEditSiteColors,
+    canEditSiteColorArea,
     getRooms,
     setRooms,
     addRoom,
     updateRoom,
     removeRoom,
     getHeroSlides,
+    normalizeHeroSlides,
     setHeroSlides,
     updateHeroSlide,
     canEditHeroSlides,
@@ -824,8 +1629,27 @@
     setCardImage,
     pickImageFile,
     canEditNav,
+    canEditBrandName,
     canEditRooms,
     canEditMenus,
+    canEditPartners,
+    canEditAmenities,
+    getAmenitySlideSeconds,
+    setAmenitySlideSeconds,
+    getPartners,
+    EXPERIENCES_KEY,
+    getExperiences,
+    setExperiences,
+    addExperience,
+    updateExperience,
+    removeExperience,
+    HOME_HIGHLIGHTS_MAX,
+    getHomeHighlights,
+    setHomeHighlights,
+    setPartners,
+    addPartner,
+    updatePartner,
+    removePartner,
     canEditExperiences,
     canEditLogo,
     canAccess,

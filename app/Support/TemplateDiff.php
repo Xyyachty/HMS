@@ -64,6 +64,7 @@ class TemplateDiff
         'bottom' => 'Position (bottom)',
         'display' => 'Visibility',
         'overflow' => 'Overflow',
+        'plateShape' => 'Plate shape',
     ];
 
     /** Bookkeeping keys inside an element entry that are not user-visible content. */
@@ -74,8 +75,24 @@ class TemplateDiff
         'rooms' => 'Room',
         'menus' => 'Menu item',
         'navLinks' => 'Navigation link',
+        'brandName' => 'Hotel name',
+        'roomCardStyle' => 'Room card colour',
+        'menuCardStyle' => 'Menu card colour',
+        'siteColors' => 'Section background colour',
         'cardImages' => 'Card image',
         'heroSlides' => 'Hero slide',
+        'experiences' => 'Highlight',
+        'homeHighlights' => 'Home page highlight',
+        'guestAuth' => 'Sign in text',
+    ];
+
+    /** Header link key => the label it ships with. Kept in step with DEFAULT_NAV in hms-site-content.js. */
+    private const DEFAULT_NAV_LABELS = [
+        'home' => 'Home',
+        'rooms' => 'Rooms',
+        'restaurant' => 'Restaurant',
+        'amenities' => 'Amenities',
+        'experience' => 'Highlights',
     ];
 
     /**
@@ -120,7 +137,14 @@ class TemplateDiff
 
         $summary = ['added' => 0, 'modified' => 0, 'removed' => 0];
         $highlight = ['added' => [], 'modified' => []];
-        foreach ($changes as $change) {
+        foreach ($changes as $i => $change) {
+            // A customization saved under a numeric key comes back from the
+            // array as an int, and reaches the preview as a JSON number that the
+            // highlighter cannot treat as a selector. Keys are always strings.
+            if (isset($change['key']) && !is_string($change['key'])) {
+                $change['key'] = (string) $change['key'];
+                $changes[$i]['key'] = $change['key'];
+            }
             $summary[$change['type']]++;
             if ($change['type'] === 'removed' || empty($change['key'])) {
                 continue;
@@ -396,6 +420,52 @@ class TemplateDiff
         ];
     }
 
+    /**
+     * Where in the After preview a change to one of these values shows.
+     *
+     * Most collections had no selector at all, so a hotel renamed, a tagline
+     * rewritten or a hero photograph replaced was listed in Changes and outlined
+     * nowhere — which is most of what a website task actually is. These are the
+     * ones that paint to a node the preview can point at; the rest (typography,
+     * the palette) are site-wide by nature and have nothing to box.
+     *
+     * The nodes are marked in both templates with the same attributes the site
+     * logo already used.
+     */
+    private static function collectionSelector(string $jsonName, array $item): ?string
+    {
+        switch ($jsonName) {
+            case 'brandName':
+                return '[data-hms-brand-name]';
+            case 'navLinks':
+                return isset($item['key']) && is_string($item['key']) && $item['key'] !== ''
+                    ? '[data-hms-nav-link="' . $item['key'] . '"]'
+                    : null;
+            case 'heroSlides':
+                /* Whichever slide is showing: the photographs are the change, and
+                   the band they rotate in is the thing to box. Both skins are
+                   named because they paint the hero differently — .hero-bg in one,
+                   .hero-img in the other — and only one of the two ever matches. */
+                return '.hero-bg, .hero-img';
+            case 'socialLinks':
+                return '[data-hms-content-kind="socialLinks"]';
+            case 'hotelInfo':
+                return '[data-hms-content-kind="hotelInfo"]';
+            case 'guestAuth':
+                // The header button; the dialog's own words only show once it is open.
+                return '[data-hms-guest-signin]';
+            case 'homeHighlights':
+                return '.home-highlights';
+            case 'siteColors':
+            case 'typography':
+                // Site-wide by nature — every page carries them, so there is no
+                // one element that changed.
+                return null;
+        }
+
+        return null;
+    }
+
     private static function userElementSelector(string $id): string
     {
         return '[data-hms-id="' . $id . '"]';
@@ -502,8 +572,50 @@ class TemplateDiff
             if (array_key_exists($ref, $beforeMap)) {
                 continue;
             }
+            // A team's first hotel name has no Before row, so the raw diff reads
+            // as "added". What faculty need to see for Task 1 is what the
+            // placeholder became, the way the logo is already reported.
+            if ($jsonName === 'brandName') {
+                $changes[] = [
+                    'type' => 'modified', 'scope' => 'collection_item',
+                    'key' => self::collectionSelector($jsonName, $item), 'hms_id' => null,
+                    'page' => $item['page'] ?? 'home',
+                    'label' => $label,
+                    'fields' => [[
+                        'property' => 'label',
+                        'label' => 'Name',
+                        'from' => HotelTemplateBuilder::DEFAULT_BRAND_NAME,
+                        'to' => $item['label'] ?? '',
+                    ]],
+                ];
+                continue;
+            }
+            // The header always saves all five links, so a team's first rename
+            // has no Before rows and would report every link as added. Report
+            // only the ones whose label moved off the default, as renamed.
+            if ($jsonName === 'navLinks') {
+                $default = self::DEFAULT_NAV_LABELS[$item['key'] ?? ''] ?? null;
+                $to = trim((string) ($item['label'] ?? ''));
+                if ($default === null || $to === '' || $to === $default) {
+                    continue;
+                }
+                $changes[] = [
+                    'type' => 'modified', 'scope' => 'collection_item',
+                    'key' => self::collectionSelector($jsonName, $item), 'hms_id' => null,
+                    'page' => $item['page'] ?? 'home',
+                    'label' => $label . ': ' . $to,
+                    'fields' => [[
+                        'property' => 'label',
+                        'label' => 'Name',
+                        'from' => $default,
+                        'to' => $to,
+                    ]],
+                ];
+                continue;
+            }
             $changes[] = [
-                'type' => 'added', 'scope' => 'collection_item', 'key' => null, 'hms_id' => null,
+                'type' => 'added', 'scope' => 'collection_item',
+                'key' => self::collectionSelector($jsonName, $item), 'hms_id' => null,
                 'page' => $item['page'] ?? 'home',
                 'label' => $label . ': ' . self::itemTitle($item),
                 'fields' => [],
@@ -514,7 +626,8 @@ class TemplateDiff
                 continue;
             }
             $changes[] = [
-                'type' => 'removed', 'scope' => 'collection_item', 'key' => null, 'hms_id' => null,
+                'type' => 'removed', 'scope' => 'collection_item',
+                'key' => self::collectionSelector($jsonName, $item), 'hms_id' => null,
                 'page' => $item['page'] ?? 'home',
                 'label' => $label . ': ' . self::itemTitle($item),
                 'fields' => [],
@@ -536,7 +649,8 @@ class TemplateDiff
                 continue;
             }
             $changes[] = [
-                'type' => 'modified', 'scope' => 'collection_item', 'key' => null, 'hms_id' => null,
+                'type' => 'modified', 'scope' => 'collection_item',
+                'key' => self::collectionSelector($jsonName, $afterItem), 'hms_id' => null,
                 'page' => $afterItem['page'] ?? $beforeItem['page'] ?? 'home',
                 'label' => $label . ': ' . self::itemTitle($afterItem),
                 'fields' => $fields,

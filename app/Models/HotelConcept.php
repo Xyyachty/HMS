@@ -22,6 +22,9 @@ class HotelConcept extends Model
         // Which of the team's two concepts this is — see HotelConceptDesk::SLOTS.
         'slot',
         'title',
+        // The line the hotel introduces itself with, on the landing page and in
+        // every footer. The team's own words, not its type's label.
+        'tagline',
         'description',
         'hotel_type',
         'status',
@@ -42,6 +45,21 @@ class HotelConcept extends Model
         'revision_count' => 'integer',
     ];
 
+    /**
+     * Longest each field may be, in characters. One list for the validation and
+     * the form's maxlength and counters. Sized to where the approved concept ends
+     * up: the title becomes the hotel's name, the tagline one line over the
+     * headline, the description the template's About copy.
+     */
+    public const LIMITS = [
+        'title' => 25,
+        'tagline' => 30,
+        'description' => 300,
+    ];
+
+    /** Shortest description accepted: enough to say what the hotel is and who it serves. */
+    public const DESCRIPTION_MIN = 150;
+
     /** The dropdown on the student form, and the only accepted values. */
     public const HOTEL_TYPES = [
         'resort' => 'Resort',
@@ -59,9 +77,28 @@ class HotelConcept extends Model
     /** Fields the edit history reports on, with the labels it prints. */
     public const TRACKED_FIELDS = [
         'title' => 'Title',
+        'tagline' => 'Tagline',
         'description' => 'Description',
         'hotel_type' => 'Hotel Type',
     ];
+
+    /**
+     * Whether this database has the `tagline` column yet.
+     *
+     * It arrives in a migration of its own, so between pulling the code and
+     * running it a save carrying a tagline would be an INSERT against a column
+     * that is not there. Answered once per request.
+     */
+    public static function supportsTagline(): bool
+    {
+        static $has = null;
+
+        if ($has === null) {
+            $has = \Illuminate\Support\Facades\Schema::hasColumn('hotel_concepts', 'tagline');
+        }
+
+        return $has;
+    }
 
     public function group()
     {
@@ -98,7 +135,7 @@ class HotelConcept extends Model
         return $this->belongsTo(User::class, 'reviewed_by', 'user_id');
     }
 
-    /** Faculty's final choice for the team. The only status that is read-only. */
+    /** Faculty's final choice for the team — locked for good, unlike a submitted concept's temporary lock. */
     public function isLocked(): bool
     {
         return $this->status === HotelConceptDesk::STATUS_APPROVED;

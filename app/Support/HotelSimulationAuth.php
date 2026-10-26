@@ -5,7 +5,9 @@ namespace App\Support;
 use App\Models\HotelCustomer;
 use App\Models\StudentGroup;
 use App\Models\User;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Session;
 
 /**
@@ -16,6 +18,19 @@ use Illuminate\Support\Facades\Session;
 class HotelSimulationAuth
 {
     public const SESSION_KEY = 'hotel_sim_auth';
+
+    /**
+     * "Remember me" on the guest sign-in.
+     *
+     * The session cookie dies with the browser, which is right for a shared lab
+     * machine and wrong for the guest who ticked the box. This one carries the
+     * account the session would have held, for thirty days, and `restore()` reads
+     * it back when there is no session left. Laravel encrypts and signs it, so it
+     * is no more forgeable than the session cookie beside it, and it holds an
+     * account id rather than anything worth stealing on its own.
+     */
+    public const REMEMBER_COOKIE = 'hms_guest_remember';
+    public const REMEMBER_DAYS = 30;
 
     public static function teamContext(User $user): ?array
     {
@@ -32,6 +47,36 @@ class HotelSimulationAuth
         ];
     }
 
+    /**
+     * The same context, resolved from a published site's slug.
+     *
+     * The staff-facing calls read the team off the student looking at the builder.
+     * A guest on the published link has no student and no session — the slug in
+     * the URL is the only thing saying which hotel this is, and it is what the
+     * public sign-in and sign-up go by.
+     *
+     * @return array{group_name: string, faculty_id: int, group_id: mixed}|null
+     */
+    public static function teamContextForSlug(string $slug): ?array
+    {
+        $team = \App\Models\Group::resolveSlug($slug);
+        if (!$team) {
+            return null;
+        }
+
+        $groupName = (string) $team['group_name'];
+        $facultyId = (int) $team['faculty_id'];
+
+        return [
+            'group_name' => $groupName,
+            'faculty_id' => $facultyId,
+            'group_id' => StudentGroup::where('group_name', $groupName)
+                ->where('faculty_id', $facultyId)
+                ->value('group_id'),
+            'membership' => null,
+        ];
+    }
+
     public static function current(): ?array
     {
         $data = Session::get(self::SESSION_KEY);
@@ -41,6 +86,7 @@ class HotelSimulationAuth
     public static function clear(): void
     {
         Session::forget(self::SESSION_KEY);
+        Cookie::queue(Cookie::forget(self::REMEMBER_COOKIE));
     }
 
     public static function payload(?array $auth = null): array
@@ -55,6 +101,7 @@ class HotelSimulationAuth
                 'can_redesign' => false,
                 'editable_pages' => [],
                 'preferred_page' => 'home',
+                'stay' => ['checked_in' => false, 'booking_id' => null, 'room' => null, 'guest_name' => null],
             ];
         }
 
@@ -66,10 +113,22 @@ class HotelSimulationAuth
             'type' => $type,
             'name' => $auth['name'] ?? null,
             'email' => $auth['email'] ?? null,
+            // Read off the account rather than the session, so a guest signed in before
+            // this was added still gets it. The booking form fills it in for them.
+            'contact_number' => $type === 'customer'
+                ? HotelCustomer::find($auth['customer_id'] ?? null)?->contact_number
+                : null,
             'can_redesign' => $type === 'staff' && count($editable) > 0,
             'editable_pages' => $editable,
             'preferred_page' => $editable[0] ?? 'home',
             'role_label' => $auth['role_label'] ?? ($type === 'customer' ? 'Customer' : 'Staff'),
+            /* The stay behind the account, when there is one. The Amenities page
+               reads it: the pool, the spa and the function room are for the guests
+               in the building, so the booking controls appear for somebody checked
+               in and explain themselves to everybody else. */
+            'stay' => $type === 'customer'
+                ? HotelGuestStay::payload()
+                : ['checked_in' => false, 'booking_id' => null, 'room' => null, 'guest_name' => null],
         ];
     }
 
@@ -85,7 +144,7 @@ class HotelSimulationAuth
 
         $staffUser = User::whereEmail($email)->first();
         if (!$staffUser || !Hash::check($password, $staffUser->password)) {
-            return ['ok' => false, 'error' => 'Invalid staff email or password.', 'status' => 401];
+            return ['ok' => false, 'error' => 'The staff email or password is incorrect.', 'status' => 401];
         }
 
         $student = $staffUser->student;
@@ -103,6 +162,10 @@ class HotelSimulationAuth
             return ['ok' => false, 'error' => 'That staff account is not on your hotel team.', 'status' => 403];
         }
 
+        // This is the Customization seat they were assigned, not phase-expanded —
+        // editablePages reads it. The Simulation seat rides along separately as
+        // simulation_roles, which every Simulation access check expands itself
+        // (HotelHousekeepingAccess, HotelComplaintAccess, etc.).
         $roleKeys = $membership->roles->pluck('role')->filter()->values()->all();
         $editablePages = [];
         foreach ($roleKeys as $role) {
@@ -129,6 +192,9 @@ class HotelSimulationAuth
             'email' => $staffUser->email,
             'editable_pages' => $editablePages,
             'roles' => $roleKeys,
+            // Their Simulation seat, which faculty may have set apart from the
+            // seat above. The Simulation access checks expand this one.
+            'simulation_roles' => SimulationPhase::seatsFor($membership),
             'role_label' => $roleLabels ? implode(', ', $roleLabels) : 'Staff',
             'group_name' => $ctx['group_name'],
             'faculty_id' => $ctx['faculty_id'],
@@ -139,14 +205,28 @@ class HotelSimulationAuth
         return ['ok' => true, 'auth' => self::payload($auth)];
     }
 
-    public static function signupCustomer(User $viewer, string $name, string $email, string $password): array
+    /**
+     * @param array{first_name: string, last_name: string, email: string, contact_number: string, password: string, id_document?: string|null} $details
+     */
+    public static function signupCustomer(?User $viewer, array $details, ?array $context = null): array
     {
-        $ctx = self::teamContext($viewer);
+        // $context is how the published site says which hotel this is; inside the
+        // builder there is a student to read it from instead.
+        $ctx = $context ?: ($viewer ? self::teamContext($viewer) : null);
         if (!$ctx) {
             return ['ok' => false, 'error' => 'Join a hotel team first before creating a guest account.', 'status' => 422];
         }
 
-        $email = strtolower(trim($email));
+        $firstName = trim($details['first_name'] ?? '');
+        $lastName = trim($details['last_name'] ?? '');
+        $contactNumber = trim($details['contact_number'] ?? '');
+        $password = $details['password'] ?? '';
+
+        // What the site greets the guest by, composed once here so every screen
+        // that shows a name reads a single field.
+        $name = trim($firstName . ' ' . $lastName);
+
+        $email = strtolower(trim($details['email'] ?? ''));
         $exists = HotelCustomer::where('group_name', $ctx['group_name'])
             ->where('faculty_id', $ctx['faculty_id'])
             ->where('email', $email)
@@ -168,14 +248,31 @@ class HotelSimulationAuth
             }
         }
 
-        $customer = HotelCustomer::create([
+        $attributes = [
             'group_name' => $ctx['group_name'],
             'faculty_id' => $ctx['faculty_id'],
             'group_id' => $ctx['group_id'],
-            'name' => trim($name),
+            'name' => $name,
+            'first_name' => $firstName,
+            'last_name' => $lastName,
+            'contact_number' => $contactNumber,
             'email' => $email,
             'password' => Hash::make($password),
-        ]);
+        ];
+
+        /* The ID arrives as a data-URL the browser already shrank, and is written
+           to the media disk like every other picture: the column keeps the path.
+           Stored against the account rather than checked here — verifying it is
+           the front desk's job at check-in, and this is what they open to do it. */
+        if (HotelCustomer::supportsIdDocument()) {
+            $attributes['id_document'] = HotelImageStore::persist(
+                $details['id_document'] ?? null,
+                $ctx['faculty_id'],
+                $ctx['group_name']
+            );
+        }
+
+        $customer = HotelCustomer::create($attributes);
 
         $auth = [
             'type' => 'customer',
@@ -193,9 +290,9 @@ class HotelSimulationAuth
         return ['ok' => true, 'auth' => self::payload($auth)];
     }
 
-    public static function loginCustomer(User $viewer, string $email, string $password): array
+    public static function loginCustomer(?User $viewer, string $email, string $password, bool $remember = false, ?array $context = null): array
     {
-        $ctx = self::teamContext($viewer);
+        $ctx = $context ?: ($viewer ? self::teamContext($viewer) : null);
         if (!$ctx) {
             return ['ok' => false, 'error' => 'Join a hotel team first.', 'status' => 422];
         }
@@ -206,7 +303,7 @@ class HotelSimulationAuth
             ->first();
 
         if (!$customer || !Hash::check($password, $customer->password)) {
-            return ['ok' => false, 'error' => 'Invalid guest email or password.', 'status' => 401];
+            return ['ok' => false, 'error' => 'The guest email or password is incorrect.', 'status' => 401];
         }
 
         $auth = [
@@ -221,7 +318,77 @@ class HotelSimulationAuth
         ];
 
         Session::put(self::SESSION_KEY, $auth);
+        self::rememberCustomer($customer->hotel_customer_id, $remember);
 
         return ['ok' => true, 'auth' => self::payload($auth)];
+    }
+
+    /** Write or clear the thirty-day cookie behind "remember me". */
+    public static function rememberCustomer(int $customerId, bool $remember): void
+    {
+        if (!$remember) {
+            Cookie::queue(Cookie::forget(self::REMEMBER_COOKIE));
+
+            return;
+        }
+
+        Cookie::queue(Cookie::make(
+            self::REMEMBER_COOKIE,
+            (string) $customerId,
+            self::REMEMBER_DAYS * 24 * 60,
+            null,
+            null,
+            null,
+            true,  // httpOnly: no script has any use for it
+            false,
+            'Lax'
+        ));
+    }
+
+    /**
+     * Bring a remembered guest back after their session has gone.
+     *
+     * Team-scoped like everything else: the cookie names an account, and the
+     * account still has to belong to the hotel being looked at, or a guest of one
+     * team would be signed into another team's site by a cookie neither of them
+     * knows about.
+     */
+    public static function restore(?User $viewer, ?array $context = null): void
+    {
+        if (self::current()) {
+            return;
+        }
+
+        $customerId = (int) Request::cookie(self::REMEMBER_COOKIE);
+        if (!$customerId) {
+            return;
+        }
+
+        $ctx = $context ?: ($viewer ? self::teamContext($viewer) : null);
+        if (!$ctx) {
+            return;
+        }
+
+        $customer = HotelCustomer::where('hotel_customer_id', $customerId)
+            ->where('group_name', $ctx['group_name'])
+            ->where('faculty_id', $ctx['faculty_id'])
+            ->first();
+
+        if (!$customer) {
+            Cookie::queue(Cookie::forget(self::REMEMBER_COOKIE));
+
+            return;
+        }
+
+        Session::put(self::SESSION_KEY, [
+            'type' => 'customer',
+            'customer_id' => $customer->hotel_customer_id,
+            'name' => $customer->name,
+            'email' => $customer->email,
+            'editable_pages' => [],
+            'role_label' => 'Customer',
+            'group_name' => $ctx['group_name'],
+            'faculty_id' => $ctx['faculty_id'],
+        ]);
     }
 }

@@ -6,13 +6,23 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * A physical dining table: Restaurant Management adds and removes them, Front Desk
- * seats a guest at an Available one, Restaurant Management closes it out when the
- * guest leaves.
+ * reserves an Available one for a customer — name, contact, when they are due and
+ * how many are coming — it goes Occupied when that customer actually turns up, and
+ * Restaurant Management bills and closes it out once they have eaten.
+ *
+ * Reserved and Occupied are deliberately not the same thing: a held table is not a
+ * table with anyone at it, and only a table with someone at it can be ordered at.
  */
 class HotelDineInTable extends Model
 {
+    /**
+     * Available  nobody has claimed it
+     * Reserved   Front Desk is holding it for a customer who has not arrived yet
+     * Occupied   the customer is sitting at it, so it can be ordered at and billed
+     */
     public const STATUSES = [
         'Available',
+        'Reserved',
         'Occupied',
     ];
 
@@ -26,7 +36,9 @@ class HotelDineInTable extends Model
         'capacity',
         'status',
         'guest_name',
+        'contact_no',
         'party_size',
+        'reserved_for',
         'assigned_by',
         'assigned_at',
     ];
@@ -34,6 +46,9 @@ class HotelDineInTable extends Model
     protected $casts = [
         'capacity' => 'integer',
         'party_size' => 'integer',
+        // When the customer is due, as opposed to assigned_at — when the desk wrote
+        // the reservation down.
+        'reserved_for' => 'datetime',
         'assigned_at' => 'datetime',
     ];
 
@@ -60,7 +75,10 @@ class HotelDineInTable extends Model
             'capacity' => (int) $this->capacity,
             'status' => $this->status,
             'guestName' => $this->guest_name ?? '',
+            'contactNo' => $this->contact_no ?? '',
             'partySize' => $this->party_size,
+            // Stored as Manila wall-clock; sent with +08:00 so browsers show that time.
+            'reservedFor' => $this->reserved_for?->shiftTimezone('Asia/Manila')->toIso8601String(),
             'assignedBy' => $this->assigned_by ?? '',
             'assignedAt' => optional($this->assigned_at)->toIso8601String(),
             'updatedAt' => optional($this->updated_at)->toIso8601String(),

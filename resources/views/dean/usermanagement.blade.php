@@ -1,39 +1,195 @@
 @extends('dean.layouts.app')
 
 @section('page_title', 'List of User Management')
+@section('page_subtitle', 'Deans, faculty and students with access to the system.')
 @section('users_active', 'active')
 
 @push('styles')
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 <style>
-    .dataTables_wrapper .dataTables_filter input {
-        background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 0.75rem;
-        padding: 0.5rem 1rem; margin-left: 0.5rem; outline: none; font-family: 'Manrope', sans-serif;
+    /* ── User table, styled like the faculty Manage Students list ──
+       DataTables still draws the rows and the pager, so its own stripes, borders
+       and buttons are overridden here. Status chips carry their own hex values
+       because the palette turns green and red into gold and wine. */
+    .st-card { border: 1px solid #E4E2E0; border-radius: 1rem; overflow: hidden; background: #fff; }
+    table.dataTable#usersTable { border-collapse: collapse !important; width: 100% !important; margin: 0 !important; }
+    table.dataTable#usersTable thead th {
+        background: #fff; color: #181818; border-bottom: 0 !important;
+        font-size: 0.6562rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+        padding: .9rem .9rem; text-align: left; white-space: nowrap;
     }
-    .dataTables_wrapper .dataTables_filter input:focus { border-color: #DB2777; box-shadow: 0 0 0 3px rgba(219, 39, 119, 0.12); }
-    .dataTables_wrapper .dataTables_length select {
-        background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 0.5rem;
-        padding: 0.25rem 0.5rem; outline: none; font-family: 'Manrope', sans-serif;
+    table.dataTable#usersTable tbody tr { background: #fff; transition: background-color .15s ease, box-shadow .15s ease; }
+    table.dataTable#usersTable tbody tr.even { background: #fff; }
+    table.dataTable#usersTable tbody tr:hover { background: #dadada !important; }
+    table.dataTable#usersTable tbody td {
+        padding: .8rem .9rem; vertical-align: middle; font-size: 0.8125rem;
+        border-top: 1px solid #E4E2E0 !important; box-shadow: none !important;
     }
-    table.dataTable thead th {
-        background: #FDF2F8; color: #64748B; font-weight: 800; text-transform: uppercase;
-        font-size: 0.65rem; letter-spacing: 0.1em; padding: 1rem; border-bottom: 2px solid #FBCFE8;
+    table.dataTable#usersTable.no-footer { border-bottom: 0 !important; }
+
+    /* Until DataTables has run, the table is raw: unstyled, every user on one page
+       and the Faculty/Students filter not applied. The browser paints that while
+       the scripts at the bottom of the page load, so a refresh flashed it. Show the
+       loading circle (keyframes from partials.nav-loader) in its place instead. */
+    #usersTable:not(.dataTable) { display: none; }
+    .st-card:has(#usersTable:not(.dataTable)) {
+        min-height: 12rem; display: flex; align-items: center; justify-content: center;
     }
-    table.dataTable tbody tr { transition: background 0.2s; }
-    table.dataTable tbody tr:hover { background: #FDF2F8 !important; }
-    table.dataTable tbody td { padding: 1rem; vertical-align: middle; font-size: 0.875rem; }
-    .dataTables_wrapper .dataTables_paginate .paginate_button.current {
-        background: #DB2777 !important; color: white !important; border-radius: 9999px !important;
-        border: none !important; padding: 0.25rem 0.75rem; box-shadow: 0 4px 6px -1px rgba(219,39,119,0.2);
+    .st-card:has(#usersTable:not(.dataTable))::before {
+        content: ''; width: 2.5rem; height: 2.5rem; border-radius: 50%;
+        border: 4px solid rgba(123, 23, 48, 0.2); border-top-color: #7B1730;
+        animation: hmsNavSpin 0.8s linear infinite;
     }
-    .dataTables_wrapper .dataTables_paginate .paginate_button {
-        border-radius: 9999px !important; background: transparent; border: 1px solid #E2E8F0; margin: 0 2px;
+
+    .st-name { font-size: 0.8438rem; font-weight: 800; color: #111; }
+    .st-email { font-size: 0.7188rem; color: #111; margin-top: .1rem; }
+    .st-muted { font-size: 0.75rem; color: #111; font-weight: 600; }
+    .st-dim { color: #111; }
+    .st-block {
+        display: inline-block; white-space: nowrap; font-size: 0.6875rem; font-weight: 800; color: #111;
     }
+
+    .st-status {
+        display: inline-flex; align-items: center; gap: .4rem; white-space: nowrap;
+        font-size: 0.6875rem; font-weight: 800;
+    }
+    .st-status .dot { width: .45rem; height: .45rem; border-radius: 9999px; }
+    .st-status.is-active   { color: #15803D; }
+    .st-status.is-active .dot   { background: #16A34A; box-shadow: 0 0 0 3px rgba(22,163,74,.18); }
+    .st-status.is-inactive { color: #111; }
+    .st-status.is-inactive .dot { background: #DC2626; box-shadow: 0 0 0 3px rgba(220,38,38,.18); }
+    .st-status.is-pending  { color: #111; }
+    .st-status.is-pending .dot  { background: #C9A45C; }
+
+    .st-update, .st-approve {
+        display: inline-flex; align-items: center; justify-content: center; gap: .35rem; white-space: nowrap;
+        min-width: 6rem; border-radius: .6rem; padding: .4rem .8rem; font-size: 0.7188rem; font-weight: 800;
+        border: 1px solid; transition: all .15s ease;
+    }
+    .st-update { color: #111; background: #fff; border-color: #111; }
+    /* Dark gray under the pointer; the row's hover only hints at it. */
+    table.dataTable#usersTable tbody tr:hover .st-update { background: #EFEFEF; border-color: #111; color: #181818; }
+    .st-update:hover,
+    table.dataTable#usersTable tbody tr:hover .st-update:hover { background: #4B4B4B; border-color: #4B4B4B; color: #fff; }
+    #addFacultyBtn { color: #fff; background: #4A4643; border: 1px solid #4A4643; }
+    #addFacultyBtn:hover { color: #181818; background: #dadada; border-color: #dadada; }
+    .st-approve { color: #fff; background: #111; border-color: #111; }
+    .st-approve:hover { background: #333; border-color: #333; }
+
+    /* Expandable user search, the same as the faculty student search */
+    #userSearchWrap {
+        display: inline-flex; align-items: center; height: 2.5rem; width: 2.5rem;
+        border-radius: 0.75rem; background: #fff; border: 1px solid #111; overflow: hidden;
+        transition: width 0.25s ease, background-color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+    #userSearchWrap:not(.is-open):hover { background: #dadada; }
+    #userSearchWrap:not(.is-open):hover .search-toggle { color: #181818; }
+    #userSearchWrap.is-open {
+        width: 12.5rem; background: #fff; border-color: #111;
+        box-shadow: 0 0 0 3px rgba(17,17,17, 0.10);
+    }
+    #userSearchWrap .search-toggle {
+        width: 2.5rem; height: 2.5rem; flex-shrink: 0;
+        display: inline-flex; align-items: center; justify-content: center;
+        color: #111; border: 0; background: transparent; cursor: pointer; border-radius: 0.75rem;
+    }
+    #userSearchWrap.is-open .search-toggle { color: #111; }
+    #userSearchInput {
+        width: 0; min-width: 0; opacity: 0; border: 0; outline: none; background: transparent;
+        font-size: 0.875rem; color: #111; padding: 0;
+        transition: width 0.25s ease, opacity 0.2s ease, padding 0.25s ease;
+    }
+    #userSearchWrap.is-open #userSearchInput { width: 100%; opacity: 1; padding-right: 0.75rem; }
+    #userSearchWrap.is-open #userSearchInput::placeholder { color: #8C8C8C; }
+
+    /* Info line and pager under the table */
+    #usersTable_wrapper .dataTables_info { padding-top: 1.25rem; font-size: 0.8125rem; color: #111; }
+    #usersTable_wrapper .dataTables_info b { color: #111; }
+    #usersTable_wrapper .dataTables_paginate { padding-top: 1rem; display: flex; gap: .375rem; flex-wrap: wrap; justify-content: flex-end; }
+    #usersTable_wrapper .dataTables_paginate .paginate_button {
+        min-width: 2.35rem; height: 2.35rem; padding: 0 .8rem !important; margin: 0 !important; border-radius: .7rem !important;
+        display: inline-flex !important; align-items: center; justify-content: center;
+        font-size: 0.8125rem; font-weight: 700; color: #111 !important; background: #fff !important;
+        border: 1px solid #E4E2E0 !important; box-shadow: none !important; transition: all .15s ease;
+    }
+    #usersTable_wrapper .dataTables_paginate .paginate_button:hover {
+        color: #181818 !important; border-color: #dadada !important; background: #EFEFEF !important;
+    }
+    /* The page you are on is gray, not black. */
+    #usersTable_wrapper .dataTables_paginate .paginate_button.current,
+    #usersTable_wrapper .dataTables_paginate .paginate_button.current:hover {
+        background: #dadada !important; border-color: #BDBDBD !important; color: #111 !important;
+        box-shadow: none !important;
+    }
+    #usersTable_wrapper .dataTables_paginate .paginate_button.disabled,
+    #usersTable_wrapper .dataTables_paginate .paginate_button.disabled:hover {
+        color: #111 !important; opacity: .4; background: #fff !important; border-color: #E4E2E0 !important; cursor: not-allowed;
+    }
+    /* The dean Tailwind palette tints slate and pink borders toward wine. On this
+       page (toolbar, table card, both modals) borders are neutral gray instead. */
+    .um-page .border-slate-100 { border-color: #ECECEC; }
+    .um-page .border-slate-200,
+    .um-page .border-brand\/10 { border-color: #dadada; }
+    .um-page .focus\:border-brand:focus { border-color: #111; }
+    .um-page .focus\:ring-brand\/20:focus { --tw-ring-color: rgba(17,17,17,.10); }
+
+    /* Toolbar, filters and table text are black; only the Active status keeps its green.
+       Selected Block pill is a gray fill so it still reads as selected. */
+    .um-main .text-slate-500,
+    .um-main .text-amber-500,
+    .um-main .hover\:text-brand:hover,
+    .um-main .hover\:text-slate-700:hover { color: #111; }
+    /* Faculty / Students tab labels are black, no maroon. */
+    .um-main .tab-btn,
+    .um-main .tab-btn:hover { color: #111; }
+    .um-main .block-tab-btn.bg-brand { background-color: #dadada; border-color: #dadada; color: #111; }
+    /* No soft fills on the page: the Faculty / Students tabs, the Block bar,
+       the success notice and the initials tiles are white and keep their
+       borders. Doubled class to outrank the .gray-accents fills. */
+    .um-main.um-main :is(.bg-slate-50, .bg-slate-50\/60, .bg-green-50, .bg-brand-soft) { background-color: #fff; }
+
+    #usersTable_wrapper .dataTables_paginate .ellipsis { padding: 0 .35rem; color: #111; }
+
+    /* Add/Update User modals: neutral grays, none of the wine-tinted slate,
+       brand or red the dean palette and .gray-accents give them. Ids outrank
+       both. */
+    :is(#createUserModal, #updateUserModal) :is(.bg-brand-soft, .bg-slate-50, .bg-red-50) { background-color: #F5F5F5; }
+    :is(#createUserModal, #updateUserModal) .bg-slate-100 { background-color: #EBEBEB; }
+    :is(#createUserModal, #updateUserModal) .bg-brand { background-color: #374151; }
+    :is(#createUserModal, #updateUserModal) .shadow-brand\/20 { --tw-shadow-color: rgba(17, 17, 17, .15); }
+    :is(#createUserModal, #updateUserModal) .bg-slate-900\/60 { background-color: rgba(17, 17, 17, .6); }
+    :is(#createUserModal, #updateUserModal) .hover\:bg-slate-200:hover { background-color: #E5E5E5; }
+    :is(#createUserModal, #updateUserModal) .border-red-200 { border-color: #D4D4D4; }
+    :is(#createUserModal, #updateUserModal) :is(.text-brand, .text-red-500, .text-red-700, .hover\:text-brand:hover, .hover\:text-slate-600:hover) { color: #111; }
+    :is(#createUserModal, #updateUserModal) .text-slate-600 { color: #4B5563; }
+    :is(#createUserModal, #updateUserModal) .text-slate-500 { color: #6B7280; }
+    :is(#createUserModal, #updateUserModal) .text-slate-400 { color: #9CA3AF; }
+
+    /* The selects carry appearance-none, which drops the native arrow and left
+       them looking like plain text boxes. A chevron puts the cue back. */
+    :is(#createUserModal, #updateUserModal) select {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234B5563' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right .85rem center;
+        background-size: 1rem;
+        padding-right: 2.5rem;
+        cursor: pointer;
+    }
+    :is(#createUserModal, #updateUserModal) select:hover:not(:disabled) { border-color: #9CA3AF; }
+
+    /* Add Faculty: a reminder under a field that is empty or in the wrong format. */
+    #createUserModal .um-err { display: none; margin-top: .375rem; font-size: .75rem; font-weight: 600; color: #DC2626; }
+    #createUserModal .um-err.show { display: block; }
+    #createUserModal input.um-invalid { border-color: #DC2626; }
+
+    /* Add Faculty and Update User modals: the save buttons are green. */
+    #addUserSubmit, #updateUserSubmit { background-color: #15803D; box-shadow: 0 4px 6px -1px rgba(21, 128, 61, .25); }
+    #addUserSubmit:hover, #updateUserSubmit:hover { background-color: #166534; }
 </style>
 @endpush
 
 @section('content')
-<div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+<div class="um-page um-main bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
 
     <!-- Toolbar: Faculty / Students + Search + Add Faculty -->
     <div class="px-4 md:px-6 pt-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -49,18 +205,28 @@
         </div>
 
         <div class="flex items-center gap-2 pb-3 shrink-0 ml-auto">
-            <div class="flex items-center bg-slate-100 rounded-xl px-3.5 h-10 gap-2 w-full sm:w-52">
-                <span class="iconify text-slate-400 shrink-0" data-icon="mdi:magnify"></span>
+            {{-- Same expanding search as the faculty Manage Students page: an icon
+                 until clicked, then a field that stays open while it holds a query. --}}
+            <div id="userSearchWrap" class="shrink-0">
+                <button
+                    type="button"
+                    class="search-toggle"
+                    title="Search users"
+                    aria-label="Search users"
+                    onclick="toggleUserSearch()"
+                >
+                    <span class="iconify text-lg" data-icon="mdi:magnify"></span>
+                </button>
                 <input
                     id="userSearchInput"
                     type="text"
                     placeholder="Search users..."
-                    class="bg-transparent text-sm outline-none w-full placeholder-slate-400"
                     oninput="filterUsersTable(this.value)"
+                    onkeydown="if (event.key === 'Escape') collapseUserSearch(true)"
                 >
             </div>
             <button type="button" id="addFacultyBtn" onclick="openModal('createUserModal')"
-                class="h-10 bg-brand text-white px-4 rounded-xl text-sm font-bold hover:opacity-95 transition shadow-md shadow-brand/20 inline-flex items-center gap-2 whitespace-nowrap">
+                class="h-10 px-4 rounded-xl text-sm font-bold transition inline-flex items-center gap-2 whitespace-nowrap">
                 <span class="iconify text-base" data-icon="mdi:account-plus-outline"></span>
                 Add Faculty
             </button>
@@ -70,20 +236,20 @@
     @php
         $studentBlocks = $users
             ->where('role', 'student')
-            ->map(fn ($u) => $u->student?->facultyClass?->letter)
+            ->map(fn ($u) => $u->student?->facultyClass?->block_letter)
             ->filter()
             ->map(fn ($letter) => strtoupper($letter));
         $blockTabs = collect($systemBlocks)->merge($studentBlocks)->unique()->sort()->values();
         $hasUnassignedStudents = $users
             ->where('role', 'student')
-            ->contains(fn ($u) => ! $u->student?->facultyClass?->letter);
+            ->contains(fn ($u) => ! $u->student?->facultyClass?->block_letter);
     @endphp
 
     <!-- Block sub-tabs (Students only) -->
     <div id="blockTabBar" class="hidden px-4 md:px-6 pt-3 pb-3 border-b border-slate-100 bg-slate-50/60 flex-wrap gap-2">
         <button type="button" onclick="switchBlockTab('')" data-block-tab=""
             class="block-tab-btn px-3.5 py-1.5 rounded-full text-xs font-bold border border-slate-200 bg-white text-slate-500 hover:text-brand transition">
-            All Blocks
+            All
         </button>
         @foreach ($blockTabs as $letter)
             <button type="button" onclick="switchBlockTab('{{ $letter }}')" data-block-tab="{{ $letter }}"
@@ -102,15 +268,19 @@
             {{ session('success') }}
         </div>
     @endif
+    @if (session('warning'))
+        <div class="mx-6 mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+            {{ session('warning') }}
+        </div>
+    @endif
 
     <!-- DataTable -->
     <div class="p-4 md:p-6">
-        <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <table id="usersTable" class="display nowrap w-full text-sm text-slate-700">
+        <div class="st-card overflow-x-auto">
+        <table id="usersTable" class="display nowrap w-full">
             <thead>
                 <tr>
-                    <th>Name</th>
-                    <th>Email</th>
+                    <th>User</th>
                     <th>Phone Number</th>
                     <th>Block</th>
                     <th>Status</th>
@@ -129,6 +299,12 @@
                         $displayName = $displayName !== '' ? $displayName : ($user->name ?? 'User');
                         $phone = $user->phone_number ?? ($user->faculty->phone_number ?? null);
                         $status = $user->status ?? ($user->faculty->status ?? 'active');
+                        $statusChip = match ($status) {
+                            'active'  => ['class' => 'is-active', 'label' => 'Active'],
+                            'pending' => ['class' => 'is-pending', 'label' => 'Pending'],
+                            'pending_activation' => ['class' => 'is-pending', 'label' => 'Pending Activation'],
+                            default   => ['class' => 'is-inactive', 'label' => 'Inactive'],
+                        };
                         $username = $user->email ? explode('@', $user->email, 2)[0] : '';
                         $emailDomain = $user->email && str_contains($user->email, '@')
                             ? explode('@', $user->email, 2)[1]
@@ -138,45 +314,65 @@
                             $block = $user->faculty->block ?? null;
                         } elseif ($user->role === 'student') {
                             // A student's block is the block row they sit in, not the faculty's own block letter.
-                            $block = $user->student?->facultyClass?->letter ?? null;
+                            $block = $user->student?->facultyClass?->block_letter ?? null;
                         }
-                        $blockLabel = \App\Models\Faculty::blockLabel($block);
+                        // A faculty running two blocks reads "Block A, Block B".
+                        $blockLabel = $user->role === 'faculty' && $user->faculty
+                            ? $user->faculty->handledBlocksLabel()
+                            : \App\Models\Faculty::blockLabel($block);
                     @endphp
                     <tr data-user-id="{{ $user->user_id }}" data-role="{{ $user->role }}" data-block="{{ strtoupper((string) $block) }}">
                         <td>
-                            <span class="font-semibold text-slate-800">{{ $displayName }}</span>
+                            <div class="flex items-center gap-3 min-w-0">
+                                @include('partials.user-avatar', [
+                                    'user'         => $user,
+                                    'name'         => $displayName,
+                                    'size'         => 'w-9 h-9',
+                                    'rounded'      => 'rounded-full',
+                                    'extraClasses' => 'bg-brand-soft text-brand text-[0.6875rem] font-bold border border-amber-200',
+                                ])
+                                <div class="min-w-0">
+                                    <p class="st-name truncate">{{ $displayName }}</p>
+                                    <p class="st-email truncate">{{ $user->email }}</p>
+                                </div>
+                            </div>
                         </td>
-                        <td class="text-slate-400">{{ $user->email }}</td>
-                        <td class="text-slate-600 font-medium">{{ $phone ?? '—' }}</td>
+                        <td>
+                            @if ($phone)
+                                <span class="st-muted">{{ $phone }}</span>
+                            @else
+                                <span class="st-muted st-dim">—</span>
+                            @endif
+                        </td>
                         <td>
                             @if ($block)
-                                <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">{{ $blockLabel }}</span>
+                                <span class="st-block">{{ $blockLabel }}</span>
                             @else
-                                <span class="text-slate-400 text-xs">—</span>
+                                <span class="st-muted st-dim">—</span>
                             @endif
                         </td>
                         <td>
-                            @if ($status === 'active')
-                                <span class="flex items-center gap-1.5 text-xs font-semibold text-green-600"><span class="w-2 h-2 bg-green-500 rounded-full"></span> Active</span>
-                            @elseif ($status === 'pending')
-                                <span class="flex items-center gap-1.5 text-xs font-semibold text-amber-600"><span class="w-2 h-2 bg-amber-500 rounded-full"></span> Pending</span>
-                            @else
-                                <span class="flex items-center gap-1.5 text-xs font-semibold text-amber-600"><span class="w-2 h-2 bg-amber-500 rounded-full"></span> Inactive</span>
-                            @endif
+                            <span class="st-status {{ $statusChip['class'] }}"><span class="dot"></span> {{ $statusChip['label'] }}</span>
                         </td>
-                        <td class="text-slate-500 text-sm">{{ optional($user->created_at)->format('M d, Y') }}</td>
+                        <td>
+                            <span class="st-muted inline-flex items-center gap-1.5 whitespace-nowrap">
+                                <span class="iconify text-sm text-amber-500" data-icon="mdi:calendar-blank-outline"></span>
+                                {{ optional($user->created_at)->format('M d, Y') }}
+                            </span>
+                        </td>
                         <td class="text-center" style="text-align: center !important;">
                             <div class="flex justify-center w-full">
                                 @if ($user->role === 'student' && $status === 'pending')
                                     <form method="POST" action="{{ route('dean.users.approve', $user) }}">
                                         @csrf
-                                        <button type="submit" class="text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition text-xs font-semibold px-3 py-2 rounded-lg inline-flex items-center justify-center gap-2 w-24" aria-label="Approve student">
-                                            <span class="iconify text-base" data-icon="mdi:check-circle-outline"></span>
-                                            <span>Approve</span>
+                                        <button type="submit" class="st-approve" aria-label="Approve student">
+                                            <span class="iconify text-sm" data-icon="mdi:check-circle-outline"></span>
+                                            Approve
                                         </button>
                                     </form>
                                 @else
                                     <button
+                                        type="button"
                                         onclick="openUpdateModal(this)"
                                         data-user-id="{{ $user->user_id }}"
                                         data-first-name="{{ $user->first_name }}"
@@ -189,10 +385,12 @@
                                         data-status="{{ $status }}"
                                         data-role="{{ $user->role }}"
                                         data-block="{{ $block ?? '' }}"
-                                        class="text-brand bg-brand-soft hover:bg-brand/10 transition text-xs font-semibold px-3 py-2 rounded-lg inline-flex items-center justify-center w-24"
+                                        data-block-label="{{ $block ? $blockLabel : '' }}"
+                                        class="st-update"
                                         aria-label="Update user"
                                     >
-                                        <span>Update</span>
+                                        <span class="iconify text-sm" data-icon="mdi:pencil-outline"></span>
+                                        Update
                                     </button>
                                 @endif
                             </div>
@@ -200,7 +398,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="text-center text-slate-500 py-6">No users found.</td>
+                        <td colspan="6" class="text-center text-slate-500 py-6">No users found.</td>
                     </tr>
                 @endforelse
             </tbody>
@@ -210,16 +408,16 @@
 </div>
 
 <!-- Create User Modal -->
-<div id="createUserModal" class="fixed inset-0 hidden" style="z-index: 9999;">
+<div id="createUserModal" class="um-page fixed inset-0 hidden" style="z-index: 9999;">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeModal('createUserModal')"></div>
-    <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100" style="width: 760px; max-width: 92vw; max-height: 90vh; overflow-y: auto; z-index: 10000;">
+    <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100" style="width: 47.5rem; max-width: 92vw; max-height: 90vh; overflow-y: auto; z-index: 10000;">
         <div class="bg-brand-soft px-6 py-4 border-b border-brand/10 flex justify-between items-center sticky top-0 z-10">
             <h4 class="font-bold text-brand text-lg">Add Faculty Details</h4>
             <button onclick="closeModal('createUserModal')" class="text-slate-400 hover:text-brand hover:bg-white w-8 h-8 rounded-full transition flex items-center justify-center">
                 <span class="iconify text-xl" data-icon="mdi:close"></span>
             </button>
         </div>
-        <form method="POST" action="{{ route('dean.users.store') }}" onsubmit="return validateUserPasswords()">
+        <form id="createUserForm" method="POST" action="{{ route('dean.users.store') }}" novalidate>
         @csrf
         @if ($errors->any())
             <div class="mx-6 mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -230,93 +428,72 @@
             <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Last Name</label>
                 <input name="last_name" type="text" placeholder="e.g. Smith" required class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                <p class="um-err" data-err-for="last_name"></p>
             </div>
             <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">First Name</label>
                 <input name="first_name" type="text" placeholder="e.g. Jane" required class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                <p class="um-err" data-err-for="first_name"></p>
             </div>
             <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Middle Name</label>
-                <input name="middle_name" type="text" placeholder="e.g. A." class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                <input name="middle_name" type="text" placeholder="e.g. Santos" class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                <p class="um-err" data-err-for="middle_name"></p>
             </div>
             <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Email</label>
-                <input name="email" type="email" placeholder="user@hms.edu" required class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                <input name="email" type="email" placeholder="name@gmail.com" required class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                <p class="um-err" data-err-for="email"></p>
             </div>
             <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Phone Number</label>
                 <div class="relative">
                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 text-xs font-medium">+63</span>
-                    <input name="phone_number" type="text" placeholder="912 345 6789" class="w-full h-10 pl-12 pr-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                    <input name="phone_number" type="text" inputmode="numeric" autocomplete="tel-national" pattern="9[0-9]{9}" title="10 digits after +63, starting with 9 (e.g. 9123456789)" data-ph-phone placeholder="912 345 6789" class="w-full h-10 pl-12 pr-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
                 </div>
+                <p class="um-err" data-err-for="phone_number"></p>
             </div>
-            <div>
-                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Role</label>
-                <select name="role" id="createUserRole" onchange="toggleCreateBlockField()" class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition appearance-none">
-                    <option value="faculty">Faculty</option>
-                    <option value="student">Student</option>
-                </select>
-            </div>
-            <div id="createBlockField">
-                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Block</label>
-                <select name="block" id="createUserBlock" class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition appearance-none">
-                    <option value="">Select block</option>
-                    @forelse ($availableBlocks as $letter)
-                        <option value="{{ $letter }}">Block {{ $letter }}</option>
-                    @empty
-                        <option value="" disabled>No blocks available</option>
-                    @endforelse
-                </select>
-            </div>
-            <div>
-                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Status</label>
-                <select name="status" class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition appearance-none">
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                </select>
-            </div>
+            {{-- This modal only ever adds faculty (the Add Faculty button is hidden on the
+                 Students tab), so the role is fixed and not shown — the title says it.
+                 Still posted: storeUser requires it, and old('role') reopens the modal on
+                 a validation error. --}}
+            <input type="hidden" name="role" value="faculty">
+            {{-- No block to choose: it is always the next free class letter, so it
+                 is assigned on save. Changing one is what the Block field on the
+                 update form below is for. No status either: a new faculty account is
+                 always Pending Activation until its owner first signs in. --}}
             <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Password</label>
-                <div class="relative">
-                    <input id="createUserPassword" name="password" type="password" placeholder="Min. 8 characters" required oninput="validateUserPasswords()" class="w-full h-10 px-3 pr-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
-                    <button type="button" onclick="togglePassword(this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                        <span class="iconify text-lg" data-icon="mdi:eye-off-outline"></span>
-                    </button>
+                {{-- Not typed by the dean: generated on save and sent to the faculty
+                     member's Gmail with the welcome email. --}}
+                <div class="w-full h-10 px-3 bg-slate-100 border border-slate-200 rounded-xl text-sm flex items-center gap-2 text-slate-500 font-semibold">
+                    <span class="iconify" data-icon="mdi:email-lock-outline"></span> Sent to their Gmail
                 </div>
-                <p id="createUserPasswordHelp" class="mt-1 text-[11px] text-red-500 hidden">Password must be at least 8 characters.</p>
-            </div>
-            <div>
-                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Confirm Password</label>
-                <div class="relative">
-                    <input id="createUserPasswordConfirm" name="password_confirmation" type="password" placeholder="Re-enter password" required oninput="validateUserPasswords()" class="w-full h-10 px-3 pr-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
-                    <button type="button" onclick="togglePassword(this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                        <span class="iconify text-lg" data-icon="mdi:eye-off-outline"></span>
-                    </button>
-                </div>
-                <p id="createUserPasswordMatch" class="mt-1 text-[11px] text-red-500 hidden">Passwords do not match.</p>
             </div>
         </div>
         <div class="px-6 py-3 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 sticky bottom-0 relative" style="z-index: 10;">
             <button type="button" onclick="closeModal('createUserModal')" class="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-200 transition font-semibold text-sm">Cancel</button>
-            <button type="submit" class="px-5 py-2 bg-brand text-white rounded-xl font-bold text-sm hover:scale-105 transition shadow-md shadow-brand/20">Add User</button>
+            <button type="submit" id="addUserSubmit" class="px-5 py-2 text-white rounded-xl font-bold text-sm hover:scale-105 transition">Add User</button>
         </div>
         </form>
     </div>
 </div>
 
 <!-- Update User Modal -->
-<div id="updateUserModal" class="fixed inset-0 hidden" style="z-index: 9999;">
+<div id="updateUserModal" class="um-page fixed inset-0 hidden" style="z-index: 9999;">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeModal('updateUserModal')"></div>
-    <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100" style="width: 760px; max-width: 92vw; max-height: 90vh; overflow-y: auto; z-index: 10000;">
+    <div class="relative top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100" style="width: 47.5rem; max-width: 92vw; max-height: 90vh; overflow-y: auto; z-index: 10000;">
         <div class="bg-brand-soft px-6 py-4 border-b border-brand/10 flex justify-between items-center sticky top-0 z-10">
             <h4 class="font-bold text-brand text-lg">Update User</h4>
             <button onclick="closeModal('updateUserModal')" class="text-slate-400 hover:text-brand hover:bg-white w-8 h-8 rounded-full transition flex items-center justify-center">
                 <span class="iconify text-xl" data-icon="mdi:close"></span>
             </button>
         </div>
-        <form id="updateUserForm" method="POST" action="">
+        <form id="updateUserForm" method="POST" action="" onsubmit="return confirmStatusChange(this)">
             @csrf
             @method('PUT')
+            {{-- Filled by the reassign prompt in confirmStatusChange(). --}}
+            <input type="hidden" name="transfer_to" id="updateTransferTo" value="">
             <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Last Name</label>
@@ -364,19 +541,21 @@
                     <select id="updateStatus" name="status" class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition appearance-none">
                         <option value="active">Active</option>
                         <option value="inactive">Inactive</option>
+                        {{-- Only offered while the account still has it; see openUpdateModal(). --}}
+                        <option value="pending_activation" hidden>Pending Activation</option>
                     </select>
                 </div>
             </div>
             <div class="px-6 py-3 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 sticky bottom-0">
                 <button type="button" onclick="closeModal('updateUserModal')" class="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-200 transition font-semibold text-sm">Cancel</button>
-                <button type="submit" class="px-5 py-2 bg-brand text-white rounded-xl font-bold text-sm hover:scale-105 transition shadow-md shadow-brand/20">Update User</button>
+                <button type="submit" id="updateUserSubmit" class="px-5 py-2 text-white rounded-xl font-bold text-sm hover:scale-105 transition">Update User</button>
             </div>
         </form>
     </div>
 </div>
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+{{-- SweetAlert2 and its theme come from dean.layouts.app. --}}
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
@@ -404,6 +583,14 @@
         });
         @endif
 
+        @if (session('warning'))
+        Swal.fire({
+            icon: 'warning',
+            title: 'Email Not Sent',
+            text: @json(session('warning')),
+        });
+        @endif
+
         @if ($errors->any())
         Swal.fire({
             icon: 'error',
@@ -418,22 +605,13 @@
     const liveUsersUrl = "{{ route('dean.users.live') }}";
     const availableBlocks = @json($availableBlocks);
     const systemBlocks = @json($systemBlocks);
+    // Blocks another faculty runs past their own, which can be handed to this one.
+    const handOverBlocks = @json((object) $handOverBlocks);
+    // user_id => {name, status, students, blocks}; see DeanController::users().
+    const facultyLoad = @json((object) $facultyLoad);
     let currentTab = 'faculty';
     let currentBlock = ''; // '' = all blocks, '__none__' = students with no block
-    const BLOCK_COLUMN_INDEX = 3;
-
-    function toggleCreateBlockField() {
-        const role = document.getElementById('createUserRole')?.value;
-        const field = document.getElementById('createBlockField');
-        const select = document.getElementById('createUserBlock');
-        if (!field || !select) return;
-        const isFaculty = role === 'faculty';
-        field.classList.toggle('hidden', !isFaculty);
-        select.required = isFaculty;
-        if (!isFaculty) {
-            select.value = '';
-        }
-    }
+    const BLOCK_COLUMN_INDEX = 2;
 
     function syncSeenUserIds() {
         if (!usersTable) return;
@@ -482,14 +660,59 @@
         });
 
         syncSeenUserIds();
-        toggleCreateBlockField();
-        switchTab('faculty');
+        // ?tab=student opens the Students tab (the dashboard's Total Students card links here).
+        switchTab(new URLSearchParams(location.search).get('tab') === 'student' ? 'student' : 'faculty');
     });
 
     function filterUsersTable(query) {
         if (!usersTable) return;
         usersTable.search(query || '').draw();
     }
+
+    function toggleUserSearch() {
+        const wrap = document.getElementById('userSearchWrap');
+        const input = document.getElementById('userSearchInput');
+        if (!wrap || !input) return;
+
+        if (wrap.classList.contains('is-open')) {
+            if (input.value.trim() === '') {
+                collapseUserSearch(false);
+            } else {
+                input.focus();
+            }
+            return;
+        }
+
+        wrap.classList.add('is-open');
+        setTimeout(() => input.focus(), 220);
+    }
+
+    function collapseUserSearch(clearIfEmpty) {
+        const wrap = document.getElementById('userSearchWrap');
+        const input = document.getElementById('userSearchInput');
+        if (!wrap || !input) return;
+
+        if (clearIfEmpty && input.value.trim() === '') {
+            input.value = '';
+            filterUsersTable('');
+        }
+
+        // Keep expanded while there is an active query
+        if (input.value.trim() !== '') {
+            input.blur();
+            return;
+        }
+
+        wrap.classList.remove('is-open');
+        input.blur();
+    }
+
+    document.addEventListener('click', function (e) {
+        const wrap = document.getElementById('userSearchWrap');
+        if (!wrap || !wrap.classList.contains('is-open')) return;
+        if (wrap.contains(e.target)) return;
+        collapseUserSearch(true);
+    });
 
     function switchTab(role) {
         currentTab = role;
@@ -550,27 +773,50 @@
     function blockBadge(block, blockLabel) {
         if (block) {
             const label = blockLabel || (`Block ${block}`);
-            return `<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">${label}</span>`;
+            return `<span class="st-block">${escapeCell(label)}</span>`;
         }
-        return '<span class="text-slate-400 text-xs">—</span>';
+        return '<span class="st-muted st-dim">—</span>';
+    }
+
+    function escapeCell(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    }
+
+    function statusChip(status) {
+        const chip = status === 'active'
+            ? ['is-active', 'Active']
+            : status === 'pending' ? ['is-pending', 'Pending']
+            : status === 'pending_activation' ? ['is-pending', 'Pending Activation'] : ['is-inactive', 'Inactive'];
+        return `<span class="st-status ${chip[0]}"><span class="dot"></span> ${chip[1]}</span>`;
     }
 
     function buildUserRow(user) {
-        const nameCell = `<span class="font-semibold text-slate-800">${user.name}</span>`;
-        const blockCell = blockBadge(user.block, user.block_label);
-        const statusCell = user.status === 'active'
-            ? '<span class="flex items-center gap-1.5 text-xs font-semibold text-green-600"><span class="w-2 h-2 bg-green-500 rounded-full"></span> Active</span>'
-            : user.status === 'pending'
-                ? '<span class="flex items-center gap-1.5 text-xs font-semibold text-amber-600"><span class="w-2 h-2 bg-amber-500 rounded-full"></span> Pending</span>'
-                : '<span class="flex items-center gap-1.5 text-xs font-semibold text-amber-600"><span class="w-2 h-2 bg-amber-500 rounded-full"></span> Inactive</span>';
+        const nameCell = `
+            <div class="flex items-center gap-3 min-w-0">
+                <img src="{{ asset('images/default-avatar.svg') }}" alt="" class="w-9 h-9 rounded-full object-cover shrink-0">
+                <div class="min-w-0">
+                    <p class="st-name truncate">${escapeCell(user.name)}</p>
+                    <p class="st-email truncate">${escapeCell(user.email ?? '')}</p>
+                </div>
+            </div>`;
+        const phoneCell = user.phone_number
+            ? `<span class="st-muted">${escapeCell(user.phone_number)}</span>`
+            : '<span class="st-muted st-dim">—</span>';
+        const joinedCell = `
+            <span class="st-muted inline-flex items-center gap-1.5 whitespace-nowrap">
+                <span class="iconify text-sm text-amber-500" data-icon="mdi:calendar-blank-outline"></span>
+                ${escapeCell(user.joined ?? '—')}
+            </span>`;
         const actionCell = user.role === 'student' && user.status === 'pending'
             ? `
                 <div class="flex justify-center w-full">
                     <form method="POST" action="${approveBaseUrl}/${user.id}/approve">
                         <input type="hidden" name="_token" value="${csrfToken}">
-                        <button type="submit" class="text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition text-xs font-semibold px-3 py-2 rounded-lg inline-flex items-center justify-center gap-2 w-24" aria-label="Approve student">
-                            <span class="iconify text-base" data-icon="mdi:check-circle-outline"></span>
-                            <span>Approve</span>
+                        <button type="submit" class="st-approve" aria-label="Approve student">
+                            <span class="iconify text-sm" data-icon="mdi:check-circle-outline"></span>
+                            Approve
                         </button>
                     </form>
                 </div>
@@ -578,33 +824,35 @@
             : `
                 <div class="flex justify-center w-full">
                     <button
+                        type="button"
                         onclick="openUpdateModal(this)"
                         data-user-id="${user.id}"
-                        data-first-name="${user.first_name ?? ''}"
-                        data-middle-name="${user.middle_name ?? ''}"
-                        data-last-name="${user.last_name ?? ''}"
-                        data-username="${user.username ?? ''}"
-                        data-email-domain="${user.email_domain ?? 'hms.edu'}"
-                        data-full-name="${user.name ?? ''}"
-                        data-phone-number="${user.phone_number ?? ''}"
-                        data-status="${user.status ?? 'active'}"
-                        data-role="${user.role ?? ''}"
-                        data-block="${user.block ?? ''}"
-                        class="text-brand bg-brand-soft hover:bg-brand/10 transition text-xs font-semibold px-3 py-2 rounded-lg inline-flex items-center justify-center w-24"
+                        data-first-name="${escapeCell(user.first_name)}"
+                        data-middle-name="${escapeCell(user.middle_name)}"
+                        data-last-name="${escapeCell(user.last_name)}"
+                        data-username="${escapeCell(user.username)}"
+                        data-email-domain="${escapeCell(user.email_domain ?? 'hms.edu')}"
+                        data-full-name="${escapeCell(user.name)}"
+                        data-phone-number="${escapeCell(user.phone_number)}"
+                        data-status="${escapeCell(user.status ?? 'active')}"
+                        data-role="${escapeCell(user.role)}"
+                        data-block="${escapeCell(user.block)}"
+                        data-block-label="${escapeCell(user.block ? user.block_label : '')}"
+                        class="st-update"
                         aria-label="Update user"
                     >
-                        <span>Update</span>
+                        <span class="iconify text-sm" data-icon="mdi:pencil-outline"></span>
+                        Update
                     </button>
                 </div>
             `;
 
         return [
             nameCell,
-            user.email ?? '—',
-            user.phone_number ?? '—',
-            blockCell,
-            statusCell,
-            user.joined ?? '—',
+            phoneCell,
+            blockBadge(user.block, user.block_label),
+            statusChip(user.status),
+            joinedCell,
             actionCell,
         ];
     }
@@ -719,7 +967,7 @@
     setInterval(pollLiveUsers, 5000);
 
     function openModal(id) { document.getElementById(id).classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
-    function closeModal(id) { document.getElementById(id).classList.add('hidden'); document.body.style.overflow = 'auto'; }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); document.body.style.overflow = ''; }
 
     function parseNameParts(fullName) {
         const parts = fullName.trim().split(/\s+/).filter(Boolean);
@@ -739,6 +987,82 @@
         };
     }
 
+    // Flipping an account between Active and Inactive decides whether a student can
+    // sign in, so the change asks first. Saving with the status untouched goes straight through.
+    function confirmStatusChange(form) {
+        const select = document.getElementById('updateStatus');
+        if (select.value === select.dataset.original) return true;
+
+        const activating = select.value === 'active';
+        const role = document.getElementById('updateRole').textContent.trim().toLowerCase() || 'user';
+        const name = [document.getElementById('updateFirstName').value, document.getElementById('updateLastName').value]
+            .filter(Boolean).join(' ') || 'This account';
+        // A faculty with students hands their block to another faculty first.
+        const load = role === 'faculty' && !activating ? facultyLoad[form.dataset.userId] : null;
+        if (load && load.students > 0) {
+            return promptBlockReassign(form, name, load);
+        }
+
+        let text = `${name} will be marked ${activating ? 'Active' : 'Inactive'}.`;
+        if (role === 'student') {
+            text = activating
+                ? `${name} will be able to sign in again.`
+                : `${name} will be signed out and will not be able to sign in until reactivated.`;
+        }
+
+        Swal.fire({
+            icon: activating ? 'question' : 'warning',
+            title: `${activating ? 'Activate' : 'Deactivate'} this ${role}?`,
+            text: text,
+            showCancelButton: true,
+            confirmButtonText: activating ? 'Yes, activate' : 'Yes, deactivate',
+            cancelButtonText: 'Cancel',
+            reverseButtons: true,
+        }).then((result) => {
+            if (result.isConfirmed) form.submit();
+        });
+        return false;
+    }
+
+    /* Before a faculty with students goes Inactive, the dean picks, right here, who
+       takes over their block, students and teams. Any other faculty who is not
+       Inactive can; the blocks join theirs (Faculty::transferEverythingTo). */
+    function promptBlockReassign(form, name, load) {
+        const receivers = Object.entries(facultyLoad)
+            .filter(([id, f]) => id !== String(form.dataset.userId) && f.status !== 'inactive');
+        const studentText = `${load.students} student${load.students === 1 ? '' : 's'}`;
+
+        if (!receivers.length) {
+            Swal.fire({
+                icon: 'warning',
+                title: `Reassign ${load.blocks} first`,
+                text: `${name} has ${studentText} in ${load.blocks}. Before this account can be set to Inactive, another faculty must take them over, and there is no other active faculty. Add a faculty first, then try again.`,
+                confirmButtonText: 'OK',
+            });
+            return false;
+        }
+
+        Swal.fire({
+            icon: 'warning',
+            title: `Assign ${load.blocks} first`,
+            text: `${name} handles ${load.blocks} with ${studentText}. Choose the faculty who will take over the block, its students and teams. ${name} will then be set to Inactive.`,
+            input: 'select',
+            inputOptions: Object.fromEntries(receivers.map(([id, f]) => [id,
+                `${f.name} — ${f.blocks === '—' ? 'no block' : f.blocks}, ${f.students} student${f.students === 1 ? '' : 's'}`])),
+            inputPlaceholder: 'Select a faculty',
+            inputValidator: (value) => value ? undefined : 'Choose a faculty to take over.',
+            showCancelButton: true,
+            confirmButtonText: 'Assign and deactivate',
+            cancelButtonText: 'Cancel',
+            reverseButtons: true,
+        }).then((result) => {
+            if (!result.isConfirmed) return;
+            document.getElementById('updateTransferTo').value = result.value;
+            form.submit();
+        });
+        return false;
+    }
+
     function openUpdateModal(button) {
         const form = document.getElementById('updateUserForm');
         const userId = button.getAttribute('data-user-id');
@@ -752,6 +1076,7 @@
         const status = button.getAttribute('data-status') || 'active';
         const role = button.getAttribute('data-role') || 'user';
         const block = (button.getAttribute('data-block') || '').toUpperCase();
+        const blockLabel = button.getAttribute('data-block-label') || (block ? `Block ${block}` : '');
 
         if (!firstName && !middleName && !lastName && fullName) {
             const parsed = parseNameParts(fullName);
@@ -761,13 +1086,18 @@
         }
 
         form.action = `${updateBaseUrl}/${userId}`;
+        form.dataset.userId = userId;
+        document.getElementById('updateTransferTo').value = '';
         document.getElementById('updateFirstName').value = firstName;
         document.getElementById('updateMiddleName').value = middleName;
         document.getElementById('updateLastName').value = lastName;
         document.getElementById('updateUsername').value = username;
         document.getElementById('updateEmailDomain').textContent = `@${emailDomain}`;
         document.getElementById('updatePhone').value = phoneNumber;
+        // A faculty account not yet signed in to can keep Pending Activation, never return to it.
+        document.querySelector('#updateStatus option[value="pending_activation"]').hidden = status !== 'pending_activation';
         document.getElementById('updateStatus').value = status;
+        document.getElementById('updateStatus').dataset.original = status;
         document.getElementById('updateRole').textContent = role.charAt(0).toUpperCase() + role.slice(1);
 
         const blockSelect = document.getElementById('updateBlock');
@@ -793,15 +1123,28 @@
             const placeholder = document.createElement('option');
             placeholder.value = '';
             placeholder.textContent = options.length ? 'Select block' : 'No blocks available';
-            placeholder.disabled = options.length === 0;
+            // A prompt, not a choice: shown in the closed box when nothing is
+            // picked, but never listed in the dropdown.
+            placeholder.disabled = true;
+            placeholder.hidden = true;
+            placeholder.selected = true;
             blockSelect.appendChild(placeholder);
 
             options.forEach((letter) => {
                 const opt = document.createElement('option');
                 opt.value = letter;
-                opt.textContent = `Block ${letter}`;
+                // The current block reads every block they run ("Block A, Block B").
+                opt.textContent = letter === block ? blockLabel : `Block ${letter}`;
                 if (letter === block) opt.selected = true;
                 blockSelect.appendChild(opt);
+            });
+            Object.entries(handOverBlocks).forEach(([letter, from]) => {
+                if (String(from.from_user_id) === String(userId) || options.includes(letter)) return;
+                const opt = document.createElement('option');
+                opt.value = letter;
+                opt.textContent = `Block ${letter} - take over from ${from.from_name} (${from.students} student${from.students === 1 ? '' : 's'})`;
+                blockSelect.appendChild(opt);
+                placeholder.textContent = 'Select block';
             });
             if (block && systemBlocks.includes(block)) {
                 blockSelect.value = block;
@@ -813,7 +1156,7 @@
             blockSelect.removeAttribute('name');
             blockReadonly.classList.remove('hidden');
             blockReadonly.classList.add('flex');
-            blockReadonly.textContent = (block && systemBlocks.includes(block)) ? `Block ${block}` : '—';
+            blockReadonly.textContent = block ? blockLabel : '—';
         }
 
         openModal('updateUserModal');
@@ -831,24 +1174,47 @@
         }
     }
 
-    function validateUserPasswords() {
-        const password = document.getElementById('createUserPassword');
-        const confirm = document.getElementById('createUserPasswordConfirm');
-        const lengthHelp = document.getElementById('createUserPasswordHelp');
-        const matchHelp = document.getElementById('createUserPasswordMatch');
+    /* Add Faculty reminders. A field is checked once it has been left (or on
+       Submit), then on every keystroke, so the reminder clears as soon as the
+       value is fixed. The server repeats each rule in storeUser. */
+    (function () {
+        const form = document.getElementById('createUserForm');
+        const rules = {
+            last_name: v => v ? '' : 'Last name is required.',
+            first_name: v => v ? '' : 'First name is required.',
+            middle_name: v => !v || /^\p{L}[\p{L}\s'-]*\p{L}$/u.test(v) ? '' : 'Enter the complete middle name, not an initial.',
+            email: v => !v ? 'Email is required.'
+                : /^[a-z0-9][a-z0-9.+]*@gmail\.com$/i.test(v) ? '' : 'Enter a valid Gmail address (ending in @gmail.com).',
+            phone_number: v => !v || /^9\d{9}$/.test(v) ? '' : 'Enter the 10 digits after +63, starting with 9.',
+        };
 
-        if (!password || !confirm) {
-            return true;
+        function check(input) {
+            const message = rules[input.name](input.value.trim());
+            const err = form.querySelector(`[data-err-for="${input.name}"]`);
+            err.textContent = message;
+            err.classList.toggle('show', message !== '');
+            input.classList.toggle('um-invalid', message !== '');
+            return message === '';
         }
 
-        const tooShort = password.value.length > 0 && password.value.length < 8;
-        const mismatch = confirm.value.length > 0 && password.value !== confirm.value;
+        Object.keys(rules).forEach(name => {
+            const input = form.elements[name];
+            input.addEventListener('blur', () => { input.dataset.touched = '1'; check(input); });
+            input.addEventListener('input', () => { if (input.dataset.touched) check(input); });
+        });
 
-        lengthHelp.classList.toggle('hidden', !tooShort);
-        matchHelp.classList.toggle('hidden', !mismatch);
-
-        return !(tooShort || mismatch);
-    }
+        form.addEventListener('submit', event => {
+            let ok = true;
+            Object.keys(rules).forEach(name => {
+                form.elements[name].dataset.touched = '1';
+                ok = check(form.elements[name]) && ok;
+            });
+            if (!ok) {
+                event.preventDefault();
+                form.querySelector('.um-invalid').focus();
+            }
+        });
+    })();
 
     @if ($errors->any() && old('role'))
         openModal('createUserModal');

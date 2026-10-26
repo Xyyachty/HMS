@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\UserNotification;
+use App\Support\NotificationTarget;
 use Illuminate\Http\Request;
 
 /**
@@ -58,6 +59,28 @@ class NotificationController extends Controller
 
         return response()->json([
             'success' => true,
+            'unread_count' => UserNotification::forUser($userId)->unread()->count(),
+        ]);
+    }
+
+    /**
+     * A notification was clicked: mark it read and say where it leads, or why
+     * it leads nowhere (NotificationTarget checks the record still exists).
+     */
+    public function open($id)
+    {
+        $userId = (int) auth()->id();
+        $notification = UserNotification::forUser($userId)->whereKey($id)->first();
+
+        if (!$notification) {
+            return response()->json(['error' => 'This notification no longer exists.'], 404);
+        }
+
+        if (!$notification->isRead()) {
+            $notification->update(['read_at' => now()]);
+        }
+
+        return response()->json(NotificationTarget::resolve($notification, auth()->user()) + [
             'unread_count' => UserNotification::forUser($userId)->unread()->count(),
         ]);
     }

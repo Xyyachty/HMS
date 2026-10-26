@@ -5,73 +5,115 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Hotel Management System | Student Dashboard</title>
-    <link rel="icon" type="image/png" href="{{ asset('chtm-logoo.png') }}">
+    <link rel="icon" type="image/png" href="{{ asset('new_logo_in_chtm....png') }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    @include('partials.swal-theme')
+    <script src="{{ asset('js/hms-swal-theme.js') }}?v={{ filemtime(public_path('js/hms-swal-theme.js')) }}"></script>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script>
+        // Palette locked to the landing page's four colors: wine, gold, cream, ink.
+        // Every Tailwind stock family below is remapped to a tint/shade of one of
+        // those four rather than left at its default hue, so utility classes used
+        // all over this file (including ones built at runtime in <script> below)
+        // resolve to the same four-color system without editing every call site.
         tailwind.config = {
             theme: {
                 extend: {
                     fontFamily: { sans: ['Manrope', 'sans-serif'] },
                     colors: {
-                        brand: '#DB2777',
-                        'brand-light': '#F472B6',
-                        'brand-dark': '#9D174D',
-                        'brand-soft': '#FDF2F8',
-                        'rose-accent': '#FB7185',
-                        'plum-accent': '#A855F7',
-                        surface: '#F8FAFC',
+                        brand: '#7B1730',
+                        'brand-light': '#C9A45C',
+                        'brand-dark': '#4A0D1C',
+                        'brand-soft': '#FBEEE9',
+                        'rose-accent': '#C4425E',
+                        'plum-accent': '#C9A45C',
+                        surface: '#FDF6F3',
                         'surface-raised': '#FFFFFF',
-                        'sidebar': '#9D174D',
-                        'sidebar-hover': '#831843',
-                        'sidebar-active': '#DB2777',
+                        'sidebar': '#4A0D1C',
+                        'sidebar-hover': '#5E1024',
+                        'sidebar-active': '#7B1730',
+
+                        // Neutral text/border scale, warmed toward ink instead of
+                        // Tailwind's default cool blue-gray.
+                        slate: {
+                            50: '#FAF6F5', 100: '#F2E9E7', 200: '#E4D3CF', 300: '#C9AFAA',
+                            400: '#7A6068', 500: '#6B4A54', 600: '#5A3941', 700: '#47262D',
+                            800: '#341620', 900: '#2A1118',
+                        },
+
+                        // Danger / overdue / "cool" or per-department accents all fold
+                        // into the wine family.
+                        red:    { 50: '#FBEAEE', 100: '#F6D5DC', 200: '#ECAFBE', 400: '#C4425E', 500: '#9E1B3C', 600: '#7B1730', 700: '#5E1024' },
+                        rose:   { 50: '#FBEAEE', 100: '#F6D5DC', 200: '#ECAFBE', 400: '#C4425E', 500: '#9E1B3C', 600: '#7B1730', 700: '#5E1024' },
+                        pink:   { 50: '#FBEAEE', 100: '#F6D5DC', 200: '#ECAFBE', 400: '#C4425E', 500: '#9E1B3C', 600: '#7B1730', 700: '#5E1024' },
+                        violet: { 50: '#FBEAEE', 100: '#F6D5DC', 500: '#9E1B3C' },
+                        blue:   { 50: '#FBEAEE', 500: '#9E1B3C', 600: '#7B1730' },
+                        teal:   { 50: '#FBEAEE', 500: '#9E1B3C' },
+
+                        // Success / pending / warning / secondary-department accents
+                        // fold into the gold family.
+                        emerald: { 50: '#FBF3E0', 100: '#F2E3BE', 200: '#E9D3A0', 400: '#D9B86A', 500: '#C9A45C', 600: '#B8873C', 700: '#96692C', 800: '#7A5322' },
+                        amber:   { 50: '#FBF3E0', 100: '#F2E3BE', 200: '#E9D3A0', 500: '#C9A45C', 600: '#B8873C', 700: '#96692C', 800: '#7A5322' },
+                        green:   { 400: '#D9B86A' },
+                        orange:  { 50: '#FBF3E0', 500: '#C9A45C' },
                     },
                 }
             }
         }
     </script>
     <style>
-        ::selection { background: #DB2777; color: #fff; }
+        ::selection { background: #7B1730; color: #fff; }
         body { font-family: 'Manrope', sans-serif; }
 
-        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar { width: 0.3125rem; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 99px; }
-        ::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+        ::-webkit-scrollbar-thumb { background: #BDBDBD; border-radius: 99px; }
+        ::-webkit-scrollbar-thumb:hover { background: #8A8A8A; }
 
-        .brand-gradient { background: linear-gradient(135deg, #F472B6 0%, #DB2777 50%, #9D174D 100%); }
-        .brand-gradient-subtle { background: linear-gradient(135deg, #FDF2F8 0%, #FCE7F3 50%, #FBCFE8 100%); }
+        /* Flat wine, not a gradient: buttons wear this class, and a button reads
+           as one solid colour. The name stays so every call site keeps working. */
+        .brand-gradient { background: #7B1730; }
+        .brand-gradient-subtle { background: linear-gradient(135deg, #FBEEE9 0%, #F6D5DC 50%, #ECAFBE 100%); }
 
         .app-sidebar {
-            background: linear-gradient(180deg, #DB2777 0%, #BE185D 38%, #9D174D 72%, #500724 100%);
+            background: linear-gradient(180deg, #7B1730 0%, #5E1024 38%, #4A0D1C 72%, #2A1118 100%);
         }
         .sidebar-link {
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
+        /* Hover turns the link white, with dark text so it stays readable. */
         .sidebar-link:hover {
-            background: rgba(255,255,255,0.12);
+            background: #fff;
+            color: #181818;
             transform: translateX(2px);
         }
+        .sidebar-link:hover #navTasksBadge { background: #E4E2E0; color: #181818; }
+        .sidebar-link.active #navTasksBadge { background: #4A4643; color: #fff; }
         .sidebar-link.active {
-            background: rgba(255,255,255,0.22);
+            background: #dadada;
+            color: #181818;
             box-shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.25);
         }
 
         .stat-card {
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
         }
         .stat-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 12px 40px -12px rgba(0,0,0,0.1);
         }
+        .stat-card:active {
+            transform: translateY(0);
+        }
 
-        .role-badge-room { background: #FDF2F8; color: #DB2777; border: 1px solid #FBCFE8; }
-        .role-badge-frontdesk { background: #FFF7ED; color: #EA580C; border: 1px solid #FED7AA; }
-        .role-badge-restaurant { background: #FFFBEB; color: #D97706; border: 1px solid #FDE68A; }
-        .role-badge-maintenance { background: #F5F3FF; color: #7C3AED; border: 1px solid #DDD6FE; }
-        .role-badge-housekeeping { background: #F0FDFA; color: #0D9488; border: 1px solid #99F6E4; }
+        .role-badge-room { background: #FBEEE9; color: #7B1730; border: 1px solid #E4C97E; }
+        .role-badge-frontdesk { background: #FBF3E0; color: #96692C; border: 1px solid #E9D3A0; }
+        .role-badge-restaurant { background: #FBF3E0; color: #96692C; border: 1px solid #E9D3A0; }
+        .role-badge-maintenance { background: #FBEEE9; color: #7B1730; border: 1px solid #E4C97E; }
+        .role-badge-housekeeping { background: #FBEEE9; color: #7B1730; border: 1px solid #E4C97E; }
 
         .member-card {
             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -81,11 +123,91 @@
             box-shadow: 0 8px 25px -8px rgba(0,0,0,0.08);
         }
 
-        .task-row {
-            transition: all 0.2s ease;
+        /* Dashboard, Team Overview and Tasks (and their pop-ups): gold and maroon
+           accents become dark gray. Tailwind's stock colours are remapped to wine
+           and gold above, so these sections re-point those utilities instead of
+           editing every call site. Solid accents (icon circles, bars, progress
+           rings, your own avatar) are dark gray; soft fills and borders a light
+           warm gray. Text stays black (.ink-all). */
+        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section, #profile-section) :is(.bg-amber-500, .bg-orange-500, .bg-brand, .bg-violet-500, .bg-teal-500) { background: #4A4643; }
+        /* Buttons (Proceed, the area buttons, your avatar) are a lighter dark gray
+           than the bars and rings, and go a shade darker on hover. */
+        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section, #profile-section) .brand-gradient { background: #5F5A55; }
+        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section, #profile-section) .brand-gradient:is(a, button):hover { background: #4A4643; opacity: 1; }
+        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section, #profile-section) :is(.bg-amber-50, .bg-brand-soft, .bg-red-50, .bg-emerald-50, .bg-blue-50, .bg-slate-50, .bg-slate-100) { background-color: #F3F2F1; }
+        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section, #profile-section) :is(.border-pink-100, .border-brand-light, .border-slate-100, .border-slate-200, .border-red-200, .border-emerald-200, .border-brand\/10) { border-color: #E4E2E0; }
+        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section, #profile-section) :is(.text-amber-500, .text-brand, .text-brand-dark, .text-red-500, .text-emerald-500, .text-blue-600):is(.iconify, svg) { color: #4A4643; }
+        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section, #profile-section) :is(.shadow-brand\/20) { --tw-shadow-color: rgba(24, 24, 24, 0.15); }
+        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section, #profile-section) .ring-brand { --tw-ring-color: #4A4643; }
+        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section, #profile-section) .hover\:bg-brand:hover { background-color: #5F5A55; }
+        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section, #profile-section) .hover\:border-brand\/40:hover { border-color: #8A817A; }
+        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section, #profile-section) circle[stroke="#7B1730"] { stroke: #4A4643; }
+        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section, #profile-section) circle[stroke="#F2E9E7"] { stroke: #E4E2E0; }
+        /* Every role chip in Team Overview looks the same: one neutral style, not
+           a colour per department. */
+        #group-section :is(.role-badge-room, .role-badge-frontdesk, .role-badge-restaurant, .role-badge-maintenance, .role-badge-housekeeping) {
+            background: #F3F2F1; color: #181818; border: 1px solid #E4E2E0;
         }
-        .task-row:hover {
-            background: #F8FAFC;
+        /* Icons still tinted with the remapped slate (mauve, pink) are dark gray too,
+           so every icon on these pages is the same gray. */
+        :is(#home-section, #group-section, #memberActivityModal, #tasks-section, #taskInstructionsModal, #reports-section, #profile-section) .iconify:is(.text-slate-200, .text-slate-300, .text-slate-400, .text-slate-500, .text-slate-600) { color: #4A4643; }
+        /* Reports: the check-mark icons sit in gray circles like Activity Logs, the
+           team's role bars are dark gray, and the active Individual/Team tab is the
+           same lighter dark gray as the other buttons. */
+        /* My Profile, and the sidebar avatar that opens it: gray, not wine. */
+        #profile-section .focus\:border-brand:focus { border-color: #8A817A; }
+        #profile-section .focus\:ring-brand\/20:focus { --tw-ring-color: rgba(138, 129, 122, 0.3); }
+        #studentProfileMenu .brand-gradient { background: #4A4643; }
+        #profile-section .bg-slate-50\/60 { background-color: rgba(243, 242, 241, 0.6); }
+        #reports-section .bg-emerald-50 { background-color: #EFEFEF; color: #4A4643; }
+        #reports-section .bg-plum-accent { background-color: #4A4643; }
+        #reports-section .srp-tab { color: #181818; border-color: #DADADA; }
+        #reports-section .srp-tab:hover { border-color: #8A817A; color: #181818; }
+        #reports-section .srp-tab.active { background: #5F5A55; color: #fff; border-color: transparent; box-shadow: 0 8px 20px -6px rgba(24,24,24,.3); }
+        /* Hotel concepts (the My Team card, its Propose/Edit dialog and the task
+           row): neutral grays only, no wine, red or warm tint. The palette above
+           warms slate toward wine and folds red into it, so every fill, border and
+           status colour these use is re-pointed here. Ids outrank the section
+           rules and the tripled status-badge classes. */
+        :is(#hotelConceptModal, #conceptTeamCard, #conceptPanelCard) .brand-gradient { background: #374151; }
+        :is(#hotelConceptModal, #conceptTeamCard, #conceptPanelCard) .brand-gradient:is(a, button):hover { background: #1F2937; opacity: 1; }
+        :is(#hotelConceptModal, #conceptTeamCard, #conceptPanelCard) .shadow-brand\/20 { --tw-shadow-color: rgba(17, 17, 17, .15); }
+        :is(#hotelConceptModal, #conceptTeamCard) :is(.bg-slate-50, .bg-slate-50\/50, .bg-slate-100, .bg-brand-soft, .bg-amber-50, .bg-rose-50, .bg-red-50, .bg-emerald-50) { background-color: #F5F5F5; }
+        :is(#hotelConceptModal, #conceptTeamCard) :is(.border-slate-100, .border-slate-200, .border-slate-300, .border-brand\/10, .border-amber-200, .border-rose-200, .border-red-200, .border-emerald-200) { border-color: #E5E5E5; }
+        :is(#hotelConceptModal, #conceptTeamCard) .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: #E5E5E5; }
+        :is(#hotelConceptModal, #conceptTeamCard) :is(.hover\:bg-brand\/10, .hover\:bg-slate-100):hover { background-color: #E5E5E5; }
+        :is(#hotelConceptModal, #conceptTeamCard) .iconify:not(.text-white) { color: #374151; }
+        #hotelConceptModal .bg-slate-900\/60 { background-color: rgba(17, 17, 17, .6); }
+        /* My Profile: neutral grays only. The palette above warms slate toward
+           wine and folds red, rose and emerald into wine and gold, so every text,
+           fill, border, focus and button colour the page uses is re-pointed. */
+        #profile-section :is(.text-slate-900, .text-slate-800, .text-slate-700) { color: #111827; }
+        #profile-section :is(.text-slate-600, .text-slate-500) { color: #4B5563; }
+        #profile-section .text-slate-400 { color: #6B7280; }
+        #profile-section .text-slate-300 { color: #9CA3AF; }
+        #profile-section :is(.bg-slate-50, .bg-slate-50\/60, .hover\:bg-slate-50:hover) { background-color: #F9FAFB; }
+        #profile-section :is(.border-slate-100, .border-slate-200) { border-color: #E5E7EB; }
+        #profile-section .divide-slate-50 > :not([hidden]) ~ :not([hidden]) { border-color: #F3F4F6; }
+        #profile-section input:focus { border-color: #374151; --tw-ring-color: rgba(55, 65, 81, .2); }
+        #profile-section input[type="checkbox"] { accent-color: #374151; }
+        #profile-section .bg-brand { background-color: #374151; }
+        #profile-section .bg-brand-soft { background-color: #F3F4F6; color: #374151; }
+        #profile-section .text-rose-600 { color: #374151; }
+        #profile-section .bg-emerald-50 { background-color: #F3F4F6; }
+        #profile-section .border-emerald-200 { border-color: #E5E7EB; }
+        #profile-section :is(.text-emerald-600, .text-emerald-800) { color: #374151; }
+        #hotelConceptModal :is(input, select, textarea):focus { border-color: #9CA3AF; --tw-ring-color: rgba(156, 163, 175, .3); }
+        :is(#conceptTeamCard, #conceptPanelCard) .status-badge-revision { color: #111; background-color: #E5E5E5; border-color: #D4D4D4; }
+        /* "Online" reads as green, not the remapped gold. */
+        #group-section .bg-emerald-400 { background-color: #16A34A; }
+
+        .task-card {
+            transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+        }
+        .task-card:hover {
+            transform: translateY(-1px);
+            border-color: #8A817A;
+            box-shadow: 0 10px 30px -12px rgba(24, 24, 24, 0.16);
         }
 
         .tab-btn {
@@ -99,7 +221,7 @@
             left: 0;
             right: 0;
             height: 2px;
-            background: linear-gradient(90deg, #F472B6, #DB2777);
+            background: #7B1730;
             border-radius: 2px 2px 0 0;
         }
 
@@ -136,6 +258,11 @@
             }
         }
     </style>
+    @include('partials.ink-all-styles')
+    @include('partials.status-badge-styles')
+    @include('partials.portal-scale')
+    @include('partials.select-caret-styles')
+@include('partials.no-horizontal-scroll')
 </head>
 <body class="bg-surface min-h-screen flex">
 
@@ -146,17 +273,20 @@
     <aside id="sidebarPanel" class="sidebar-panel app-sidebar fixed lg:sticky top-0 left-0 z-50 w-64 h-screen flex flex-col overflow-hidden">
         <!-- Logo -->
         <div class="px-6 py-4 flex items-center gap-3 border-b border-white/[0.06]">
-            <img src="{{ asset('chtm-logoo.png') }}" alt="Hotel Management System" class="h-10 w-auto object-contain">
+            <img src="{{ asset('new_logo_in_chtm....png') }}" alt="College of Hospitality and Tourism Management logo" class="h-10 w-auto object-contain">
             <div>
                 <h1 class="text-sm font-bold text-white tracking-tight leading-tight">Hotel Management System</h1>
-                <p class="text-[10px] text-white font-medium uppercase tracking-widest">Student Portal</p>
+                @php
+                    $sidebarRoleLabel = !empty($studentRoles)
+                        ? implode(' & ', array_map(fn ($r) => \App\Support\HotelTemplateBuilder::seatLabel($r), $studentRoles))
+                        : 'Student';
+                @endphp
+                <p class="text-[0.625rem] text-white font-medium uppercase tracking-widest">{{ $sidebarRoleLabel }}</p>
             </div>
         </div>
 
         <!-- Navigation -->
         <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-            <p class="px-3 mb-2 text-[10px] font-bold text-white uppercase tracking-[0.15em]">Main Menu</p>
-
             <button onclick="showSection('home'); closeMobileSidebar();"
                     id="nav-home"
                     class="sidebar-link active w-full flex items-center px-3 py-2.5 rounded-xl text-sm font-semibold text-white">
@@ -165,17 +295,17 @@
             <button onclick="showSection('group'); closeMobileSidebar();"
                     id="nav-group"
                     class="sidebar-link w-full flex items-center px-3 py-2.5 rounded-xl text-sm font-semibold text-white">
-                Team
-                @if(isset($group) && !empty($group->name))
-                    — {{ $group->name }}
-                @endif
+                Team Overview
             </button>
             <button onclick="showSection('tasks'); closeMobileSidebar();"
                     id="nav-tasks"
                     class="sidebar-link w-full flex items-center px-3 py-2.5 rounded-xl text-sm font-semibold text-white">
                 Tasks
-                @if(!empty($studentRoles) && $myRoleTasks->count() > 0)
-                    <span class="ml-auto bg-white/25 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md">{{ $myRoleTasks->count() }}</span>
+                {{-- Always rendered, hidden at zero: the concept task can close while
+                     the page is open, and a badge that only exists server-side could
+                     not then be taken away. --}}
+                @if(!empty($studentRoles))
+                    <span id="navTasksBadge" class="ml-auto bg-white/25 text-white text-[0.625rem] font-bold px-1.5 py-0.5 rounded-md{{ $myRoleTasks->count() > 0 ? '' : ' hidden' }}"><span data-task-count="active">{{ $myRoleTasks->count() }}</span></span>
                 @endif
             </button>
             <button onclick="showSection('activity'); closeMobileSidebar();"
@@ -197,39 +327,15 @@
             $profileName = $studentDisplayName
                 ?? (trim(implode(' ', array_filter([$authUser?->first_name, $authUser?->last_name])))
                     ?: ($authUser?->name ?? 'Student'));
-            $nameParts = preg_split('/\s+/', trim($profileName));
-            $firstInitial = $nameParts[0][0] ?? 'S';
-            $lastInitial = count($nameParts) > 1 ? substr(end($nameParts), 0, 1) : '';
-            $profileInitials = strtoupper($firstInitial . $lastInitial);
         @endphp
         <div class="px-3 pb-4 border-t border-white/[0.06] pt-4">
-            <div class="relative" id="studentProfileMenu">
-                <button type="button"
-                        class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/[0.06] transition-colors"
-                        aria-haspopup="true" aria-expanded="false"
-                        onclick="toggleStudentProfileMenu()">
-                    <div class="w-9 h-9 brand-gradient rounded-xl flex items-center justify-center text-white text-xs font-bold shadow-lg shadow-brand/20">{{ $profileInitials }}</div>
-                    <div class="flex-1 text-left min-w-0">
-                        <p class="text-sm font-semibold text-white truncate">{{ $profileName }}</p>
-                        <p class="text-[10px] text-white">Student</p>
-                    </div>
-                    <span class="iconify text-white text-sm transition-transform" data-icon="mdi:chevron-up" id="profileChevron"></span>
-                </button>
-                <div class="absolute bottom-full left-0 mb-2 w-full rounded-xl border border-white/10 bg-sidebar-hover shadow-2xl p-1.5 hidden" id="studentProfileDropdown" role="menu">
-                    <a href="#profile" onclick="showSection('profile'); closeStudentProfileMenu(); closeMobileSidebar();" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-white hover:bg-white/[0.06] transition-colors" role="menuitem">
-                        <span class="iconify text-base" data-icon="mdi:account-outline"></span>
-                        My Profile
-                    </a>
-                    <div class="h-px bg-white/[0.06] my-1"></div>
-                    <form method="POST" action="{{ route('logout') }}">
-                        @csrf
-                        <button type="submit" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-red-400 hover:bg-red-500/10 transition-colors" role="menuitem">
-                            <span class="iconify text-base" data-icon="mdi:logout-variant"></span>
-                            Sign Out
-                        </button>
-                    </form>
-                </div>
-            </div>
+            @include('partials.sidebar-profile-card', [
+                'user'           => $authUser,
+                'name'           => $profileName,
+                'role'           => 'Student',
+                'profileHref'    => '#profile',
+                'profileOnclick' => "showSection('profile'); closeMobileSidebar();",
+            ])
         </div>
     </aside>
 
@@ -239,12 +345,12 @@
         <header class="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200/60">
             <div class="px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
                 <!-- Mobile hamburger -->
-                <button onclick="openMobileSidebar()" class="lg:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors -ml-2">
+                <button onclick="openMobileSidebar()" data-tour="menu-toggle" class="lg:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors -ml-2">
                     <span class="iconify text-xl text-slate-600" data-icon="mdi:menu"></span>
                 </button>
 
                 <!-- Breadcrumb / Page Title -->
-                <div class="hidden sm:flex items-center gap-2 text-sm">
+                <div id="breadcrumb" class="ink-all hidden sm:flex items-center gap-2 text-sm">
                     <span class="text-slate-400">Hotel Management System</span>
                     <span class="iconify text-slate-300 text-xs" data-icon="mdi:chevron-right"></span>
                     <span id="breadcrumb-current" class="font-semibold text-slate-700">Dashboard</span>
@@ -255,13 +361,14 @@
                 <!-- Right side actions -->
                 <div class="flex items-center gap-2">
                     @include('partials.datetime-clock')
+                    @include('partials.tour-button')
                     @include('partials.notification-bell')
                 </div>
             </div>
         </header>
 
         <!-- Page Content -->
-        <main class="flex-1 px-4 sm:px-6 py-3 overflow-y-auto" style="background-color:#F5F5F5">
+        <main id="studentMain" class="flex-1 px-4 sm:px-6 py-3 overflow-y-auto" style="background-color:#dadada">
             @php
                 $getMemberValue = function ($member, $field, $fallback = '') {
                     if (is_array($member)) return $member[$field] ?? $fallback;
@@ -274,7 +381,7 @@
                     'restaurant_management' => 'Restaurant Management',
                     'room_management'       => 'Room Management',
                     'maintenance'           => 'Maintenance',
-                    'housekeeping'          => 'Housekeeping Services',
+                    'housekeeping'          => 'Housekeeping / Maintenance',
                 ];
                 $roleIcons = [
                     'front_desk'            => 'mdi:desk',
@@ -298,598 +405,945 @@
             @endphp
 
             <!-- ==================== HOME SECTION ==================== -->
-            <div id="home-section" class="section-content fade-in space-y-4">
+            @php
+                // Everything the home cards and panels read, derived once here so the
+                // markup below stays declarative.
+                $homeRoleLabels = [
+                    'front_desk'            => 'Front Desk',
+                    'restaurant_management' => 'Restaurant Services',
+                    'room_management'       => 'Room Management',
+                    'maintenance'           => 'Maintenance',
+                    'housekeeping'          => 'Housekeeping',
+                ];
+                $homeRoleTints = [
+                    'front_desk'            => ['bg' => 'bg-amber-50', 'text' => 'text-amber-500', 'bar' => 'bg-orange-500'],
+                    'restaurant_management' => ['bg' => 'bg-amber-50', 'text' => 'text-amber-500', 'bar' => 'bg-amber-500'],
+                    'room_management'       => ['bg' => 'bg-amber-50', 'text' => 'text-amber-500', 'bar' => 'bg-brand'],
+                    'maintenance'           => ['bg' => 'bg-amber-50', 'text' => 'text-amber-500', 'bar' => 'bg-violet-500'],
+                    'housekeeping'          => ['bg' => 'bg-amber-50', 'text' => 'text-amber-500', 'bar' => 'bg-teal-500'],
+                ];
+                $homeTint = fn($role, $key) => $homeRoleTints[$role][$key] ?? ($key === 'bar' ? 'bg-slate-400' : ($key === 'text' ? 'text-slate-400' : 'bg-slate-50'));
+
+                $homeRecentActivities = ($selfActivityLogs ?? collect())->take(5);
+                $homeTeamProgress     = ($teamRoleProgress ?? collect());
+                $homeInProgress       = ($tasksInProgress ?? collect());
+
+                $homeMemberCount   = ($groupMembers ?? collect())->count();
+                $homeActiveTasks   = $pendingTasksCount ?? 0;
+                $homeMyPending     = !empty($studentRoles) ? $myRoleTasks->count() : 0;
+                $homeTotalTasks    = ($completedTasksCount ?? 0) + ($pendingTasksCount ?? 0);
+                // Only the tasks this student actually owns can be "late" for them.
+                $homeOverdueCount  = !empty($studentRoles)
+                    ? $myRoleTasks->filter(fn($t) => $t->due_date && $t->due_date->isPast())->count()
+                    : 0;
+
+                // Greeting follows Philippine time, not the server's own timezone
+                // (production runs on UTC) — refreshHomeGreeting() below keeps it
+                // live client-side the same way past the first paint.
+                $homeManilaHour = (int) now('Asia/Manila')->format('G');
+                $homeGreeting = ($homeManilaHour >= 5 && $homeManilaHour < 12)
+                    ? 'Good morning'
+                    : (($homeManilaHour >= 12 && $homeManilaHour < 18) ? 'Good afternoon' : 'Good evening');
+                $homeFirstName = trim(explode(' ', trim($studentDisplayName ?? (auth()->user()->name ?? 'Student')))[0]);
+
+                $homeRate = (int) ($completionRate ?? 0);
+                $homeRingLength = 175.9; // 2 * pi * r, with r = 28
+                $homeRingOffset = $homeRingLength - ($homeRingLength * min(100, max(0, $homeRate)) / 100);
+            @endphp
+
+            <div id="home-section" class="ink-all section-content fade-in space-y-5">
                 <!-- Welcome -->
-                <div>
-                    <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">Welcome back, {{ $studentDisplayName ?? (auth()->user()->name ?? 'Student') }}</h2>
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <h2 class="text-2xl sm:text-[2rem] font-extrabold tracking-tight text-slate-900 leading-tight">
+                            {{-- refreshHomeGreeting() rewrites this text on a timer, so the
+                                 greeting turns over on its own when the Manila hour crosses
+                                 5am/12pm/6pm without the student refreshing. --}}
+                            <span id="homeGreetingText">{{ $homeGreeting }}, {{ $homeFirstName }}!</span>
+                        </h2>
+                        <p class="text-sm text-slate-500 mt-1.5">Here's your progress and tasks for today.</p>
+                    </div>
+                    <p class="text-sm font-semibold italic text-brand shrink-0 mt-1">"Learn Today. Serve Tomorrow."</p>
                 </div>
 
-                <!-- Stats Row -->
-                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                    <!-- Team -->
-                    <div class="stat-card bg-white rounded-2xl p-4 border border-slate-100">
-                        <div class="flex items-center mb-3">
-                            <div class="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center">
-                                <span class="iconify text-violet-500 text-lg" data-icon="mdi:office-building-outline"></span>
+                {{-- Stats Row. Each card opens the section that owns its number, through the
+                     same showSection() the sidebar calls — so the sidebar highlight, the
+                     breadcrumb and the ?section= URL all follow along for free. --}}
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- Team members -->
+                    <div class="stat-card relative bg-white rounded-2xl p-5 border border-slate-100">
+                        <div class="flex items-start gap-4">
+                            <div class="w-14 h-14 rounded-full bg-amber-500 flex items-center justify-center shrink-0">
+                                <span class="iconify text-white text-2xl" data-icon="mdi:account-group-outline"></span>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-[0.9375rem] font-bold text-slate-800 leading-tight">Team Members</p>
+                                <p class="text-[2.125rem] font-extrabold text-slate-900 leading-none mt-1">{{ $homeMemberCount }}</p>
+                                <p class="text-[0.75rem] text-slate-400 font-medium mt-1.5 truncate">{{ $studentClass->name ?? $group->name ?? 'No team' }}</p>
+                                <button type="button" onclick="showSection('group')" aria-label="Open My Team"
+                                        class="mt-3 inline-flex items-center gap-1.5 text-[0.8125rem] font-bold text-brand hover:text-brand-dark transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded after:absolute after:inset-0 after:rounded-2xl after:content-['']">
+                                    View Team <span class="iconify text-base" data-icon="mdi:arrow-right"></span>
+                                </button>
                             </div>
                         </div>
-                        <p class="text-xl font-extrabold text-slate-900 truncate">{{ $group->name ?? '—' }}</p>
-                        <p class="text-xs text-slate-400 font-medium mt-1">
-                            Team Name
-                            @if(!empty($studentClass))
-                                · {{ $studentClass->name }}
-                            @endif
-                        </p>
                     </div>
 
-                    <!-- Role -->
-                    <div class="stat-card bg-white rounded-2xl p-4 border border-slate-100">
-                        <div class="flex items-center mb-3">
-                            <div class="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center">
-                                <span class="iconify text-rose-500 text-lg" data-icon="{{ !empty($studentRoles) ? $myRoleIcon : 'mdi:account-question-outline' }}"></span>
+                    <!-- Assigned tasks (team) -->
+                    <div class="stat-card relative bg-white rounded-2xl p-5 border border-slate-100">
+                        <div class="flex items-start gap-4">
+                            <div class="w-14 h-14 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
+                                <span class="iconify text-amber-500 text-2xl" data-icon="mdi:clipboard-text-outline"></span>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-[0.9375rem] font-bold text-slate-800 leading-tight">Assigned Tasks</p>
+                                <p class="text-[2.125rem] font-extrabold text-slate-900 leading-none mt-1">{{ $homeActiveTasks }}</p>
+                                <p class="text-[0.75rem] text-slate-400 font-medium mt-1.5 truncate">{{ $homeMyPending }} assigned to your role{{ count($studentRoles ?? []) !== 1 ? 's' : '' }}</p>
+                                <button type="button" onclick="showSection('tasks')" aria-label="Open My Tasks"
+                                        class="mt-3 inline-flex items-center gap-1.5 text-[0.8125rem] font-bold text-brand hover:text-brand-dark transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded after:absolute after:inset-0 after:rounded-2xl after:content-['']">
+                                    View Tasks <span class="iconify text-base" data-icon="mdi:arrow-right"></span>
+                                </button>
                             </div>
                         </div>
-                        <p class="text-base font-extrabold text-slate-900 truncate leading-tight">{{ $myRoleLabel }}</p>
-                        <p class="text-xs text-slate-400 font-medium mt-1">Assigned Role{{ count($studentRoles ?? []) !== 1 ? 's' : '' }}</p>
                     </div>
 
-                    <!-- Active Tasks -->
-                    <div class="stat-card bg-white rounded-2xl p-4 border border-slate-100">
-                        <div class="flex items-center justify-between mb-3">
-                            <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
-                                <span class="iconify text-amber-500 text-lg" data-icon="mdi:clipboard-text-outline"></span>
+                    <!-- Pending tasks (mine) -->
+                    <div class="stat-card relative bg-white rounded-2xl p-5 border border-slate-100">
+                        <div class="flex items-start gap-4">
+                            <div class="w-14 h-14 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
+                                <span class="iconify text-amber-500 text-2xl" data-icon="mdi:clock-outline"></span>
                             </div>
-                            @if(!empty($studentRoles) && $myRoleTasks->count() > 0)
-                                <span class="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">Needs Attention</span>
-                            @endif
+                            <div class="min-w-0 flex-1">
+                                <p class="text-[0.9375rem] font-bold text-slate-800 leading-tight">Pending Tasks</p>
+                                <p class="text-[2.125rem] font-extrabold text-slate-900 leading-none mt-1"><span data-task-count="active">{{ $homeMyPending }}</span></p>
+                                @if($homeOverdueCount > 0)
+                                    <p class="text-[0.75rem] font-semibold text-red-500 mt-1.5 truncate">{{ $homeOverdueCount }} past due date</p>
+                                @else
+                                    <p class="text-[0.75rem] text-slate-400 font-medium mt-1.5 truncate">Waiting for Approval</p>
+                                @endif
+                                <button type="button" onclick="showSection('tasks')" aria-label="Open My Tasks"
+                                        class="mt-3 inline-flex items-center gap-1.5 text-[0.8125rem] font-bold text-brand hover:text-brand-dark transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded after:absolute after:inset-0 after:rounded-2xl after:content-['']">
+                                    View Pending <span class="iconify text-base" data-icon="mdi:arrow-right"></span>
+                                </button>
+                            </div>
                         </div>
-                        <p class="text-2xl font-extrabold text-slate-900">{{ !empty($studentRoles) ? $myRoleTasks->count() : 0 }}</p>
-                        <p class="text-xs text-slate-400 font-medium mt-1">Active Tasks</p>
                     </div>
 
-                    <!-- Completed -->
-                    <div class="stat-card bg-white rounded-2xl p-4 border border-slate-100">
-                        <div class="flex items-center mb-3">
-                            <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
-                                <span class="iconify text-emerald-500 text-lg" data-icon="mdi:check-circle-outline"></span>
+                    {{-- Completion rate, drawn as a ring: the same number the reports page
+                         shows, read at a glance. --}}
+                    <div class="stat-card relative bg-white rounded-2xl p-5 border border-slate-100">
+                        <div class="flex items-start gap-4">
+                            <div class="relative w-[5.375rem] h-[5.375rem] shrink-0">
+                                <svg class="w-[5.375rem] h-[5.375rem] -rotate-90" viewBox="0 0 64 64" aria-hidden="true">
+                                    <circle cx="32" cy="32" r="28" fill="none" stroke="#F2E9E7" stroke-width="7"></circle>
+                                    <circle cx="32" cy="32" r="28" fill="none" stroke="#7B1730" stroke-width="7" stroke-linecap="round"
+                                            stroke-dasharray="{{ $homeRingLength }}" stroke-dashoffset="{{ $homeRingOffset }}"></circle>
+                                </svg>
+                                <span class="absolute inset-0 flex items-center justify-center text-[1.25rem] font-extrabold text-slate-900">{{ $homeRate }}%</span>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-[0.9375rem] font-bold text-slate-800 leading-tight">Overall Progress</p>
+                                <p class="text-[0.75rem] text-slate-400 font-medium mt-1.5 leading-snug">
+                                    <span data-task-count="completed">{{ $completedTasksCount ?? 0 }}</span> of {{ $homeTotalTasks }} team tasks done.<br>
+                                    {{ $homeRate >= 70 ? "You're on the right track!" : 'Keep completing tasks.' }}
+                                </p>
+                                <button type="button" onclick="showSection('reports')" aria-label="Open Reports"
+                                        class="mt-3 inline-flex items-center gap-1.5 text-[0.8125rem] font-bold text-brand hover:text-brand-dark transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded after:absolute after:inset-0 after:rounded-2xl after:content-['']">
+                                    View Progress <span class="iconify text-base" data-icon="mdi:arrow-right"></span>
+                                </button>
                             </div>
                         </div>
-                        <p class="text-2xl font-extrabold text-slate-900">{{ $myCompletedTasks->count() ?? 0 }}</p>
-                        <p class="text-xs text-slate-400 font-medium mt-1">Completed</p>
                     </div>
                 </div>
 
-                <!-- Recent Activities -->
-                @php
-                    $homeRoleLabels = [
-                        'front_desk' => 'Front Desk',
-                        'restaurant_management' => 'Restaurant',
-                        'room_management' => 'Room Mgmt',
-                        'maintenance' => 'Maintenance',
-                        'housekeeping' => 'Housekeeping',
-                    ];
-                    $homeRecentActivities = ($selfActivityLogs ?? collect())->take(6);
-                @endphp
-                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                    <div class="px-5 py-3.5 border-b border-slate-100 bg-slate-50/60 flex items-center gap-2">
-                        <span class="iconify text-brand text-lg" data-icon="mdi:history"></span>
-                        <p class="text-sm font-bold text-slate-800">Recent Activities</p>
-                    </div>
-                    <div class="divide-y divide-slate-50">
-                        @forelse($homeRecentActivities as $task)
-                            <div class="px-5 py-3.5 flex items-start gap-3">
-                                <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 {{ $task->status === 'archived' ? 'bg-emerald-50 text-emerald-500' : 'bg-blue-50 text-blue-500' }}">
-                                    <span class="iconify text-lg" data-icon="{{ $task->status === 'archived' ? 'mdi:check-circle-outline' : 'mdi:clipboard-plus-outline' }}"></span>
-                                </div>
-                                <div class="min-w-0 flex-1">
-                                    <p class="text-sm font-bold text-slate-800 truncate">
-                                        {{ $task->status === 'archived' ? 'Completed' : 'Assigned' }}: {{ $task->title }}
+                <!-- Three-panel row: upcoming tasks, team progress, activity -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
+
+                    {{-- Tasks in Progress — work the team has changed but not submitted yet:
+                         still active, and saved on at least once in the editor. --}}
+                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                        <div class="px-5 pt-5 pb-3 flex items-center justify-between gap-2">
+                            <div class="min-w-0">
+                                <p class="text-lg font-bold text-slate-800">Tasks in Progress</p>
+                                <p class="text-[0.6875rem] text-slate-400 truncate">Started, not yet submitted</p>
+                            </div>
+                            <button type="button" onclick="showSection('tasks')"
+                                    class="text-[0.75rem] font-bold text-brand hover:text-brand-dark transition-colors shrink-0">View All</button>
+                        </div>
+                        <div class="divide-y divide-slate-100">
+                            @forelse($homeInProgress as $task)
+                                @php
+                                    $isRevision = $task->needs_revision;
+                                    $homeTaskStep = \App\Support\TaskChecklist::stepForTitle($task->title);
+                                @endphp
+                                <div class="px-5 py-4">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 {{ $homeTint($task->role, 'bg') }} {{ $homeTint($task->role, 'text') }}">
+                                            <span class="iconify text-xl" data-icon="{{ $roleIcons[$task->role] ?? 'mdi:clipboard-text-outline' }}"></span>
+                                        </div>
+                                        <div class="min-w-0 flex-1">
+                                            {{-- The task's own number on the checklist, not its position in
+                                                 this list, so it matches the faculty's Set Task screen. --}}
+                                            @if($homeTaskStep !== null)
+                                                <p class="text-[0.8125rem] font-extrabold text-slate-800 tracking-wide">TASK {{ str_pad($homeTaskStep + 1, 2, '0', STR_PAD_LEFT) }}</p>
+                                            @endif
+                                            <p class="text-[0.8125rem] text-slate-500 leading-snug line-clamp-2">{{ $task->title }}</p>
+                                            <div class="mt-2 flex flex-wrap items-center gap-1.5">
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[0.625rem] font-bold {{ $homeTint($task->role, 'bg') }} {{ $homeTint($task->role, 'text') }}">
+                                                    {{ $homeRoleLabels[$task->role] ?? $task->role }}
+                                                </span>
+                                                @if($isRevision)
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[0.625rem] font-bold status-badge-revision">Revision Required</span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <p class="mt-3 text-[0.75rem] text-slate-400 font-medium truncate">
+                                        {{ $task->started_at ? 'Started ' . $task->started_at->diffForHumans() . ' · ' : '' }}edited {{ optional($task->updated_at)->diffForHumans() }}
                                     </p>
-                                    <p class="text-xs text-slate-400 mt-0.5">
-                                        {{ $homeRoleLabels[$task->role] ?? $task->role }}
-                                        · {{ optional($task->updated_at)->diffForHumans() }}
-                                    </p>
                                 </div>
-                            </div>
-                        @empty
-                            <div class="px-5 py-12 text-center">
-                                <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
-                                    <span class="iconify text-2xl text-slate-300" data-icon="mdi:history"></span>
+                            @empty
+                                <div class="px-5 py-12 text-center">
+                                    <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                                        <span class="iconify text-2xl text-slate-300" data-icon="mdi:progress-pencil"></span>
+                                    </div>
+                                    <p class="text-sm font-semibold text-slate-400">No tasks in progress</p>
+                                    <p class="text-xs text-slate-300 mt-1">A task shows here once you save a change on it in the editor, until it is submitted.</p>
                                 </div>
-                                <p class="text-sm font-semibold text-slate-400">No recent activity</p>
-                                <p class="text-xs text-slate-300 mt-1">Your assigned and completed tasks will appear here.</p>
-                            </div>
-                        @endforelse
+                            @endforelse
+                        </div>
                     </div>
-                </div>
 
+                    {{-- My Progress Overview — this student's own team only, broken down by
+                         the role that owns each task, so a member can see where the team
+                         still has work outstanding. --}}
+                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                        <div class="px-5 pt-5 pb-3 flex items-center justify-between gap-2">
+                            <div class="min-w-0">
+                                <p class="text-lg font-bold text-slate-800">My Progress Overview</p>
+                                <p class="text-[0.6875rem] text-slate-400 truncate">{{ $group->name ?? 'Your team' }}</p>
+                            </div>
+                            <button type="button" onclick="showSection('reports')"
+                                    class="text-[0.75rem] font-bold text-brand hover:text-brand-dark transition-colors shrink-0">View Report</button>
+                        </div>
+                        <div class="px-5 pb-5 space-y-4">
+                            @forelse($homeTeamProgress as $row)
+                                <div class="flex items-start gap-3">
+                                    <div class="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 {{ $homeTint($row['role'], 'bg') }} {{ $homeTint($row['role'], 'text') }}">
+                                        <span class="iconify text-xl" data-icon="{{ $roleIcons[$row['role']] ?? 'mdi:account-outline' }}"></span>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="text-[0.875rem] font-bold text-slate-800 truncate">{{ $homeRoleLabels[$row['role']] ?? $row['role'] }}</p>
+                                        <div class="mt-1.5 flex items-center gap-2.5">
+                                            <div class="h-2 rounded-full bg-slate-100 overflow-hidden flex-1">
+                                                <div class="h-full rounded-full {{ $homeTint($row['role'], 'bar') }}" style="width: {{ $row['percent'] }}%"></div>
+                                            </div>
+                                            <p class="text-[0.875rem] font-extrabold text-slate-700 shrink-0 w-10 text-right">{{ $row['percent'] }}%</p>
+                                        </div>
+                                        <p class="text-[0.6875rem] text-slate-400 mt-1 text-right">{{ $row['done'] }} / {{ $row['total'] }} tasks</p>
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="px-5 py-12 text-center">
+                                    <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                                        <span class="iconify text-2xl text-slate-300" data-icon="mdi:chart-timeline-variant"></span>
+                                    </div>
+                                    <p class="text-sm font-semibold text-slate-400">No tasks</p>
+                                    <p class="text-xs text-slate-300 mt-1">Progress appears once your faculty assigns work.</p>
+                                </div>
+                            @endforelse
+
+                            @if($homeTeamProgress->isNotEmpty())
+                                <div class="rounded-2xl bg-brand-soft border border-pink-100 px-4 py-3 flex items-start gap-3">
+                                    <span class="iconify text-brand text-xl shrink-0" data-icon="mdi:trophy-outline"></span>
+                                    <div class="min-w-0">
+                                        <p class="text-[0.8125rem] font-bold text-brand-dark">
+                                            {{ $homeRate >= 70 ? "You're on the right track!" : ($homeRate > 0 ? 'Good start — keep going!' : 'Time to get started!') }}
+                                        </p>
+                                        <p class="text-[0.6875rem] text-brand-dark/70 mt-0.5">Keep completing tasks to improve your progress.</p>
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity -->
+                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                        <div class="px-5 pt-5 pb-3 flex items-center justify-between gap-2">
+                            <p class="text-lg font-bold text-slate-800">Recent Activity</p>
+                            <button type="button" onclick="showSection('activity')"
+                                    class="text-[0.75rem] font-bold text-brand hover:text-brand-dark transition-colors">View All</button>
+                        </div>
+                        <div class="px-5 pb-5 space-y-4">
+                            @forelse($homeRecentActivities as $task)
+                                @php
+                                    $isDone = $task->status === 'archived';
+                                    $isPending = $isDone && $task->awaiting_review;
+                                    $needsRevision = !$isDone && filled($task->feedback ?? null);
+                                    $actionLabel = $isPending ? 'You submitted task' : ($isDone ? 'You completed task' : ($needsRevision ? 'Faculty sent back task' : 'Task assigned to you'));
+                                    $actionIcon  = $isPending ? 'mdi:clock-outline' : ($isDone ? 'mdi:check-circle-outline' : ($needsRevision ? 'mdi:pencil-outline' : 'mdi:file-document-outline'));
+                                    $actionTint  = $isPending ? 'bg-blue-50 text-blue-600' : ($isDone ? 'bg-emerald-50 text-emerald-500' : ($needsRevision ? 'bg-red-50 text-red-500' : 'bg-amber-50 text-amber-500'));
+                                    $stamp       = $task->updated_at;
+                                    $stampDay    = $stamp
+                                        ? ($stamp->isToday() ? 'Today' : ($stamp->isYesterday() ? 'Yesterday' : $stamp->format('M j, Y')))
+                                        : '';
+                                @endphp
+                                <div class="flex items-start gap-3">
+                                    <div class="w-9 h-9 rounded-full flex items-center justify-center shrink-0 {{ $actionTint }}">
+                                        <span class="iconify text-lg" data-icon="{{ $actionIcon }}"></span>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="text-[0.75rem] text-slate-500">{{ $actionLabel }}</p>
+                                        <p class="text-[0.8125rem] font-bold text-slate-800 leading-snug line-clamp-2">{{ $task->title }}</p>
+                                        <p class="text-[0.6875rem] text-slate-400 mt-0.5 truncate">{{ $homeRoleLabels[$task->role] ?? $task->role }}</p>
+                                    </div>
+                                    <div class="text-right shrink-0">
+                                        <p class="text-[0.6875rem] text-slate-400 font-medium whitespace-nowrap">{{ $stampDay }}</p>
+                                        <p class="text-[0.6875rem] text-slate-300 font-medium whitespace-nowrap mt-0.5">{{ optional($stamp)->format('g:i A') }}</p>
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="px-5 py-12 text-center">
+                                    <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                                        <span class="iconify text-2xl text-slate-300" data-icon="mdi:history"></span>
+                                    </div>
+                                    <p class="text-sm font-semibold text-slate-400">No recent activity</p>
+                                    <p class="text-xs text-slate-300 mt-1">Your assigned and completed tasks will appear here.</p>
+                                </div>
+                            @endforelse
+                        </div>
+                    </div>
+
+                </div>
             </div>
 
 
             <!-- ==================== GROUP SECTION ==================== -->
-            <div id="group-section" class="section-content hidden fade-in space-y-3">
-                <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">My Team</h2>
+            @php
+                $teamMemberCount  = ($groupMembers ?? collect())->count();
+                $teamTaskTotal    = ($completedTasksCount ?? 0) + ($pendingTasksCount ?? 0);
+                $teamPercent      = (int) ($completionRate ?? 0);
+                // Donut geometry for the Overall Progress ring in the team header.
+                $ringRadius = 26;
+                $ringLength = 2 * M_PI * $ringRadius;
+                $ringFilled = $ringLength * min(max($teamPercent, 0), 100) / 100;
 
-                <div class="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-                    <div class="brand-gradient px-4 sm:px-5 py-4">
-                        <div class="flex items-center gap-4">
-                            <div class="w-11 h-11 bg-white/15 backdrop-blur-sm rounded-xl flex items-center justify-center border border-white/20 shrink-0">
-                                <span class="iconify text-white text-xl" data-icon="mdi:office-building-outline"></span>
+                $groupRoleTints = [
+                    'front_desk'            => ['bg' => 'bg-amber-50', 'text' => 'text-amber-500', 'bar' => 'bg-orange-500'],
+                    'restaurant_management' => ['bg' => 'bg-amber-50', 'text' => 'text-amber-500', 'bar' => 'bg-amber-500'],
+                    'room_management'       => ['bg' => 'bg-amber-50', 'text' => 'text-amber-500', 'bar' => 'bg-brand'],
+                    'maintenance'           => ['bg' => 'bg-amber-50', 'text' => 'text-amber-500', 'bar' => 'bg-violet-500'],
+                    'housekeeping'          => ['bg' => 'bg-amber-50', 'text' => 'text-amber-500', 'bar' => 'bg-teal-500'],
+                ];
+                $groupTint = fn($role, $key) => $groupRoleTints[$role][$key] ?? ($key === 'bar' ? 'bg-slate-400' : ($key === 'text' ? 'text-slate-400' : 'bg-slate-100'));
+            @endphp
+
+            <div id="group-section" class="ink-all section-content hidden fade-in space-y-4">
+                <div>
+                    <h2 class="text-2xl sm:text-[1.875rem] font-extrabold tracking-tight text-slate-900 leading-tight">My Team</h2>
+                    <p class="text-sm text-slate-500 mt-1">View your team details, members, tasks and progress.</p>
+                </div>
+
+                {{-- Team header. The heading, eyebrow, type line and description block
+                     are repainted by paintTeamHeaderConcept() once faculty approves a
+                     concept, so their ids have to stay as they are. --}}
+                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 sm:px-7 py-6">
+                    <div class="flex flex-col lg:flex-row lg:items-center gap-6">
+                        <div class="flex items-start gap-5 flex-1 min-w-0">
+                            <div class="w-[5.5rem] h-[5.5rem] rounded-full bg-brand-soft flex items-center justify-center shrink-0">
+                                <span class="iconify text-brand text-[2.625rem]" data-icon="mdi:account-group"></span>
                             </div>
                             <div class="flex-1 min-w-0">
                                 @if($group)
-                                    <p class="text-white/50 text-[9px] font-bold uppercase tracking-[0.15em]">Hotel Management Simulation</p>
-                                    <h3 class="text-lg font-extrabold text-white leading-tight">{{ $group->name }}</h3>
+                                    <div class="flex items-center gap-2.5 flex-wrap">
+                                        <h3 id="teamHeaderName" class="text-2xl font-extrabold text-slate-900 leading-tight"
+                                            data-team-name="{{ $group->name }}">{{ $group->name }}</h3>
+                                        @if(!empty($studentClass))
+                                            <span class="px-2.5 py-1 rounded-lg bg-brand-soft text-brand text-[0.6875rem] font-bold uppercase tracking-wider">{{ $studentClass->name }}</span>
+                                        @endif
+                                        @if($groupMembership)
+                                            @php $teamCompletionPhase = \App\Support\SimulationPhase::progress($groupMembership->group_name, (int) $groupMembership->faculty_id); @endphp
+                                            @include('partials.team-completion', ['done' => $teamCompletionPhase['approved'], 'total' => $teamCompletionPhase['required']])
+                                        @endif
+                                    </div>
+                                    <p id="teamHeaderEyebrow" class="text-slate-400 text-[0.8125rem] font-semibold mt-1">Hotel Management Simulation</p>
+                                    <p id="teamHeaderType" class="hidden text-[0.75rem] font-bold text-slate-500 mt-0.5"></p>
                                 @else
-                                    <p class="text-white/50 text-[9px] font-bold uppercase tracking-[0.15em]">Team</p>
-                                    <h3 class="text-base font-extrabold text-white">Not assigned yet</h3>
+                                    <h3 class="text-2xl font-extrabold text-slate-900 leading-tight">Not assigned</h3>
+                                    <p class="text-slate-400 text-[0.8125rem] font-semibold mt-1">Team</p>
                                 @endif
-                            </div>
-                            <div class="flex items-center gap-3 shrink-0 text-center">
-                                <div>
-                                    <p class="text-lg font-extrabold text-white leading-none">{{ ($groupMembers ?? collect())->count() }}</p>
-                                    <p class="text-[9px] text-white/50 font-semibold uppercase">Members</p>
-                                </div>
-                                <div class="w-px h-8 bg-white/20"></div>
-                                <div>
-                                    <p class="text-lg font-extrabold text-white leading-none">5</p>
-                                    <p class="text-[9px] text-white/50 font-semibold uppercase">Depts</p>
-                                </div>
+
+                                {{-- The approved concept's description. Painted from the same
+                                     payload as the proposal cards, so there is one description
+                                     of "what the team's concept is" rather than two that drift. --}}
+                                <div id="teamHeaderConcept" class="hidden mt-2 max-w-lg"></div>
                             </div>
                         </div>
 
-                        {{-- The concept faculty chose. It stops being a proposal at that point
-                             and becomes what this team is building, so it sits with the team's
-                             name rather than in the panel about proposals below — which is why
-                             that panel disappears once this fills in. Painted from the same
-                             payload as that panel, by paintTeamHeaderConcept(), so there is one
-                             description of "what the team's concept is" rather than a server
-                             copy and a client copy that can drift. --}}
-                        <div id="teamHeaderConcept" class="hidden mt-4 pt-4 border-t border-white/15"></div>
+                        <!-- Team figures -->
+                        <div class="flex items-center gap-4 sm:gap-7 shrink-0 lg:border-l lg:border-slate-100 lg:pl-7 overflow-x-auto">
+                            <div class="flex items-center gap-3 shrink-0">
+                                <span class="iconify text-slate-300 text-[1.625rem]" data-icon="mdi:account-multiple-outline"></span>
+                                <div>
+                                    <p class="text-2xl font-extrabold text-slate-900 leading-none">{{ $teamMemberCount }}</p>
+                                    <p class="text-[0.75rem] text-slate-400 font-semibold mt-1">Members</p>
+                                </div>
+                            </div>
+                            <div class="w-px h-11 bg-slate-100 shrink-0"></div>
+                            <div class="flex items-center gap-3 shrink-0">
+                                <span class="iconify text-slate-300 text-[1.625rem]" data-icon="mdi:clipboard-text-outline"></span>
+                                <div>
+                                    <p class="text-2xl font-extrabold text-slate-900 leading-none">{{ $teamTaskTotal }}</p>
+                                    <p class="text-[0.75rem] text-slate-400 font-semibold mt-1">Assigned Tasks</p>
+                                </div>
+                            </div>
+                            <div class="w-px h-11 bg-slate-100 shrink-0"></div>
+                            <div class="flex items-center gap-3 shrink-0">
+                                <svg class="w-[3.75rem] h-[3.75rem] -rotate-90 shrink-0" viewBox="0 0 60 60" aria-hidden="true">
+                                    <circle cx="30" cy="30" r="{{ $ringRadius }}" fill="none" stroke="#F2E9E7" stroke-width="7"></circle>
+                                    <circle cx="30" cy="30" r="{{ $ringRadius }}" fill="none" stroke="#7B1730" stroke-width="7" stroke-linecap="round"
+                                            stroke-dasharray="{{ round($ringFilled, 2) }} {{ round($ringLength, 2) }}"></circle>
+                                </svg>
+                                <div>
+                                    <p class="text-2xl font-extrabold text-slate-900 leading-none">{{ $teamPercent }}%</p>
+                                    <p class="text-[0.75rem] text-slate-400 font-semibold mt-1">Overall Progress</p>
+                                </div>
+                            </div>
+                            <div class="w-px h-11 bg-slate-100 shrink-0"></div>
+                            <div class="flex items-center gap-3 shrink-0">
+                                <span class="iconify text-slate-300 text-[1.625rem]" data-icon="mdi:calendar-outline"></span>
+                                <div>
+                                    <p id="teamDeadlineDate" class="text-xl font-extrabold text-slate-900 leading-none whitespace-nowrap">{{ $teamDeadline ? $teamDeadline->format('M j, Y') : 'None set' }}</p>
+                                    <p id="teamDeadlineLabel" class="text-[0.75rem] text-slate-400 font-semibold mt-1 whitespace-nowrap">Deadline{{ $teamDeadline ? ' · ' . $teamDeadline->format('g:i A') : '' }}</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+                </div>
 
-                    {{-- The concepts used to head this panel. They outgrew it once there
-                         were two of them, each with its own state, feedback and history,
-                         so they have their own panel below and this one is about members
-                         again. --}}
-
-                    <div class="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between">
-                        <h3 class="text-sm font-bold text-slate-800">All Members</h3>
-                        <span class="text-xs font-bold text-brand">{{ ($groupMembers ?? collect())->count() }}</span>
+                {{-- Team members and their tasks in one table: one row per member, with
+                     the tasks that land on them and how far along they are. --}}
+                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                    <div class="px-5 pt-5 pb-3 flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2">
+                            <p class="text-lg font-bold text-slate-800">Team Members</p>
+                            <span class="text-[0.8125rem] font-bold text-brand">{{ $teamMemberCount }}</span>
+                        </div>
+                        <button type="button" onclick="showSection('tasks')"
+                                class="text-[0.75rem] font-bold text-brand hover:text-brand-dark transition-colors">View All Tasks</button>
                     </div>
 
                     @if(isset($groupMembers) && $groupMembers->count() > 0)
-                        <div class="divide-y divide-slate-100">
-                            @foreach($groupMembers as $index => $member)
-                                @php
-                                    $mRoles = is_string($member)
-                                        ? []
-                                        : (array) ($member->roles ?? []);
-                                    if ($mRoles === [] && !empty($member->role ?? null)) {
-                                        $mRoles = [$member->role];
-                                    }
-                                    $isCurrentUser = $getMemberValue($member, 'id') === (auth()->id() ?? null);
-                                    $memberName = $getMemberValue($member, 'name', 'Unknown');
-                                    $memberInitials = strtoupper(substr($memberName, 0, 1));
-                                    $sp = strpos($memberName, ' ');
-                                    if ($sp !== false) $memberInitials .= strtoupper(substr($memberName, $sp + 1, 1));
-                                @endphp
-                                <div class="px-4 py-2.5 flex items-center gap-3 hover:bg-slate-50/50 transition-colors">
-                                    <span class="text-xs font-bold text-slate-300 w-5 text-center shrink-0">{{ str_pad($index + 1, 2, '0', STR_PAD_LEFT) }}</span>
-                                    <div class="w-9 h-9 {{ $isCurrentUser ? 'brand-gradient shadow-md shadow-brand/20' : 'bg-slate-100' }} rounded-xl flex items-center justify-center shrink-0">
-                                        <span class="{{ $isCurrentUser ? 'text-white' : 'text-slate-500' }} text-xs font-bold">{{ $memberInitials }}</span>
-                                    </div>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-sm font-bold text-slate-800 truncate">
-                                            {{ $memberName }}
-                                            @if($isCurrentUser)
-                                                <span class="ml-1.5 px-1.5 py-0.5 bg-brand-soft text-brand text-[8px] font-bold rounded-md uppercase">You</span>
-                                            @endif
-                                        </p>
-                                        <p class="text-[11px] text-slate-400 truncate">{{ $getMemberValue($member, 'email', '') }}</p>
-                                    </div>
-                                    <div class="hidden sm:flex flex-wrap items-center justify-end gap-1 shrink-0 max-w-[14rem]">
-                                        @forelse($mRoles as $roleKey)
-                                            @php
-                                                $displayRole = $roleLabels[$roleKey] ?? ucfirst(str_replace('_', ' ', $roleKey));
-                                                $roleBadgeClass = $roleBadgeClasses[$roleKey] ?? 'role-badge-room';
-                                                $roleIcon = $roleIcons[$roleKey] ?? 'mdi:account-outline';
-                                            @endphp
-                                            <span class="inline-flex items-center gap-1 {{ $roleBadgeClass }} px-2 py-0.5 rounded-full text-[10px] font-semibold">
-                                                <span class="iconify text-[10px]" data-icon="{{ $roleIcon }}"></span>
-                                                {{ $displayRole }}
-                                            </span>
-                                        @empty
-                                            <span class="inline-flex items-center gap-1 bg-slate-100 text-slate-400 px-2.5 py-1 rounded-full text-[10px] font-semibold">
-                                                No role
-                                            </span>
-                                        @endforelse
-                                    </div>
-                                    <div class="flex items-center gap-1.5 shrink-0" data-presence-user="{{ $getMemberValue($member, 'id') }}">
-                                        <div class="w-2 h-2 rounded-full member-online-dot {{ $isCurrentUser ? 'bg-emerald-400 pulse-dot' : 'bg-slate-200' }}"></div>
-                                        <span class="text-[11px] member-online-label {{ $isCurrentUser ? 'text-emerald-600 font-semibold' : 'text-slate-400' }}">{{ $isCurrentUser ? 'Online' : 'Offline' }}</span>
-                                    </div>
-                                    {{-- Teammates only; own history lives in the Activity Logs nav section. --}}
-                                    @php $memberUserId = $getMemberValue($member, 'id'); @endphp
-                                    @if(!$isCurrentUser && $memberUserId)
-                                        <button type="button"
-                                            onclick="openMemberActivityModal({{ (int) $memberUserId }}, {{ json_encode($memberName) }})"
-                                            class="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-slate-600 bg-slate-50 border border-slate-200 hover:bg-slate-100 hover:text-brand transition"
-                                            title="View {{ $memberName }}'s activity logs">
-                                            <span class="iconify text-sm" data-icon="mdi:clipboard-text-clock-outline"></span>
-                                            <span class="hidden md:inline">Activity</span>
-                                        </button>
-                                    @endif
-                                </div>
-                            @endforeach
+                        <div class="overflow-x-auto">
+                            <table class="w-full min-w-[53.75rem] text-left">
+                                <thead>
+                                    <tr class="border-b border-slate-100">
+                                        <th class="px-4 py-3 text-[0.75rem] font-bold text-slate-500">Team</th>
+                                        <th class="px-4 py-3 text-[0.75rem] font-bold text-slate-500">Members</th>
+                                        <th class="px-4 py-3 text-[0.75rem] font-bold text-slate-500">Role</th>
+                                        <th class="px-4 py-3 text-[0.75rem] font-bold text-slate-500 text-center">Assigned Task</th>
+                                        <th class="px-4 py-3 text-[0.75rem] font-bold text-slate-500 w-36">Task Progress</th>
+                                        <th class="px-4 py-3 text-[0.75rem] font-bold text-slate-500">Last Active</th>
+                                        <th class="px-4 py-3 text-[0.75rem] font-bold text-slate-500 text-right">Activity</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($groupMembers as $member)
+                                        @php
+                                            $mRoles = is_string($member)
+                                                ? []
+                                                : (array) ($member->roles ?? []);
+                                            if ($mRoles === [] && !empty($member->role ?? null)) {
+                                                $mRoles = [$member->role];
+                                            }
+                                            $memberUserId  = $getMemberValue($member, 'id');
+                                            $isCurrentUser = $memberUserId === (auth()->id() ?? null);
+                                            $memberName    = $getMemberValue($member, 'name', 'Unknown');
+                                            $stats         = ($memberTaskStats ?? collect())->get($memberUserId, ['total' => 0, 'done' => 0, 'percent' => 0]);
+                                            $lastSeen      = is_object($member) ? ($member->user?->last_seen_at ?? null) : null;
+                                            $primaryRole   = $mRoles[0] ?? null;
+                                        @endphp
+                                        <tr class="border-b border-slate-100 hover:bg-slate-50/50 transition-colors" data-member-row data-member-id="{{ $memberUserId }}">
+                                            <!-- Team -->
+                                            <td class="px-4 py-3.5 text-[0.8125rem] font-semibold text-slate-600 whitespace-nowrap">{{ $group->name ?? '—' }}</td>
+
+                                            <!-- Members -->
+                                            <td class="px-4 py-3.5">
+                                                <div class="flex items-center gap-3 min-w-0">
+                                                    @include('partials.user-avatar', [
+                                                        'user'        => is_object($member) ? ($member->user ?? null) : null,
+                                                        'name'        => $memberName,
+                                                        'size'        => 'w-10 h-10',
+                                                        'currentUser' => $isCurrentUser,
+                                                    ])
+                                                    <div class="min-w-0">
+                                                        <p class="text-[0.8125rem] font-bold text-slate-800 truncate">
+                                                            {{ $memberName }}
+                                                            @if($isCurrentUser)
+                                                                <span class="ml-1 px-1.5 py-0.5 bg-brand-soft text-brand text-[0.5rem] font-bold rounded-md uppercase">You</span>
+                                                            @endif
+                                                        </p>
+                                                        <div class="flex items-center gap-1.5" data-presence-user="{{ $memberUserId }}">
+                                                            <span class="w-1.5 h-1.5 rounded-full member-online-dot {{ $isCurrentUser ? 'bg-emerald-400 pulse-dot' : 'bg-slate-200' }}"></span>
+                                                            <span class="text-[0.625rem] member-online-label {{ $isCurrentUser ? 'text-emerald-600 font-semibold' : 'text-slate-400' }}">{{ $isCurrentUser ? 'Online' : 'Offline' }}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+
+                                            <!-- Role -->
+                                            <td class="px-4 py-3.5">
+                                                @if($primaryRole)
+                                                    @php
+                                                        $displayRole    = $roleLabels[$primaryRole] ?? ucfirst(str_replace('_', ' ', $primaryRole));
+                                                        $roleBadgeClass = $roleBadgeClasses[$primaryRole] ?? 'role-badge-room';
+                                                    @endphp
+                                                    <span class="inline-flex items-center {{ $roleBadgeClass }} px-2.5 py-1 rounded-lg text-[0.6875rem] font-semibold whitespace-nowrap">
+                                                        {{ $displayRole }}
+                                                    </span>
+                                                    @if(count($mRoles) > 1)
+                                                        <span class="ml-1 text-[0.625rem] font-bold text-slate-400">+{{ count($mRoles) - 1 }}</span>
+                                                    @endif
+                                                @else
+                                                    <span class="inline-flex items-center bg-slate-100 text-slate-400 px-2.5 py-1 rounded-lg text-[0.6875rem] font-semibold">No role</span>
+                                                @endif
+                                            </td>
+
+                                            <!-- Assigned task -->
+                                            <td class="px-4 py-3.5 text-center">
+                                                {{-- Done out of assigned, e.g. 10/10. --}}
+                                                <p class="text-[0.8125rem] font-bold text-slate-700 whitespace-nowrap">{{ $stats['done'] }}/{{ $stats['total'] }}</p>
+                                            </td>
+
+                                            <!-- Task progress -->
+                                            <td class="px-4 py-3.5">
+                                                <div class="flex items-center gap-2">
+                                                    <span class="text-[0.75rem] font-bold text-slate-600 w-9 shrink-0">{{ $stats['percent'] }}%</span>
+                                                    <span class="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                                                        <span class="block h-full rounded-full {{ $groupTint($primaryRole, 'bar') }}" style="width: {{ $stats['percent'] }}%"></span>
+                                                    </span>
+                                                </div>
+                                            </td>
+
+                                            <!-- Last active -->
+                                            <td class="px-4 py-3.5">
+                                                @if($lastSeen)
+                                                    <p class="text-[0.75rem] font-semibold text-slate-600 whitespace-nowrap">{{ $lastSeen->format('M j, Y') }}</p>
+                                                    <p class="text-[0.6875rem] text-slate-400 whitespace-nowrap">{{ $lastSeen->format('g:i A') }}</p>
+                                                @else
+                                                    <span class="text-[0.75rem] text-slate-300">—</span>
+                                                @endif
+                                            </td>
+
+                                            {{-- A teammate's log opens in the modal; your own lives in Activity Logs. --}}
+                                            <td class="px-4 py-3.5 text-right">
+                                                @if(!$isCurrentUser && $memberUserId)
+                                                    <button type="button"
+                                                        onclick="openMemberActivityModal({{ (int) $memberUserId }}, {{ json_encode($memberName) }})"
+                                                        class="inline-flex items-center px-3.5 py-1.5 rounded-lg border border-slate-200 text-[0.75rem] font-bold text-slate-600 hover:text-brand hover:border-brand/40 transition"
+                                                        title="View {{ $memberName }}'s activity logs">View</button>
+                                                @else
+                                                    <button type="button"
+                                                        onclick="showSection('activity')"
+                                                        class="inline-flex items-center px-3.5 py-1.5 rounded-lg bg-brand-soft text-[0.75rem] font-bold text-brand hover:bg-brand hover:text-white transition"
+                                                        title="View your activity logs">View</button>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
                         </div>
                     @else
-                        <div class="px-4 py-8 text-center">
+                        <div class="px-4 py-12 text-center">
                             <div class="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                                 <span class="iconify text-slate-300 text-3xl" data-icon="mdi:account-group-outline"></span>
                             </div>
-                            <p class="text-sm font-bold text-slate-400">No members yet</p>
+                            <p class="text-sm font-bold text-slate-400">No members</p>
                             <p class="text-xs text-slate-300 mt-1">They'll appear once assigned by faculty</p>
                         </div>
                     @endif
                 </div>
 
-                {{-- The team's two hotel concepts, side by side, while faculty is still
-                     choosing. Faculty judges each separately, so each card carries its own
-                     state, its own feedback and its own edit history. Front Desk proposes
-                     each first version; every member may then improve either one; Front
-                     Desk hands both in with the single button in this header, because the
-                     pair exists so faculty can weigh them against each other.
+                {{-- The team's two hotel concepts, proposed here rather than on the task
+                     row over in Tasks: naming the hotel and describing it is the team's
+                     own identity work, and this is the page the team reads.
 
-                     Once faculty decides, this whole card hides — paintTeamHeaderConcept()
-                     toggles it — because there is nothing left to propose or compare; the
-                     winner has already moved up into the team header above.
+                     Faculty judges each proposal separately, so each card carries its own
+                     state, its own feedback and its own history. Front Desk writes each
+                     first version and hands the pair in with the one button in this
+                     header, because the pair exists so faculty can weigh them against
+                     each other.
 
-                     The whole panel is rendered from #conceptPanel by the same JS that
-                     repaints it after a save or a submit, so there is one description of
-                     this markup rather than a server copy and a client copy that drift. --}}
-                <div id="conceptPanelCard" class="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-                    <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-3 bg-slate-50/50">
+                     Once faculty decides there is nothing left to propose, so
+                     paintTeamHeaderConcept() hides this whole card — the winner has
+                     already moved up into the team header above.
+
+                     Drawn from #conceptPanel by paintHotelConcepts(), which repaints
+                     after every save and every verdict, so there is one description of
+                     this markup rather than a server copy and a client copy that
+                     drift. Gated on the team, like the dialog it opens: a member with no
+                     team has no concepts to write. --}}
+                @if($group)
+                <div id="conceptTeamCard" class="scroll-mt-24 bg-white rounded-2xl border border-slate-100 overflow-hidden">
+                    <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3 bg-slate-50/50">
                         <div class="min-w-0">
                             <h3 class="text-sm font-bold text-slate-800">Hotel Concepts</h3>
-                            <p class="text-[11px] text-slate-400">Two proposals for your faculty to review.</p>
+                            <p class="text-[0.6875rem] text-slate-400">Name the hotel and describe it — two proposals for your faculty to review.</p>
                         </div>
+                        {{-- One button for the pair. Hidden until both slots are filled;
+                             paintHotelConcepts() toggles it off conceptState.can_submit and
+                             relabels it Resubmit whenever a slot is coming back from
+                             revision rather than going in for the first time. --}}
                         <button type="button" id="conceptSubmitAllBtn" onclick="submitHotelConcepts()"
-                            class="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold text-white brand-gradient shadow-md shadow-brand/20 hover:opacity-90 transition disabled:opacity-60 hidden">
-                            <span class="iconify text-[13px]" data-icon="mdi:send-outline"></span>
-                            <span>Submit both to Faculty</span>
+                            class="hidden shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[0.6875rem] font-bold text-white shadow-md hover:opacity-90 transition disabled:opacity-60" style="background:#404040">
+                            <span class="iconify text-[0.8125rem]" data-icon="mdi:send-outline"></span>
+                            <span id="conceptSubmitAllLabel">Submit both to Faculty</span>
                         </button>
                     </div>
 
                     @if (session('success'))
-                        <div class="mx-4 mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                        <div class="mx-5 mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
                             {{ session('success') }}
                         </div>
                     @endif
-                    @if ($errors->any())
-                        <div class="mx-4 mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                    {{-- A task's Mark as done answers in a pop-up on Tasks instead. --}}
+                    @if ($errors->any() && !$errors->has('task'))
+                        <div class="mx-5 mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
                             {{ $errors->first() }}
                         </div>
                     @endif
 
-                    <div id="conceptPanel" class="p-4 grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
+                    <div id="conceptPanel" class="p-5 grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
                 </div>
-
-                @if($group)
-                    {{-- Edit dialog behind the header's Edit button. Saves over fetch so the
-                         header, the task card and the history all move together, without
-                         throwing the member back to the top of the dashboard.
-
-                         Rendered for every member of a team rather than gated on the edit
-                         right: a save or a faculty verdict can open editing up while the
-                         page is still open, and the button that reveals this dialog is
-                         repainted from that response. The controller is the real gate. --}}
-                    <div id="hotelConceptModal" class="fixed inset-0 z-50 hidden">
-                        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeHotelConceptModal()"></div>
-                        <div class="relative top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl border border-slate-100 w-[92vw] max-w-xl max-h-[90vh] overflow-y-auto">
-                            <div class="brand-gradient px-5 py-4 flex items-center justify-between gap-3 sticky top-0 z-10">
-                                <div class="min-w-0">
-                                    <p class="text-white/60 text-[9px] font-bold uppercase tracking-[0.15em]">Task 1 · Your Team</p>
-                                    <h4 id="hotelConceptModalTitle" class="text-base font-extrabold text-white">Hotel Concept</h4>
-                                </div>
-                                <button type="button" onclick="closeHotelConceptModal()"
-                                    class="w-8 h-8 rounded-full text-white/70 hover:text-white hover:bg-white/15 transition flex items-center justify-center shrink-0">
-                                    <span class="iconify text-xl" data-icon="mdi:close"></span>
-                                </button>
-                            </div>
-
-                            {{-- One dialog serves both concepts; the slot says which one is
-                                 open, and openHotelConceptModal() fills the fields from it. --}}
-                            <form id="hotelConceptForm" method="POST" action="{{ route('students.hotel-concept.store') }}" class="p-5 space-y-4">
-                                @csrf
-                                <input type="hidden" name="slot" value="">
-                                <div id="hotelConceptFormError" class="hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"></div>
-
-                                <div>
-                                    <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Title</label>
-                                    <input name="title" type="text" required maxlength="150"
-                                        placeholder="e.g. Seaside Serenity Resort"
-                                        class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Hotel Type</label>
-                                    <select name="hotel_type" required
-                                        class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition appearance-none">
-                                        <option value="">Select hotel type</option>
-                                        @foreach(\App\Models\HotelConcept::HOTEL_TYPES as $typeKey => $typeLabel)
-                                            <option value="{{ $typeKey }}">{{ $typeLabel }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Description</label>
-                                    <textarea name="description" required rows="5" maxlength="5000"
-                                        placeholder="What the hotel is, who it serves, what makes it different."
-                                        class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"></textarea>
-                                </div>
-
-                                <div class="flex items-center justify-end gap-2 pt-1">
-                                    <button type="button" onclick="closeHotelConceptModal()"
-                                        class="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100 transition">Cancel</button>
-                                    <button type="submit" id="hotelConceptSubmit"
-                                        class="px-4 py-2 brand-gradient text-white rounded-xl text-xs font-bold shadow-md shadow-brand/20 hover:opacity-90 transition disabled:opacity-60">
-                                        Save concept
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
                 @endif
+
+                <div class="flex justify-center pt-1">
+                    <button type="button" onclick="showSection('tasks')"
+                            class="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-xl bg-white border border-slate-200 text-[0.875rem] font-bold text-slate-700 hover:bg-slate-50 hover:text-brand transition-colors shadow-sm">
+                        <span class="iconify text-lg" data-icon="mdi:format-list-checks"></span>
+                        View All Team Tasks
+                    </button>
+                </div>
             </div>
 
             <!-- ==================== TASKS SECTION ==================== -->
-            <div id="tasks-section" class="section-content hidden fade-in space-y-4">
+            <div id="tasks-section" class="ink-all section-content hidden fade-in space-y-5">
                 @php
                     // One entry per assigned role — a member may hold more than one.
-                    $myModules = \App\Support\HotelTemplateBuilder::modulesForRoles($studentRoles ?? []);
+                    // Simulation reads the member's own Simulation seat, not the seats above.
+                    $myModules = \App\Support\HotelTemplateBuilder::modulesForRoles(
+                        $studentRoles ?? [],
+                        \App\Support\SimulationPhase::seatsFor($groupMembership)
+                    );
                 @endphp
-                <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
-                    <div>
-                        <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 mb-0.5">My Tasks</h2>
-                        <p class="text-sm text-slate-400">Tasks assigned to your role{{ count($studentRoles ?? []) !== 1 ? 's' : '' }}</p>
-                    </div>
-                    @if(!empty($studentRoles))
-                        <div class="flex flex-wrap items-center gap-3">
-                            @foreach($myModules as $module)
-                                <a href="{{ route($module['route']) }}"
-                                   class="inline-flex items-center gap-2 px-4 py-2 brand-gradient text-white text-xs font-bold rounded-xl shadow-lg shadow-brand/20 hover:opacity-90 transition-opacity">
-                                    <span class="iconify text-base" data-icon="mdi:palette-outline"></span>
-                                    {{ count($myModules) > 1 ? 'Customize ' . $module['label'] : 'Customize' }}
-                                </a>
-                            @endforeach
-                            <div class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 rounded-lg">
-                                <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
-                                <span class="text-xs font-bold text-emerald-700">{{ $myCompletedTasks->count() }} completed</span>
-                            </div>
-                            <div class="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 rounded-lg">
-                                <div class="w-2 h-2 rounded-full bg-amber-400"></div>
-                                <span class="text-xs font-bold text-amber-700">{{ $myRoleTasks->count() }} active</span>
-                            </div>
-                        </div>
-                    @endif
-                </div>
-
-                @if(!empty($studentRoles))
-                    @if($myRoleTasks->count() > 0)
-                        <div class="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-                            <div class="px-6 py-4 border-b border-slate-100">
-                                <h3 class="text-sm font-bold text-slate-800">Active Tasks</h3>
-                            </div>
-                            <div class="divide-y divide-slate-50">
-                                @foreach($myRoleTasks as $task)
-                                    @php
-                                        $isOverdue = $task->due_date && $task->due_date->isPast();
-                                        // Rows are per member; only offer submit on this student's own
-                                        // row (or an unclaimed one). Task::booted() keeps assigned_to
-                                        // in sync with student_id, so the user id is enough here.
-                                        $isMine = !$task->assigned_to || (int) $task->assigned_to === (int) auth()->id();
-                                    @endphp
-                                    <div class="task-row px-4 py-3 flex items-start gap-3">
-                                        @if($isMine)
-                                            <form method="POST" action="{{ route('students.tasks.complete', $task) }}" class="shrink-0 mt-1.5 leading-none">
-                                                @csrf
-                                                <button type="submit"
-                                                    class="w-3 h-3 rounded-full border-2 border-slate-200 hover:border-brand hover:bg-brand-soft cursor-pointer transition-colors"
-                                                    title="Mark &quot;{{ $task->title }}&quot; as done"
-                                                    aria-label="Mark {{ $task->title }} as done"></button>
-                                            </form>
-                                        @else
-                                            <div class="mt-1.5 w-3 h-3 rounded-full border-2 border-slate-100 shrink-0" title="Assigned to a teammate"></div>
-                                        @endif
-                                        <div class="flex-1 min-w-0">
-                                            <div class="flex items-center gap-2 flex-wrap">
-                                                <p class="text-sm font-bold text-slate-800">{{ $task->title }}</p>
-                                            </div>
-                                            @if($task->description)
-                                                <p class="text-xs text-slate-400 mt-1.5 leading-relaxed">{{ $task->description }}</p>
-                                            @endif
-                                            @if($task->needs_revision)
-                                                {{-- Sent back by faculty: active again, but carrying feedback. --}}
-                                                <div class="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-                                                    <p class="text-[10px] font-bold uppercase tracking-wider text-amber-700 flex items-center gap-1">
-                                                        <span class="iconify text-xs" data-icon="mdi:message-alert-outline"></span>
-                                                        Faculty feedback{{ $task->revision_count > 1 ? ' · revision ' . $task->revision_count : '' }}
-                                                    </p>
-                                                    <p class="text-xs text-amber-800 mt-1 whitespace-pre-line">{{ $task->feedback }}</p>
-                                                    @if($task->feedback_at)
-                                                        <p class="text-[10px] text-amber-600 mt-1">{{ $task->feedback_at->diffForHumans() }}</p>
-                                                    @endif
-                                                </div>
-                                            @endif
-                                            @if($task->due_date)
-                                                <div class="flex items-center gap-3 mt-3">
-                                                    <span class="flex items-center gap-1 text-[11px] {{ $isOverdue ? 'text-red-500 font-semibold' : 'text-slate-400' }}">
-                                                        <span class="iconify text-xs" data-icon="mdi:calendar-outline"></span>
-                                                        {{ $task->due_date->format('M d, Y g:i A') }}
-                                                    </span>
-                                                </div>
-                                            @endif
-                                        </div>
-                                        @if($task->is_hotel_concept)
-                                            {{-- This one is not ticked off: it closes when Front Desk
-                                                 submits the concept itself, over in My Team. --}}
-                                            <button type="button" onclick="showSection('group')"
-                                                class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold text-brand bg-brand-soft border border-brand/10 hover:bg-brand/10 transition">
-                                                <span class="iconify text-sm" data-icon="mdi:lightbulb-outline"></span>
-                                                Open Hotel Concept
-                                            </button>
-                                        @elseif($isMine)
-                                            {{-- The real affordance; the circle above is too small to be the only target. --}}
-                                            <form method="POST" action="{{ route('students.tasks.complete', $task) }}" class="shrink-0">
-                                                @csrf
-                                                <button type="submit"
-                                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition
-                                                        {{ $task->needs_revision
-                                                            ? 'text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100'
-                                                            : 'text-brand bg-brand-soft border border-brand/10 hover:bg-brand/10' }}">
-                                                    <span class="iconify text-sm" data-icon="{{ $task->needs_revision ? 'mdi:send-outline' : 'mdi:check-circle-outline' }}"></span>
-                                                    {{ $task->needs_revision ? 'Resubmit' : 'Mark as done' }}
-                                                </button>
-                                            </form>
-                                        @else
-                                            <span class="shrink-0 text-[10px] font-semibold text-slate-300 whitespace-nowrap">Teammate's task</span>
-                                        @endif
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
-                    @else
-                        <div class="bg-white rounded-2xl border border-slate-100 px-6 py-12 text-center">
-                            <div class="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                                <span class="iconify text-emerald-400 text-3xl" data-icon="mdi:check-decagram-outline"></span>
-                            </div>
-                            <p class="text-base font-bold text-slate-600">All tasks completed!</p>
-                            <p class="text-sm text-slate-400 mt-1">Great job — no pending tasks for your role.</p>
-                        </div>
-                    @endif
-
-                    @if($myCompletedTasks->count() > 0)
-                        <div class="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-                            <button onclick="toggleCompletedTasks()" class="w-full px-6 py-4 border-b border-slate-100 flex items-center justify-between hover:bg-slate-50 transition-colors">
-                                <h3 class="text-sm font-bold text-slate-800">Completed Tasks ({{ $myCompletedTasks->count() }})</h3>
-                                <span class="iconify text-slate-400 text-lg transition-transform" data-icon="mdi:chevron-down" id="completedChevron"></span>
-                            </button>
-                            <div id="completedTasksList" class="divide-y divide-slate-50 hidden">
-                                @foreach($myCompletedTasks as $task)
-                                    <div class="task-row px-6 py-4 flex items-start gap-4 opacity-60">
-                                        <div class="mt-0.5 w-3 h-3 rounded-full bg-emerald-400 shrink-0 flex items-center justify-center">
-                                            <span class="iconify text-white text-[8px]" data-icon="mdi:check"></span>
-                                        </div>
-                                        <div class="flex-1 min-w-0">
-                                            <p class="text-sm font-semibold text-slate-500 line-through">{{ $task->title }}</p>
-                                            @if($task->due_date)
-                                                <p class="text-[11px] text-slate-300 mt-1">{{ $task->due_date->format('M d, Y g:i A') }}</p>
-                                            @endif
-                                        </div>
-                                        <span class="text-[9px] font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">Done</span>
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
-                    @endif
-                @else
-                    <div class="bg-white rounded-2xl border border-slate-100 px-6 py-12 text-center">
-                        <div class="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <span class="iconify text-slate-300 text-3xl" data-icon="mdi:account-question-outline"></span>
-                        </div>
-                        <p class="text-base font-bold text-slate-500">No role assigned</p>
-                        <p class="text-sm text-slate-400 mt-1">Once your faculty assigns a role, your tasks will appear here.</p>
+                @if(session('simulation_locked'))
+                    <div class="rounded-xl border border-[#FDE68A] bg-[#FEF3C7] px-4 py-3 text-[0.8125rem] font-semibold text-[#92400E]">
+                        The Hotel Simulation is not open for your team yet.
                     </div>
                 @endif
+                <div id="simulationPhaseLive">
+                    @include('students.partials.simulation-phase', ['groupMembership' => $groupMembership])
+                </div>
+                <div class="flex flex-col sm:flex-row sm:items-end sm:justify-end gap-3">
+                    <div class="flex flex-wrap items-center gap-3">
+                        @if(!empty($studentRoles))
+                            {{-- The one filter the toolbar keeps: everything else the table
+                                 used to be narrowed by (search, role) is gone in favour of
+                                 the per-TASK grouping below. --}}
+                            <select id="taskStatusFilter" onchange="filterTaskRows()"
+                                    class="rounded-xl border border-[#E7E1DD] bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-[#8A817A]/30 focus:border-[#8A817A]">
+                                <option value="all">All</option>
+                                <option value="not_started">Not Started</option>
+                                <option value="in_progress">In Progress</option>
+                                <option value="revision">Revision Required</option>
+                                <option value="pending">Pending Review</option>
+                                <option value="completed">Approved</option>
+                            </select>
+
+                            {{-- Customize is the website editor, so it only lists roles that own
+                                 a page to design. The Simulation's door is Start Simulation in the
+                                 banner above, not a second button here. A member holding one role
+                                 goes straight in; several roles get a menu. --}}
+                            @php
+                                $taskAreas = [
+                                    [
+                                        'id' => 'customizeAreaMenu',
+                                        'label' => 'Customize',
+                                        'icon' => 'mdi:palette-outline',
+                                        'urlKey' => 'customize_url',
+                                        'modules' => array_values(array_filter($myModules, fn ($m) => $m['editable'])),
+                                        'class' => 'brand-gradient text-white border-transparent shadow-lg shadow-brand/20 hover:opacity-90',
+                                    ],
+                                ];
+                            @endphp
+                            @foreach($taskAreas as $area)
+                                @continue(empty($area['modules']))
+                                @if(count($area['modules']) === 1)
+                                    <a href="{{ $area['modules'][0][$area['urlKey']] }}" data-tour="customize"
+                                       class="inline-flex items-center gap-2 px-4 py-2 border text-xs font-bold rounded-xl transition {{ $area['class'] }}">
+                                        <span class="iconify text-base" data-icon="{{ $area['icon'] }}"></span>
+                                        {{ $area['label'] }}
+                                    </a>
+                                @else
+                                    <div class="relative" data-task-area-menu>
+                                        <button type="button" onclick="toggleTaskAreaMenu('{{ $area['id'] }}')" data-tour="customize"
+                                                aria-haspopup="true" aria-controls="{{ $area['id'] }}"
+                                                class="inline-flex items-center gap-2 px-4 py-2 border text-xs font-bold rounded-xl transition {{ $area['class'] }}">
+                                            <span class="iconify text-base" data-icon="{{ $area['icon'] }}"></span>
+                                            {{ $area['label'] }}
+                                            <span class="iconify text-sm" data-icon="mdi:chevron-down"></span>
+                                        </button>
+                                        <div id="{{ $area['id'] }}" hidden
+                                             class="absolute right-0 mt-2 w-56 bg-white rounded-xl border border-[#E7E1DD] shadow-xl py-1.5 z-30">
+                                            <p class="px-3 pt-1 pb-1.5 text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Choose a role</p>
+                                            @foreach($area['modules'] as $module)
+                                                <a href="{{ $module[$area['urlKey']] }}"
+                                                   class="flex items-center gap-2 px-3 py-2 text-[0.8125rem] font-semibold text-slate-600 hover:bg-[#F5F2EF] hover:text-[#181818]">
+                                                    <span class="iconify text-base" data-icon="{{ $roleIcons[$module['role']] ?? 'mdi:clipboard-text-outline' }}"></span>
+                                                    {{ $module['label'] }}
+                                                </a>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+                            @endforeach
+                        @endif
+                    </div>
+                </div>
+
+                <div id="tasksLiveContainer">
+                    @include('students.partials.task-groups', [
+                        'studentRoles' => $studentRoles,
+                        'myRoleTasks' => $myRoleTasks,
+                        'myCompletedTasks' => $myCompletedTasks,
+                        'groupMembership' => $groupMembership,
+                    ])
+                </div>
             </div>
 
             {{-- ══════════════ ACTIVITY LOGS SECTION ══════════════ --}}
-            <div id="activity-section" class="section-content hidden fade-in space-y-4">
+            <div id="activity-section" class="ink-all section-content hidden fade-in space-y-4">
                 @php
-                    $roleLabels = [
-                        'front_desk' => 'Front Desk',
-                        'restaurant_management' => 'Restaurant',
-                        'room_management' => 'Room Mgmt',
-                        'maintenance' => 'Maintenance',
-                        'housekeeping' => 'Housekeeping',
+                    /* The student's own rows from the centralized activity_logs table, the
+                       same one the faculty and dean portals read. Each kind of entry is put
+                       in a plain group for the filter chips and gets its own icon. */
+                    $actLogs = $myActivityLogs ?? collect();
+                    $actGroupOf = function (string $activity): string {
+                        if (in_array($activity, ['login', 'logout'], true)) return 'signin';
+                        if (str_starts_with($activity, 'task_') || in_array($activity, ['output_uploaded', 'evaluation_recorded'], true)) return 'tasks';
+                        if (str_starts_with($activity, 'concept_') || in_array($activity, ['website_customized', 'template_restored'], true)) return 'website';
+                        if (str_starts_with($activity, 'complaint_') || str_starts_with($activity, 'table_') || str_starts_with($activity, 'room_')
+                            || in_array($activity, ['guest_booked', 'report_generated'], true)) return 'hotel';
+                        return 'other';
+                    };
+                    $actGroups = [
+                        'all'     => ['label' => 'Everything',        'icon' => 'mdi:format-list-bulleted'],
+                        'signin'  => ['label' => 'Signing in & out',  'icon' => 'mdi:login-variant'],
+                        'tasks'   => ['label' => 'Tasks',             'icon' => 'mdi:clipboard-check-outline'],
+                        'website' => ['label' => 'Website & concept', 'icon' => 'mdi:palette-outline'],
+                        'hotel'   => ['label' => 'Hotel work',        'icon' => 'mdi:room-service-outline'],
+                        'other'   => ['label' => 'Other',             'icon' => 'mdi:history'],
                     ];
+                    $actIcons = [
+                        'login' => 'mdi:login-variant', 'logout' => 'mdi:logout-variant',
+                        'task_submitted' => 'mdi:send-check-outline', 'output_uploaded' => 'mdi:file-upload-outline',
+                        'concept_created' => 'mdi:lightbulb-outline', 'concept_updated' => 'mdi:lightbulb-on-outline',
+                        'concept_submitted' => 'mdi:lightbulb-on-outline', 'concept_reviewed' => 'mdi:lightbulb-on-outline',
+                        'website_customized' => 'mdi:palette-outline', 'template_restored' => 'mdi:backup-restore',
+                        'complaint_filed' => 'mdi:message-alert-outline', 'complaint_resolved' => 'mdi:message-check-outline',
+                        'table_assigned' => 'mdi:silverware-fork-knife', 'table_closed' => 'mdi:silverware-clean',
+                        'guest_booked' => 'mdi:account-plus-outline', 'room_inspected' => 'mdi:magnify-scan', 'room_ready' => 'mdi:bed-outline',
+                        'report_generated' => 'mdi:chart-box-outline',
+                    ];
+
+                    // Day headings: Today, Yesterday, then the date.
+                    $actToday = now('Asia/Manila')->format('M d, Y');
+                    $actYesterday = now('Asia/Manila')->subDay()->format('M d, Y');
+                    $actRows = $actLogs->map(function ($log) use ($actGroupOf, $actIcons, $actToday, $actYesterday) {
+                        $activity = (string) ($log['activity'] ?? '');
+                        $stamp = (string) ($log['created_at'] ?? '');
+                        try { $at = \Carbon\Carbon::createFromFormat('M d, Y g:i A', $stamp, 'Asia/Manila'); } catch (\Throwable $e) { $at = null; }
+                        $day = $at ? $at->format('M d, Y') : '';
+                        return $log + [
+                            'group' => $actGroupOf($activity),
+                            'icon'  => $actIcons[$activity] ?? (str_starts_with($activity, 'task_') ? 'mdi:clipboard-text-outline' : 'mdi:history'),
+                            'day'   => $day === $actToday ? 'Today' : ($day === $actYesterday ? 'Yesterday' : ($at ? $at->format('l, M j, Y') : 'Earlier')),
+                            'time'  => $at ? $at->format('g:i A') : '',
+                            'recent' => $at ? $at->gte(now()->subDays(6)->startOfDay()) : false,
+                        ];
+                    });
+                    $actCounts = $actRows->countBy('group');
+                    $actTodayCount = $actRows->where('day', 'Today')->count();
+                    $actLast = $actRows->first();
                 @endphp
 
                 <div>
                     <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 mb-0.5">Activity Logs</h2>
-                    <p class="text-sm text-slate-400">Your own recorded activity only — teammates' logs are not shown here.</p>
+                    <p class="text-sm text-slate-500">A record of what you have done in the system, like signing in, finishing tasks and saving your work. Only your own activity is listed here.</p>
                 </div>
 
-                {{-- Centralized activity_logs: the same table the faculty and dean portals read. --}}
-                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                    <div class="px-5 py-3 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between">
-                        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">My Activity</p>
-                        <span class="text-[11px] font-semibold text-slate-400">{{ ($myActivityLogs ?? collect())->count() }} entries</span>
+                {{-- At a glance: three boxes, each filled edge to edge -- the label and
+                     icon on the left, the figure large on the right. --}}
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div class="bg-white rounded-2xl border border-[#E7E1DD] px-5 py-4 flex items-center justify-between gap-4 min-w-0">
+                        <div class="flex items-center gap-3 min-w-0"><span class="w-12 h-12 rounded-xl bg-[#EFEFEF] flex items-center justify-center shrink-0"><span class="iconify text-2xl text-[#4A4643]" data-icon="mdi:format-list-bulleted"></span></span><span class="text-[0.9375rem] font-semibold text-slate-700">All entries</span></div>
+                        <span class="text-4xl font-extrabold text-slate-900 leading-none">{{ $actRows->count() }}</span>
                     </div>
-                    <div class="divide-y divide-slate-50 max-h-[420px] overflow-y-auto">
-                        @forelse(($myActivityLogs ?? collect()) as $log)
-                            <div class="px-5 py-3.5 flex items-start gap-3 hover:bg-slate-50/70 transition">
-                                <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-brand-soft text-brand">
-                                    <span class="iconify text-lg" data-icon="mdi:clipboard-text-clock-outline"></span>
-                                </div>
-                                <div class="min-w-0 flex-1">
-                                    <p class="text-sm font-bold text-slate-800">{{ $log['activity_label'] ?? $log['activity'] ?? '—' }}</p>
-                                    <p class="text-xs text-slate-500 mt-0.5">{{ $log['description'] ?: '—' }}</p>
-                                    <p class="text-[11px] text-slate-400 mt-0.5">
-                                        {{ $log['created_at'] }}{{ $log['created_at_human'] ? ' · ' . $log['created_at_human'] : '' }}
-                                    </p>
-                                </div>
-                            </div>
-                        @empty
-                            <div class="px-5 py-12 text-center">
-                                <p class="text-sm font-semibold text-slate-400">No activity recorded yet</p>
-                                <p class="text-xs text-slate-300 mt-1">Logins, task submissions and saved work will appear here.</p>
-                            </div>
-                        @endforelse
+                    <div class="bg-white rounded-2xl border border-[#E7E1DD] px-5 py-4 flex items-center justify-between gap-4 min-w-0">
+                        <div class="flex items-center gap-3 min-w-0"><span class="w-12 h-12 rounded-xl bg-[#EFEFEF] flex items-center justify-center shrink-0"><span class="iconify text-2xl text-[#4A4643]" data-icon="mdi:calendar-today-outline"></span></span><span class="text-[0.9375rem] font-semibold text-slate-700">Today</span></div>
+                        <span class="text-4xl font-extrabold text-slate-900 leading-none">{{ $actTodayCount }}</span>
+                    </div>
+                    <div class="bg-white rounded-2xl border border-[#E7E1DD] px-5 py-4 flex items-center justify-between gap-4 min-w-0">
+                        <div class="flex items-center gap-3 min-w-0"><span class="w-12 h-12 rounded-xl bg-[#EFEFEF] flex items-center justify-center shrink-0"><span class="iconify text-2xl text-[#4A4643]" data-icon="mdi:clock-outline"></span></span><span class="text-[0.9375rem] font-semibold text-slate-700">Last activity</span></div>
+                        <div class="text-right min-w-0">
+                            <p class="text-xl font-extrabold text-slate-900 leading-tight truncate">{{ $actLast ? ($actLast['activity_label'] ?? 'Activity') : 'None' }}</p>
+                            @if($actLast)<p class="text-[0.8125rem] text-slate-500 truncate">{{ $actLast['created_at_human'] }}</p>@endif
+                        </div>
                     </div>
                 </div>
 
-                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                    <div class="px-5 py-3 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between">
-                        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">My Tasks</p>
-                        <span class="text-[11px] font-semibold text-slate-400">{{ ($selfActivityLogs ?? collect())->count() }} entries</span>
+                <div class="act-panel flex flex-col gap-3">
+                    {{-- What to show --}}
+                    <div class="px-4 sm:px-5 py-3 rounded-2xl border border-[#DADADA] bg-[#EFEFEF]">
+                        <p class="text-[0.6875rem] font-semibold text-slate-500 mb-2">Show</p>
+                        <div class="flex flex-wrap gap-2" role="group" aria-label="Show activity by kind">
+                            @foreach($actGroups as $actKey => $actGroup)
+                                @php $actN = $actKey === 'all' ? $actRows->count() : ($actCounts[$actKey] ?? 0); @endphp
+                                @continue($actKey !== 'all' && $actN === 0)
+                                <button type="button" data-act-filter="{{ $actKey }}" aria-pressed="{{ $actKey === 'all' ? 'true' : 'false' }}"
+                                        class="act-chip {{ $actKey === 'all' ? 'is-on' : '' }} inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[0.75rem] font-semibold transition">
+                                    <span class="iconify text-sm" data-icon="{{ $actGroup['icon'] }}"></span>
+                                    {{ $actGroup['label'] }}
+                                    <span class="act-count px-1.5 py-0.5 rounded-full text-[0.625rem] font-bold">{{ $actN }}</span>
+                                </button>
+                            @endforeach
+                        </div>
                     </div>
-                    <div class="divide-y divide-slate-50 max-h-[560px] overflow-y-auto">
-                        @forelse(($selfActivityLogs ?? collect()) as $task)
-                            <div class="px-5 py-3.5 flex items-start gap-3 hover:bg-slate-50/70 transition">
-                                <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 {{ $task->status === 'archived' ? 'bg-emerald-50 text-emerald-500' : 'bg-blue-50 text-blue-500' }}">
-                                    <span class="iconify text-lg" data-icon="{{ $task->status === 'archived' ? 'mdi:check-circle-outline' : 'mdi:clipboard-plus-outline' }}"></span>
-                                </div>
-                                <div class="min-w-0 flex-1">
-                                    <p class="text-sm font-bold text-slate-800 truncate">
-                                        {{ $task->status === 'archived' ? 'Completed' : 'Assigned' }}: {{ $task->title }}
-                                    </p>
-                                    <p class="text-xs text-slate-400 mt-0.5">
-                                        {{ $roleLabels[$task->role] ?? $task->role }}
-                                        · {{ optional($task->updated_at)->diffForHumans() }}
-                                    </p>
-                                </div>
-                                @if($task->status === 'active')
-                                    <form method="POST" action="{{ route('students.tasks.complete', $task) }}" class="shrink-0">
-                                        @csrf
-                                        <button type="submit" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-brand-soft text-brand border border-brand/10 hover:bg-brand/10 transition">
-                                            Complete
-                                        </button>
-                                    </form>
-                                @endif
-                            </div>
-                        @empty
-                            <div class="px-5 py-12 text-center">
-                                <p class="text-sm font-semibold text-slate-400">No activity yet</p>
-                                <p class="text-xs text-slate-300 mt-1">Your assigned and completed tasks will appear here.</p>
-                            </div>
-                        @endforelse
-                    </div>
+
+                    {{-- Two columns side by side: Recent (the last 7 days, today included)
+                         and Previous (anything older). Each scrolls on its own, newest first,
+                         under a heading for each day. --}}
+                    @if($actRows->isEmpty())
+                        <div class="py-12 text-center bg-white rounded-2xl border border-[#E7E1DD]">
+                            <span class="w-14 h-14 rounded-2xl bg-[#EFEFEF] flex items-center justify-center mx-auto mb-3"><span class="iconify text-2xl text-[#8A817A]" data-icon="mdi:history"></span></span>
+                            <p class="text-sm font-bold text-slate-800">Nothing recorded</p>
+                            <p class="text-xs text-slate-500 mt-1">When you sign in, hand in a task or save your work, it will show up here.</p>
+                        </div>
+                    @else
+                        <div class="act-columns grid grid-cols-1 lg:grid-cols-2 gap-3" id="activityTimeline">
+                            @foreach([
+                                'recent'   => ['title' => 'Recent',   'hint' => 'Last 7 days', 'icon' => 'mdi:clock-fast',          'empty' => 'Nothing in the last 7 days.'],
+                                'previous' => ['title' => 'Previous', 'hint' => 'Older',       'icon' => 'mdi:calendar-blank-outline', 'empty' => 'Nothing older.'],
+                            ] as $actColKey => $actCol)
+                                @php $actColRows = $actRows->where('recent', $actColKey === 'recent')->values(); @endphp
+                                <section data-act-col class="act-col flex flex-col min-h-0 min-w-0 bg-white rounded-2xl border border-[#E7E1DD] shadow-sm overflow-hidden">
+                                    <div class="flex-none px-4 sm:px-5 pt-3 pb-2.5 flex items-center justify-between gap-3 border-b border-[#EFEFEF]">
+                                        <h3 class="flex items-center gap-2 text-[0.9375rem] font-extrabold text-slate-900">
+                                            <span class="iconify text-lg text-[#4A4643]" data-icon="{{ $actCol['icon'] }}"></span>{{ $actCol['title'] }}
+                                        </h3>
+                                        <span class="text-[0.75rem] font-semibold text-slate-500">{{ $actCol['hint'] }} · <span data-act-col-count>{{ $actColRows->count() }}</span></span>
+                                    </div>
+                                    <div class="act-timeline max-h-[60vh] overflow-y-auto px-4 sm:px-5 py-3">
+                                    @forelse($actColRows->groupBy('day') as $actDay => $actDayRows)
+                                        <div data-act-day class="mb-3 last:mb-0">
+                                            <p class="sticky top-0 z-[1] bg-white py-1.5 text-[0.6875rem] font-bold uppercase tracking-wider text-slate-500">{{ $actDay }}</p>
+                                            <ol class="relative ml-4 border-l border-[#DADADA]">
+                                                @foreach($actDayRows as $actLog)
+                                                    <li data-act-group="{{ $actLog['group'] }}" class="relative flex items-center min-h-[3.5rem] pl-7 py-2.5">
+                                                        <span class="absolute -left-[1.0625rem] top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-[#EFEFEF] border border-[#DADADA] flex items-center justify-center">
+                                                            <span class="iconify text-base text-[#4A4643]" data-icon="{{ $actLog['icon'] }}"></span>
+                                                        </span>
+                                                        <div class="flex-1 min-w-0 flex items-start justify-between gap-3">
+                                                            <div class="min-w-0">
+                                                                <p class="text-sm font-bold text-slate-900">{{ $actLog['activity_label'] ?? $actLog['activity'] ?? 'Activity' }}</p>
+                                                                @if(!empty($actLog['description']))
+                                                                    <p class="text-[0.8125rem] text-slate-600 mt-0.5 break-words">{{ $actLog['description'] }}</p>
+                                                                @endif
+                                                            </div>
+                                                            <div class="text-right shrink-0">
+                                                                <p class="text-[0.75rem] font-semibold text-slate-800">{{ $actLog['time'] }}</p>
+                                                                <p class="text-[0.6875rem] text-slate-500">{{ $actLog['created_at_human'] }}</p>
+                                                            </div>
+                                                        </div>
+                                                    </li>
+                                                @endforeach
+                                            </ol>
+                                        </div>
+                                    @empty
+                                        <p class="py-10 text-center text-sm text-slate-500">{{ $actCol['empty'] }}</p>
+                                    @endforelse
+                                        <p data-act-col-empty class="hidden py-10 text-center text-sm text-slate-500">Nothing of this kind here.</p>
+                                    </div>
+                                </section>
+                            @endforeach
+                        </div>
+                    @endif
                 </div>
+
+                <style>
+                    /* On a wide screen the section is exactly as tall as the space under the
+                       top bar (3.5rem plus its 1px border) less the page's own padding (py-3),
+                       so the page does not scroll: only the timeline scrolls, inside its panel. */
+                    @media (min-width: 1024px) {
+                        #activity-section:not(.hidden) { height: calc(100dvh - 3.5rem - 1px - 1.5rem); display: flex; flex-direction: column; }
+                        #activity-section .act-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+                        #activity-section:not(.hidden) > :not(.act-panel), #activity-section .act-panel > :not(.act-columns) { flex-shrink: 0; }
+                        #activity-section .act-columns { flex: 1; min-height: 0; grid-template-rows: minmax(0, 1fr); }
+                        #activity-section .act-timeline { flex: 1; min-height: 0; max-height: none; }
+                    }
+                    #activity-section .act-timeline { scrollbar-width: thin; scrollbar-color: #9E9E9E #F3F2F1; }
+                    #activity-section .act-timeline::-webkit-scrollbar { width: 0.5rem; }
+                    #activity-section .act-timeline::-webkit-scrollbar-track { background: #F3F2F1; border-radius: 99px; }
+                    #activity-section .act-timeline::-webkit-scrollbar-thumb { background: #9E9E9E; border-radius: 99px; }
+                    #activity-section .act-timeline::-webkit-scrollbar-thumb:hover { background: #6B6B6B; }
+                    .act-chip { background: #fff; border-color: #DADADA; color: #181818; }
+                    .act-chip:hover { border-color: #8A817A; }
+                    .act-chip .act-count { background: #EFEFEF; }
+                    .act-chip.is-on { background: #5F5A55; border-color: #5F5A55; }
+                    /* Beats the section's black-text rule: a filled chip keeps white text. */
+                    .ink-all.ink-all.ink-all .act-chip.is-on, .ink-all.ink-all.ink-all .act-chip.is-on * { color: #fff; }
+                    .act-chip.is-on .act-count { background: rgba(255,255,255,.2); }
+                </style>
+                <script>
+                    // Filters the timeline by kind, and hides a day heading with nothing left under it.
+                    (function () {
+                        const root = document.getElementById('activity-section');
+                        if (!root) return;
+                        root.querySelectorAll('[data-act-filter]').forEach(function (chip) {
+                            chip.addEventListener('click', function () {
+                                const key = chip.dataset.actFilter;
+                                root.querySelectorAll('[data-act-filter]').forEach(function (c) {
+                                    const on = c === chip;
+                                    c.classList.toggle('is-on', on);
+                                    c.setAttribute('aria-pressed', on ? 'true' : 'false');
+                                });
+                                let shown = 0;
+                                root.querySelectorAll('[data-act-day]').forEach(function (day) {
+                                    let dayShown = 0;
+                                    day.querySelectorAll('[data-act-group]').forEach(function (row) {
+                                        const match = key === 'all' || row.dataset.actGroup === key;
+                                        row.classList.toggle('hidden', !match);
+                                        if (match) dayShown++;
+                                    });
+                                    day.classList.toggle('hidden', dayShown === 0);
+                                    shown += dayShown;
+                                });
+                                root.querySelectorAll('[data-act-col]').forEach(function (col) {
+                                    const all = col.querySelectorAll('[data-act-group]');
+                                    const visible = Array.prototype.filter.call(all, function (r) { return !r.classList.contains('hidden'); }).length;
+                                    const count = col.querySelector('[data-act-col-count]');
+                                    if (count) count.textContent = visible;
+                                    const none = col.querySelector('[data-act-col-empty]');
+                                    if (none) none.classList.toggle('hidden', visible > 0 || all.length === 0);
+                                });
+                            });
+                        });
+                    })();
+                </script>
             </div>
 
             {{-- ══════════════ REPORTS SECTION ══════════════ --}}
-            <div id="reports-section" class="section-content hidden fade-in space-y-4">
+            <div id="reports-section" class="ink-all section-content hidden fade-in space-y-4">
                 @php
                     $roleLabels = [
                         'front_desk' => 'Front Desk',
@@ -906,144 +1360,160 @@
                     $teamTotal = $teamCompleted->count() + $teamAssigned->count();
                     $selfRate = $selfTotal > 0 ? round(($selfCompleted->count() / $selfTotal) * 100) : 0;
                     $teamRate = $teamTotal > 0 ? round(($teamCompleted->count() / $teamTotal) * 100) : 0;
-                    $selfByRole = $selfCompleted->groupBy('role')->map->count();
-                    $teamByRole = $teamCompleted->groupBy('role')->map->count();
-                    $maxSelfRole = max(1, (int) ($selfByRole->max() ?: 1));
-                    $maxTeamRole = max(1, (int) ($teamByRole->max() ?: 1));
                 @endphp
 
-                <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
-                    <div>
-                        <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 mb-0.5">Reports</h2>
-                        <p class="text-sm text-slate-400">Completed task assignment reports for yourself and your team.</p>
-                    </div>
-                    <div class="flex items-center gap-2 bg-white border border-slate-200 rounded-xl p-1">
-                        <button type="button" id="report-tab-self" onclick="switchReportTab('self')"
-                            class="px-3 py-1.5 rounded-lg text-xs font-bold bg-brand text-white">Individual</button>
-                        <button type="button" id="report-tab-team" onclick="switchReportTab('team')"
-                            class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 hover:text-slate-800">Team</button>
-                    </div>
+                {{-- Tabs styled like the faculty and dean Reports pages (.rp-tab there). --}}
+                <style>
+                    .srp-tabs { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+                    .srp-tab {
+                        display: inline-flex; align-items: center; gap: .5rem;
+                        padding: .7rem 1.25rem; border-radius: .875rem;
+                        font-size: .8125rem; font-weight: 700; color: #6B4A54;
+                        background: #fff; border: 1px solid #E4D3CF; cursor: pointer;
+                        white-space: nowrap; transition: all .2s ease;
+                    }
+                    .srp-tab:hover { border-color: rgba(123,23,48,.4); color: #7B1730; }
+                    .srp-tab.active {
+                        background: #7B1730; color: #fff; border-color: transparent;
+                        box-shadow: 0 8px 20px -6px rgba(123,23,48,.4);
+                    }
+                    /* On a wide screen the section is exactly as tall as the space under the
+                       top bar, so the page does not scroll: the title, tabs and figures stay
+                       put, and the by-role card and the finished list sit side by side under
+                       them, each only as tall as its rows, up to the space left, then scrolling inside. */
+                    @media (min-width: 1024px) {
+                        #reports-section:not(.hidden) { height: calc(100dvh - 3.5rem - 1px - 1.5rem); display: flex; flex-direction: column; }
+                        #reports-section:not(.hidden) > :not(.rp-panel) { flex-shrink: 0; }
+                        #reports-section .rp-panel:not(.hidden) { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+                        #reports-section .rp-stats { flex: none; }
+                        #reports-section .rp-body { flex: 1; min-height: 0; grid-template-rows: minmax(0, 1fr); }
+                        #reports-section .rp-body > .rp-card { max-height: 100%; }
+                        #reports-section .rp-card { display: flex; flex-direction: column; min-height: 0; }
+                        #reports-section .rp-card > :not(.rp-scroll) { flex: none; }
+                        #reports-section .rp-scroll { flex: 0 1 auto; min-height: 0; max-height: none; overflow-y: auto; }
+                    }
+                    #reports-section .rp-scroll { scrollbar-width: thin; scrollbar-color: #9E9E9E #F3F2F1; }
+                    #reports-section .rp-scroll::-webkit-scrollbar { width: 0.5rem; }
+                    #reports-section .rp-scroll::-webkit-scrollbar-track { background: #F3F2F1; border-radius: 99px; }
+                    #reports-section .rp-scroll::-webkit-scrollbar-thumb { background: #9E9E9E; border-radius: 99px; }
+                    #reports-section .rp-scroll::-webkit-scrollbar-thumb:hover { background: #6B6B6B; }
+                </style>
+
+                <div class="!mt-0">
+                    <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 mb-0.5">Reports</h2>
+                    <p class="text-sm text-slate-400">Completed task assignment reports for yourself and your team.</p>
                 </div>
 
-                <div id="report-panel-self" class="space-y-4">
-                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div class="srp-tabs" id="studentReportTabs">
+                    <button type="button" id="report-tab-self" class="srp-tab active" onclick="switchReportTab('self')">
+                        <span class="iconify text-base" data-icon="mdi:account-outline"></span> Individual
+                    </button>
+                    <button type="button" id="report-tab-team" class="srp-tab" onclick="switchReportTab('team')">
+                        <span class="iconify text-base" data-icon="mdi:account-group-outline"></span> Team
+                    </button>
+                </div>
+
+                <div id="report-panel-self" class="rp-panel space-y-4">
+                    <div class="rp-stats grid grid-cols-2 lg:grid-cols-4 gap-3">
                         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-                            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Completed</p>
-                            <p class="text-2xl font-extrabold text-slate-900 mt-1">{{ $selfCompleted->count() }}</p>
+                            <div class="flex items-center gap-2">
+                                <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Completed</p>
+                                <p class="text-2xl font-extrabold text-slate-900 leading-none">{{ $selfCompleted->count() }}</p>
+                            </div>
                         </div>
                         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-                            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Assigned</p>
-                            <p class="text-2xl font-extrabold text-slate-900 mt-1">{{ $selfAssigned->count() }}</p>
+                            <div class="flex items-center gap-2">
+                                <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Assigned</p>
+                                <p class="text-2xl font-extrabold text-slate-900 leading-none">{{ $selfAssigned->count() }}</p>
+                            </div>
                         </div>
                         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-                            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total</p>
-                            <p class="text-2xl font-extrabold text-slate-900 mt-1">{{ $selfTotal }}</p>
+                            <div class="flex items-center gap-2">
+                                <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Total</p>
+                                <p class="text-2xl font-extrabold text-slate-900 leading-none">{{ $selfTotal }}</p>
+                            </div>
                         </div>
                         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-                            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Completion</p>
-                            <p class="text-2xl font-extrabold text-brand mt-1">{{ $selfRate }}%</p>
+                            <div class="flex items-center gap-2">
+                                <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Completion Rate</p>
+                                <p class="text-2xl font-extrabold text-brand leading-none">{{ $selfRate }}%</p>
+                            </div>
+                            <div class="h-2 mt-2 rounded-full bg-slate-100 overflow-hidden" role="progressbar"
+                                 aria-valuenow="{{ $selfRate }}" aria-valuemin="0" aria-valuemax="100" aria-label="Completion rate">
+                                <div class="h-full rounded-full bg-brand" style="width: {{ min(100, max(0, $selfRate)) }}%"></div>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-                        <h3 class="text-sm font-bold text-slate-800 mb-4">My Completed by Role</h3>
-                        <div class="space-y-3">
-                            @forelse($selfByRole as $role => $count)
-                                <div>
-                                    <div class="flex items-center justify-between text-xs mb-1">
-                                        <span class="font-semibold text-slate-600">{{ $roleLabels[$role] ?? $role }}</span>
-                                        <span class="font-bold text-slate-800">{{ $count }}</span>
-                                    </div>
-                                    <div class="h-2 rounded-full bg-slate-100 overflow-hidden">
-                                        <div class="h-full rounded-full bg-brand" style="width: {{ round(($count / $maxSelfRole) * 100) }}%"></div>
-                                    </div>
-                                </div>
-                            @empty
-                                <p class="text-sm text-slate-400">No completed tasks for your roles yet.</p>
-                            @endforelse
+                    <div class="rp-body grid grid-cols-1 gap-4 items-start">
+                    <div class="rp-card bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                        <div class="px-5 py-3 border-b border-[#DADADA] bg-[#EFEFEF]">
+                            <h3 class="text-sm font-bold text-slate-800">Tasks I finished</h3>
                         </div>
-                    </div>
-
-                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                        <div class="px-5 py-3 border-b border-slate-100 bg-slate-50/60">
-                            <h3 class="text-sm font-bold text-slate-800">My Completed Assignments</h3>
-                        </div>
-                        <div class="divide-y divide-slate-50 max-h-[420px] overflow-y-auto">
+                        <div class="rp-scroll divide-y divide-[#EFEFEF] max-h-[26.25rem] overflow-y-auto">
                             @forelse($selfCompleted as $task)
-                                <div class="px-5 py-3.5 flex items-start gap-3">
-                                    <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">
-                                        <span class="iconify text-lg" data-icon="mdi:check-circle-outline"></span>
-                                    </div>
-                                    <div class="min-w-0 flex-1">
-                                        <p class="text-sm font-bold text-slate-800 truncate">{{ $task->title }}</p>
-                                        <p class="text-xs text-slate-400 mt-0.5">{{ $roleLabels[$task->role] ?? $task->role }} · {{ optional($task->updated_at)->format('M d, Y') }}</p>
-                                    </div>
+                                {{-- One line per task: its title, then the day it was finished. --}}
+                                <div class="px-5 py-3 flex items-center justify-between gap-4">
+                                    <p class="text-sm font-bold text-slate-800 truncate min-w-0">{{ $task->title }}</p>
+                                    <p class="text-xs font-semibold text-slate-500 whitespace-nowrap shrink-0">{{ $task->updated_at?->timezone('Asia/Manila')->format('F j, Y') }}</p>
                                 </div>
                             @empty
-                                <div class="px-5 py-10 text-center text-sm text-slate-400 font-semibold">No completed assignments yet.</div>
+                                <div class="px-5 py-10 text-center text-sm text-slate-400 font-semibold">No completed assignments.</div>
                             @endforelse
                         </div>
+                    </div>
                     </div>
                 </div>
 
-                <div id="report-panel-team" class="space-y-4 hidden">
-                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div id="report-panel-team" class="rp-panel space-y-4 hidden">
+                    <div class="rp-stats grid grid-cols-2 lg:grid-cols-4 gap-3">
                         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-                            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Completed</p>
-                            <p class="text-2xl font-extrabold text-slate-900 mt-1">{{ $teamCompleted->count() }}</p>
+                            <div class="flex items-center gap-2">
+                                <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Completed</p>
+                                <p class="text-2xl font-extrabold text-slate-900 leading-none">{{ $teamCompleted->count() }}</p>
+                            </div>
                         </div>
                         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-                            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Assigned</p>
-                            <p class="text-2xl font-extrabold text-slate-900 mt-1">{{ $teamAssigned->count() }}</p>
+                            <div class="flex items-center gap-2">
+                                <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Assigned</p>
+                                <p class="text-2xl font-extrabold text-slate-900 leading-none">{{ $teamAssigned->count() }}</p>
+                            </div>
                         </div>
                         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-                            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total</p>
-                            <p class="text-2xl font-extrabold text-slate-900 mt-1">{{ $teamTotal }}</p>
+                            <div class="flex items-center gap-2">
+                                <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Total</p>
+                                <p class="text-2xl font-extrabold text-slate-900 leading-none">{{ $teamTotal }}</p>
+                            </div>
                         </div>
                         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-                            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Completion</p>
-                            <p class="text-2xl font-extrabold text-brand mt-1">{{ $teamRate }}%</p>
+                            <div class="flex items-center gap-2">
+                                <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Completion Rate</p>
+                                <p class="text-2xl font-extrabold text-brand leading-none">{{ $teamRate }}%</p>
+                            </div>
+                            <div class="h-2 mt-2 rounded-full bg-slate-100 overflow-hidden" role="progressbar"
+                                 aria-valuenow="{{ $teamRate }}" aria-valuemin="0" aria-valuemax="100" aria-label="Completion rate">
+                                <div class="h-full rounded-full bg-brand" style="width: {{ min(100, max(0, $teamRate)) }}%"></div>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-                        <h3 class="text-sm font-bold text-slate-800 mb-4">Team Completed by Role</h3>
-                        <div class="space-y-3">
-                            @forelse($teamByRole as $role => $count)
-                                <div>
-                                    <div class="flex items-center justify-between text-xs mb-1">
-                                        <span class="font-semibold text-slate-600">{{ $roleLabels[$role] ?? $role }}</span>
-                                        <span class="font-bold text-slate-800">{{ $count }}</span>
-                                    </div>
-                                    <div class="h-2 rounded-full bg-slate-100 overflow-hidden">
-                                        <div class="h-full rounded-full bg-plum-accent" style="width: {{ round(($count / $maxTeamRole) * 100) }}%"></div>
-                                    </div>
-                                </div>
-                            @empty
-                                <p class="text-sm text-slate-400">No team completions yet.</p>
-                            @endforelse
+                    <div class="rp-body grid grid-cols-1 gap-4 items-start">
+                    <div class="rp-card bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                        <div class="px-5 py-3 border-b border-[#DADADA] bg-[#EFEFEF]">
+                            <h3 class="text-sm font-bold text-slate-800">Tasks my team finished</h3>
                         </div>
-                    </div>
-
-                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                        <div class="px-5 py-3 border-b border-slate-100 bg-slate-50/60">
-                            <h3 class="text-sm font-bold text-slate-800">Team Completed Assignments</h3>
-                        </div>
-                        <div class="divide-y divide-slate-50 max-h-[420px] overflow-y-auto">
+                        <div class="rp-scroll divide-y divide-[#EFEFEF] max-h-[26.25rem] overflow-y-auto">
                             @forelse($teamCompleted as $task)
-                                <div class="px-5 py-3.5 flex items-start gap-3">
-                                    <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">
-                                        <span class="iconify text-lg" data-icon="mdi:check-circle-outline"></span>
-                                    </div>
-                                    <div class="min-w-0 flex-1">
-                                        <p class="text-sm font-bold text-slate-800 truncate">{{ $task->title }}</p>
-                                        <p class="text-xs text-slate-400 mt-0.5">{{ $roleLabels[$task->role] ?? $task->role }} · {{ optional($task->updated_at)->format('M d, Y') }}</p>
-                                    </div>
+                                {{-- One line per task: its title, then the day it was finished. --}}
+                                <div class="px-5 py-3 flex items-center justify-between gap-4">
+                                    <p class="text-sm font-bold text-slate-800 truncate min-w-0">{{ $task->title }}</p>
+                                    <p class="text-xs font-semibold text-slate-500 whitespace-nowrap shrink-0">{{ $task->updated_at?->timezone('Asia/Manila')->format('F j, Y') }}</p>
                                 </div>
                             @empty
-                                <div class="px-5 py-10 text-center text-sm text-slate-400 font-semibold">No team completed assignments yet.</div>
+                                <div class="px-5 py-10 text-center text-sm text-slate-400 font-semibold">No team completed assignments.</div>
                             @endforelse
                         </div>
+                    </div>
                     </div>
                 </div>
             </div>
@@ -1052,146 +1522,134 @@
                  What the student may change is what describes them. Their student
                  number, block, adviser, class, team and roles are the school's
                  record and their faculty's to set, so they are shown read-only. --}}
-            <div id="profile-section" class="section-content hidden fade-in space-y-4">
+            <div id="profile-section" class="section-content hidden fade-in">
                 @php
                     $pUser = auth()->user();
                     $pAdviser = $student?->faculty?->user;
                 @endphp
-
-                <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">My Profile</h2>
-
-                @if (session('success'))
-                    <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 flex items-center gap-2">
-                        <span class="iconify text-emerald-600 text-lg" data-icon="mdi:check-circle-outline"></span>
-                        <p class="text-sm font-semibold text-emerald-800">{{ session('success') }}</p>
-                    </div>
-                @endif
-
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                    {{-- Editable --}}
-                    <form method="POST" action="{{ route('students.profile.update') }}" enctype="multipart/form-data"
-                          class="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                        @csrf
-                        @method('PUT')
-
-                        <div class="px-5 py-3 border-b border-slate-100 bg-slate-50/60">
-                            <h3 class="text-sm font-bold text-slate-800">Account Details</h3>
-                            <p class="text-[11px] text-slate-400 mt-0.5">This is how your name appears to your team and your faculty.</p>
-                        </div>
-
-                        <div class="p-5 space-y-4">
-                            <div class="flex items-center gap-4">
-                                <img src="{{ $pUser?->avatar_url }}" alt="{{ $studentDisplayName }}"
-                                     class="w-16 h-16 rounded-2xl object-cover border border-slate-200 shrink-0">
-                                <div class="min-w-0">
-                                    <label for="studentAvatar" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer">
-                                        <span class="iconify text-sm" data-icon="mdi:camera-outline"></span> Change photo
-                                    </label>
-                                    <input id="studentAvatar" type="file" name="avatar" accept="image/*" class="hidden">
-                                    <p class="text-[11px] text-slate-400 mt-1">JPG, PNG, WEBP or GIF · up to 2 MB</p>
-                                    @if ($pUser?->avatar)
-                                        <label class="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-semibold text-rose-600 cursor-pointer">
-                                            <input type="checkbox" name="remove_avatar" value="1" class="rounded border-slate-300 text-rose-500">
-                                            Remove current photo
-                                        </label>
-                                    @endif
-                                    @error('avatar')<p class="text-[11px] font-semibold text-rose-600 mt-1">{{ $message }}</p>@enderror
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                @foreach ([
-                                    ['first_name', 'First name', $pUser?->first_name, true],
-                                    ['middle_name', 'Middle name', $pUser?->middle_name, false],
-                                    ['last_name', 'Last name', $pUser?->last_name, true],
-                                ] as [$field, $label, $value, $required])
-                                    <div>
-                                        <label for="student_{{ $field }}" class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                                            {{ $label }} @if(!$required)<span class="text-slate-300 normal-case font-semibold">(optional)</span>@endif
-                                        </label>
-                                        <input id="student_{{ $field }}" type="text" name="{{ $field }}" value="{{ old($field, $value) }}" @if($required) required @endif
-                                               class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
-                                        @error($field)<p class="text-[11px] font-semibold text-rose-600 mt-1">{{ $message }}</p>@enderror
-                                    </div>
-                                @endforeach
-                            </div>
-
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div>
-                                    <label for="student_email" class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Email</label>
-                                    <input id="student_email" type="email" name="email" value="{{ old('email', $pUser?->email) }}" required
-                                           class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
-                                    @error('email')<p class="text-[11px] font-semibold text-rose-600 mt-1">{{ $message }}</p>@enderror
-                                </div>
-                                <div>
-                                    <label for="student_phone" class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                                        Phone <span class="text-slate-300 normal-case font-semibold">(optional)</span>
-                                    </label>
-                                    <input id="student_phone" type="text" name="phone_number" value="{{ old('phone_number', $pUser?->phone_number ?? $student?->phone_number) }}"
-                                           class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
-                                    @error('phone_number')<p class="text-[11px] font-semibold text-rose-600 mt-1">{{ $message }}</p>@enderror
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="px-5 py-3 border-t border-slate-100 bg-slate-50/60 flex justify-end">
-                            <button type="submit" class="px-4 py-2 rounded-xl bg-brand text-white text-xs font-bold hover:opacity-90 transition inline-flex items-center gap-1.5">
-                                <span class="iconify text-sm" data-icon="mdi:content-save-outline"></span> Save changes
-                            </button>
-                        </div>
-                    </form>
-
-                    {{-- Read-only school record --}}
-                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden self-start">
-                        <div class="px-5 py-3 border-b border-slate-100 bg-slate-50/60">
-                            <h3 class="text-sm font-bold text-slate-800">School Record</h3>
-                            <p class="text-[11px] text-slate-400 mt-0.5">Set by your faculty — ask them if something is wrong.</p>
-                        </div>
-                        <dl class="divide-y divide-slate-50">
-                            @foreach ([
-                                ['Student number', $student?->student_number],
-                                // The block is the class row this student sits in.
-                                // user_information.block is the faculty's own block
-                                // letter and is never set on a student, so reading it
-                                // here only ever produced a dash.
-                                ['Block', $studentClass?->name],
-                                ['Status', $student?->status ? ucfirst($student->status) : null],
-                                ['Adviser', $pAdviser?->name],
-                                ['Team', $group?->name],
-                            ] as [$label, $value])
-                                <div class="px-5 py-2.5 flex items-center justify-between gap-3">
-                                    <dt class="text-[11px] font-semibold text-slate-400">{{ $label }}</dt>
-                                    <dd class="text-xs font-bold text-slate-700 text-right truncate">{{ $value ?: '—' }}</dd>
-                                </div>
-                            @endforeach
-                            <div class="px-5 py-2.5">
-                                <dt class="text-[11px] font-semibold text-slate-400 mb-1.5">Roles</dt>
-                                <dd class="flex flex-wrap gap-1.5">
-                                    @forelse ($studentRoles ?? [] as $role)
-                                        <span class="px-2 py-0.5 rounded-full bg-brand-soft text-brand text-[10px] font-bold">
-                                            {{ \App\Support\HotelTemplateBuilder::ROLES[$role] ?? $role }}
-                                        </span>
-                                    @empty
-                                        <span class="text-xs text-slate-400">No role assigned yet</span>
-                                    @endforelse
-                                </dd>
-                            </div>
-                        </dl>
-                    </div>
-                </div>
+                @include('partials.profile-page', [
+                    'pfUser'        => $pUser,
+                    'pfRoleLabel'   => 'Student',
+                    'pfAction'      => route('students.profile.update'),
+                    'pfPhoneValue'  => old('phone_number', $pUser?->phone_number ?? $student?->phone_number),
+                    'pfRecordTitle' => 'School Record',
+                    'pfRecords'     => [
+                        ['Student no.', $student?->student_number],
+                        // The block is the class row this student sits in.
+                        // user_information.block is the faculty's own block
+                        // letter and is never set on a student, so reading it
+                        // here only ever produced a dash.
+                        ['Block', $studentClass?->name],
+                        ['Status', $student?->status ? ucfirst($student->status) : null],
+                        ['Adviser', $pAdviser?->name],
+                        ['Team', $group?->name],
+                    ],
+                    'pfRoles'       => array_map(fn ($r) => \App\Support\HotelTemplateBuilder::ROLES[$r] ?? $r, $studentRoles ?? []),
+                ])
             </div>
 
         </main>
     </div>
 
+    @if($group)
+        {{-- Edit dialog behind each slot's Propose/Edit button. Saves over fetch so the
+             task row, the team header and the history all move together, without throwing
+             the member back to the top of the dashboard.
+
+             It lives out here rather than inside a section: every .section-content is
+             hidden when another section is showing, and a dialog nested in one would be
+             hidden with it.
+
+             Rendered for every member of a team rather than gated on the edit right: a
+             save or a faculty verdict can open editing up while the page is still open,
+             and the button that reveals this dialog is repainted from that response. The
+             controller is the real gate. --}}
+        <div id="hotelConceptModal" class="ink-all fixed inset-0 z-50 hidden">
+            <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeHotelConceptModal()"></div>
+            <div class="relative top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-3xl shadow-2xl border border-slate-100 w-[92vw] max-w-xl max-h-[90vh] overflow-y-auto">
+                <div class="brand-gradient px-5 py-4 flex items-center justify-between gap-3 sticky top-0 z-10">
+                    <div class="min-w-0">
+                        <p class="text-white/60 text-[0.5625rem] font-bold uppercase tracking-[0.15em]">Hotel Concepts · Your Task</p>
+                        <h4 id="hotelConceptModalTitle" class="text-base font-extrabold text-white">Hotel Concept</h4>
+                    </div>
+                    <button type="button" onclick="closeHotelConceptModal()"
+                        class="w-8 h-8 rounded-full text-white/70 hover:text-white hover:bg-white/15 transition flex items-center justify-center shrink-0">
+                        <span class="iconify text-xl" data-icon="mdi:close"></span>
+                    </button>
+                </div>
+
+                {{-- One dialog serves both concepts; the slot says which one is
+                     open, and openHotelConceptModal() fills the fields from it. --}}
+                <form id="hotelConceptForm" method="POST" action="{{ route('students.hotel-concept.store') }}" class="p-5 space-y-4">
+                    @csrf
+                    <input type="hidden" name="slot" value="">
+                    <div id="hotelConceptFormError" class="hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"></div>
+
+                    <div>
+                        <label class="block text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Hotel Concept Title</label>
+                        <input name="title" type="text" required maxlength="{{ \App\Models\HotelConcept::LIMITS['title'] }}"
+                            placeholder="e.g. Seaside Serenity Resort"
+                            class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                        <p class="text-[0.625rem] text-slate-400 mt-1 text-right tabular-nums" data-concept-count="title"></p>
+                    </div>
+                    <div>
+                        {{-- The line the hotel introduces itself with. It is printed
+                             above the headline on the landing page and inside every
+                             footer, so it is a line and not a paragraph. --}}
+                        <label class="block text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                            Tagline <span class="text-slate-300 font-semibold normal-case tracking-normal">— optional</span>
+                        </label>
+                        <input name="tagline" type="text" maxlength="{{ \App\Models\HotelConcept::LIMITS['tagline'] }}"
+                            placeholder="e.g. Where the sea meets stillness"
+                            class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
+                        <div class="flex items-start justify-between gap-3 mt-1">
+                            <p class="text-[0.625rem] text-slate-400">Shown above the headline on your hotel's landing page and in its footer.</p>
+                            <p class="text-[0.625rem] text-slate-400 shrink-0 tabular-nums" data-concept-count="tagline"></p>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Hotel Type</label>
+                        <select name="hotel_type" required
+                            class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition appearance-none">
+                            <option value="">Select hotel type</option>
+                            @foreach(\App\Models\HotelConcept::HOTEL_TYPES as $typeKey => $typeLabel)
+                                <option value="{{ $typeKey }}">{{ $typeLabel }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                            Description <span class="text-slate-300 font-semibold normal-case tracking-normal">— {{ \App\Models\HotelConcept::DESCRIPTION_MIN }} to {{ \App\Models\HotelConcept::LIMITS['description'] }} characters</span>
+                        </label>
+                        {{-- One line while it holds 50 characters or fewer; grows from the 51st. See fitHotelConceptDescription(). --}}
+                        <textarea name="description" required rows="1" minlength="{{ \App\Models\HotelConcept::DESCRIPTION_MIN }}" maxlength="{{ \App\Models\HotelConcept::LIMITS['description'] }}"
+                            placeholder="What the hotel is, who it serves, what makes it different."
+                            style="resize: none; overflow: hidden;"
+                            class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"></textarea>
+                        <p class="text-[0.625rem] text-slate-400 mt-1 text-right tabular-nums" data-concept-count="description"></p>
+                    </div>
+
+                    <div class="flex items-center justify-end gap-2 pt-1">
+                        <button type="button" onclick="closeHotelConceptModal()"
+                            class="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100 transition">Cancel</button>
+                        <button type="submit" id="hotelConceptSubmit"
+                            class="px-4 py-2 brand-gradient text-white rounded-xl text-xs font-bold shadow-md shadow-brand/20 hover:opacity-90 transition disabled:opacity-60">
+                            Save concept
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
+
     <!-- Member Activity Logs Modal -->
-    <div id="memberActivityModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+    <div id="memberActivityModal" class="ink-all fixed inset-0 z-50 hidden flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeMemberActivityModal()"></div>
         <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-h-[90vh] flex flex-col" style="max-width: 36rem;">
             <div class="bg-brand-soft px-4 py-3 border-b border-brand/10 flex justify-between items-center rounded-t-2xl flex-shrink-0">
                 <div class="min-w-0">
                     <h4 id="memberActivityModalTitle" class="font-bold text-brand text-sm truncate">Activity Logs</h4>
-                    <p id="memberActivityModalSubtitle" class="text-[11px] text-slate-500 truncate"></p>
+                    <p id="memberActivityModalSubtitle" class="text-[0.6875rem] text-slate-500 truncate"></p>
                 </div>
                 <button type="button" onclick="closeMemberActivityModal()" class="text-slate-400 hover:text-brand hover:bg-white w-7 h-7 rounded-full transition flex items-center justify-center shrink-0" aria-label="Close">
                     <span class="iconify text-lg" data-icon="mdi:close"></span>
@@ -1206,9 +1664,60 @@
         </div>
     </div>
 
+    <!-- Task Instructions Modal -->
+    {{-- Top level like the dialogs above, and for the same reason: one nested in a
+         section is hidden along with it. This one has a second reason — inside
+         #tasksLiveContainer the tasks poller would throw it away. --}}
+    <div id="taskInstructionsModal" class="ink-all fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeTaskInstructions()"></div>
+        <div class="relative bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-h-[90vh] flex flex-col" style="max-width: 34rem;">
+            <div class="bg-[#F5F2EF] px-4 py-3 border-b border-[#E7E1DD] flex justify-between items-start gap-3 rounded-t-2xl flex-shrink-0">
+                <div class="min-w-0">
+                    <p class="text-[0.625rem] font-bold uppercase tracking-wider text-[#8A817A]">Task Instructions</p>
+                    <h4 id="taskInstructionsName" class="font-bold text-[#181818] text-sm truncate">Task</h4>
+                </div>
+                <button type="button" onclick="closeTaskInstructions()" class="text-[#5F5A55] hover:text-[#181818] hover:bg-white w-7 h-7 rounded-full transition flex items-center justify-center shrink-0" aria-label="Close">
+                    <span class="iconify text-lg" data-icon="mdi:close"></span>
+                </button>
+            </div>
+            <div class="px-4 py-3 border-b border-slate-100 grid grid-cols-2 gap-x-4 gap-y-2.5 flex-shrink-0">
+                <div class="min-w-0">
+                    <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Task Code</p>
+                    <p id="taskInstructionsCode" class="text-[0.75rem] font-bold text-slate-700 truncate"></p>
+                </div>
+                <div class="min-w-0">
+                    <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Role</p>
+                    <p id="taskInstructionsRole" class="text-[0.75rem] font-bold text-slate-700 truncate"></p>
+                </div>
+                <div class="min-w-0">
+                    <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Status</p>
+                    <p id="taskInstructionsStatus" class="text-[0.75rem] font-bold text-slate-700 truncate"></p>
+                </div>
+                <div class="min-w-0">
+                    <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Due Date</p>
+                    <p id="taskInstructionsDue" class="text-[0.75rem] font-bold text-slate-700 truncate"></p>
+                </div>
+            </div>
+            {{-- The card's own .task-detail node is moved in here while the dialog is
+                 open, and moved back out when it closes. --}}
+            <div id="taskInstructionsBody" class="overflow-y-auto flex-1"></div>
+            <div class="px-4 py-2.5 border-t border-slate-100 flex justify-end rounded-b-2xl flex-shrink-0 bg-slate-50/50">
+                <button type="button" onclick="closeTaskInstructions()" class="px-3.5 py-1.5 rounded-lg bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 transition font-semibold text-xs">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // ── Section switching ──
         function showSection(section) {
+            // The same loading circle as a page change, for a click once the page is
+            // up; the sections opened on load (?section=) skip it.
+            const switching = document.getElementById(section + '-section')?.classList.contains('hidden');
+            if (switching && document.readyState === 'complete' && window.hmsNavLoader) {
+                window.hmsNavLoader.show(350);
+            }
             document.querySelectorAll('.section-content').forEach(el => el.classList.add('hidden'));
             document.getElementById(section + '-section').classList.remove('hidden');
             // Re-trigger fade animation
@@ -1227,7 +1736,7 @@
             }
 
             // Update breadcrumb
-            const labels = { home: 'Dashboard', group: 'My Group', tasks: 'Tasks', activity: 'Activity Logs', reports: 'Reports', profile: 'My Profile' };
+            const labels = { home: 'Dashboard', group: 'Team Overview', tasks: 'Tasks', activity: 'Activity Logs', reports: 'Reports', profile: 'My Profile' };
             document.getElementById('breadcrumb-current').textContent = labels[section] || 'Dashboard';
 
             try {
@@ -1243,6 +1752,35 @@
 
         /* The concept form posts and redirects back here, so the section the
            student was reading has to survive the round trip. */
+
+        /* ── Live greeting ──────────────────────────────────────────────────
+           Server-rendered in Manila time on load; from then on this keeps it
+           turning over at 5am/12pm/6pm Manila time without a refresh, reading
+           the clock through Intl rather than the server's own timezone. */
+        const HOME_FIRST_NAME = @json($homeFirstName);
+
+        function homeGreetingWord() {
+            const parts = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'Asia/Manila', hour: 'numeric', hour12: false,
+            }).formatToParts(new Date());
+            // Some engines report midnight as hour "24" under hour12:false.
+            const hour = Number(parts.find((p) => p.type === 'hour')?.value || 0) % 24;
+
+            if (hour >= 5 && hour < 12) return 'Good morning';
+            if (hour >= 12 && hour < 18) return 'Good afternoon';
+            return 'Good evening';
+        }
+
+        function refreshHomeGreeting() {
+            const el = document.getElementById('homeGreetingText');
+            if (el) el.textContent = homeGreetingWord() + ', ' + HOME_FIRST_NAME + '!';
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            refreshHomeGreeting();
+            setInterval(refreshHomeGreeting, 60000);
+        });
+
         (function restoreSection() {
             let section = null;
             try {
@@ -1256,8 +1794,31 @@
                 $profileFields = ['first_name', 'middle_name', 'last_name', 'email', 'phone_number', 'avatar'];
                 $profileHasErrors = collect($profileFields)->contains(fn ($f) => $errors->has($f));
             @endphp
-            @if ($profileHasErrors)
+            @if (auth()->user()?->must_change_password)
+                // Still on the temporary password: EnsurePasswordChanged keeps them
+                // on this page, so open Profile at the Change Password form.
                 section = 'profile';
+                document.addEventListener('DOMContentLoaded', () => {
+                    document.getElementById('change-password')?.scrollIntoView({ block: 'start' });
+                });
+            @elseif ($profileHasErrors || $errors->getBag('password')->any() || session('password_success'))
+                section = 'profile';
+            @elseif ($errors->has('task') || session('task_success'))
+                // Mark as done: back to Tasks, where the button was pressed, and
+                // say what happened there - it used to land on My Team with the
+                // message in the concept panel, so nothing seemed to happen.
+                section = 'tasks';
+                document.addEventListener('DOMContentLoaded', () => {
+                    if (!window.Swal) return;
+                    Swal.fire({
+                        icon: @json($errors->has('task') ? 'warning' : 'success'),
+                        title: @json($errors->has('task') ? 'Not submitted' : 'Submitted'),
+                        text: @json($errors->has('task') ? $errors->first('task') : session('task_success')),
+                        confirmButtonColor: '#7B1730',
+                        // heightAuto would let the page grow behind the dialog.
+                        heightAuto: false,
+                    });
+                });
             @elseif (session('success') || $errors->any())
                 // Only when the URL did not already name one — the profile save
                 // redirects with ?section=profile and must keep it.
@@ -1267,6 +1828,33 @@
             if (section && document.getElementById(section + '-section')) {
                 document.addEventListener('DOMContentLoaded', () => showSection(section));
             }
+
+            /* ?task=<id> or ?focus=concepts - a notification about one task, or
+               about the team's concepts: bring it into view and outline it briefly. */
+            document.addEventListener('DOMContentLoaded', () => {
+                const params = new URLSearchParams(window.location.search);
+                const taskId = params.get('task');
+                const root = document.getElementById((section || 'home') + '-section') || document;
+                const el = taskId
+                    ? root.querySelector('[data-task-card][data-task-id="' + CSS.escape(taskId) + '"]')
+                    : (params.get('focus') === 'concepts' ? document.getElementById('conceptTeamCard') : null);
+                if (!el) {
+                    if (taskId && window.Swal) {
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'Task not found',
+                            text: 'This task is no longer on your task list.',
+                            confirmButtonColor: '#7B1730',
+                            heightAuto: false,
+                        });
+                    }
+                    return;
+                }
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.style.transition = 'box-shadow .3s ease';
+                el.style.boxShadow = '0 0 0 3px #7B1730';
+                setTimeout(() => { el.style.boxShadow = ''; }, 2500);
+            });
         })();
 
         /* ── Hotel concepts: the panel is the source of truth on screen ──────
@@ -1293,6 +1881,36 @@
             return (conceptState?.slots || []).find((entry) => Number(entry.slot) === Number(slot)) || null;
         }
 
+        /* "12 / 60" under Title, Tagline and Description. maxlength stops typing past
+           the limit; a concept saved before the limits were lowered can still open
+           longer than that, so its counter turns red until it is cut down. The
+           Description counter is also red once typed into but under its minlength. */
+        function updateHotelConceptCounts(form) {
+            form.querySelectorAll('[data-concept-count]').forEach((counter) => {
+                const field = form.elements[counter.dataset.conceptCount];
+                if (!field) return;
+                const length = field.value.length;
+                const outOfRange = length > field.maxLength || (length > 0 && length < field.minLength);
+                counter.textContent = length + ' / ' + field.maxLength;
+                counter.classList.toggle('text-red-500', outOfRange);
+                counter.classList.toggle('text-slate-400', !outOfRange);
+            });
+        }
+        /* The Description box previews 50 characters on one line. From the 51st it
+           takes a second line, and it grows further if the text wraps sooner, as it
+           does on a narrow screen, so nothing typed is ever out of view. */
+        function fitHotelConceptDescription(form) {
+            const field = form.elements.description;
+            if (!field) return;
+            field.rows = field.value.length > 50 ? 2 : 1;
+            field.style.height = 'auto';
+            field.style.height = Math.max(field.clientHeight, field.scrollHeight) + 2 + 'px';
+        }
+        document.getElementById('hotelConceptForm')?.addEventListener('input', (e) => {
+            updateHotelConceptCounts(e.currentTarget);
+            fitHotelConceptDescription(e.currentTarget);
+        });
+
         function openHotelConceptModal(slot) {
             const modal = document.getElementById('hotelConceptModal');
             const form = document.getElementById('hotelConceptForm');
@@ -1305,8 +1923,10 @@
             // Always open on the stored concept, not on a half-typed abandoned edit.
             form.querySelector('input[name="slot"]').value = editingSlot;
             form.querySelector('input[name="title"]').value = concept?.title ?? '';
+            form.querySelector('input[name="tagline"]').value = concept?.tagline ?? '';
             form.querySelector('select[name="hotel_type"]').value = concept?.hotel_type ?? '';
             form.querySelector('textarea[name="description"]').value = concept?.description ?? '';
+            updateHotelConceptCounts(form);
 
             const title = document.getElementById('hotelConceptModalTitle');
             if (title) {
@@ -1315,6 +1935,8 @@
             hideHotelConceptError();
 
             modal.classList.remove('hidden');
+            // Measured once visible: a hidden textarea has no height to read.
+            fitHotelConceptDescription(form);
             document.body.style.overflow = 'hidden';
             setTimeout(() => form.querySelector('input[name="title"]')?.focus(), 50);
         }
@@ -1323,7 +1945,7 @@
             const modal = document.getElementById('hotelConceptModal');
             if (!modal) return;
             modal.classList.add('hidden');
-            document.body.style.overflow = 'auto';
+            document.body.style.overflow = '';
         }
 
         function hideHotelConceptError() {
@@ -1347,9 +1969,9 @@
            stands at a glance. */
         const CONCEPT_BADGE_CLASSES = {
             draft: 'bg-slate-100 text-slate-600 border-slate-200',
-            submitted: 'bg-amber-50 text-amber-700 border-amber-200',
-            needs_revision: 'bg-rose-50 text-rose-700 border-rose-200',
-            approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+            submitted: 'status-badge-pending',
+            needs_revision: 'status-badge-revision',
+            approved: 'status-badge-completed',
             not_selected: 'bg-slate-100 text-slate-500 border-slate-300',
         };
 
@@ -1361,7 +1983,7 @@
         };
 
         const CONCEPT_NOTICE_TEXT = {
-            submitted: 'Submitted to your faculty. You can still improve it until they choose.',
+            submitted: 'This Hotel Concept has been submitted and is awaiting faculty review. Editing is temporarily disabled.',
             needs_revision: 'Your faculty asked for changes.',
             approved: 'Your faculty approved this concept. It is your official hotel concept and is no longer editable.',
         };
@@ -1383,24 +2005,230 @@
             if (submitBtn) {
                 submitBtn.classList.toggle('hidden', !conceptState?.can_submit);
                 submitBtn.disabled = false;
+
+                // Resubmit rather than Submit once any slot is answering a revision
+                // request — same button, same action, different moment.
+                const isResubmit = (conceptState?.slots || [])
+                    .some((entry) => entry.concept?.status === 'needs_revision');
+                const label = document.getElementById('conceptSubmitAllLabel');
+                if (label) label.textContent = isResubmit ? 'Resubmit to Faculty' : 'Submit both to Faculty';
             }
 
             paintTeamHeaderConcept();
+            settleConceptTaskRow();
+        }
+
+        /* ── Live concept state ────────────────────────────────────────────────
+           The verdict is faculty's action on their own page, so nothing about it
+           reaches this one on its own. Polling the same endpoint the page was drawn
+           from keeps every part of the concept live — the badges, the faculty's
+           words, the lock on the fields, the team heading, and the task row itself.
+
+           Polled rather than pushed because that is what this app already does for
+           presence, and the endpoint returns the whole team's payload, which is
+           exactly what paintHotelConcepts() takes. */
+
+        /* What the last paint saw, so a change can be told from a repeat. Seeded
+           from the payload the page rendered with: the first poll after load should
+           announce nothing. */
+        let conceptStatusSeen = conceptStatusMap(conceptState);
+        let conceptTaskSettled = false;
+
+        function conceptStatusMap(data) {
+            const seen = {};
+            (data?.slots || []).forEach((entry) => {
+                seen[String(entry.slot)] = entry.concept ? (entry.concept.status || 'draft') : null;
+            });
+            return seen;
+        }
+
+        /* The concept task closes on the verdict, not on a tick — so when the
+           verdict lands its card has to leave Active Tasks the way a submitted task
+           would have. Done in the DOM rather than by reloading: the point of the
+           poll is that nobody has to refresh.
+
+           Runs on every paint but acts once, because paintHotelConcepts() is also
+           called after every save. */
+        function settleConceptTaskRow() {
+            const row = document.getElementById('conceptPanelCard');
+            if (!row || conceptTaskSettled || !conceptState?.decided) return;
+
+            conceptTaskSettled = true;
+
+            const title = row.dataset.taskTitle || 'Propose Two Hotel Concepts';
+            // Read off the card being replaced, so the settled card keeps the same
+            // code rather than assuming where the concept task sits.
+            const code = row.querySelector('[data-task-code]')?.textContent.trim() || 'HOTEL CONCEPT';
+            const group = row.closest('[data-task-group]');
+            row.remove();
+
+            // Prepended: the concept is the team's first task and leads the grid
+            // whatever its state, the same order the server renders the group in.
+            const list = group?.querySelector('[data-completed-list]');
+            if (list) {
+                const done = document.createElement('div');
+                done.className = 'task-card flex flex-col bg-white rounded-2xl border border-[#E7E1DD] shadow-sm overflow-hidden';
+                done.dataset.taskCard = '';
+                done.dataset.taskStatus = 'completed';
+                done.innerHTML =
+                    '<div class="flex flex-wrap items-start gap-3 px-4 sm:px-5 pt-4 pb-3">'
+                        + '<div class="min-w-0 flex-1 basis-[8.75rem]">'
+                            + '<p class="text-[0.875rem] font-bold leading-snug text-slate-400">' + conceptEscape(title) + '</p>'
+                            + '<p class="text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400 mt-1">' + conceptEscape(code) + '</p>'
+                        + '</div>'
+                        + '<div class="flex items-center gap-2 shrink-0 ml-auto">'
+                            + '<span data-row-status-badge class="inline-flex items-center px-2.5 py-1 rounded-lg text-[0.6875rem] font-bold whitespace-nowrap status-badge-completed">Approved</span>'
+                        + '</div>'
+                    + '</div>'
+                    + '<div class="mt-auto flex items-center justify-between gap-3 px-4 sm:px-5 pb-3.5">'
+                        + '<div class="flex items-center gap-1.5 min-w-0">'
+                            + '<span class="iconify text-[#8A817A] text-sm shrink-0" data-icon="mdi:calendar-blank-outline"></span>'
+                            + '<p class="text-[0.6875rem] font-semibold text-slate-300">No due date</p>'
+                        + '</div>'
+                        + '<div class="flex items-center gap-2 shrink-0">'
+                            + '<span class="w-8 h-8 rounded-full bg-[#F5F2EF] text-[#5F5A55] flex items-center justify-center">'
+                                + '<span class="iconify text-base" data-icon="mdi:check"></span>'
+                            + '</span>'
+                        + '</div>'
+                    + '</div>';
+                list.prepend(done);
+                if (window.Iconify && typeof window.Iconify.scan === 'function') {
+                    window.Iconify.scan(done);
+                }
+            }
+
+            if (group) refreshTaskGroupSummary(group);
+            filterTaskRows();
+            bumpTaskCounts(-1);
+        }
+
+        /* Every place the page prints a task count, moved together. They are marked
+           rather than looked up by id because the same number is printed in four
+           places — the nav badge, the two KPI tiles, and the pills over the list. */
+        function bumpTaskCounts(activeDelta) {
+            document.querySelectorAll('[data-task-count="active"]').forEach((el) => {
+                el.textContent = String(Math.max(0, (parseInt(el.textContent, 10) || 0) + activeDelta));
+            });
+            document.querySelectorAll('[data-task-count="completed"]').forEach((el) => {
+                el.textContent = String(Math.max(0, (parseInt(el.textContent, 10) || 0) - activeDelta));
+            });
+
+            const active = parseInt(
+                document.querySelector('[data-task-count="active"]')?.textContent || '0', 10
+            ) || 0;
+
+            document.getElementById('navTasksBadge')?.classList.toggle('hidden', active === 0);
+        }
+
+        /* Says what changed, once, when it changes. Without this the cards would
+           quietly rearrange themselves under a member who was reading them. */
+        function announceConceptChanges(data) {
+            const now = conceptStatusMap(data);
+            const messages = [];
+
+            Object.keys(now).forEach((slot) => {
+                const was = conceptStatusSeen[slot];
+                const is = now[slot];
+                if (is === was || !is) return;
+
+                const label = 'Concept ' + slot;
+                if (is === 'approved') messages.push(label + ' was approved by your faculty.');
+                else if (is === 'needs_revision') messages.push(label + ' was sent back for revision.');
+                else if (is === 'not_selected') messages.push('Your faculty chose the other concept.');
+            });
+
+            conceptStatusSeen = now;
+
+            if (!messages.length) return;
+
+            // A toast, not a dialog: the bell already carries the notification, and
+            // the cards below have repainted themselves — this only has to catch the
+            // eye of someone who was looking elsewhere on the page.
+            const approved = messages.some((m) => m.indexOf('approved') !== -1);
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: approved ? 'success' : 'info',
+                title: approved ? 'Your concept was approved' : 'Your faculty answered',
+                text: messages.join(' '),
+                showConfirmButton: false,
+                timer: 6000,
+                timerProgressBar: true,
+            });
+        }
+
+        async function syncHotelConcepts() {
+            try {
+                const res = await fetch(@json(route('students.hotel-concept.history')), {
+                    credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                if (!res.ok) return;
+
+                const data = await res.json();
+                if (!data || !Array.isArray(data.slots)) return;
+
+                // Announce before painting: the comparison is against what the member
+                // is still looking at.
+                announceConceptChanges(data);
+                paintHotelConcepts(data);
+                if (window.Iconify && typeof window.Iconify.scan === 'function') {
+                    window.Iconify.scan(document.getElementById('conceptPanel') || document.body);
+                }
+            } catch (e) { /* a dropped poll is not worth telling anyone about */ }
         }
 
         /* The concept faculty chose, in the team header. Once one slot's payload
-           comes back approved, that is the team's identity now — the proposals
-           panel below has nothing left to do, so it hides and this fills in. */
+           comes back approved, that is the team's identity now: the heading stops
+           being the group's name and becomes the concept's title, with its type on
+           the line under it and its description below the whole header row. The
+           group's own name drops to the eyebrow above, so the roster underneath is
+           still identifiable.
+
+           The concept task row over in Tasks has nothing left to propose either, so
+           it hides. (The row usually goes on its own, since a verdict archives the
+           task; the toggle covers the page that was already open when it landed.)
+
+           Everything here is reversible on purpose — the heading reverts from its
+           data-team-name — because a repaint runs on every save, not only after a
+           verdict. */
         function paintTeamHeaderConcept() {
             const container = document.getElementById('teamHeaderConcept');
             const panelCard = document.getElementById('conceptPanelCard');
-            if (!container) return;
+            const teamCard = document.getElementById('conceptTeamCard');
+            const heading = document.getElementById('teamHeaderName');
+            const eyebrow = document.getElementById('teamHeaderEyebrow');
+            const typeLine = document.getElementById('teamHeaderType');
 
             const approved = (conceptState?.slots || [])
                 .map((entry) => entry.concept)
                 .find((concept) => concept && concept.status === 'approved');
 
+            // Two places to put away once a verdict lands: the task row over in Tasks,
+            // and the panel in My Team where the proposals were written.
             if (panelCard) panelCard.classList.toggle('hidden', !!approved);
+            if (teamCard) teamCard.classList.toggle('hidden', !!approved);
+
+            // The team name and its type line: swapped whether or not the description
+            // container exists, so a page without one still renames.
+            if (heading) {
+                heading.textContent = approved
+                    ? (approved.title || heading.dataset.teamName || '')
+                    : (heading.dataset.teamName || heading.textContent);
+            }
+
+            if (eyebrow) {
+                eyebrow.textContent = approved
+                    ? (heading?.dataset.teamName || 'Official Hotel Concept')
+                    : 'Hotel Management Simulation';
+            }
+
+            if (typeLine) {
+                typeLine.textContent = approved ? (approved.hotel_type_label || '') : '';
+                typeLine.classList.toggle('hidden', !approved || !approved.hotel_type_label);
+            }
+
+            if (!container) return;
 
             if (!approved) {
                 container.classList.add('hidden');
@@ -1414,18 +2242,11 @@
             const isLong = description.length > 180;
 
             container.innerHTML =
-                '<div class="flex items-start justify-between gap-3 flex-wrap">'
-                    + '<div class="min-w-0">'
-                        + '<p class="text-white/50 text-[9px] font-bold uppercase tracking-[0.15em]">Official Hotel Concept</p>'
-                        + '<h4 class="text-base font-extrabold text-white leading-tight mt-0.5">' + conceptEscape(approved.title) + '</h4>'
-                    + '</div>'
-                    + '<span class="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full bg-white/15 border border-white/20 text-[10px] font-bold text-white">'
-                        + conceptEscape(approved.hotel_type_label) + '</span>'
-                + '</div>'
-                + '<p id="teamHeaderConceptDesc" class="text-[11px] text-white/70 leading-relaxed mt-2 whitespace-pre-line' + (isLong ? ' line-clamp-3' : '') + '">'
+                '<p class="text-slate-400 text-[0.5625rem] font-bold uppercase tracking-[0.15em]">Concept Description</p>'
+                + '<p id="teamHeaderConceptDesc" class="text-[0.6875rem] text-slate-500 leading-relaxed mt-1 whitespace-pre-line' + (isLong ? ' line-clamp-3' : '') + '">'
                     + conceptEscape(description) + '</p>'
                 + (isLong
-                    ? '<button type="button" onclick="toggleTeamHeaderConceptDesc(this)" class="mt-1.5 text-[10px] font-bold text-white/80 hover:text-white underline underline-offset-2">Show more</button>'
+                    ? '<button type="button" onclick="toggleTeamHeaderConceptDesc(this)" class="mt-1.5 text-[0.625rem] font-bold text-brand hover:text-brand-dark underline underline-offset-2">Show more</button>'
                     : '');
 
             container.classList.remove('hidden');
@@ -1445,36 +2266,39 @@
             const status = concept ? (concept.status || 'draft') : 'draft';
 
             const badge = concept
-                ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full border text-[9px] font-bold uppercase tracking-wider '
+                ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full border text-[0.5625rem] font-bold uppercase tracking-wider '
                     + (CONCEPT_BADGE_CLASSES[status] || CONCEPT_BADGE_CLASSES.draft) + '">'
                     + conceptEscape(concept.status_label) + '</span>'
-                : '<span class="inline-flex items-center px-2 py-0.5 rounded-full border border-dashed border-slate-300 text-slate-400 text-[9px] font-bold uppercase tracking-wider">Empty</span>';
+                : '<span class="inline-flex items-center px-2 py-0.5 rounded-full border border-dashed border-slate-300 text-slate-400 text-[0.5625rem] font-bold uppercase tracking-wider">Empty</span>';
 
             const rounds = concept ? Number(concept.revision_count || 0) : 0;
             const revisionBadge = rounds > 0
-                ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-bold uppercase tracking-wider">Revision '
+                ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[0.5625rem] font-bold uppercase tracking-wider">Revision '
                     + rounds + '</span>'
                 : '';
 
             const editButton = entry.can_edit
                 ? '<button type="button" onclick="openHotelConceptModal(' + Number(entry.slot) + ')"'
-                    + ' class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold text-brand bg-brand-soft border border-brand/10 hover:bg-brand/10 transition">'
-                    + '<span class="iconify text-[13px]" data-icon="mdi:pencil-outline"></span>'
+                    + ' class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[0.6875rem] font-bold text-brand bg-brand-soft border border-brand/10 hover:bg-brand/10 transition">'
+                    + '<span class="iconify text-[0.8125rem]" data-icon="mdi:pencil-outline"></span>'
                     + (concept ? 'Edit' : 'Propose')
                   + '</button>'
                 : '';
 
             const officialRibbon = concept && status === 'approved'
-                ? '<p class="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-[0.15em] text-emerald-600 mt-1.5">'
-                    + '<span class="iconify text-[12px]" data-icon="mdi:star-circle"></span> Official Hotel Concept</p>'
+                ? '<p class="inline-flex items-center gap-1 text-[0.5625rem] font-bold uppercase tracking-[0.15em] text-emerald-600 mt-1.5">'
+                    + '<span class="iconify text-[0.75rem]" data-icon="mdi:star-circle"></span> Official Hotel Concept</p>'
                 : '';
 
             const body = concept
                 ? officialRibbon
                     + '<h4 class="text-sm font-extrabold text-slate-800 mt-1">' + conceptEscape(concept.title) + '</h4>'
-                    + '<p class="text-[11px] font-bold text-slate-500">' + conceptEscape(concept.hotel_type_label) + '</p>'
+                    + (concept.tagline
+                        ? '<p class="text-[0.6875rem] italic text-brand">' + conceptEscape(concept.tagline) + '</p>'
+                        : '')
+                    + '<p class="text-[0.6875rem] font-bold text-slate-500">' + conceptEscape(concept.hotel_type_label) + '</p>'
                     + '<p class="text-xs text-slate-500 leading-relaxed mt-1.5 whitespace-pre-line">' + conceptEscape(concept.description) + '</p>'
-                : '<p class="text-sm font-bold text-slate-400 mt-1">Not proposed yet</p>'
+                : '<p class="text-sm font-bold text-slate-400 mt-1">Not proposed</p>'
                     + '<p class="text-xs text-slate-400 mt-1">'
                     + (entry.can_edit
                         ? 'Write this one to complete the pair.'
@@ -1496,7 +2320,7 @@
                 '<div class="flex items-start justify-between gap-2">' +
                     '<div class="min-w-0">' +
                         '<div class="flex items-center gap-1.5 flex-wrap">' +
-                            '<p class="text-[9px] font-bold uppercase tracking-[0.15em] text-brand">' + conceptEscape(entry.slot_label) + '</p>' +
+                            '<p class="text-[0.5625rem] font-bold uppercase tracking-[0.15em] text-brand">' + conceptEscape(entry.slot_label) + '</p>' +
                             badge + revisionBadge +
                         '</div>' +
                         body +
@@ -1505,7 +2329,7 @@
                 '</div>' +
                 notice +
                 '<div class="mt-3">' +
-                    '<p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Edit History · '
+                    '<p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Edit History · '
                         + history.length + ' ' + (history.length === 1 ? 'entry' : 'entries') + '</p>' +
                     '<div class="rounded-xl border border-slate-100 bg-white divide-y divide-slate-100 max-h-56 overflow-y-auto">'
                         + renderConceptHistory(history) +
@@ -1516,12 +2340,12 @@
 
         function renderConceptHistory(history) {
             if (history.length === 0) {
-                return '<div class="px-3 py-6 text-center text-xs text-slate-400">No edits recorded yet.</div>';
+                return '<div class="px-3 py-6 text-center text-xs text-slate-400">No edits recorded.</div>';
             }
 
             return history.map(function (entry) {
                 const changes = (entry.changes || []).map(function (change) {
-                    return '<li class="text-[11px] text-slate-500">' +
+                    return '<li class="text-[0.6875rem] text-slate-500">' +
                         '<span class="font-semibold text-slate-600">' + conceptEscape(change.label) + ':</span> ' +
                         '<span class="line-through text-slate-400">' + (conceptEscape(change.from) || '—') + '</span> ' +
                         '<span class="text-slate-400">to</span> ' +
@@ -1533,27 +2357,31 @@
                     '<div class="flex items-start justify-between gap-2 flex-wrap">' +
                         '<p class="text-xs font-bold text-slate-700">' + conceptEscape(entry.editor) +
                             ' <span class="font-semibold text-slate-400">— ' + conceptEscape(entry.action_label) + '</span></p>' +
-                        '<span class="text-[10px] text-slate-400 shrink-0">' + conceptEscape(entry.created_at) +
+                        '<span class="text-[0.625rem] text-slate-400 shrink-0">' + conceptEscape(entry.created_at) +
                             ' · ' + conceptEscape(entry.created_at_human) + '</span>' +
                     '</div>' +
                     (changes
                         ? '<ul class="mt-1.5 space-y-1">' + changes + '</ul>'
-                        : '<p class="mt-1.5 text-[11px] text-slate-500"><span class="font-semibold text-slate-600">'
+                        : '<p class="mt-1.5 text-[0.6875rem] text-slate-500"><span class="font-semibold text-slate-600">'
                             + conceptEscape(entry.title) + '</span> · ' + conceptEscape(entry.hotel_type_label) + '</p>') +
                 '</div>';
             }).join('');
         }
 
-        /* Hand both concepts to faculty. The team can keep improving either one
-           afterward — submitting only starts the review, it does not lock anything. */
+        /* Hand both concepts to faculty. Submitting locks them for the whole team
+           immediately — nobody can edit again until faculty sends one back for
+           revision, or approves one and closes the pair for good. */
         async function submitHotelConcepts() {
+            const isResubmit = (conceptState?.slots || [])
+                .some((entry) => entry.concept?.status === 'needs_revision');
+
             const confirmed = await Swal.fire({
                 icon: 'question',
-                title: 'Submit your hotel concepts?',
-                text: 'Submit your hotel concepts to your faculty? Your team can keep improving either concept until your faculty approves one.',
+                title: isResubmit ? 'Resubmit your hotel concepts?' : 'Submit your hotel concepts?',
+                text: 'This locks both concepts for your whole team until your faculty reviews them.',
                 showCancelButton: true,
-                confirmButtonText: 'Submit',
-                confirmButtonColor: '#DB2777',
+                confirmButtonText: isResubmit ? 'Resubmit' : 'Submit',
+                confirmButtonColor: '#7B1730',
                 cancelButtonText: 'Cancel',
             }).then(result => result.isConfirmed);
 
@@ -1581,9 +2409,9 @@
                 }
 
                 paintHotelConcepts(data);
-                Swal.fire({ icon: 'success', title: 'Submitted', text: 'Your hotel concepts were sent to your faculty.', confirmButtonColor: '#DB2777' });
+                Swal.fire({ icon: 'success', title: 'Submitted', text: 'Your hotel concepts were sent to your faculty.', confirmButtonColor: '#7B1730' });
             } catch (error) {
-                Swal.fire({ icon: 'error', title: 'Could not submit', text: error.message || 'Could not submit the hotel concepts.', confirmButtonColor: '#DB2777' });
+                Swal.fire({ icon: 'error', title: 'Could not submit', text: error.message || 'Could not submit the hotel concepts.', confirmButtonColor: '#7B1730' });
                 if (button) button.disabled = false;
             }
         }
@@ -1593,6 +2421,13 @@
 
             // Draw the panel from the payload the server rendered with the page.
             paintHotelConcepts(null);
+
+            // Faculty approve and send back from their own portal, so this page only
+            // learns of a verdict by asking. Every 10s, and only for a member who
+            // actually has concepts to watch.
+            if ((conceptState?.slots || []).length) {
+                setInterval(syncHotelConcepts, 10000);
+            }
 
             if (!form) return;
 
@@ -1685,7 +2520,7 @@
         function renderMyActivityRows(logs) {
             if (!logs.length) {
                 return `<div class="px-5 py-12 text-center">
-                            <p class="text-sm font-semibold text-slate-400">No activity recorded yet</p>
+                            <p class="text-sm font-semibold text-slate-400">No activity recorded</p>
                             <p class="text-xs text-slate-300 mt-1">Logins, task submissions and saved work will show here.</p>
                        </div>`;
             }
@@ -1697,7 +2532,7 @@
                     <div class="min-w-0 flex-1">
                         <p class="text-sm font-bold text-slate-800">${escapeMemberHtml(log.activity_label || log.activity || '—')}</p>
                         <p class="text-xs text-slate-500 mt-0.5">${escapeMemberHtml(log.description || '—')}</p>
-                        <p class="text-[11px] text-slate-400 mt-0.5">${escapeMemberHtml(log.created_at || '')}${log.created_at_human ? ' · ' + escapeMemberHtml(log.created_at_human) : ''}</p>
+                        <p class="text-[0.6875rem] text-slate-400 mt-0.5">${escapeMemberHtml(log.created_at || '')}${log.created_at_human ? ' · ' + escapeMemberHtml(log.created_at_human) : ''}</p>
                     </div>
                 </div>
             `).join('');
@@ -1720,7 +2555,9 @@
         }
 
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') closeMemberActivityModal();
+            if (e.key !== 'Escape') return;
+            closeMemberActivityModal();
+            closeTaskInstructions();
         });
 
         function switchReportTab(tab) {
@@ -1731,28 +2568,11 @@
             if (!selfBtn || !teamBtn) return;
 
             const isSelf = tab === 'self';
-            selfBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold ' + (isSelf ? 'bg-brand text-white' : 'text-slate-500 hover:text-slate-800');
-            teamBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold ' + (!isSelf ? 'bg-brand text-white' : 'text-slate-500 hover:text-slate-800');
+            selfBtn.classList.toggle('active', isSelf);
+            teamBtn.classList.toggle('active', !isSelf);
             selfPanel.classList.toggle('hidden', !isSelf);
             teamPanel.classList.toggle('hidden', isSelf);
         }
-
-        // ── Profile dropdown ──
-        function toggleStudentProfileMenu() {
-            const dd = document.getElementById('studentProfileDropdown');
-            const chevron = document.getElementById('profileChevron');
-            dd.classList.toggle('hidden');
-            chevron.style.transform = dd.classList.contains('hidden') ? '' : 'rotate(180deg)';
-        }
-        function closeStudentProfileMenu() {
-            document.getElementById('studentProfileDropdown').classList.add('hidden');
-            document.getElementById('profileChevron').style.transform = '';
-        }
-        // Close on outside click
-        document.addEventListener('click', (e) => {
-            const menu = document.getElementById('studentProfileMenu');
-            if (!menu.contains(e.target)) closeStudentProfileMenu();
-        });
 
         // ── Mobile sidebar ──
         function openMobileSidebar() {
@@ -1766,13 +2586,177 @@
             document.body.style.overflow = '';
         }
 
-        // ── Completed tasks toggle ──
-        function toggleCompletedTasks() {
-            const list = document.getElementById('completedTasksList');
-            const chevron = document.getElementById('completedChevron');
-            list.classList.toggle('hidden');
-            chevron.style.transform = list.classList.contains('hidden') ? '' : 'rotate(180deg)';
+        /* Task grid filter. Every card is already on the page, grouped into one
+           <section data-task-group> per TASK; the Status dropdown only decides
+           which cards — and, once a group has none left showing, which whole
+           group — stay visible. No round trip per change. */
+        function filterTaskRows() {
+            const status = document.getElementById('taskStatusFilter')?.value || 'all';
+            let anyVisible = false;
+
+            document.querySelectorAll('#tasks-section [data-task-group]').forEach((group) => {
+                let visible = 0;
+
+                group.querySelectorAll('[data-task-card]').forEach((row) => {
+                    const matches = status === 'all' || row.dataset.taskStatus === status;
+                    row.classList.toggle('hidden', !matches);
+
+                    // A hidden card must not reopen with its drawer already down.
+                    const detail = row.querySelector('.task-detail');
+                    if (detail && !matches) detail.classList.add('hidden');
+
+                    if (matches) visible++;
+                });
+
+                const count = group.querySelector('[data-group-visible]');
+                if (count) count.textContent = String(visible);
+
+                group.classList.toggle('hidden', visible === 0);
+                if (visible > 0) anyVisible = true;
+            });
+
+            document.getElementById('taskFilterEmpty')?.classList.toggle('hidden', anyVisible);
         }
+
+        /* Repaints one TASK group's summary card from the current state of its
+           own task cards — called after anything changes a card's status without
+           a reload (a checklist tick, a settled concept task). */
+        function refreshTaskGroupSummary(groupEl) {
+            if (!groupEl) return;
+
+            const rows = Array.from(groupEl.querySelectorAll('[data-task-card]'));
+            const total = rows.length;
+            const done  = rows.filter((r) => r.dataset.taskStatus === 'completed').length;
+            const hasRevision   = rows.some((r) => r.dataset.taskStatus === 'revision');
+            const allNotStarted = total > 0 && rows.every((r) => r.dataset.taskStatus === 'not_started');
+            const allHandedIn   = total > 0 && rows.every((r) => ['completed', 'pending'].includes(r.dataset.taskStatus));
+            const percent = total > 0 ? Math.round((done / total) * 100) : 0;
+
+            let statusKey;
+            if (total > 0 && done === total) statusKey = 'completed';
+            else if (hasRevision) statusKey = 'revision';
+            else if (allHandedIn) statusKey = 'pending';
+            else if (allNotStarted) statusKey = 'not_started';
+            else statusKey = 'in_progress';
+
+            const meta = {
+                not_started: { label: 'Not Started', badge: 'status-badge-not_started', icon: 'mdi:circle-outline' },
+                in_progress: { label: 'In Progress', badge: 'status-badge-in_progress', icon: 'mdi:progress-clock' },
+                revision: { label: 'Revision Required', badge: 'status-badge-revision', icon: 'mdi:message-alert-outline' },
+                pending: { label: 'Pending Review', badge: 'status-badge-pending', icon: 'mdi:clock-outline' },
+                completed: { label: 'Approved', badge: 'status-badge-completed', icon: 'mdi:check-decagram-outline' },
+            }[statusKey];
+
+            const percentEl = groupEl.querySelector('[data-summary-percent]');
+            if (percentEl) percentEl.textContent = percent + '%';
+
+            const countEl = groupEl.querySelector('[data-summary-count]');
+            if (countEl) countEl.textContent = done + ' of ' + total + ' tasks completed';
+
+            const ring = groupEl.querySelector('[data-summary-ring]');
+            if (ring) {
+                const circumference = 2 * Math.PI * 26;
+                ring.setAttribute('stroke-dashoffset', String(circumference * (1 - percent / 100)));
+            }
+
+            const statusEl = groupEl.querySelector('[data-summary-status]');
+            if (statusEl) {
+                statusEl.className = 'inline-flex items-center gap-1.5 mt-2 w-fit px-3 py-1.5 rounded-lg text-[0.75rem] font-bold ' + meta.badge;
+                statusEl.innerHTML = '<span class="iconify text-sm" data-icon="' + meta.icon + '"></span> ' + meta.label;
+                if (window.Iconify && typeof window.Iconify.scan === 'function') window.Iconify.scan(statusEl);
+            }
+
+            groupEl.dataset.groupStatus = statusKey;
+        }
+
+        /* ── Task instructions dialog ──
+           The body is the .task-detail node that lives in the card, moved into the
+           dialog and moved back when it closes. Moved rather than copied so there is
+           only ever one of it: the Steps checkboxes stay wired (their change handler
+           is bound to the document, not to the node), and a tick made in the dialog
+           is already on the node the card gets back. Two copies would drift apart.
+
+           It cannot simply be positioned over the card instead — .task-card:hover
+           sets a transform, and a transformed ancestor makes position:fixed resolve
+           against the card rather than the viewport. */
+        let taskInstructionsIsOpen = false;
+        let taskDetailOriginId = null;
+
+        function openTaskInstructions(id) {
+            const detail = document.getElementById(id);
+            const modal  = document.getElementById('taskInstructionsModal');
+            const body   = document.getElementById('taskInstructionsBody');
+            if (!detail || !modal || !body) return;
+
+            if (taskInstructionsIsOpen) closeTaskInstructions();
+
+            taskDetailOriginId = detail.closest('[data-task-card]')?.dataset.taskId ?? null;
+
+            const set = (nodeId, value) => {
+                const el = document.getElementById(nodeId);
+                if (el) el.textContent = value || '—';
+            };
+            set('taskInstructionsName',   detail.dataset.detailName);
+            set('taskInstructionsCode',   detail.dataset.detailCode);
+            set('taskInstructionsRole',   detail.dataset.detailRole);
+            set('taskInstructionsStatus', detail.dataset.detailStatus);
+            const statusKey = detail.closest('[data-task-card]')?.dataset.taskStatus;
+            const statusEl = document.getElementById('taskInstructionsStatus');
+            if (statusEl) statusEl.className = 'text-[0.75rem] font-bold truncate ' + (statusKey ? 'status-text-' + statusKey : 'text-slate-700');
+            set('taskInstructionsDue',    detail.dataset.detailDue);
+
+            body.appendChild(detail);
+            detail.classList.remove('hidden');
+
+            taskInstructionsIsOpen = true;
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            if (window.Iconify && typeof window.Iconify.scan === 'function') {
+                window.Iconify.scan(body);
+            }
+        }
+
+        function closeTaskInstructions() {
+            if (!taskInstructionsIsOpen) return;
+
+            const modal  = document.getElementById('taskInstructionsModal');
+            const body   = document.getElementById('taskInstructionsBody');
+            const detail = body?.firstElementChild;
+
+            if (detail) {
+                detail.classList.add('hidden');
+                /* Looked up fresh rather than remembered: the poller may have
+                   reprinted the card while this was open, and settleConceptTaskRow()
+                   removes the concept card outright. If the card it came from is
+                   gone the drawer goes with it — whatever replaced the card brought
+                   a drawer of its own. */
+                const card = taskDetailOriginId
+                    ? document.querySelector('[data-task-card][data-task-id="' + taskDetailOriginId + '"]')
+                    : null;
+                if (card) card.appendChild(detail);
+                else detail.remove();
+            }
+
+            taskInstructionsIsOpen = false;
+            taskDetailOriginId = null;
+            modal?.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        // ── Customize / Simulation role menus ──
+        // A member with several roles needs a menu on each button; closing one
+        // when the other opens (or on an outside click) keeps at most one open.
+        function toggleTaskAreaMenu(id) {
+            const menu = document.getElementById(id);
+            if (!menu) return;
+            const willOpen = menu.hidden;
+            document.querySelectorAll('[data-task-area-menu] > div[id]').forEach(m => { m.hidden = true; });
+            menu.hidden = !willOpen;
+        }
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('[data-task-area-menu]')) return;
+            document.querySelectorAll('[data-task-area-menu] > div[id]').forEach(m => { m.hidden = true; });
+        });
 
         // ── Live group presence sync ──
         function hmsCsrfToken() {
@@ -1830,6 +2814,71 @@
         syncStudentPresence();
         setInterval(syncStudentPresence, 5000);
 
+        /* Tasks section stays live: when faculty sets a task (or leaves a verdict)
+           the poll picks it up and swaps the rendered list in, no reload needed.
+           The signature is compared first so an unchanged list never touches the
+           DOM — that would collapse any detail drawer a student has open. */
+        let tasksLiveSignature = null;
+        let simulationPhaseSignature = null;
+        async function syncTasks() {
+            try {
+                const res = await fetch(@json(route('students.tasks.live')), {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    credentials: 'same-origin'
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+
+                // The approval panel moves on teammates' verdicts too, so it keeps
+                // its own signature apart from this student's task list.
+                if (simulationPhaseSignature !== null && data.phase_signature !== simulationPhaseSignature) {
+                    const phaseBox = document.getElementById('simulationPhaseLive');
+                    if (phaseBox) {
+                        phaseBox.innerHTML = data.phase_html;
+                        if (window.Iconify && typeof window.Iconify.scan === 'function') {
+                            window.Iconify.scan(phaseBox);
+                        }
+                    }
+                }
+                simulationPhaseSignature = data.phase_signature;
+
+                // Team Overview's Deadline figure, in step with whatever faculty set.
+                const deadlineDate = document.getElementById('teamDeadlineDate');
+                const deadlineLabel = document.getElementById('teamDeadlineLabel');
+                if (deadlineDate && deadlineLabel) {
+                    deadlineDate.textContent = data.deadline ? data.deadline.date : 'None set';
+                    deadlineLabel.textContent = data.deadline ? 'Deadline · ' + data.deadline.time : 'Deadline';
+                }
+
+                if (tasksLiveSignature === null) {
+                    tasksLiveSignature = data.signature;
+                    return; // first poll only sets the baseline
+                }
+                if (data.signature === tasksLiveSignature) return;
+                /* Signature deliberately left untouched: this swap would destroy the
+                   card the open dialog took its body from, so skip the tick and let
+                   the next one after the dialog closes do the work. */
+                if (taskInstructionsIsOpen) return;
+                tasksLiveSignature = data.signature;
+
+                const container = document.getElementById('tasksLiveContainer');
+                if (container) {
+                    container.innerHTML = data.html;
+                    if (window.Iconify && typeof window.Iconify.scan === 'function') {
+                        window.Iconify.scan(container);
+                    }
+                    filterTaskRows();
+                }
+
+                document.querySelectorAll('[data-task-count="active"]').forEach((el) => {
+                    el.textContent = String(data.active_count);
+                });
+                document.getElementById('navTasksBadge')?.classList.toggle('hidden', data.active_count === 0);
+            } catch (e) { /* a dropped poll is not worth telling anyone about */ }
+        }
+        syncTasks();
+        setInterval(syncTasks, 8000);
+
         (function openSectionFromQuery() {
             // Every section id the page defines. A section missing here is simply
             // ignored on load, so it must be added whenever one is added above.
@@ -1849,5 +2898,28 @@
         })();
 
     </script>
+
+    @if (session('welcome'))
+        <script>
+            window.addEventListener('load', function () {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Welcome',
+                    text: '{{ session('welcome.name') }} to {{ ucfirst(session('welcome.role')) }}',
+                    timer: 2500,
+                    timerProgressBar: true,
+                    showConfirmButton: false,
+                    iconColor: '#C9A45C',
+                    width: '22rem'
+                });
+            });
+        </script>
+    @endif
+
+
+@include('partials.logout-confirm')
+@include('partials.session-guard')
+@include('partials.nav-loader')
+@include('partials.guided-tour')
 </body>
 </html>

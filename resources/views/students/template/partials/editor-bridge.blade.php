@@ -5,6 +5,67 @@
     $hmsEditablePages = $editablePages ?? [];
     $hmsBuilderRole = $builderRole ?? null;
     $hmsReviewHighlight = $reviewHighlight ?? null;
+
+    // Set only by PublicSiteController. Its presence is the difference between the
+    // builder's copy of the site and the Mini Portfolio a guest visits.
+    $hmsPublicSlug = $publicSlug ?? null;
+
+    // Set only by the faculty review preview. A faculty is not a student, so the
+    // /students catalogue endpoints answer them nothing; these read the same rows
+    // for the team being reviewed. Read-only, and checked against its owner.
+    $hmsPreviewGroup = $previewGroup ?? null;
+
+    /* Built here rather than inside the @json below: Blade parses a directive's
+       argument by matching brackets, and a multi-line array with nested ones is
+       more than it can follow — it read the array's '[' as unclosed and the whole
+       template 500'd. */
+    $hmsApiMap = [
+        'rooms'      => '/students/hotel/rooms',
+        'addons'     => '/students/hotel/addons',
+        'amenities'  => '/students/hotel/amenities',
+        'menus'      => '/students/hotel/menus',
+        'promos'     => '/students/hotel/promos',
+        'roomUpdate' => '/students/hotel/rooms',
+        'bookings'   => '/students/hotel/bookings',
+        'amenityReservations' => '/students/hotel/amenity-reservations',
+        'amenityVisits'       => '/students/hotel/amenity-visits',
+        'tables'     => '/students/hotel/tables',
+    ];
+
+    /* Root-relative, like the public map below: an absolute route() bakes in
+       APP_URL, which is the deployed host even when the app is being run
+       somewhere else — the preview would then fetch across origins, without the
+       session, and answer nothing. */
+    if ($hmsPreviewGroup) {
+        $hmsApiMap['rooms']     = route('faculty.teams.preview.rooms', ['group' => $hmsPreviewGroup, 'faculty' => $previewFacultyId ?? null], false);
+        $hmsApiMap['menus']     = route('faculty.teams.preview.menus', ['group' => $hmsPreviewGroup, 'faculty' => $previewFacultyId ?? null], false);
+        $hmsApiMap['amenities'] = route('faculty.teams.preview.amenities', ['group' => $hmsPreviewGroup, 'faculty' => $previewFacultyId ?? null], false);
+        $hmsApiMap['addons']    = route('faculty.teams.preview.addons', ['group' => $hmsPreviewGroup, 'faculty' => $previewFacultyId ?? null], false);
+        $hmsApiMap['promos']    = route('faculty.teams.preview.promos', ['group' => $hmsPreviewGroup, 'faculty' => $previewFacultyId ?? null], false);
+    }
+
+    /* Whether the design task that opens the Amenities section is assigned to
+       this student and still open. The section's own controls read it, so a
+       teammate — or the assignee after they have submitted — sees the finished
+       cards without the tools that change them. A guest on the Mini Portfolio is
+       never asked the question. */
+    /* The page this role actually works on. Front Desk owns the home page, Room
+       Management the rooms, Restaurant the menu, Housekeeping its two — so opening
+       every one of them on Home means every student but one lands on somebody
+       else's work and has to navigate out of it. Guests and the Mini Portfolio are
+       not asked: a visitor always starts at the front of the site. */
+    $hmsInitialPage = 'home';
+    if (!$hmsPublicSlug && $hmsBuilderRole) {
+        $hmsInitialPage = \App\Support\HotelTemplateBuilder::preferredPageForRole($hmsBuilderRole);
+    }
+
+    $hmsAmenityTask = null;
+    if (!$hmsPublicSlug && $hmsCanEdit) {
+        $hmsAmenityMembership = \App\Support\HotelAmenityAccess::membership();
+        $hmsAmenityTask = $hmsAmenityMembership
+            ? \App\Support\AmenityTaskDesk::payload($hmsAmenityMembership)
+            : null;
+    }
 @endphp
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <script>
@@ -12,6 +73,7 @@
     window.__HMS_CAN_EDIT__ = @json($hmsCanEdit);
     window.__HMS_EDITABLE_PAGES__ = @json($hmsEditablePages);
     window.__HMS_BUILDER_ROLE__ = @json($hmsBuilderRole);
+    window.__HMS_AMENITY_TASK__ = @json($hmsAmenityTask);
     try {
         // Design tools only belong inside the builder iframe. A standalone tab
         // (e.g. "View Live") is always the read-only live site, regardless of
@@ -19,15 +81,65 @@
         if (!window.parent || window.parent === window) {
             window.__HMS_CAN_EDIT__ = false;
             window.__HMS_EDITABLE_PAGES__ = [];
+            window.__HMS_AMENITY_TASK__ = null;
         }
     } catch (e) {
         window.__HMS_CAN_EDIT__ = false;
         window.__HMS_EDITABLE_PAGES__ = [];
+        window.__HMS_AMENITY_TASK__ = null;
     }
-    window.__HMS_CURRENT_PAGE__ = 'home';
+    /* Read once, as the page the app opens on, so the role's own section is what
+       paints rather than what it navigates to a moment later. */
+    window.__HMS_INITIAL_PAGE__ = @json($hmsInitialPage);
+    window.__HMS_CURRENT_PAGE__ = window.__HMS_INITIAL_PAGE__;
     // Set only on the faculty Before/After preview — drives hms-review-highlight.js.
     window.__HMS_REVIEW_HIGHLIGHT__ = @json($hmsReviewHighlight);
     window.__HMS_CSRF__ = @json(csrf_token());
+
+@if ($hmsPublicSlug)
+    /* ── Mini Portfolio ───────────────────────────────────────────────────────
+       A guest has no login, so every /students/* endpoint would 302 them to the
+       login page. The template reads this map instead of its hardcoded paths.
+
+       Four reads and one write, all slug-scoped and all narrower than the staff
+       endpoints they mirror. roomUpdate is deliberately absent: changing a room's
+       status is Housekeeping's, and the picker that calls it is staff-only UI a
+       visitor never sees. */
+    window.__HMS_PUBLIC__ = true;
+    // Root-relative on purpose. url() would bake in APP_URL, which is wrong the moment
+    // the app is reached on any other host — behind a proxy, or locally while APP_URL
+    // still points at the deployed site.
+    window.__HMS_API__ = {
+        rooms:     @json("/hotel/{$hmsPublicSlug}/api/rooms"),
+        addons:    @json("/hotel/{$hmsPublicSlug}/api/addons"),
+        amenities: @json("/hotel/{$hmsPublicSlug}/api/amenities"),
+        menus:     @json("/hotel/{$hmsPublicSlug}/api/menus"),
+        promos:    @json("/hotel/{$hmsPublicSlug}/api/promos"),
+        bookings:  @json("/hotel/{$hmsPublicSlug}/api/bookings"),
+        amenityReservations: @json("/hotel/{$hmsPublicSlug}/api/amenity-reservations"),
+        amenityVisits:       @json("/hotel/{$hmsPublicSlug}/api/amenity-visits"),
+        tables:              @json("/hotel/{$hmsPublicSlug}/api/tables"),
+        tableReservations:   @json("/hotel/{$hmsPublicSlug}/api/table-reservations"),
+    };
+    // No media upload: it is a named route inside the students auth group, and a
+    // visitor has no business uploading to the team's site anyway.
+    window.__HMS_MEDIA_UPLOAD_URL__ = null;
+    /* Guest accounts, on the published site's own endpoints. The staff copies of
+       these sit behind the students login, which is what left a visitor being told
+       there was no accounts service on the page they most needed one. */
+    window.__HMS_HOTEL_AUTH_ROUTES__ = {
+        me:             @json("/hotel/{$hmsPublicSlug}/api/auth/me"),
+        customerLogin:  @json("/hotel/{$hmsPublicSlug}/api/auth/login"),
+        customerSignup: @json("/hotel/{$hmsPublicSlug}/api/auth/signup"),
+        logout:         @json("/hotel/{$hmsPublicSlug}/api/auth/logout"),
+    };
+@else
+    window.__HMS_PUBLIC__ = false;
+    /* The staff endpoints, unless this is a faculty preview — then the four
+       catalogue reads point at that team's own, because the /students ones answer
+       a faculty nothing. Nothing else is overridden: the preview renders with
+       editing off, so no write is reachable from it. */
+    window.__HMS_API__ = @json($hmsApiMap);
     window.__HMS_MEDIA_UPLOAD_URL__ = @json(route('students.frontdesk.template.media'));
     window.__HMS_HOTEL_AUTH_ROUTES__ = {
         me: @json(route('students.hotel-auth.me')),
@@ -36,10 +148,35 @@
         customerSignup: @json(route('students.hotel-auth.customer.signup')),
         logout: @json(route('students.hotel-auth.logout')),
     };
+@endif
 </script>
+@if (!$hmsPublicSlug && !$hmsPreviewGroup && $hmsCanEdit)
+<script>
+    /* Rooms, menu items, amenities and add-ons save through their own endpoints,
+       not the template save. Tell the builder when one lands, so the task picked
+       in its sidebar moves to In Progress the same as a template save does. */
+    (function () {
+        if (!window.__HMS_CAN_EDIT__ || !window.fetch) return;
+        const nativeFetch = window.fetch.bind(window);
+        const CATALOGUE = /^(?:https?:\/\/[^/]+)?\/students\/hotel\/(?:rooms|menus|amenities|addons)\b/;
+        window.fetch = function (input, init) {
+            const url = typeof input === 'string' ? input : (input && input.url) || '';
+            const method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
+            const promise = nativeFetch(input, init);
+            if (method !== 'GET' && CATALOGUE.test(url)) {
+                promise.then(function (res) {
+                    if (res.ok) window.parent.postMessage({ source: 'hms-template', type: 'catalogue-saved' }, '*');
+                }).catch(function () {});
+            }
+            return promise;
+        };
+    })();
+</script>
+@endif
 <script src="{{ asset('js/hms-hotel-auth.js') }}"></script>
 <script src="{{ asset('js/hms-template-editor.js') }}?v={{ filemtime(public_path('js/hms-template-editor.js')) }}"></script>
 <script src="{{ asset('js/hms-site-content.js') }}?v={{ filemtime(public_path('js/hms-site-content.js')) }}"></script>
-@if ($hmsReviewHighlight)
+{{-- Every faculty preview: the review panel posts the Changes list in after load. --}}
+@if ($hmsReviewHighlight || $hmsPreviewGroup)
 <script src="{{ asset('js/hms-review-highlight.js') }}?v={{ filemtime(public_path('js/hms-review-highlight.js')) }}"></script>
 @endif

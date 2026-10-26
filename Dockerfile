@@ -4,7 +4,7 @@
 # public/ directly; there is no Node build step because the views load their CSS and
 # JS from CDNs rather than through Vite.
 
-FROM php:8.2-apache
+FROM php:8.3-apache
 
 # pdo_pgsql for Supabase; gd for image handling; zip for the spreadsheet import.
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -33,6 +33,10 @@ RUN sed -ri -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-avail
 # The listening port is set by the entrypoint from $PORT, because Render assigns it
 # at runtime and it is not always 80.
 
+# PHP's own defaults cap an upload at 2M and a request body at 8M, which is
+# smaller than the amenity videos Housekeeping uploads. See docker/uploads.ini.
+COPY docker/uploads.ini "$PHP_INI_DIR/conf.d/zz-uploads.ini"
+
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
@@ -44,6 +48,8 @@ RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-in
 COPY . .
 
 RUN composer dump-autoload --optimize --no-dev \
+    && php -v \
+    && composer check-platform-reqs --no-dev \
     && chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 

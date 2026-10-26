@@ -54,6 +54,7 @@ class HotelBooking extends Model
         'check_in_time',
         'check_out',
         'room_rate',
+        'guest_count',
         'reserved_at',
         'arrived_at',
         'checked_in_at',
@@ -67,6 +68,7 @@ class HotelBooking extends Model
         'check_in'       => 'date',
         'check_out'      => 'date',
         'room_rate'      => 'integer',
+        'guest_count'    => 'integer',
         'reserved_at'    => 'datetime',
         'arrived_at'     => 'datetime',
         'checked_in_at'  => 'datetime',
@@ -120,6 +122,18 @@ class HotelBooking extends Model
     public function scopeAwaitingCheckIn(Builder $query): Builder
     {
         return $query->whereIn('status', self::AWAITING_CHECK_IN_STATUSES);
+    }
+
+    /**
+     * Guests physically in the hotel right now.
+     *
+     * Narrower than open(): a Booked stay holds a room but its guest is not here yet, and
+     * only someone who has actually checked in may be let into an amenity or billed for
+     * one. The room-service route makes the same test inline; this is that rule named.
+     */
+    public function scopeCheckedIn(Builder $query): Builder
+    {
+        return $query->where('status', 'Checked In');
     }
 
     public static function normalizeStatus(?string $value): string
@@ -273,6 +287,7 @@ class HotelBooking extends Model
             'checkIn'       => optional($this->check_in)->toDateString(),
             'checkInTime'   => $this->check_in_time ?? '',
             'checkOut'      => optional($this->check_out)->toDateString(),
+            'guestCount'    => $this->guest_count,
             'roomRate'      => (int) $this->room_rate,
             'totalDue'      => $this->totalDue(),
             'amountPaid'    => $this->amountPaid(),

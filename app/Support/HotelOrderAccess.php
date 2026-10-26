@@ -102,10 +102,12 @@ class HotelOrderAccess
     }
 
     /**
-     * A dine-in order is taken tableside by Restaurant Management, not handed off by
-     * Front Desk the way a room-service order is — Front Desk's part ends at seating
-     * the guest. Same role set as canFulfill(), kept as its own method because the
-     * two checks answer different questions and may yet diverge.
+     * Reserving a table and ordering at it are deliberately separate jobs. Front
+     * Desk's part ends at the reservation — it holds the table and takes no food
+     * order and no money. The customer orders once they arrive, tableside, from
+     * Restaurant Management, who then own the ticket through the kitchen. Same
+     * role set as canFulfill(), kept as its own method because the two checks
+     * answer different questions and may yet diverge.
      */
     public static function canPlaceDineIn(StudentGroup $membership): bool
     {

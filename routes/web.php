@@ -8,6 +8,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\HotelConceptController;
 use App\Http\Controllers\HotelTemplateController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PublicSiteController;
 use App\Models\ActivityLog;
 use App\Models\HotelBooking;
 use App\Models\HotelComplaint;
@@ -33,19 +34,134 @@ use Illuminate\Validation\Rule;
 |
 */
 
+// Back from a dashboard lands here. 'guest' sends a signed-in user straight back
+// to their dashboard instead of the sign-in page, and no-store stops the browser
+// showing its saved copy of this page without asking the server first.
 Route::get('/', function () {
-    return view('landingpage');
-});
+    return response()->view('landingpage')->header('Cache-Control', 'no-store, private');
+})->middleware('guest');
 
 // Auth Routes
 Route::get('/login', [AuthController::class, 'login'])->middleware('guest')->name('login');
+// Dean, faculty and students change their own password from their profile page.
+Route::put('/account/password', [AuthController::class, 'updatePassword'])->middleware('auth')->name('account.password');
+// The first-login guided tour was finished or skipped, so it stops opening by itself.
+Route::post('/account/tour', function (Request $request) {
+    $request->user()->forceFill(['tour_completed_at' => now()])->save();
+
+    return response()->noContent();
+})->middleware('auth')->name('account.tour');
 Route::post('/login', [AuthController::class, 'authenticate'])->middleware('guest')->name('login.submit');
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
+
+/*
+| Session rules (App\Http\Middleware\EnforceSessionRules) and their page side,
+| partials.session-guard. The ping answers whether this session is still the
+| account's live one; with ?active=1 it also counts as the user interacting.
+| session-ended is where the page sends the user once it gives up, and says why.
+*/
+Route::get('/session/ping', function () {
+    return auth()->check()
+        ? response()->json(['ok' => true])
+        : response()->json([
+            'session_ended' => session(\App\Http\Middleware\EnforceSessionRules::ENDED_KEY, 'idle'),
+        ], 401);
+})->name('session.ping');
+Route::get('/session-ended', function (\Illuminate\Http\Request $request) {
+    return \App\Http\Middleware\EnforceSessionRules::end($request, (string) $request->query('reason', 'idle'));
+})->name('session.ended');
 Route::get('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('guest')->name('forgot-password');
 Route::post('/forgot-password', [AuthController::class, 'forgotPasswordSubmit'])->middleware('guest')->name('forgot-password.submit');
+// Throttled: unauthenticated, called on every keystroke, and its answer reveals
+// whether an email is registered.
 Route::get('/forgot-password/check-email', [AuthController::class, 'checkForgotPasswordEmail'])
-    ->middleware('guest')
+    ->middleware(['guest', 'throttle:20,1'])
     ->name('forgot-password.check-email');
+// Each send is an email out, so a tight cap; verify also caps tries per code in the controller.
+Route::post('/forgot-password/send-code', [AuthController::class, 'sendResetCode'])
+    ->middleware(['guest', 'throttle:5,10'])
+    ->name('forgot-password.send-code');
+Route::post('/forgot-password/verify-code', [AuthController::class, 'verifyResetCode'])
+    ->middleware(['guest', 'throttle:10,1'])
+    ->name('forgot-password.verify-code');
+
+/*
+|--------------------------------------------------------------------------
+| Mini Portfolio — a team's hotel site, open to anyone
+|--------------------------------------------------------------------------
+|
+| The only routes in this file outside `auth`. Everything else answers "which hotel?"
+| from the logged-in student's membership; here the slug in the URL is the whole of it.
+|
+| No middleware on purpose. NOT `guest` — that alias is RedirectIfAuthenticated, which
+| would bounce a student clicking their own team's link off to a dashboard. The `web`
+| group already applies, and EnforceSessionRules inside it is a no-op with no session.
+|
+| The team's Publish in the builder is what opens the door; before that every one of
+| these 404s, with the same response an unknown slug gets so the URL cannot be used to
+| enumerate teams.
+*/
+Route::prefix('hotel')->name('public.hotel')->group(function () {
+    Route::get('/{slug}', [PublicSiteController::class, 'show']);
+
+    // What the template polls every eight seconds. Narrower payloads than the staff
+    // endpoints they mirror — see PublicSiteController and HotelRoom::toPublicArray().
+    Route::get('/{slug}/api/rooms', [PublicSiteController::class, 'rooms'])->name('.rooms');
+    Route::get('/{slug}/api/menus', [PublicSiteController::class, 'menus'])->name('.menus');
+    Route::get('/{slug}/api/amenities', [PublicSiteController::class, 'amenities'])->name('.amenities');
+    Route::get('/{slug}/api/addons', [PublicSiteController::class, 'addons'])->name('.addons');
+    Route::get('/{slug}/api/promos', [PublicSiteController::class, 'promos'])->name('.promos');
+
+    // The one write a visitor can make. Throttled because it is the only unauthenticated
+    // endpoint in the app that creates a row.
+    Route::post('/{slug}/api/bookings', [PublicSiteController::class, 'book'])
+        ->middleware('throttle:10,1')
+        ->name('.book');
+
+    /*
+    | Guest accounts on the published site.
+    |
+    | The builder's own copies of these live in the students group, which is why a
+    | visitor to the published link had no accounts service at all: every route
+    | behind it would have bounced them to the HMS login. These are the same four
+    | actions with the hotel read from the slug instead of from a signed-in
+    | student, so a guest signs in to the hotel they are actually looking at.
+    |
+    | Throttled like the booking beside them: they are unauthenticated, and two of
+    | them write.
+    */
+    Route::get('/{slug}/api/auth/me', [\App\Http\Controllers\HotelSimulationAuthController::class, 'me'])
+        ->name('.auth.me');
+    Route::post('/{slug}/api/auth/signup', [\App\Http\Controllers\HotelSimulationAuthController::class, 'customerSignup'])
+        ->middleware('throttle:10,1')
+        ->name('.auth.signup');
+    Route::post('/{slug}/api/auth/login', [\App\Http\Controllers\HotelSimulationAuthController::class, 'customerLogin'])
+        ->middleware('throttle:20,1')
+        ->name('.auth.login');
+    Route::post('/{slug}/api/auth/logout', [\App\Http\Controllers\HotelSimulationAuthController::class, 'logout'])
+        ->name('.auth.logout');
+
+    // Facilities, booked by the guest reading the page. Both refuse anyone who is
+    // not signed into this hotel, and both write, so both are throttled.
+    Route::post('/{slug}/api/amenity-reservations', [PublicSiteController::class, 'bookAmenity'])
+        ->middleware('throttle:10,1')
+        ->name('.amenity-reservations');
+    Route::post('/{slug}/api/amenity-visits', [PublicSiteController::class, 'enterAmenity'])
+        ->middleware('throttle:10,1')
+        ->name('.amenity-visits');
+
+    // Dining tables: which are free, and a signed-in guest reserving one.
+    Route::get('/{slug}/api/tables', [PublicSiteController::class, 'tables'])->name('.tables');
+    Route::post('/{slug}/api/table-reservations', [PublicSiteController::class, 'reserveTable'])
+        ->middleware('throttle:10,1')
+        ->name('.table-reservations');
+
+    // Food, ordered by the guest reading the menu. Same reason as the two above:
+    // the staff endpoint sits behind the students login a visitor does not have.
+    Route::post('/{slug}/api/orders', [PublicSiteController::class, 'orderFood'])
+        ->middleware('throttle:20,1')
+        ->name('.orders');
+});
 
 // Notification bell — same feed endpoints for dean, faculty and students.
 // Every query is scoped to auth()->id() inside the controller.
@@ -53,11 +169,12 @@ Route::prefix('notifications')->middleware('auth')->name('notifications.')->grou
     Route::get('/', [NotificationController::class, 'index'])->name('index');
     Route::get('/unread-count', [NotificationController::class, 'unreadCount'])->name('unread-count');
     Route::post('/{id}/read', [NotificationController::class, 'markRead'])->name('read');
+    Route::post('/{id}/open', [NotificationController::class, 'open'])->name('open');
     Route::post('/read-all', [NotificationController::class, 'markAllRead'])->name('read-all');
 });
 
 // Dean Routes
-Route::prefix('dean')->middleware('auth')->name('dean.')->group(function () {
+Route::prefix('dean')->middleware(['auth', 'role:dean'])->name('dean.')->group(function () {
     Route::get('/dashboard', [DeanController::class, 'dashboard'])->name('dashboard');
     Route::get('/users', [DeanController::class, 'users'])->name('users');
     Route::get('/users/live', [DeanController::class, 'usersLive'])->name('users.live');
@@ -69,6 +186,12 @@ Route::prefix('dean')->middleware('auth')->name('dean.')->group(function () {
     Route::post('/faculties', [DeanController::class, 'storeFaculty'])->name('faculties.store');
     Route::get('/reports', [DeanController::class, 'reports'])->name('reports');
     Route::get('/activity', [DeanController::class, 'activityLogs'])->name('activity');
+    Route::get('/profile', [DeanController::class, 'profile'])->name('profile');
+    Route::put('/profile', [DeanController::class, 'updateProfile'])->name('profile.update');
+    // Team Task Completion Indicators, polled by the dashboard and Teams Overview.
+    Route::get('/team-progress', [DeanController::class, 'teamProgressLive'])->name('team-progress');
+    // Read-only review of one submitted task, opened from the dean's notification bell.
+    Route::get('/tasks/{task}/review', [DeanController::class, 'reviewTask'])->name('tasks.review');
 
     // Front Desk's hotel concept for any team, with its edit history.
     Route::get('/teams/hotel-concept', [HotelConceptController::class, 'deanHistory'])->name('teams.hotel-concept');
@@ -77,7 +200,7 @@ Route::prefix('dean')->middleware('auth')->name('dean.')->group(function () {
 });
 
 // Faculty Routes
-Route::prefix('faculty')->middleware('auth')->name('faculty.')->group(function () {
+Route::prefix('faculty')->middleware(['auth', 'role:faculty'])->name('faculty.')->group(function () {
     Route::get('/dashboard', [FacultyController::class, 'dashboard'])->name('dashboard');
     Route::get('/profile', [FacultyController::class, 'profile'])->name('profile');
     Route::put('/profile', [FacultyController::class, 'updateProfile'])->name('profile.update');
@@ -87,16 +210,34 @@ Route::prefix('faculty')->middleware('auth')->name('faculty.')->group(function (
     Route::put('/students/{userId}', [FacultyController::class, 'updateStudent'])->name('students.update');
     Route::post('/students/bulk', [FacultyController::class, 'bulkImportStudents'])->name('students.bulk');
     Route::get('/role', [FacultyController::class, 'role'])->name('role');
+    // Polled from Manage Teams so the Task Submission Indicator on every card
+    // updates itself — new submission, or a reviewed one dropping off — without
+    // the page reloading.
+    Route::get('/role/pending-review', [FacultyController::class, 'pendingReview'])->name('role.pending-review');
+    // The fast tick that makes a submission show up in seconds. Deliberately
+    // separate from pending-review above: this one answers only "has anything
+    // changed", so it can be polled often, and the page pulls the payload above
+    // just when the answer is yes. Throttled because it is the only endpoint
+    // here hit several times a minute per open tab.
+    Route::get('/role/pulse', [FacultyController::class, 'reviewPulse'])
+        ->middleware('throttle:120,1')
+        ->name('role.pulse');
+    // Fresh Team Task Activity for the team modal, refetched when the pulse moves.
+    Route::get('/role/team-activity/{groupName}', [FacultyController::class, 'teamActivity'])->name('role.team-activity');
     Route::post('/role/groups', [FacultyController::class, 'storeGroup'])->name('role.groups.store');
     Route::put('/role/groups/{groupName}', [FacultyController::class, 'updateGroup'])->name('role.groups.update');
-    Route::get('/tasks', [FacultyController::class, 'tasks'])->name('tasks');
+    // The old Tasks page is gone; links already sent in notifications land on
+    // Manage Teams instead of a 404.
+    // GET only. Route::redirect answers every verb, and with routes cached it
+    // took Set Task's POST below too: tasks were never saved, the faculty just
+    // landed on Teams.
+    Route::get('/tasks', fn () => redirect('/faculty/role'))->name('tasks');
     Route::post('/tasks', [FacultyController::class, 'storeTask'])->name('tasks.store');
-    Route::delete('/tasks/{task}', [FacultyController::class, 'destroyTask'])->name('tasks.destroy');
     // Review one submission: the student's actual work, plus feedback back to them.
     Route::get('/tasks/{task}/review', [FacultyController::class, 'reviewTask'])->name('tasks.review');
     Route::post('/tasks/{task}/feedback', [FacultyController::class, 'storeTaskFeedback'])->name('tasks.feedback');
-    // Read-only render of a team's live site so faculty can see the work itself.
-    Route::get('/teams/preview', [FacultyController::class, 'previewTeamSite'])->name('teams.preview');
+    // Who runs which desk once the team's simulation opens; saving confirms it.
+    Route::post('/teams/{groupName}/simulation-roles', [FacultyController::class, 'storeSimulationRoles'])->name('teams.simulation-roles');
     Route::get('/results', [FacultyController::class, 'results'])->name('results');
     Route::get('/reports', [FacultyController::class, 'reports'])->name('reports');
     Route::get('/activity', [FacultyController::class, 'activityLogs'])->name('activity');
@@ -108,8 +249,33 @@ Route::prefix('faculty')->middleware('auth')->name('faculty.')->group(function (
         ->name('teams.hotel-concept');
 });
 
+// Team site preview — the one corner of the faculty portal a dean also opens,
+// from Teams Overview, naming the faculty with ?faculty= (see
+// FacultyPreviewController::facultyIdFor). Kept out of the group above so that
+// group can stay faculty-only.
+Route::prefix('faculty')->middleware(['auth', 'role:faculty,dean'])->name('faculty.')->group(function () {
+    // Read-only render of a team's live site so faculty can see the work itself.
+    Route::get('/teams/preview', [FacultyController::class, 'previewTeamSite'])->name('teams.preview');
+
+    /*
+    | What the previewed site reads while a faculty looks at it.
+    |
+    | The template fetches its rooms, menu, facilities and add-ons at runtime from
+    | endpoints that resolve the team off the signed-in student. A faculty is not
+    | one, so those answered empty and every page fell back to the template's own
+    | placeholders — a review of the room categories showed the five defaults with
+    | nothing in them however many the student had submitted. These are the same
+    | reads with the team named in the URL and checked against its owner.
+    */
+    Route::get('/teams/{group}/preview/rooms', [\App\Http\Controllers\FacultyPreviewController::class, 'rooms'])->name('teams.preview.rooms');
+    Route::get('/teams/{group}/preview/menus', [\App\Http\Controllers\FacultyPreviewController::class, 'menus'])->name('teams.preview.menus');
+    Route::get('/teams/{group}/preview/amenities', [\App\Http\Controllers\FacultyPreviewController::class, 'amenities'])->name('teams.preview.amenities');
+    Route::get('/teams/{group}/preview/addons', [\App\Http\Controllers\FacultyPreviewController::class, 'addons'])->name('teams.preview.addons');
+    Route::get('/teams/{group}/preview/promos', [\App\Http\Controllers\FacultyPreviewController::class, 'promos'])->name('teams.preview.promos');
+});
+
 // Student Routes
-Route::prefix('students')->middleware('auth')->name('students.')->group(function () {
+Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unlocked'])->name('students.')->group(function () {
     Route::get('/dashboard', function () {
         $authUser = auth()->user();
         $student  = $authUser?->student;
@@ -147,6 +313,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                         'name'       => $displayName,
                         'email'      => $user?->email,
                         'roles'      => $member->roles->pluck('role')->toArray(),
+                        'user'       => $user,
                     ];
                 });
 
@@ -168,34 +335,13 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         $membersByRole = $membersByRole->map(fn($members) => $members->unique()->values());
 
         /*
-         * A task row carries no team column of its own — it is tied to one student,
-         * and the student's membership is what puts it on a team. Faculty assign the
-         * same role task to every team they own, so filtering by faculty + role alone
-         * showed one team every other team's rows, including the feedback and approval
-         * faculty left on them. Resolve the team once here and scope every task query
-         * below to it, so a team only ever reads its own submissions and their verdict.
+         * Faculty assign a task to one team, and the row says which. Scope every task
+         * query below to this student's team so it only ever reads its own tasks, its
+         * own submissions and the verdict faculty left on them. Task::scopeForTeam()
+         * carries the allowance for rows assigned before tasks named a team.
          */
-        $teamStudentIds = $groupMembership
-            ? StudentGroup::where('group_name', $groupMembership->group_name)
-                ->where('faculty_id', $groupMembership->faculty_id)
-                ->pluck('student_id')
-                ->filter()
-                ->map(fn ($id) => (int) $id)
-                ->unique()
-                ->values()
-                ->all()
-            : [];
-
-        // Rows with no student belong to no team: faculty creates one when nobody in
-        // the faculty holds that role yet. They carry no submission and so no feedback,
-        // so they stay visible to the role rather than vanishing from every dashboard.
-        $scopeToTeam = function ($query) use ($teamStudentIds) {
-            $query->where(function ($q) use ($teamStudentIds) {
-                $q->whereNull('student_id');
-                if ($teamStudentIds !== []) {
-                    $q->orWhereIn('student_id', $teamStudentIds);
-                }
-            });
+        $scopeToTeam = function ($query) use ($groupMembership) {
+            $query->forTeam($groupMembership?->group_name);
         };
 
         // ── Real tasks from faculty ──────────────────────────────────────
@@ -211,16 +357,26 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         $pendingTasksCount = 0;
         $completionRate = 0;
         $recentTasks = collect();
+        // Per-role progress across this student's own team — the dashboard's Task
+        // Progress Overview. Keyed by role, each row carries done/total/percent.
+        $teamRoleProgress = collect();
+        $upcomingDeadlines = collect();
+        // Home's Tasks in Progress card: started (an activity ticked) but not handed in.
+        $tasksInProgress = collect();
+        $teamTasks = collect();
 
         if ($facultyId) {
             $allTasks = Task::where('faculty_id', $facultyId)
                 ->where($scopeToTeam)
                 ->where('status', 'active')
+                // Simulation tasks predate the Task-panel/Simulation split and
+                // now live only in the Simulation area — hidden here rather
+                // than deleted, since the row is the historical record.
+                ->withoutSimulation()
                 // The hotel concept is Task 1 and gates everything else, so it heads
                 // the list regardless of the due date it does not have.
                 ->conceptFirst()
                 ->orderBy('due_date')
-                ->orderByPriority()
                 ->get();
 
             $tasksByRole = $allTasks->groupBy('role');
@@ -232,11 +388,13 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             $completedTasksCount = Task::where('faculty_id', $facultyId)
                 ->where($scopeToTeam)
                 ->where('status', 'archived')
+                ->withoutSimulation()
                 ->count();
 
             $pendingTasksCount = Task::where('faculty_id', $facultyId)
                 ->where($scopeToTeam)
                 ->where('status', 'active')
+                ->withoutSimulation()
                 ->count();
 
             $totalAllTasks = $completedTasksCount + $pendingTasksCount;
@@ -245,10 +403,94 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             $recentTasks = Task::with(['student.user', 'assignedTo'])
                 ->where('faculty_id', $facultyId)
                 ->where($scopeToTeam)
+                ->withoutSimulation()
                 ->latest('updated_at')
                 ->take(12)
                 ->get();
+
+            // One pass over the team's tasks feeds both the per-role progress bars
+            // and the deadline list, so the dashboard costs a single extra query.
+            $teamTasks = Task::where('faculty_id', $facultyId)
+                ->where($scopeToTeam)
+                ->whereIn('status', ['active', 'archived'])
+                ->withoutSimulation()
+                ->get(array_merge(
+                    ['task_id', 'title', 'role', 'status', 'due_date', 'started_at', 'assigned_to', 'student_id', 'feedback', 'updated_at'],
+                    Task::supportsActivities() ? ['activities'] : []
+                ));
+
+            $teamRoleProgress = $teamTasks
+                ->groupBy('role')
+                ->map(function ($tasks, $role) {
+                    $total = $tasks->count();
+                    $done  = $tasks->where('status', 'archived')->count();
+
+                    return [
+                        'role'    => $role,
+                        'total'   => $total,
+                        'done'    => $done,
+                        'active'  => $total - $done,
+                        // The nearest date the team still owes something for this role.
+                        'next_due' => $tasks->where('status', 'active')
+                            ->filter(fn ($task) => $task->due_date !== null)
+                            ->sortBy('due_date')
+                            ->first()?->due_date,
+                        'percent' => $total > 0 ? (int) round(($done / $total) * 100) : 0,
+                    ];
+                })
+                ->sortByDesc('percent')
+                ->values();
+
+            $upcomingDeadlines = $teamTasks
+                ->where('status', 'active')
+                ->filter(fn ($task) => $task->due_date !== null)
+                ->sortBy('due_date')
+                ->take(4)
+                ->values();
+
+            // Work that has been changed but not submitted yet: still active, and
+            // saved on at least once in the editor. The same line the dean's Team
+            // Details draws between In Progress and Not Started. Most recently
+            // touched first.
+            $tasksInProgress = $teamTasks
+                ->where('status', 'active')
+                ->filter(fn ($task) => $task->is_started)
+                ->sortByDesc('updated_at')
+                ->take(4)
+                ->values();
         }
+
+        /*
+         * Per-member figures for the My Team roster. A task counts toward a member
+         * when it names them outright or when it belongs to a role they hold —
+         * most faculty tasks are addressed to a department rather than a person,
+         * so the role is what usually decides.
+         */
+        $memberTaskStats = $groupMembers->mapWithKeys(function ($member) use ($teamTasks) {
+            $roles = (array) ($member->roles ?? []);
+
+            $mine = $teamTasks->filter(function ($task) use ($member, $roles) {
+                if ($task->assigned_to && (int) $task->assigned_to === (int) $member->id) {
+                    return true;
+                }
+                if ($task->student_id && (int) $task->student_id === (int) $member->student_id) {
+                    return true;
+                }
+
+                return in_array($task->role, $roles, true);
+            });
+
+            $total = $mine->count();
+            $done  = $mine->where('status', 'archived')->count();
+
+            return [
+                $member->id => [
+                    'total'   => $total,
+                    'done'    => $done,
+                    'percent' => $total > 0 ? (int) round(($done / $total) * 100) : 0,
+                ],
+            ];
+        });
 
         $totalTasks   = array_sum($taskCounts);
         $studentRoles = $groupMembership ? $groupMembership->roles->pluck('role')->toArray() : [];
@@ -316,33 +558,153 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         $studentClass = $student?->facultyClass;
 
-        // The team's first task: two hotel concepts. Read by the whole team in My
-        // Team; who may write each depends on what state that one is in, so
-        // HotelConceptDesk decides — Front Desk proposes each first version, then
-        // everyone improves them, and each locks while faculty holds it. The
-        // controller enforces the same rules on write.
+        // The team's first task: two hotel concepts. Read and edited by the whole
+        // team in My Team, whichever role each member holds; who may write each
+        // depends only on what state it is in, which HotelConceptDesk decides, and
+        // it locks for everyone once submitted. Handing the pair to faculty stays
+        // Front Desk's call. The controller enforces the same rules on write.
         //
         // Handed to the view as one payload rather than loose variables per slot:
         // the same shape the save and submit endpoints return, so the Blade and the
-        // JS that repaints it read identical keys.
+        // JS that repaints it read identical keys. $groupMembership rather than a
+        // role for editing: being on the team is what earns a write here now.
         $conceptPayload = HotelConceptController::payload(
             HotelConceptController::forTeam(
                 $groupMembership?->group_name,
                 $facultyId ? (int) $facultyId : null
             ),
-            $studentRoles
+            (bool) $groupMembership,
+            in_array(HotelConceptController::OWNING_ROLE, $studentRoles, true)
         );
 
+        // Team Overview's Deadline figure; tasks/live repaints it from the same helper.
+        $teamDeadline = Task::teamDeadline($teamTasks);
+
         return view('students.dashboard', compact(
+            'teamDeadline',
             'membersByRole', 'group', 'groupMembers',
             'tasksByRole', 'taskCounts', 'totalTasks',
             'studentRoles', 'myRoleTasks', 'completedTasksCount',
             'pendingTasksCount', 'completionRate', 'recentTasks',
             'myCompletedTasks', 'selfActivityLogs', 'teamActivityLogs',
-            'myActivityLogs', 'conceptPayload',
-            'studentDisplayName', 'studentClass', 'student'
+            'myActivityLogs', 'conceptPayload', 'teamRoleProgress', 'upcomingDeadlines', 'tasksInProgress',
+            'memberTaskStats',
+            'studentDisplayName', 'studentClass', 'student',
+            // The task rows ask it who may work a row whose named student has
+            // since given the role up — see TaskClaim.
+            'groupMembership'
         ));
     })->name('dashboard');
+
+    /*
+     * Polled by the dashboard's Tasks section (syncTasks(), every few seconds) so a
+     * task faculty just assigned, or a verdict they just left, shows up without the
+     * student reloading. Recomputes the same $myRoleTasks / $myCompletedTasks the
+     * dashboard route builds and re-renders the same partial, so there is one place
+     * that knows how a task list turns into markup.
+     */
+    Route::get('/tasks/live', function () {
+        $authUser = auth()->user();
+        $student  = $authUser?->student;
+
+        $groupMembership = $student
+            ? StudentGroup::with('roles')
+                ->where('student_id', $student->user_information_id)
+                ->first()
+            : null;
+
+        $studentRoles = $groupMembership ? $groupMembership->roles->pluck('role')->toArray() : [];
+        $facultyId    = $groupMembership->faculty_id ?? null;
+
+        $scopeToTeam = function ($query) use ($groupMembership) {
+            $query->forTeam($groupMembership?->group_name);
+        };
+
+        $myRoleTasks = ($facultyId && !empty($studentRoles))
+            ? Task::where('faculty_id', $facultyId)
+                ->where($scopeToTeam)
+                ->where('status', 'active')
+                ->withoutSimulation()
+                ->whereIn('role', $studentRoles)
+                ->conceptFirst()
+                ->orderBy('due_date')
+                ->get()
+            : collect();
+
+        $myCompletedTasks = ($facultyId && $student)
+            ? Task::where('faculty_id', $facultyId)
+                ->where($scopeToTeam)
+                ->where('status', 'archived')
+                ->where(function ($q) use ($student, $authUser, $studentRoles) {
+                    $q->where('student_id', $student->user_information_id)
+                        ->orWhere('assigned_to', $authUser->user_id);
+                    if (!empty($studentRoles)) {
+                        $q->orWhereIn('role', $studentRoles);
+                    }
+                })
+                ->orderByDesc('updated_at')
+                ->get()
+                ->unique('task_id')
+                ->values()
+            : collect();
+
+        // Cheap change signal: id, status and revision state per task, so the
+        // poller can skip re-rendering (and collapsing any open detail drawer)
+        // when nothing has actually changed since the last check.
+        $signature = md5(
+            $myRoleTasks->concat($myCompletedTasks)
+                ->map(fn ($t) => $t->task_id . ':' . $t->status . ':' . (int) $t->needs_revision . ':' . optional($t->updated_at)->timestamp)
+                ->sort()
+                ->implode('|')
+            // Submitting the concepts leaves the task row untouched but turns its
+            // card to Under Review, so their statuses count as a change too.
+            . '#' . \App\Models\HotelConcept::where('group_name', $groupMembership?->group_name)
+                ->where('faculty_id', $facultyId)
+                ->orderBy('slot')
+                ->pluck('status')
+                ->implode(',')
+        );
+
+        $phase = \App\Support\SimulationPhase::progress(
+            $groupMembership?->group_name,
+            $groupMembership ? (int) $groupMembership->faculty_id : null
+        );
+
+        // Team Overview's Deadline figure, so a due date faculty set shows up live.
+        $teamDeadline = $facultyId
+            ? Task::teamDeadline(Task::where('faculty_id', $facultyId)
+                ->where($scopeToTeam)
+                ->whereIn('status', ['active', 'archived'])
+                ->withoutSimulation()
+                ->whereNotNull('due_date')
+                ->get(['status', 'due_date']))
+            : null;
+
+        return response()->json([
+            'signature'    => $signature,
+            'deadline'     => $teamDeadline
+                ? ['date' => $teamDeadline->format('M j, Y'), 'time' => $teamDeadline->format('g:i A')]
+                : null,
+            'phase_signature' => md5(json_encode([
+                \Illuminate\Support\Arr::except($phase, 'items'),
+                \App\Support\SimulationPhase::seatsFor($groupMembership),
+                // So teammates see the website open or close without a reload.
+                (bool) \App\Models\GroupSettings::where('group_name', $groupMembership?->group_name)
+                    ->where('faculty_id', $facultyId)
+                    ->value('is_published'),
+            ])),
+            'phase_html'   => view('students.partials.simulation-phase', [
+                'groupMembership' => $groupMembership,
+            ])->render(),
+            'active_count' => $myRoleTasks->count(),
+            'html'         => view('students.partials.task-groups', [
+                'studentRoles'     => $studentRoles,
+                'myRoleTasks'      => $myRoleTasks,
+                'myCompletedTasks' => $myCompletedTasks,
+                'groupMembership'  => $groupMembership,
+            ])->render(),
+        ]);
+    })->name('tasks.live');
 
     // The team's first task: the hotel concept. Every member reads it, and the
     // controller decides who may save or submit at any given moment.
@@ -372,6 +734,15 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             abort(403);
         }
 
+        // Same faculty is not the same team. Without this a student could submit
+        // another team's row — the claim check below only catches it once someone
+        // has already taken it, and an unclaimed row would pass straight through.
+        // Compared case-insensitively because group_name is citext in the database.
+        if (filled($task->group_name)
+            && strcasecmp((string) $task->group_name, (string) $groupMembership->group_name) !== 0) {
+            abort(403);
+        }
+
         $studentRoles = $groupMembership->roles->pluck('role')->toArray();
         if (!in_array($task->role, $studentRoles, true)) {
             return back()->withErrors(['task' => 'This task is not assigned to your role.']);
@@ -381,21 +752,44 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         // the row — otherwise Front Desk could mark it done with nothing written.
         if ($task->is_hotel_concept) {
             return back()->withErrors([
-                'task' => 'Submit the hotel concept from My Team instead — that is what closes this task.',
+                'task' => 'Submit both concepts from this task instead — that is what closes it.',
             ]);
         }
 
-        // Tasks fan out one row per member, so a role match alone is not enough —
-        // without this a student could submit a teammate's row. Unclaimed rows
-        // (no member held the role at assign time) stay open to the first submitter.
-        $claimedByOther = ($task->assigned_to && (int) $task->assigned_to !== (int) $authUser->user_id)
-            || ($task->student_id && (int) $task->student_id !== (int) $student->user_information_id);
-        if ($claimedByOther) {
+        /* Website work waits on the concept. Everything a design task asks for -
+           the hotel's name, its palette, the photographs, the words - is the
+           concept faculty approved made concrete, so handing one in before that
+           decision is handing in a guess. The builder already refuses to save
+           against an unapproved team; this is the same rule at the other end. */
+        if (\App\Support\TaskChecklist::isSiteTitle((string) $task->title)
+            && !\App\Support\HotelConceptDesk::hasApprovedConcept(
+                $groupMembership->group_name,
+                (int) $groupMembership->faculty_id
+            )
+        ) {
+            return back()->withErrors([
+                'task' => 'Your faculty has not approved a hotel concept yet. '
+                    . 'Website tasks unlock once one of your two concepts is approved.',
+            ]);
+        }
+
+        /* Tasks fan out one row per member, so a role match alone is not enough —
+           without this a student could submit a teammate's row. Unclaimed rows stay
+           open to the first submitter, and so does a row whose named student has
+           since given the role up: the team was reshuffled, nobody left can reach
+           the work, and refusing everyone would strand it. */
+        if (!\App\Support\TaskClaim::mayWork($task, $authUser, $groupMembership)) {
             return back()->withErrors(['task' => 'This task belongs to a teammate.']);
         }
 
         if ($task->status !== 'active') {
             return back()->withErrors(['task' => 'This task has already been submitted.']);
+        }
+
+        // Nothing saved on it yet: opening the editor or saving unchanged work
+        // does not count. A send-back clears it, so a resubmission needs a new change.
+        if (!$task->is_started) {
+            return back()->withErrors(['task' => Task::NO_CHANGES_MESSAGE]);
         }
 
         // Freeze the work as handed in, so the faculty review can show what changed
@@ -424,6 +818,10 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         $task->update([
             'status' => 'archived',
+            // A resubmission after "revise" is a new submission awaiting review; the
+            // old review stamp would otherwise make it read as approved.
+            'feedback_at' => null,
+            'submitted_at' => now(),
             'student_id' => $student->user_information_id,
             'assigned_to' => $authUser->user_id,
             'previous_version_id' => $previousVersionId,
@@ -436,10 +834,71 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'Submitted task "' . $task->title . '" for the ' . $task->role . ' role.'
         );
 
-        \App\Support\Notifier::taskSubmitted($authUser, $task, $authUser->name);
+        \App\Support\Notifier::taskSubmitted($authUser, $task, $authUser->name, $groupMembership->group_name);
 
-        return back()->with('success', 'Task marked as completed.');
+        return back()->with('task_success', 'Task submitted. It is pending until your faculty approves it.');
     })->name('tasks.complete');
+
+    /*
+    | The student began this task: Not Started becomes In Progress.
+    |
+    | Called by the Template Editor after a save that changed something, for the
+    | task picked in its sidebar - that pick is the only thing that says which
+    | task an edit belongs to, since a department's tasks share one page. Stamps
+    | the copies of that task this student may work (their own row, or one left
+    | unclaimed), once; a later save leaves the first time alone. A submitted or
+    | approved task is a record, so it is never touched.
+    */
+    Route::post('/tasks/{task}/started', function ($task) {
+        $authUser = auth()->user();
+        $student = $authUser?->student;
+        $groupMembership = $student
+            ? StudentGroup::with('roles')->where('student_id', $student->user_information_id)->first()
+            : null;
+        if (!$groupMembership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+
+        $task = Task::where('faculty_id', $groupMembership->faculty_id)
+            ->forTeam($groupMembership->group_name)
+            ->findOrFail($task);
+
+        $myRoles = \App\Support\HotelTemplateBuilder::rolesForPhase(
+            $groupMembership->roles->pluck('role')->all(),
+            \App\Support\HotelTemplateBuilder::PHASE_CUSTOMIZATION
+        );
+        if (!in_array($task->role, $myRoles, true)) {
+            return response()->json(['message' => 'This task is not assigned to your role.'], 403);
+        }
+
+        $started = Task::where('faculty_id', $groupMembership->faculty_id)
+            ->forTeam($groupMembership->group_name)
+            ->where('role', $task->role)
+            ->whereRaw('LOWER(TRIM(title)) = ?', [mb_strtolower(trim((string) $task->title))])
+            ->where('status', 'active')
+            ->whereNull('started_at')
+            ->get()
+            ->filter(fn (Task $copy) => \App\Support\TaskClaim::mayWork($copy, $authUser, $groupMembership))
+            ->each(fn (Task $copy) => $copy->forceFill(['started_at' => now()])->save())
+            ->count();
+
+        return response()->json(['started' => $started]);
+    })->name('tasks.started');
+
+    /* The team's assigned tasks, as the Template Editor sidebar lists them. Polled
+       by the editor so a task faculty sets appears without a reload; read-only,
+       and scoped to the caller's own team through their membership. */
+    Route::get('/tasks/assigned', function () {
+        $student = auth()->user()?->student;
+        $membership = $student
+            ? \App\Models\StudentGroup::with('roles')->where('student_id', $student->user_information_id)->first()
+            : null;
+
+        return response()->json([
+            'tasks' => \App\Support\AssignedTaskList::forMember($membership),
+        ]);
+    })->name('tasks.assigned');
+
     Route::get('/roommanagement', function () {
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'room_management');
         return view('students.roommanagement', $data);
@@ -521,6 +980,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
     Route::get('/templates/{role}/sync', [HotelTemplateController::class, 'sync'])->name('templates.sync');
     Route::post('/templates/{role}/save', [HotelTemplateController::class, 'save'])->name('templates.save');
     Route::post('/templates/{role}/autosave', [HotelTemplateController::class, 'autosave'])->name('templates.autosave');
+    // Saving keeps a draft; this is the separate, deliberate act of handing the
+    // work to faculty. Autosave must never reach it.
+    Route::post('/templates/{role}/submit', [HotelTemplateController::class, 'submit'])->name('templates.submit');
     Route::get('/templates/{role}/versions', [HotelTemplateController::class, 'versions'])->name('templates.versions');
     Route::post('/templates/{role}/versions/{version}/restore', [HotelTemplateController::class, 'restore'])->name('templates.restore');
 
@@ -548,9 +1010,33 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         ]);
     })->name('frontdesk.template.sync');
 
+    // Front Desk opens the team's website to guests, or closes it again. This is the
+    // only writer of group_settings.is_published, the gate PublicSiteController checks.
+    Route::post('/hotel-site/publish', function (Request $request) {
+        $data = $request->validate(['publish' => ['required', 'boolean']]);
+        $membership = \App\Support\StudentGroupSync::membershipForStudent(auth()->user()->student?->user_information_id);
+        abort_unless($membership, 404);
+        abort_unless(in_array('front_desk', \App\Support\SimulationPhase::seatsFor($membership), true), 403);
+
+        $publish = (bool) $data['publish'];
+        \App\Models\GroupSettings::updateOrCreate(
+            ['group_name' => $membership->group_name, 'faculty_id' => $membership->faculty_id],
+            ['is_published' => $publish, 'group_id' => $membership->group_id]
+        );
+
+        if ($publish) {
+            \App\Support\Notifier::sitePublished(auth()->user(), (string) $membership->group_name, (int) $membership->faculty_id, 'Front Desk');
+        }
+
+        return back()->with('success', $publish ? 'Your hotel is open to guests.' : 'Your hotel is closed to guests.');
+    })->name('hotel-site.publish');
+
     Route::get('/frontdesk/template/1', function (Request $request) {
         $customizations = [];
         $canEditTemplate = false;
+        // Overwritten below once the team is known; a student with no team still
+        // renders the template, and it must not reference an unset variable.
+        $hotelDefaults = \App\Support\HotelTemplateBuilder::hotelDefaults(null, null);
         $authUser = auth()->user();
         $student = $authUser?->student;
         $roleKeys = array_keys(\App\Support\HotelTemplateBuilder::ROLES);
@@ -564,6 +1050,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                 if ($request->query('save') === '1') {
                     if (!\App\Support\StudentGroupSync::canEditTemplate($groupMembership)) {
                         abort(403, 'Only Front Desk role can select a template.');
+                    }
+                    if (!\App\Support\HotelConceptDesk::hasApprovedConcept($groupMembership->group_name, (int) $groupMembership->faculty_id)) {
+                        abort(403, 'Your faculty has not approved a hotel concept yet.');
                     }
                     GroupSettings::updateOrCreate(
                         ['group_name' => $groupMembership->group_name, 'faculty_id' => $groupMembership->faculty_id],
@@ -575,6 +1064,12 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                     (int) $groupMembership->faculty_id
                 );
                 $canEditTemplate = \App\Support\HotelTemplateBuilder::canEdit($authUser, $groupMembership, $builderRole);
+                // What the hotel is called, and what it says about itself, before
+                // anybody edits it: the concept faculty approved.
+                $hotelDefaults = \App\Support\HotelTemplateBuilder::hotelDefaults(
+                    (string) $groupMembership->group_name,
+                    (int) $groupMembership->faculty_id
+                );
             }
         }
 
@@ -582,12 +1077,15 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             ? \App\Support\HotelTemplateBuilder::editablePagesForRole($builderRole)
             : [];
 
-        return view('students.template.1defaulttemplate', compact('customizations', 'canEditTemplate', 'editablePages', 'builderRole'));
+        return view('students.template.1defaulttemplate', compact('customizations', 'canEditTemplate', 'editablePages', 'builderRole', 'hotelDefaults'));
     })->name('frontdesk.template.1');
 
     Route::get('/frontdesk/template/2', function (Request $request) {
         $customizations = [];
         $canEditTemplate = false;
+        // Overwritten below once the team is known; a student with no team still
+        // renders the template, and it must not reference an unset variable.
+        $hotelDefaults = \App\Support\HotelTemplateBuilder::hotelDefaults(null, null);
         $authUser = auth()->user();
         $student = $authUser?->student;
         $roleKeys = array_keys(\App\Support\HotelTemplateBuilder::ROLES);
@@ -602,6 +1100,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                     if (!\App\Support\StudentGroupSync::canEditTemplate($groupMembership)) {
                         abort(403, 'Only Front Desk role can select a template.');
                     }
+                    if (!\App\Support\HotelConceptDesk::hasApprovedConcept($groupMembership->group_name, (int) $groupMembership->faculty_id)) {
+                        abort(403, 'Your faculty has not approved a hotel concept yet.');
+                    }
                     GroupSettings::updateOrCreate(
                         ['group_name' => $groupMembership->group_name, 'faculty_id' => $groupMembership->faculty_id],
                         ['selected_template' => '2']
@@ -612,6 +1113,10 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                     (int) $groupMembership->faculty_id
                 );
                 $canEditTemplate = \App\Support\HotelTemplateBuilder::canEdit($authUser, $groupMembership, $builderRole);
+                $hotelDefaults = \App\Support\HotelTemplateBuilder::hotelDefaults(
+                    (string) $groupMembership->group_name,
+                    (int) $groupMembership->faculty_id
+                );
             }
         }
 
@@ -619,7 +1124,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             ? \App\Support\HotelTemplateBuilder::editablePagesForRole($builderRole)
             : [];
 
-        return view('students.template.2defaulttemplate', compact('customizations', 'canEditTemplate', 'editablePages', 'builderRole'));
+        return view('students.template.2defaulttemplate', compact('customizations', 'canEditTemplate', 'editablePages', 'builderRole', 'hotelDefaults'));
     })->name('frontdesk.template.2');
 
     Route::post('/frontdesk/template/select', function (Request $request) {
@@ -651,6 +1156,12 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             ], 403);
         }
 
+        if (!\App\Support\HotelConceptDesk::hasApprovedConcept($groupMembership->group_name, (int) $groupMembership->faculty_id)) {
+            return response()->json([
+                'error' => 'Your faculty has not approved a hotel concept yet. Wait for approval before picking a Default Template.',
+            ], 403);
+        }
+
         \Log::info('Template select: saving', [
             'group' => $groupMembership->group_name,
             'faculty' => $groupMembership->faculty_id,
@@ -668,7 +1179,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         ActivityLog::record(
             $authUser,
             ActivityLog::WEBSITE_CUSTOMIZED,
-            'Selected hotel website Template ' . $request->template . ' for team "' . $groupMembership->group_name . '".'
+            'Selected hotel website Template ' . $request->template . ' for ' . \App\Models\Group::label($groupMembership->group_name) . '.'
         );
 
         return response()->json([
@@ -720,7 +1231,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             $authUser,
             ActivityLog::WEBSITE_CUSTOMIZED,
             $request->boolean('publish')
-                ? 'Published hotel website customizations to team "' . $groupMembership->group_name . '".'
+                ? 'Published hotel website customizations to ' . \App\Models\Group::label($groupMembership->group_name) . '.'
                 : 'Saved hotel website customizations.'
         );
 
@@ -803,14 +1314,211 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         // all, so a team that already built its own inventory is never touched.
         \App\Support\HotelRoomDefaults::ensureFor($membership);
 
+        // And with the five categories as rows of its own, so the tab bar can rename
+        // them. Also a no-op once written; teams from before renaming get theirs here.
+        \App\Support\HotelRoomDefaults::ensureCategoriesFor($membership);
+
         $rooms = HotelRoom::with(['activeBooking.guest', 'activeBooking.payments', 'activeBooking.foodOrders', 'activeBooking.charges', 'activeBooking.addons', 'openBookings'])
             ->where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
             ->orderBy('hotel_room_id')
             ->get()
             ->map(fn (HotelRoom $room) => $room->toTemplateArray());
-        return response()->json(['rooms' => $rooms]);
+
+        // The categories ride along with the rooms rather than sitting behind their own
+        // request: every screen that lists rooms also draws the category tabs, and both
+        // are polled together, so a category one member adds shows up on the others'
+        // screens on the next poll without a second round trip.
+        return response()->json([
+            'rooms' => $rooms,
+            'categories' => \App\Support\HotelRoomDefaults::categoriesFor($membership),
+        ]);
     })->name('hotel.rooms.index');
+
+    /**
+     * A category the team invented — "Executive", "Cabana" — on top of the five it
+     * started with. Adding one only opens a tab; the rooms in it are created through
+     * /hotel/rooms like any other.
+     */
+    Route::post('/hotel/room-categories', function (Request $request) {
+        $authUser = auth()->user();
+        $student  = $authUser?->student;
+        $membership = \App\Support\StudentGroupSync::membershipForStudent($student?->user_information_id);
+        if (!$membership) {
+            return response()->json(['error' => 'Group not found'], 404);
+        }
+
+        $data = $request->validate([
+            'name'        => 'required|string|max:60',
+            'rate'        => 'nullable|integer|min:1',
+            'description' => 'nullable|string|max:2000',
+        ]);
+
+        $category = \App\Support\HotelRoomDefaults::createCategory(
+            $membership,
+            $data['name'],
+            $data['rate'] ?? null,
+            $data['description'] ?? null
+        );
+
+        if (!$category) {
+            return response()->json(['message' => 'That category already exists.'], 422);
+        }
+
+        return response()->json([
+            'category'   => [
+                'name' => $category->name,
+                'rate' => $category->rate,
+                'description' => $category->description,
+            ],
+            'categories' => \App\Support\HotelRoomDefaults::categoriesFor($membership),
+        ], 201);
+    })->name('hotel.room-categories.store');
+
+    /**
+     * Renaming a category from the Rooms tab bar. The rooms in it are renamed with it
+     * ("Classic 101" becomes "Standard 101"), so the rooms go back with the categories
+     * — Manage Room polls this same payload and picks both up on its next pass.
+     */
+    Route::patch('/hotel/room-categories', function (Request $request) {
+        $authUser = auth()->user();
+        $student  = $authUser?->student;
+        $membership = \App\Support\StudentGroupSync::membershipForStudent($student?->user_information_id);
+        if (!$membership) {
+            return response()->json(['error' => 'Group not found'], 404);
+        }
+
+        $data = $request->validate([
+            'from' => 'required|string|max:60',
+            'to'   => 'required|string|max:60',
+        ]);
+
+        $renamed = \App\Support\HotelRoomDefaults::renameCategory($membership, $data['from'], $data['to']);
+
+        if (!$renamed) {
+            return response()->json(['message' => 'That name is already taken, or that category is not one of yours.'], 422);
+        }
+
+        $rooms = HotelRoom::with(['activeBooking.guest', 'activeBooking.payments', 'activeBooking.foodOrders', 'activeBooking.charges', 'activeBooking.addons', 'openBookings'])
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->orderBy('hotel_room_id')
+            ->get()
+            ->map(fn (HotelRoom $room) => $room->toTemplateArray());
+
+        return response()->json([
+            'category'   => ['name' => $renamed],
+            'categories' => \App\Support\HotelRoomDefaults::categoriesFor($membership),
+            'rooms'      => $rooms,
+        ]);
+    })->name('hotel.room-categories.update');
+
+    /**
+     * The design stage's edit of one room category: its picture, its rate, its
+     * words, what the stay includes and how many rooms of it the hotel offers.
+     *
+     * Separate from the PATCH above because that one renames — it moves every room
+     * in the category with it, and is the write Front Desk may also make from the
+     * site's tab bar. This one only ever touches the category's own row.
+     *
+     * Room Management's own work, so it is gated on the role rather than on any
+     * site-owning role: the categories are theirs to describe, and the Rooms page
+     * is the page they own.
+     */
+    Route::post('/hotel/room-categories/details', function (Request $request) {
+        $authUser = auth()->user();
+        $student  = $authUser?->student;
+        $membership = \App\Support\StudentGroupSync::membershipForStudent($student?->user_information_id);
+        if (!$membership) {
+            return response()->json(['error' => 'Group not found'], 404);
+        }
+
+        if (!\App\Support\HotelTemplateBuilder::canEdit($authUser, $membership, 'room_management')) {
+            return response()->json([
+                'error' => 'Only Room Management can describe the room categories.',
+            ], 403);
+        }
+
+        $data = $request->validate([
+            'name'            => 'required|string|max:60',
+            'rate'            => 'sometimes|nullable|integer|min:0',
+            'description'     => 'sometimes|nullable|string|max:2000',
+            // Large enough for a photo posted as a base64 data-URL, the way the room
+            // endpoint takes one. It is decoded to a file below, so only a short path
+            // is ever stored.
+            'image'           => 'sometimes|nullable|string|max:900000',
+            // Either the textarea's text or the list it stands for.
+            'inclusions'      => 'sometimes|nullable',
+            'rooms_available' => 'sometimes|nullable|integer|min:0|max:999',
+            // What the category shows a guest deciding between two of them.
+            'gallery'         => 'sometimes|nullable|array',
+            'gallery.*'       => 'nullable|string|max:900000',
+            'capacity'        => 'sometimes|nullable|integer|min:1|max:99',
+            'bed_type'        => 'sometimes|nullable|string|max:80',
+            'room_size'       => 'sometimes|nullable|string|max:40',
+        ]);
+
+        // A photo picked in the builder arrives as a data-URL; it becomes a stored file
+        // here so the row keeps a path, exactly as a room's photo does. A plain URL
+        // passes through untouched. A fresh photo that fails to store is dropped from
+        // this write rather than saved as '' - the slot keeps whatever it already had
+        // instead of going blank, and the failure is reported instead of applied.
+        $imageWarning = null;
+        $persistImage = function ($value) use ($membership, &$imageWarning) {
+            $newImage = str_starts_with(trim((string) $value), 'data:image');
+            $path = \App\Support\HotelImageStore::persist($value, $membership->faculty_id, $membership->group_name);
+            if ($newImage && $path === null) {
+                $imageWarning = 'That photo could not be saved. The category keeps its current pictures.';
+                return null;
+            }
+            return $path ?? '';
+        };
+
+        if (array_key_exists('image', $data) || array_key_exists('gallery', $data)) {
+            $currentName = \App\Support\HotelRoomDefaults::normalizeCategory($data['name'], $membership);
+            $current = collect(\App\Support\HotelRoomDefaults::categoriesFor($membership))->firstWhere('name', $currentName);
+            $existingGallery = is_array($current['gallery'] ?? null) ? $current['gallery'] : [];
+
+            // The catalogue hands these out as addresses; what is stored is the path
+            // behind one, so a slot kept because its replacement failed is put back
+            // the way it was written rather than as a full URL.
+            if (array_key_exists('image', $data)) {
+                $newPath = $persistImage($data['image']);
+                $data['image'] = $newPath === null
+                    ? \App\Support\HotelImageStore::relativize((string) ($current['image'] ?? ''))
+                    : $newPath;
+            }
+            if (array_key_exists('gallery', $data) && is_array($data['gallery'])) {
+                $data['gallery'] = collect($data['gallery'])->map(function ($value, $i) use ($persistImage, $existingGallery) {
+                    $newPath = $persistImage($value);
+                    return $newPath === null
+                        ? \App\Support\HotelImageStore::relativize((string) ($existingGallery[$i] ?? ''))
+                        : $newPath;
+                })->all();
+            }
+        }
+
+        $category = \App\Support\HotelRoomDefaults::updateCategoryDetails(
+            $membership,
+            $data['name'],
+            // Only what was actually sent, so a form saving one field leaves the
+            // rest of the category alone.
+            array_intersect_key($data, array_flip([
+                'rate', 'description', 'image', 'inclusions', 'rooms_available',
+                'gallery', 'capacity', 'bed_type', 'room_size',
+            ]))
+        );
+
+        if (!$category) {
+            return response()->json(['message' => 'That category is not one of yours.'], 422);
+        }
+
+        return response()->json([
+            'category' => $category->toTemplateArray(),
+            'categories' => \App\Support\HotelRoomDefaults::categoriesFor($membership),
+            'image_warning' => $imageWarning,
+        ]);
+    })->name('hotel.room-categories.details');
 
     /**
      * Guests Front Desk has registered that Room Management has not checked in yet.
@@ -865,26 +1573,64 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'name'        => 'sometimes|required|string|max:255',
             'category'    => 'sometimes|required|string|max:100',
             'price'       => 'sometimes|required|integer|min:1',
+            'capacity'    => 'sometimes|nullable|integer|min:1|max:99',
             'description' => 'sometimes|nullable|string|max:5000',
             'image'       => 'sometimes|nullable|string|max:900000',
+            'gallery'     => 'sometimes|nullable|array|max:' . HotelRoom::GALLERY_MAX,
+            'gallery.*'   => 'nullable|string|max:900000',
         ], [
             'image.max' => 'That image is too large. Please choose a smaller one.',
+            'gallery.max' => 'A room keeps at most ' . HotelRoom::GALLERY_MAX . ' photos.',
+            'gallery.*.max' => 'One of those images is too large. Please choose a smaller one.',
         ]);
 
-        foreach (['name', 'category', 'price', 'description'] as $field) {
+        foreach (['name', 'category', 'price', 'capacity', 'description'] as $field) {
             if (array_key_exists($field, $data)) {
-                $room->{$field} = $field === 'price' ? (int) $data[$field] : $data[$field];
+                $room->{$field} = match ($field) {
+                    'price' => (int) $data[$field],
+                    'capacity' => $data[$field] === null ? null : (int) $data[$field],
+                    // Kept to a category the team actually has, so an edit cannot strand a
+                    // room under a tab that is not drawn anywhere.
+                    'category' => \App\Support\HotelRoomDefaults::normalizeCategory($data[$field], $membership),
+                    default => $data[$field],
+                };
             }
         }
 
         // persist() passes an existing storage path straight back, so the edit form can
         // return the photo it was given without re-uploading it.
+        $imageWarning = null;
         if (array_key_exists('image', $data)) {
-            $room->image = \App\Support\HotelImageStore::persist(
+            $newImage = str_starts_with(trim((string) $data['image']), 'data:image');
+            $imagePath = \App\Support\HotelImageStore::persist(
                 $data['image'],
                 $membership->faculty_id,
                 $membership->group_name
             );
+
+            if ($newImage && $imagePath === null) {
+                // A fresh picture that could not be stored must not blank out the
+                // one already on the room - the failure is announced, not applied.
+                $imageWarning = 'That picture could not be saved. The room keeps its current photo.';
+            } else {
+                $room->image = $imagePath;
+            }
+        }
+
+        /* The other two photographs. Sent whole every time — the form hands back the
+         * storage paths of the ones it did not touch — so this is a replacement, not
+         * an append, and removing a photo is simply leaving it out. */
+        if (array_key_exists('gallery', $data) && HotelRoom::supportsGallery()) {
+            $sent = collect($data['gallery'] ?? [])->filter(fn ($v) => is_string($v) && trim($v) !== '')->count();
+            $room->gallery = \App\Support\HotelGallery::persist(
+                $data['gallery'] ?? [],
+                $membership,
+                HotelRoom::GALLERY_MAX
+            );
+
+            if ($imageWarning === null && count($room->gallery) < $sent) {
+                $imageWarning = 'One of those pictures could not be saved. The room keeps the ones that were.';
+            }
         }
 
         if ($room->isDirty()) {
@@ -897,6 +1643,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         return response()->json([
             'room' => $room->fresh()->toTemplateArray(),
+            'image_warning' => $imageWarning,
         ]);
     })->name('hotel.rooms.update');
 
@@ -912,15 +1659,31 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         $data = $request->validate([
             'category'    => 'required|string|max:100',
             'price'       => 'required|integer|min:1',
+            'capacity'    => 'nullable|integer|min:1|max:99',
             'description' => 'nullable|string|max:5000',
             'image'       => 'nullable|string|max:900000',
+            'gallery'     => 'nullable|array|max:' . HotelRoom::GALLERY_MAX,
+            'gallery.*'   => 'nullable|string|max:900000',
         ], [
             'image.max' => 'That image is too large. Please choose a smaller one.',
+            'gallery.max' => 'A room keeps at most ' . HotelRoom::GALLERY_MAX . ' photos.',
+            'gallery.*.max' => 'One of those images is too large. Please choose a smaller one.',
         ]);
 
         // The name is the category's next free number, never whatever the browser sent
         // — that is what keeps Classic 111 following Classic 110 without anyone typing.
-        $category = \App\Support\HotelRoomDefaults::normalizeCategory($data['category']);
+        $category = \App\Support\HotelRoomDefaults::normalizeCategory($data['category'], $membership);
+
+        $imagePath = \App\Support\HotelImageStore::persist(
+            $data['image'] ?? null,
+            $membership->faculty_id,
+            $membership->group_name
+        );
+
+        $gallerySent = collect($data['gallery'] ?? [])->filter(fn ($v) => is_string($v) && trim($v) !== '')->count();
+        $gallery = HotelRoom::supportsGallery()
+            ? \App\Support\HotelGallery::persist($data['gallery'] ?? [], $membership, HotelRoom::GALLERY_MAX)
+            : null;
 
         $room = HotelRoom::create([
             'group_name'  => $membership->group_name,
@@ -930,15 +1693,19 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'category'    => $category,
             'status'      => 'Available',
             'price'       => (int) $data['price'],
+            'capacity'    => isset($data['capacity']) ? (int) $data['capacity'] : null,
             'description' => $data['description'] ?? null,
-            'image'       => \App\Support\HotelImageStore::persist(
-                $data['image'] ?? null,
-                $membership->faculty_id,
-                $membership->group_name
-            ),
-        ]);
+            'image'       => $imagePath,
+        ] + (HotelRoom::supportsGallery() ? ['gallery' => $gallery] : []));
         return response()->json([
             'room' => $room->toTemplateArray(),
+            'image_warning' => match (true) {
+                !empty($data['image']) && $imagePath === null
+                    => 'The room was added, but its picture could not be saved. Try again from the room card.',
+                count($gallery ?? []) < $gallerySent
+                    => 'The room was added, but one of its pictures could not be saved. Try again from the room card.',
+                default => null,
+            },
         ], 201);
     })->name('hotel.rooms.store');
 
@@ -991,6 +1758,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'check_in'           => 'required|date',
             'check_in_time'      => 'required|string|max:10',
             'check_out'          => 'required|date|after:check_in',
+            'guest_count'        => 'nullable|integer|min:1|max:99',
             'notes'              => 'nullable|string|max:2000',
             'payment'            => 'nullable|array',
             'payment.type'       => 'nullable|string|max:20',
@@ -1003,7 +1771,12 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'addons'             => 'nullable|array',
             'addons.*.addon_id'  => 'required|integer',
             'addons.*.qty'       => 'required|integer|min:1|max:99',
+            // A walk-in: the guest is standing at the desk, so the booking is
+            // taken and marked Arrived in one go. Room Management still hands
+            // the room over (check_in), the same as for any other arrival.
+            'arrived'            => 'sometimes|boolean',
         ]);
+        $walkIn = $request->boolean('arrived');
 
         $room = HotelRoom::where('hotel_room_id', $data['room_id'])
             ->where('group_name', $membership->group_name)
@@ -1013,37 +1786,80 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             return response()->json(['message' => 'That room is not on your team\'s floor.'], 404);
         }
 
-        // A room may carry several open stays now — one in-house, the rest booked for
-        // later — so the guard is against overlapping dates, not against any open
-        // booking at all. Without this two people polling the same grid could both
-        // book the same week.
-        $overlaps = $room->openBookings()
-            ->where('check_in', '<', $data['check_out'])
-            ->where('check_out', '>', $data['check_in'])
-            ->exists();
-        if ($overlaps) {
-            return response()->json(['message' => 'Those dates are already booked for this room.'], 409);
+        if ($walkIn && !\App\Support\HotelTableAccess::canAssign($membership)) {
+            return response()->json(['message' => 'Only Front Desk staff can book a walk-in guest.'], 403);
+        }
+        if ($walkIn) {
+            // The guest is here now, so the stay starts today and the room has to be
+            // one they can walk into. A room still being cleaned is fine to sell for
+            // next week, not to hand a key for this afternoon.
+            // Today at the hotel, not on the server's UTC clock: the page sends the
+            // student's own date, and from midnight to 8 AM in Manila UTC is still
+            // on yesterday, which refused every walk-in in those hours.
+            if (\Carbon\Carbon::parse($data['check_in'])->toDateString() !== now('Asia/Manila')->toDateString()) {
+                return response()->json(['message' => 'A walk-in guest checks in today. Set the check-in date to today.'], 422);
+            }
+            if ($room->status !== 'Available') {
+                return response()->json([
+                    'message' => $room->name . ' is not ready (' . $room->status . '). Pick a room Housekeeping has cleared.',
+                ], 422);
+            }
         }
 
         try {
-            $booking = \App\Support\HotelBookingDesk::reserve(
-                $membership,
-                $room,
-                $data['guest'],
-                [
-                    'check_in'      => $data['check_in'],
-                    'check_in_time' => $data['check_in_time'],
-                    'check_out'     => $data['check_out'],
-                    'booked_by'     => auth()->user()?->name,
-                    'notes'         => $data['notes'] ?? null,
-                ],
-                $data['payment'] ?? null,
-                $data['addons'] ?? []
-            );
+            $booking = \Illuminate\Support\Facades\DB::transaction(function () use ($membership, $room, $data, $walkIn) {
+                /* A room may carry several open stays now — one in-house, the rest booked
+                   for later — so the guard is against overlapping dates, not against any
+                   open booking at all. Checked with the room row locked: two desks booking
+                   the same room for the same dates at the same moment both passed the
+                   check before either had written, and both got the room. The second now
+                   waits for the first and then sees its booking. */
+                HotelRoom::whereKey($room->hotel_room_id)->lockForUpdate()->first();
+                $overlaps = $room->openBookings()
+                    ->where('check_in', '<', $data['check_out'])
+                    ->where('check_out', '>', $data['check_in'])
+                    ->exists();
+                if ($overlaps) {
+                    throw new \App\Exceptions\BookingOverlapException();
+                }
+
+                $booking = \App\Support\HotelBookingDesk::reserve(
+                    $membership,
+                    $room,
+                    $data['guest'],
+                    [
+                        'check_in'      => $data['check_in'],
+                        'check_in_time' => $data['check_in_time'],
+                        'check_out'     => $data['check_out'],
+                        'guest_count'   => $data['guest_count'] ?? null,
+                        'booked_by'     => auth()->user()?->name,
+                        'notes'         => $data['notes'] ?? null,
+                    ],
+                    $data['payment'] ?? null,
+                    $data['addons'] ?? []
+                );
+
+                if ($walkIn) {
+                    \App\Support\HotelBookingDesk::markArrived($booking);
+                }
+
+                return $booking;
+            });
+        } catch (\App\Exceptions\BookingOverlapException $e) {
+            return response()->json(['message' => 'Those dates are already booked for this room.'], 409);
         } catch (\RuntimeException $e) {
             // An add-on ran out between the picker rendering and this request. The whole
             // reservation rolled back, so there is no half-booked stay to clean up.
             return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        if ($walkIn) {
+            ActivityLog::record(
+                auth()->user(),
+                ActivityLog::GUEST_BOOKED,
+                'Booked walk-in guest ' . ($data['guest']['full_name'] ?? 'a guest') . ' into ' . $room->name
+                    . ' (' . $data['check_in'] . ' to ' . $data['check_out'] . ').'
+            );
         }
 
         return response()->json([
@@ -1258,6 +2074,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         }
 
         \App\Support\HotelMenuAccess::seedDefaults($membership);
+        // Materialises the five starting courses as the team's own rows, so one of
+        // them can be renamed from the tab bar like any course they added.
+        \App\Support\HotelMenuDefaults::ensureCategoriesFor($membership);
 
         $items = HotelMenuItem::where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
@@ -1268,9 +2087,87 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         return response()->json([
             'items'      => $items,
-            'can_manage' => \App\Support\HotelMenuAccess::canManage($membership),
+            /* Both the canvas and Manage Menu mirror this to decide whether to show
+               their tools, so a menu sitting with faculty shows none of them. */
+            'can_manage' => \App\Support\HotelMenuAccess::canCustomize($membership),
+            'under_review' => \App\Support\HotelMenuAccess::isUnderReview($membership),
+            'locked_reason' => \App\Support\HotelMenuAccess::isUnderReview($membership) ? \App\Support\HotelMenuAccess::lockMessage() : null,
+            // The tabs the Restaurant page draws. Sent with the dishes so a course
+            // with nothing in it yet still gets a tab to put the first dish under.
+            'categories' => \App\Support\HotelMenuDefaults::categoriesFor($membership),
         ]);
     })->name('hotel.menus.index');
+
+    /**
+     * A course of the team's own, added from the Restaurant tab bar — the menu's
+     * counterpart to POST /hotel/room-categories.
+     */
+    Route::post('/hotel/menu-categories', function (Request $request) {
+        $membership = \App\Support\HotelMenuAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelMenuAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Restaurant staff can add a menu category.'], 403);
+        }
+        if (\App\Support\HotelMenuAccess::isUnderReview($membership)) {
+            return response()->json(['message' => \App\Support\HotelMenuAccess::lockMessage()], 403);
+        }
+
+        $data = $request->validate(['name' => 'required|string|max:60']);
+
+        $category = \App\Support\HotelMenuDefaults::createCategory($membership, $data['name']);
+
+        if (!$category) {
+            return response()->json(['message' => 'That category already exists.'], 422);
+        }
+
+        return response()->json([
+            'category'   => ['name' => $category->name],
+            'categories' => \App\Support\HotelMenuDefaults::categoriesFor($membership),
+        ], 201);
+    })->name('hotel.menu-categories.store');
+
+    /**
+     * Renaming a course from the Restaurant tab bar. Every dish filed under it is
+     * moved with the name, the way renaming a room category carries its rooms.
+     */
+    Route::patch('/hotel/menu-categories', function (Request $request) {
+        $membership = \App\Support\HotelMenuAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelMenuAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Restaurant staff can rename a menu category.'], 403);
+        }
+        if (\App\Support\HotelMenuAccess::isUnderReview($membership)) {
+            return response()->json(['message' => \App\Support\HotelMenuAccess::lockMessage()], 403);
+        }
+
+        $data = $request->validate([
+            'from' => 'required|string|max:60',
+            'to'   => 'required|string|max:60',
+        ]);
+
+        $renamed = \App\Support\HotelMenuDefaults::renameCategory($membership, $data['from'], $data['to']);
+
+        if (!$renamed) {
+            return response()->json(['message' => 'That name is already taken, or that category is not one of yours.'], 422);
+        }
+
+        $items = HotelMenuItem::where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->orderBy('category')
+            ->orderBy('name')
+            ->get()
+            ->map(fn ($item) => $item->toTemplateArray());
+
+        return response()->json([
+            'category'   => ['name' => $renamed],
+            'categories' => \App\Support\HotelMenuDefaults::categoriesFor($membership),
+            'items'      => $items,
+        ]);
+    })->name('hotel.menu-categories.update');
 
     Route::post('/hotel/menus', function (Request $request) {
         $membership = \App\Support\HotelMenuAccess::membership();
@@ -1280,6 +2177,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         if (!\App\Support\HotelMenuAccess::canManage($membership)) {
             return response()->json(['message' => 'Only Restaurant Services staff can add menu items.'], 403);
         }
+        if (\App\Support\HotelMenuAccess::isUnderReview($membership)) {
+            return response()->json(['message' => \App\Support\HotelMenuAccess::lockMessage()], 403);
+        }
 
         $data = $request->validate([
             'name'        => 'required|string|max:255',
@@ -1288,26 +2188,38 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'stock'       => 'nullable|integer|min:0|max:99999',
             'description' => 'nullable|string|max:500',
             'image'       => 'nullable|string|max:900000',
+            'best_seller' => 'sometimes|boolean',
         ], [
             'image.max' => 'That image is too large. Please choose a smaller one.',
         ]);
+
+        $imagePath = \App\Support\HotelImageStore::persist(
+            $data['image'] ?? null,
+            $membership->faculty_id,
+            $membership->group_name
+        );
 
         $item = HotelMenuItem::create([
             'group_name'  => $membership->group_name,
             'faculty_id'  => $membership->faculty_id,
             'name'        => trim($data['name']),
-            'category'    => HotelMenuItem::normalizeCategory($data['category']),
+            // Against the team's own courses, not the five constants - a dish filed
+            // under a course they added must not be collapsed back into Main Dishes.
+            'category'    => \App\Support\HotelMenuDefaults::normalizeCategory($data['category'], $membership),
             'price'       => (int) $data['price'],
             'stock'       => (int) ($data['stock'] ?? 0),
             'description' => $data['description'] ?? null,
-            'image'       => \App\Support\HotelImageStore::persist(
-                $data['image'] ?? null,
-                $membership->faculty_id,
-                $membership->group_name
-            ),
-        ]);
+            'image'       => $imagePath,
+        ] + (HotelMenuItem::supportsBestSeller() ? ['best_seller' => (bool) ($data['best_seller'] ?? false)] : []));
 
-        return response()->json(['item' => $item->toTemplateArray()], 201);
+        return response()->json([
+            'item' => $item->toTemplateArray(),
+            // A picture was sent but never made it to storage: the dish still
+            // saved, so this is a warning on the toast, not a failure of the save.
+            'image_warning' => (!empty($data['image']) && $imagePath === null)
+                ? 'The dish was added, but its picture could not be saved. Try again from Change Image.'
+                : null,
+        ], 201);
     })->name('hotel.menus.store');
 
     Route::patch('/hotel/menus/{id}', function (Request $request, $id) {
@@ -1317,6 +2229,15 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         }
         if (!\App\Support\HotelMenuAccess::canManage($membership)) {
             return response()->json(['message' => 'Only Restaurant Services staff can edit menu items.'], 403);
+        }
+
+        /* Restocking is the kitchen's, not the design task's, so a stock-only write
+           still goes through while the menu is with faculty. Anything that would
+           change what is being reviewed - the name, picture, price, words or course
+           - waits for the verdict. */
+        if (\App\Support\HotelMenuAccess::isUnderReview($membership)
+            && array_diff(array_keys($request->all()), ['stock']) !== []) {
+            return response()->json(['message' => \App\Support\HotelMenuAccess::lockMessage()], 403);
         }
 
         $item = HotelMenuItem::where('hotel_menu_item_id', $id)
@@ -1331,23 +2252,39 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'stock'       => 'sometimes|integer|min:0|max:99999',
             'description' => 'sometimes|nullable|string|max:500',
             'image'       => 'sometimes|nullable|string|max:900000',
+            'best_seller' => 'sometimes|boolean',
         ], [
             'image.max' => 'That image is too large. Please choose a smaller one.',
         ]);
 
         if (array_key_exists('name', $data))        $item->name        = trim($data['name']);
-        if (array_key_exists('category', $data))    $item->category    = HotelMenuItem::normalizeCategory($data['category']);
+        if (array_key_exists('best_seller', $data) && HotelMenuItem::supportsBestSeller()) $item->best_seller = (bool) $data['best_seller'];
+        if (array_key_exists('category', $data))    $item->category    = \App\Support\HotelMenuDefaults::normalizeCategory($data['category'], $membership);
         if (array_key_exists('price', $data))       $item->price       = (int) $data['price'];
         if (array_key_exists('stock', $data))       $item->stock       = (int) $data['stock'];
         if (array_key_exists('description', $data)) $item->description = $data['description'];
-        if (array_key_exists('image', $data))       $item->image       = \App\Support\HotelImageStore::persist(
-            $data['image'],
-            $membership->faculty_id,
-            $membership->group_name
-        );
+
+        $imageWarning = null;
+        if (array_key_exists('image', $data)) {
+            $newImage = str_starts_with(trim((string) $data['image']), 'data:image');
+            $imagePath = \App\Support\HotelImageStore::persist(
+                $data['image'],
+                $membership->faculty_id,
+                $membership->group_name
+            );
+
+            if ($newImage && $imagePath === null) {
+                // A fresh picture that could not be stored must not blank out the
+                // one already on the dish - the failure is announced, not applied.
+                $imageWarning = 'That picture could not be saved. The dish keeps its current photo.';
+            } else {
+                $item->image = $imagePath;
+            }
+        }
+
         $item->save();
 
-        return response()->json(['item' => $item->toTemplateArray()]);
+        return response()->json(['item' => $item->toTemplateArray(), 'image_warning' => $imageWarning]);
     })->name('hotel.menus.update');
 
     Route::delete('/hotel/menus/{id}', function (Request $request, $id) {
@@ -1357,6 +2294,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         }
         if (!\App\Support\HotelMenuAccess::canManage($membership)) {
             return response()->json(['message' => 'Only Restaurant Services staff can delete menu items.'], 403);
+        }
+        if (\App\Support\HotelMenuAccess::isUnderReview($membership)) {
+            return response()->json(['message' => \App\Support\HotelMenuAccess::lockMessage()], 403);
         }
 
         HotelMenuItem::where('hotel_menu_item_id', $id)
@@ -1487,7 +2427,946 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
     /*
     |--------------------------------------------------------------------------
-    | Hotel room-service orders (Front Desk places, Restaurant Services cooks and delivers)
+    | Hotel amenities
+    |--------------------------------------------------------------------------
+    |
+    | The hotel's facilities — the pool, the gym, the spa. Housekeeping owns the list;
+    | everyone else reads it, including a guest browsing the team's site, because the
+    | Amenities page there and the Housekeeping screen are one list rather than two
+    | copies of one.
+    |
+    | There is deliberately no delete route, for the same reason the add-ons catalogue
+    | has none: a repair request outlives the shutdown that caused it, and dropping the
+    | amenity would strand it. Retiring one means setting it Temporarily Closed.
+    |
+    | Under Maintenance is the only status a repair can be filed from, and once one is
+    | open the amenity cannot be set back to Available by the plain update route — the
+    | verify route is the way out, and it checks with Maintenance first.
+    */
+    Route::get('/hotel/amenities', function () {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['items' => [], 'can_manage' => false]);
+        }
+
+        // A team starts with the five facilities nearly every hotel has. No-ops once it
+        // has any amenity at all, so a team that built its own list is never touched.
+        \App\Support\HotelAmenityAccess::seedDefaults($membership);
+
+        $repairs = \App\Support\HotelAmenityDesk::latestRepairsFor($membership);
+
+        $items = \App\Models\HotelAmenity::where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->orderBy('hotel_amenity_id')
+            ->get()
+            ->map(fn (\App\Models\HotelAmenity $amenity) => $amenity->toTemplateArray(
+                $repairs[$amenity->hotel_amenity_id] ?? null
+            ));
+
+        return response()->json([
+            'items'      => $items,
+            'can_manage' => \App\Support\HotelAmenityAccess::canManage($membership),
+            // Whether the facilities may be changed, and the sentence saying why
+            // not when they may not — the screen prints it above the table.
+            'can_customize' => \App\Support\HotelAmenityAccess::canCustomize($membership),
+            'task' => \App\Support\AmenityTaskDesk::payload($membership),
+        ]);
+    })->name('hotel.amenities.index');
+
+    Route::post('/hotel/amenities', function (Request $request) {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelAmenityAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Housekeeping staff can add amenities.'], 403);
+        }
+        if (!\App\Support\HotelAmenityAccess::canCustomize($membership)) {
+            return response()->json([
+                'message' => \App\Support\AmenityTaskDesk::payload($membership)['message'],
+            ], 403);
+        }
+
+        $data = $request->validate([
+            'name'        => 'required|string|max:120',
+            'description' => 'nullable|string|max:2000',
+            'location'    => 'nullable|string|max:160',
+            'opens_at'    => 'nullable|date_format:H:i',
+            'closes_at'   => 'nullable|date_format:H:i',
+            'status'      => ['required', Rule::in(\App\Models\HotelAmenity::STATUSES)],
+            'access_type' => ['nullable', Rule::in(\App\Models\HotelAmenity::ACCESS_TYPES)],
+            'rate'        => 'nullable|integer|min:0|max:9999999',
+            'setup_fee'   => 'nullable|integer|min:0|max:9999999',
+            // Nullable is "no limit", which is not the same fact as 0.
+            'capacity'    => 'nullable|integer|min:0|max:9999',
+            'image'       => 'nullable|string|max:900000',
+            // Extra photographs, compressed in the browser before they are sent
+            // (see compressImageDataUrl on the Housekeeping screen) so a gallery
+            // costs about what one uncompressed upload used to.
+            'gallery'     => 'nullable|array|max:' . \App\Models\HotelAmenity::GALLERY_MAX,
+            'gallery.*'   => 'nullable|string|max:900000',
+        ], [
+            'image.max' => 'That image is too large. Please choose a smaller one.',
+        ]);
+
+        $imagePath = \App\Support\HotelImageStore::persist(
+            $data['image'] ?? null,
+            $membership->faculty_id,
+            $membership->group_name
+        );
+
+        $attributes = [
+            'group_name'  => $membership->group_name,
+            'faculty_id'  => $membership->faculty_id,
+            'group_id'    => $membership->group_id,
+            'name'        => trim($data['name']),
+            'description' => trim((string) ($data['description'] ?? '')) ?: null,
+            'location'    => trim((string) ($data['location'] ?? '')) ?: null,
+            'opens_at'    => \App\Models\HotelAmenity::normalizeTime($data['opens_at'] ?? null),
+            'closes_at'   => \App\Models\HotelAmenity::normalizeTime($data['closes_at'] ?? null),
+            'status'      => \App\Models\HotelAmenity::normalizeStatus($data['status']),
+            'access_type' => \App\Models\HotelAmenity::normalizeAccessType($data['access_type'] ?? null),
+            'rate'        => (int) ($data['rate'] ?? 0),
+            'setup_fee'   => (int) ($data['setup_fee'] ?? 0),
+            'capacity'    => array_key_exists('capacity', $data) && $data['capacity'] !== null
+                ? (int) $data['capacity']
+                : null,
+            'image'       => $imagePath,
+        ];
+
+        if (\App\Models\HotelAmenity::supportsGallery()) {
+            $attributes['gallery'] = \App\Support\HotelGallery::persist(
+                $data['gallery'] ?? [],
+                $membership,
+                \App\Models\HotelAmenity::GALLERY_MAX
+            );
+        }
+
+        $amenity = \App\Models\HotelAmenity::create($attributes);
+
+        // Nothing can be under repair yet, so the fresh row has no complaint behind it.
+        return response()->json([
+            'item' => $amenity->toTemplateArray(null),
+            // The facility still saved even when its photo did not.
+            'image_warning' => (!empty($data['image']) && $imagePath === null)
+                ? 'The amenity was added, but its photo could not be saved. Try again from Change Photo.'
+                : null,
+        ], 201);
+    })->name('hotel.amenities.store');
+
+    Route::patch('/hotel/amenities/{id}', function (Request $request, $id) {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelAmenityAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Housekeeping staff can edit amenities.'], 403);
+        }
+        if (!\App\Support\HotelAmenityAccess::canCustomize($membership)) {
+            return response()->json([
+                'message' => \App\Support\AmenityTaskDesk::payload($membership)['message'],
+            ], 403);
+        }
+
+        $amenity = \App\Models\HotelAmenity::where('hotel_amenity_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        $data = $request->validate([
+            'name'        => 'sometimes|string|max:120',
+            'description' => 'sometimes|nullable|string|max:2000',
+            'location'    => 'sometimes|nullable|string|max:160',
+            'opens_at'    => 'sometimes|nullable|date_format:H:i',
+            'closes_at'   => 'sometimes|nullable|date_format:H:i',
+            'status'      => ['sometimes', Rule::in(\App\Models\HotelAmenity::STATUSES)],
+            'access_type' => ['sometimes', Rule::in(\App\Models\HotelAmenity::ACCESS_TYPES)],
+            'rate'        => 'sometimes|integer|min:0|max:9999999',
+            'setup_fee'   => 'sometimes|integer|min:0|max:9999999',
+            // Nullable is "no limit", which is not the same fact as 0.
+            'capacity'    => 'sometimes|nullable|integer|min:0|max:9999',
+            'image'       => 'sometimes|nullable|string|max:900000',
+            // Compressed in the browser before they are sent, so a gallery costs
+            // about what one uncompressed upload used to.
+            'gallery'     => 'sometimes|nullable|array|max:' . \App\Models\HotelAmenity::GALLERY_MAX,
+            'gallery.*'   => 'nullable|string|max:900000',
+        ], [
+            'image.max' => 'That image is too large. Please choose a smaller one.',
+            'gallery.max' => 'An amenity keeps at most ' . (\App\Models\HotelAmenity::GALLERY_MAX + 1) . ' photos.',
+            'gallery.*.max' => 'One of those images is too large. Please choose a smaller one.',
+        ]);
+
+        // Reopening a facility Maintenance is still fixing has to go through the verify
+        // route, which checks the repair first. Editing anything else about it is fine.
+        if (array_key_exists('status', $data)
+            && \App\Models\HotelAmenity::normalizeStatus($data['status']) === 'Available'
+            && \App\Support\HotelAmenityDesk::openRepairFor($amenity)) {
+            return response()->json([
+                'message' => 'Maintenance is still working on this. Verify the repair first.',
+            ], 422);
+        }
+
+        if (array_key_exists('name', $data))        $amenity->name        = trim($data['name']);
+        if (array_key_exists('description', $data)) $amenity->description = trim((string) $data['description']) ?: null;
+        if (array_key_exists('location', $data))    $amenity->location    = trim((string) $data['location']) ?: null;
+        if (array_key_exists('opens_at', $data))    $amenity->opens_at    = \App\Models\HotelAmenity::normalizeTime($data['opens_at']);
+        if (array_key_exists('closes_at', $data))   $amenity->closes_at   = \App\Models\HotelAmenity::normalizeTime($data['closes_at']);
+        if (array_key_exists('status', $data))      $amenity->status      = \App\Models\HotelAmenity::normalizeStatus($data['status']);
+        if (array_key_exists('access_type', $data)) $amenity->access_type = \App\Models\HotelAmenity::normalizeAccessType($data['access_type']);
+        if (array_key_exists('rate', $data))        $amenity->rate        = (int) $data['rate'];
+        if (array_key_exists('setup_fee', $data))   $amenity->setup_fee   = (int) $data['setup_fee'];
+        if (array_key_exists('capacity', $data))    $amenity->capacity    = $data['capacity'] === null ? null : (int) $data['capacity'];
+
+        $imageWarning = null;
+        if (array_key_exists('image', $data)) {
+            $newImage = str_starts_with(trim((string) $data['image']), 'data:image');
+            $imagePath = \App\Support\HotelImageStore::persist(
+                $data['image'],
+                $membership->faculty_id,
+                $membership->group_name
+            );
+
+            if ($newImage && $imagePath === null) {
+                // A fresh photo that could not be stored must not blank out the one
+                // already on the facility - the failure is announced, not applied.
+                $imageWarning = 'That photo could not be saved. The amenity keeps its current picture.';
+            } else {
+                $amenity->image = $imagePath;
+            }
+        }
+        if (array_key_exists('gallery', $data) && \App\Models\HotelAmenity::supportsGallery()) {
+            $amenity->gallery = \App\Support\HotelGallery::persist(
+                $data['gallery'],
+                $membership,
+                \App\Models\HotelAmenity::GALLERY_MAX
+            );
+        }
+        $amenity->save();
+
+        return response()->json([
+            'item' => $amenity->toTemplateArray($amenity->repairs()->first()),
+            'image_warning' => $imageWarning,
+        ]);
+    })->name('hotel.amenities.update');
+
+    /*
+    | Removing a facility the hotel turned out not to have.
+    |
+    | Refused once anything has happened at it — a visit, a booking, a repair —
+    | because those rows are the simulation's record of the stay and deleting the
+    | facility under them would leave them pointing at nothing. Closing it
+    | (Temporarily Closed) is the way to retire one that has been used.
+    */
+    Route::delete('/hotel/amenities/{id}', function ($id) {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelAmenityAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Housekeeping staff can remove amenities.'], 403);
+        }
+        if (!\App\Support\HotelAmenityAccess::canCustomize($membership)) {
+            return response()->json([
+                'message' => \App\Support\AmenityTaskDesk::payload($membership)['message'],
+            ], 403);
+        }
+
+        $amenity = \App\Models\HotelAmenity::where('hotel_amenity_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        if ($amenity->visits()->exists()
+            || $amenity->repairs()->exists()
+            || \App\Models\HotelAmenityReservation::where('hotel_amenity_id', $amenity->hotel_amenity_id)->exists()
+        ) {
+            return response()->json([
+                'message' => 'This facility has already been used, so it cannot be removed. Set it to Temporarily Closed instead.',
+            ], 422);
+        }
+
+        // Its treatments go with it: a service belongs to the facility that gives
+        // it, and orphaned rows would hold the foreign key open.
+        \App\Models\HotelAmenityService::where('hotel_amenity_id', $amenity->hotel_amenity_id)->delete();
+
+        $name = $amenity->name;
+        $amenity->delete();
+
+        ActivityLog::record(
+            auth()->user(),
+            ActivityLog::OUTPUT_UPLOADED,
+            'Removed the amenity "' . $name . '".'
+        );
+
+        return response()->json(['success' => true]);
+    })->name('hotel.amenities.destroy');
+
+    /*
+    | Housekeeping hands a broken facility to Maintenance. Files a hotel_complaints row
+    | rather than opening a second queue — see HotelAmenityDesk.
+    */
+    Route::post('/hotel/amenities/{id}/repair-request', function (Request $request, $id) {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelAmenityAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Housekeeping staff can request a repair.'], 403);
+        }
+
+        $amenity = \App\Models\HotelAmenity::where('hotel_amenity_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        $data = $request->validate([
+            'category' => ['nullable', Rule::in(HotelComplaint::categoriesFor('maintenance'))],
+            'details'  => 'required|string|max:2000',
+        ]);
+
+        try {
+            $complaint = \App\Support\HotelAmenityDesk::requestRepair($amenity, $data, auth()->user());
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'item'      => $amenity->fresh()->toTemplateArray($complaint),
+            'complaint' => $complaint->toTemplateArray(),
+        ], 201);
+    })->name('hotel.amenities.repair');
+
+    /*
+    | The final look after the repair. Refuses while Maintenance still holds the
+    | complaint, the same guard that sits in front of marking a room ready.
+    */
+    Route::post('/hotel/amenities/{id}/verify', function ($id) {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelAmenityAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Housekeeping staff can verify a repair.'], 403);
+        }
+
+        $amenity = \App\Models\HotelAmenity::where('hotel_amenity_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        try {
+            \App\Support\HotelAmenityDesk::verifyRepaired($amenity, auth()->user());
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['item' => $amenity->toTemplateArray($amenity->repairs()->first())]);
+    })->name('hotel.amenities.verify');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Amenity entry register
+    |--------------------------------------------------------------------------
+    |
+    | Signing a guest into a facility that has to know who is inside — the pool, the gym —
+    | and signing them back out. Front Desk work: Housekeeping owns what the facility is,
+    | the desk owns who is in it, the same split the add-ons catalogue already makes.
+    |
+    | Only amenities with access_type 'registered' accept a visit. The playground is open
+    | access and has nothing to sign; the spa and the function room are booked ahead.
+    |
+    | Every refusal lives in HotelAmenityVisitDesk rather than here — they are the rules of
+    | the feature, not the shape of one HTTP call — and arrives as a RuntimeException whose
+    | message goes to the desk unchanged.
+    */
+    Route::get('/hotel/amenity-visits', function (Request $request) {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['visits' => [], 'can_register' => false]);
+        }
+
+        // Tenancy is the base of the query, never one of the optional filters below —
+        // nothing they do can widen it, only narrow it further.
+        $query = \App\Models\HotelAmenityVisit::where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id);
+
+        // The screen asks for the open ones; the register asks for all of them.
+        if ($request->query('inside') === '1') {
+            $query->inside();
+        }
+
+        if (ctype_digit((string) $request->query('amenity_id'))) {
+            $query->where('hotel_amenity_id', (int) $request->query('amenity_id'));
+        }
+
+        $visits = $query->orderByDesc('hotel_amenity_visit_id')
+            ->limit(200)
+            ->get()
+            ->map(fn (\App\Models\HotelAmenityVisit $visit) => $visit->toTemplateArray());
+
+        return response()->json([
+            'visits'       => $visits,
+            'can_register' => \App\Support\HotelAmenityAccess::canRegister($membership),
+        ]);
+    })->name('hotel.amenity-visits.index');
+
+    /*
+    | The guests the desk may sign in: everyone currently in the hotel. A Booked stay holds
+    | a room but its guest is not here yet, so it is not offered.
+    */
+    Route::get('/hotel/amenity-guests', function () {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['guests' => []]);
+        }
+
+        $guests = \App\Support\HotelAmenityVisitDesk::inHouseGuests($membership)
+            ->map(fn (HotelBooking $booking) => [
+                'bookingId' => $booking->hotel_booking_id,
+                'guestName' => $booking->guest?->full_name ?: 'Guest',
+                'roomName'  => $booking->room?->name ?? '',
+                'contactNo' => $booking->guest?->contact_no ?? '',
+            ])
+            ->values();
+
+        return response()->json(['guests' => $guests]);
+    })->name('hotel.amenity-guests');
+
+    Route::post('/hotel/amenity-visits', function (Request $request) {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        /* The desk signs anybody in; a guest signs themselves in. Signing in to the
+           website is what is asked of them, not checking in to a room: the pool and
+           the gym are used by guests who arrive before their room is ready and by
+           guests eating here without staying, and the register's job is to say who
+           is inside either way. A stay is attached when there is one. */
+        $guestAuth = \App\Support\HotelSimulationAuth::current();
+        $guestStay = \App\Support\HotelGuestStay::checkedInBooking($membership);
+        $asGuest = !\App\Support\HotelAmenityAccess::canRegister($membership);
+
+        if ($asGuest && (!is_array($guestAuth) || ($guestAuth['type'] ?? null) !== 'customer')) {
+            return response()->json(['message' => 'Sign in as a guest to use a facility.'], 403);
+        }
+
+        $data = $request->validate([
+            'hotel_amenity_id' => 'required|integer',
+            // The desk names the stay; a guest is only ever their own, and it is
+            // read off the session rather than trusted from the form.
+            'hotel_booking_id' => [$asGuest ? 'nullable' : 'required', 'integer'],
+            'party_size'       => 'nullable|integer|min:1|max:999',
+            'notes'            => 'nullable|string|max:500',
+        ]);
+
+        if ($asGuest) {
+            // Their own stay or none at all — never one they typed.
+            $data['hotel_booking_id'] = $guestStay?->hotel_booking_id;
+            $data['guest_name'] = $guestAuth['name'] ?? 'Guest';
+        }
+
+        $amenity = \App\Models\HotelAmenity::where('hotel_amenity_id', $data['hotel_amenity_id'])
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        $booking = filled($data['hotel_booking_id'] ?? null)
+            ? HotelBooking::with(['guest', 'room'])
+                ->where('hotel_booking_id', $data['hotel_booking_id'])
+                ->where('group_name', $membership->group_name)
+                ->where('faculty_id', $membership->faculty_id)
+                ->firstOrFail()
+            : null;
+
+        try {
+            $visit = \App\Support\HotelAmenityVisitDesk::registerEntry($amenity, $booking, $data, auth()->user());
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['visit' => $visit->toTemplateArray()], 201);
+    })->name('hotel.amenity-visits.store');
+
+    Route::post('/hotel/amenity-visits/{id}/exit', function ($id) {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelAmenityAccess::canRegister($membership)) {
+            return response()->json(['message' => 'Only Front Desk staff can sign a guest out.'], 403);
+        }
+
+        $visit = \App\Models\HotelAmenityVisit::where('hotel_amenity_visit_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        try {
+            \App\Support\HotelAmenityVisitDesk::registerExit($visit, auth()->user());
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['visit' => $visit->toTemplateArray()]);
+    })->name('hotel.amenity-visits.exit');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Amenity reservations — spa appointments and function room events
+    |--------------------------------------------------------------------------
+    |
+    | Both kinds live on one table and go through one desk, because both do the same
+    | dangerous thing: hold a slot nobody else may have. Every write is in
+    | HotelAmenityReservationDesk, which runs the conflict check inside its own
+    | transaction after locking the facility — a check made out here is one two Front Desk
+    | tabs can both pass.
+    |
+    | Front Desk books and takes the money. Housekeeping runs the hall's turnaround for an
+    | event, which is a separate status from the amenity's own condition. Restaurant
+    | Services never touch these rows: they see the catering as an order on their own board.
+    |
+    | There is no delete route. A reservation is a record of money and a promise; calling
+    | one off is a Cancelled status, which keeps the row and frees the slot.
+    */
+    Route::get('/hotel/amenity-reservations', function (Request $request) {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['reservations' => [], 'can_book' => false, 'can_prepare' => false]);
+        }
+
+        // Tenancy is the base of the query, never one of the optional filters below —
+        // nothing they do can widen it, only narrow it further.
+        $query = \App\Support\HotelAmenityReservationDesk::scopedQuery($membership);
+
+        if (ctype_digit((string) $request->query('amenity_id'))) {
+            $query->where('hotel_amenity_id', (int) $request->query('amenity_id'));
+        }
+        if (in_array($request->query('kind'), \App\Models\HotelAmenityReservation::KINDS, true)) {
+            $query->where('kind', $request->query('kind'));
+        }
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $request->query('date'))) {
+            $query->whereDate('scheduled_on', $request->query('date'));
+        }
+        if ($request->query('holding') === '1') {
+            $query->holding();
+        }
+
+        return response()->json([
+            'reservations' => $query->limit(200)->get()
+                ->map(fn (\App\Models\HotelAmenityReservation $r) => $r->toTemplateArray()),
+            // Front Desk sells the slot; Housekeeping runs the hall around it.
+            'can_book'     => \App\Support\HotelAmenityAccess::canRegister($membership),
+            'can_prepare'  => \App\Support\HotelAmenityAccess::canPrepare($membership),
+        ]);
+    })->name('hotel.amenity-reservations.index');
+
+    Route::post('/hotel/amenity-reservations', function (Request $request) {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        /* Front Desk takes a booking for anyone; a guest takes their own once they
+           have an account. Asking them to be checked in first had it backwards: a
+           treatment or a hall is booked before you arrive, which is the whole
+           reason a hotel takes bookings. The stay is attached when there is one,
+           and that is what lets the desk put it on the room. */
+        $guestAuth = \App\Support\HotelSimulationAuth::current();
+        $guestStay = \App\Support\HotelGuestStay::checkedInBooking($membership);
+        $asGuest = !\App\Support\HotelAmenityAccess::canRegister($membership);
+
+        if ($asGuest && (!is_array($guestAuth) || ($guestAuth['type'] ?? null) !== 'customer')) {
+            return response()->json(['message' => 'Sign in as a guest to book a facility.'], 403);
+        }
+
+        $data = $request->validate([
+            'hotel_amenity_id'          => 'required|integer',
+            'kind'                      => ['required', Rule::in(\App\Models\HotelAmenityReservation::KINDS)],
+            'customer_name'             => 'required|string|max:160',
+            'contact_no'                => 'nullable|string|max:40',
+            'email'                     => 'nullable|email|max:160',
+            'scheduled_on'              => 'required|date_format:Y-m-d',
+            'starts_at'                 => 'required|date_format:H:i',
+            'ends_at'                   => 'nullable|date_format:H:i',
+            'special_requests'          => 'nullable|string|max:2000',
+            'hotel_booking_id'          => 'nullable|integer',
+            'charge_to_room'            => 'nullable|boolean',
+            'additional_fee'            => 'nullable|numeric|min:0|max:9999999',
+            'additional_note'           => 'nullable|string|max:255',
+            // appointment
+            'hotel_amenity_service_id'  => 'nullable|integer',
+            // event
+            'event_type'                => 'nullable|string|max:120',
+            'guest_count'               => 'nullable|integer|min:1|max:9999',
+            'package'                   => ['nullable', Rule::in(\App\Models\HotelAmenityReservation::PACKAGES)],
+            'hotel_catering_package_id' => 'nullable|integer',
+        ]);
+
+        $amenity = \App\Models\HotelAmenity::where('hotel_amenity_id', $data['hotel_amenity_id'])
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        /* A guest books their own stay and nobody else's: the booking, the name and
+           the contact details are read off the stay rather than taken from the form,
+           and it lands Pending for the desk to confirm the way a phoned-in booking
+           does. */
+        if ($asGuest) {
+            $data['hotel_booking_id'] = $guestStay?->hotel_booking_id;
+            $data['customer_name'] = $guestStay?->guest?->full_name
+                ?: ($guestAuth['name'] ?? ($data['customer_name'] ?? 'Guest'));
+            $data['contact_no'] = $guestStay?->guest?->contact_no;
+            $data['email'] = $guestStay?->guest?->email ?: ($guestAuth['email'] ?? null);
+            // Settling it is the desk's business at checkout, not something a guest
+            // ticks for themselves.
+            unset($data['charge_to_room'], $data['additional_fee'], $data['additional_note']);
+        }
+
+        try {
+            $reservation = \App\Support\HotelAmenityReservationDesk::book($amenity, $data, auth()->user());
+        } catch (\RuntimeException $e) {
+            // 409 for a clash, the same status the room-booking guard returns; 422 for
+            // everything the desk simply got wrong.
+            $clash = str_contains($e->getMessage(), 'already taken');
+
+            return response()->json(['message' => $e->getMessage()], $clash ? 409 : 422);
+        }
+
+        return response()->json(['reservation' => $reservation->toTemplateArray()], 201);
+    })->name('hotel.amenity-reservations.store');
+
+    /*
+    | Two different moves on one route, because they belong to two different desks and
+    | never overlap: `status` is Front Desk walking the booking forward, and
+    | `housekeeping_status` is Housekeeping turning the hall round for it.
+    */
+    Route::patch('/hotel/amenity-reservations/{id}', function (Request $request, $id) {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+
+        $reservation = \App\Models\HotelAmenityReservation::with(['service', 'cateringPackage', 'payments', 'cateringOrders'])
+            ->where('hotel_amenity_reservation_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        $data = $request->validate([
+            'status'              => ['sometimes', Rule::in(\App\Models\HotelAmenityReservation::STATUSES)],
+            'housekeeping_status' => ['sometimes', Rule::in(\App\Models\HotelAmenityReservation::HOUSEKEEPING_FLOW)],
+        ]);
+
+        try {
+            if (array_key_exists('status', $data)) {
+                if (!\App\Support\HotelAmenityAccess::canRegister($membership)) {
+                    return response()->json(['message' => 'Only Front Desk staff can update a booking.'], 403);
+                }
+                \App\Support\HotelAmenityReservationDesk::advance($reservation, $data['status'], auth()->user());
+            }
+
+            if (array_key_exists('housekeeping_status', $data)) {
+                if (!\App\Support\HotelAmenityAccess::canPrepare($membership)) {
+                    return response()->json(['message' => 'Only Housekeeping staff can update the room preparation.'], 403);
+                }
+                \App\Support\HotelAmenityReservationDesk::advanceHousekeeping($reservation, $data['housekeeping_status'], auth()->user());
+            }
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'reservation' => $reservation->fresh(['service', 'cateringPackage', 'payments', 'cateringOrders'])->toTemplateArray(),
+        ]);
+    })->name('hotel.amenity-reservations.update');
+
+    Route::post('/hotel/amenity-reservations/{id}/payments', function (Request $request, $id) {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelAmenityAccess::canRegister($membership)) {
+            return response()->json(['message' => 'Only Front Desk staff can take a payment.'], 403);
+        }
+
+        $reservation = \App\Models\HotelAmenityReservation::with(['service', 'cateringPackage', 'payments', 'cateringOrders'])
+            ->where('hotel_amenity_reservation_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        $data = $request->validate([
+            // 'Charged to Room' is not typed in here — it is written by the folio route.
+            'type'        => ['nullable', Rule::in(['Full', 'Partial'])],
+            'amount_paid' => 'required|numeric|min:0.01|max:9999999',
+            'method'      => ['nullable', Rule::in(\App\Models\HotelAmenityPayment::METHODS)],
+            'reference'   => 'nullable|string|max:120',
+            'payer_name'  => 'nullable|string|max:160',
+            'notes'       => 'nullable|string|max:500',
+        ]);
+
+        try {
+            \App\Support\HotelAmenityReservationDesk::addPayment($reservation, $data, auth()->user());
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'reservation' => $reservation->fresh(['service', 'cateringPackage', 'payments', 'cateringOrders'])->toTemplateArray(),
+        ], 201);
+    })->name('hotel.amenity-reservations.payments.store');
+
+    /*
+    | Push the balance onto a checked-in guest's room account. Writes one
+    | hotel_booking_charges row per component, which HotelBooking::grandTotal() already
+    | sums and the check-out route already refuses to release a guest without settling.
+    */
+    Route::post('/hotel/amenity-reservations/{id}/charge-to-room', function ($id) {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelAmenityAccess::canRegister($membership)) {
+            return response()->json(['message' => 'Only Front Desk staff can charge a booking to a room.'], 403);
+        }
+
+        $reservation = \App\Models\HotelAmenityReservation::with(['booking.room', 'service', 'cateringPackage', 'payments', 'cateringOrders'])
+            ->where('hotel_amenity_reservation_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        try {
+            \App\Support\HotelAmenityReservationDesk::chargeToRoom($reservation, auth()->user());
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'reservation' => $reservation->fresh(['service', 'cateringPackage', 'payments', 'cateringOrders'])->toTemplateArray(),
+        ]);
+    })->name('hotel.amenity-reservations.charge-to-room');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Amenity services — the treatments behind a by-appointment facility
+    |--------------------------------------------------------------------------
+    |
+    | Housekeeping's rate card, the same call the amenities catalogue itself makes: the
+    | department that operates a facility owns what it offers. Front Desk reads it to sell
+    | a slot and cannot write to it.
+    */
+    Route::get('/hotel/amenity-services', function (Request $request) {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['services' => [], 'can_manage' => false]);
+        }
+
+        $query = \App\Models\HotelAmenityService::where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id);
+
+        if (ctype_digit((string) $request->query('amenity_id'))) {
+            $query->where('hotel_amenity_id', (int) $request->query('amenity_id'));
+        }
+
+        return response()->json([
+            'services'   => $query->orderBy('hotel_amenity_service_id')->get()
+                ->map(fn (\App\Models\HotelAmenityService $s) => $s->toTemplateArray()),
+            'can_manage' => \App\Support\HotelAmenityAccess::canManage($membership),
+        ]);
+    })->name('hotel.amenity-services.index');
+
+    Route::post('/hotel/amenity-services', function (Request $request) {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelAmenityAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Housekeeping staff can add a service.'], 403);
+        }
+
+        $data = $request->validate([
+            'hotel_amenity_id' => 'required|integer',
+            'name'             => 'required|string|max:120',
+            'description'      => 'nullable|string|max:255',
+            'duration_minutes' => 'required|integer|min:5|max:600',
+            'price'            => 'required|integer|min:0|max:9999999',
+        ]);
+
+        $amenity = \App\Models\HotelAmenity::where('hotel_amenity_id', $data['hotel_amenity_id'])
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        $service = \App\Models\HotelAmenityService::create([
+            'group_name'       => $membership->group_name,
+            'faculty_id'       => $membership->faculty_id,
+            'group_id'         => $membership->group_id,
+            'hotel_amenity_id' => $amenity->hotel_amenity_id,
+            'name'             => trim($data['name']),
+            'description'      => trim((string) ($data['description'] ?? '')) ?: null,
+            'duration_minutes' => (int) $data['duration_minutes'],
+            'price'            => (int) $data['price'],
+            'is_active'        => true,
+        ]);
+
+        return response()->json(['service' => $service->toTemplateArray()], 201);
+    })->name('hotel.amenity-services.store');
+
+    Route::patch('/hotel/amenity-services/{id}', function (Request $request, $id) {
+        $membership = \App\Support\HotelAmenityAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelAmenityAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Housekeeping staff can edit a service.'], 403);
+        }
+
+        $service = \App\Models\HotelAmenityService::where('hotel_amenity_service_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        $data = $request->validate([
+            'name'             => 'sometimes|string|max:120',
+            'description'      => 'sometimes|nullable|string|max:255',
+            'duration_minutes' => 'sometimes|integer|min:5|max:600',
+            'price'            => 'sometimes|integer|min:0|max:9999999',
+            // Retired rather than deleted, so booked appointments still resolve.
+            'is_active'        => 'sometimes|boolean',
+        ]);
+
+        if (array_key_exists('name', $data))             $service->name = trim($data['name']);
+        if (array_key_exists('description', $data))      $service->description = trim((string) $data['description']) ?: null;
+        if (array_key_exists('duration_minutes', $data)) $service->duration_minutes = (int) $data['duration_minutes'];
+        if (array_key_exists('price', $data))            $service->price = (int) $data['price'];
+        if (array_key_exists('is_active', $data))        $service->is_active = (bool) $data['is_active'];
+        $service->save();
+
+        return response()->json(['service' => $service->toTemplateArray()]);
+    })->name('hotel.amenity-services.update');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Catering packages
+    |--------------------------------------------------------------------------
+    |
+    | Restaurant Services own and price these; Front Desk reads them when booking a
+    | function room and cannot create one. That is what keeps catering coming out of the
+    | Restaurant module rather than being invented on the booking form.
+    |
+    | Priced per head with no stock, which is why these are not hotel_menu_items — the
+    | order pipeline decrements a menu item's stock per unit, and a hundred-guest buffet
+    | has no shelf to come off.
+    */
+    Route::get('/hotel/catering-packages', function () {
+        $membership = \App\Support\HotelCateringAccess::membership();
+        if (!$membership) {
+            return response()->json(['packages' => [], 'can_manage' => false]);
+        }
+
+        // A team starts with three packages, so Front Desk can book a catered event on
+        // day one. No-ops once the team has any at all.
+        \App\Support\HotelCateringAccess::seedDefaults($membership);
+
+        return response()->json([
+            'packages'   => \App\Models\HotelCateringPackage::where('group_name', $membership->group_name)
+                ->where('faculty_id', $membership->faculty_id)
+                ->orderBy('hotel_catering_package_id')
+                ->get()
+                ->map(fn (\App\Models\HotelCateringPackage $p) => $p->toTemplateArray()),
+            'can_manage' => \App\Support\HotelCateringAccess::canManage($membership),
+        ]);
+    })->name('hotel.catering-packages.index');
+
+    Route::post('/hotel/catering-packages', function (Request $request) {
+        $membership = \App\Support\HotelCateringAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelCateringAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Restaurant Services staff can add a catering package.'], 403);
+        }
+
+        $data = $request->validate([
+            'name'           => 'required|string|max:120',
+            'description'    => 'nullable|string|max:500',
+            'inclusions'     => 'nullable|string|max:1000',
+            'price_per_head' => 'required|integer|min:0|max:9999999',
+            'min_guests'     => 'nullable|integer|min:1|max:9999',
+            'image'          => 'nullable|string|max:900000',
+        ], [
+            'image.max' => 'That image is too large. Please choose a smaller one.',
+        ]);
+
+        $package = \App\Models\HotelCateringPackage::create([
+            'group_name'     => $membership->group_name,
+            'faculty_id'     => $membership->faculty_id,
+            'group_id'       => $membership->group_id,
+            'name'           => trim($data['name']),
+            'description'    => trim((string) ($data['description'] ?? '')) ?: null,
+            'inclusions'     => trim((string) ($data['inclusions'] ?? '')) ?: null,
+            'price_per_head' => (int) $data['price_per_head'],
+            'min_guests'     => (int) ($data['min_guests'] ?? 1),
+            'image'          => \App\Support\HotelImageStore::persist(
+                $data['image'] ?? null,
+                $membership->faculty_id,
+                $membership->group_name
+            ),
+            'is_active'      => true,
+        ]);
+
+        return response()->json(['package' => $package->toTemplateArray()], 201);
+    })->name('hotel.catering-packages.store');
+
+    Route::patch('/hotel/catering-packages/{id}', function (Request $request, $id) {
+        $membership = \App\Support\HotelCateringAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelCateringAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Restaurant Services staff can edit a catering package.'], 403);
+        }
+
+        $package = \App\Models\HotelCateringPackage::where('hotel_catering_package_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        $data = $request->validate([
+            'name'           => 'sometimes|string|max:120',
+            'description'    => 'sometimes|nullable|string|max:500',
+            'inclusions'     => 'sometimes|nullable|string|max:1000',
+            'price_per_head' => 'sometimes|integer|min:0|max:9999999',
+            'min_guests'     => 'sometimes|integer|min:1|max:9999',
+            // Retired rather than deleted, so booked events still resolve.
+            'is_active'      => 'sometimes|boolean',
+            'image'          => 'sometimes|nullable|string|max:900000',
+        ], [
+            'image.max' => 'That image is too large. Please choose a smaller one.',
+        ]);
+
+        if (array_key_exists('name', $data))           $package->name = trim($data['name']);
+        if (array_key_exists('description', $data))    $package->description = trim((string) $data['description']) ?: null;
+        if (array_key_exists('inclusions', $data))     $package->inclusions = trim((string) $data['inclusions']) ?: null;
+        if (array_key_exists('price_per_head', $data)) $package->price_per_head = (int) $data['price_per_head'];
+        if (array_key_exists('min_guests', $data))     $package->min_guests = (int) $data['min_guests'];
+        if (array_key_exists('is_active', $data))      $package->is_active = (bool) $data['is_active'];
+        if (array_key_exists('image', $data))          $package->image = \App\Support\HotelImageStore::persist(
+            $data['image'],
+            $membership->faculty_id,
+            $membership->group_name
+        );
+        $package->save();
+
+        return response()->json(['package' => $package->toTemplateArray()]);
+    })->name('hotel.catering-packages.update');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Hotel food orders — room service and dine-in. Front Desk places room service
+    | against a stay; a dine-in order is taken tableside by Restaurant Services once
+    | the customer arrives at the table Front Desk reserved. Restaurant Services
+    | cooks and serves every one of them.
     |--------------------------------------------------------------------------
     */
 
@@ -1566,17 +3445,35 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         $orderType = HotelFoodOrder::normalizeOrderType($request->input('order_type'));
         $isDineIn = $orderType === 'dine_in';
 
+        // Catering is not placed here. It is raised by HotelCateringDesk when a function
+        // room booking picks a package, and it deliberately skips the stock transaction
+        // below — a buffet priced per head has no shelf to come off, so this route's
+        // menu-item matching would reject it on the first line.
+        if ($orderType === 'catering') {
+            return response()->json([
+                'message' => 'Catering is ordered by booking the function room, not from here.',
+            ], 422);
+        }
+
+        /* A guest signed into the hotel's website orders their own food. Dine-in
+           stays the restaurant's: it is placed against a table somebody is sitting
+           at, and only the floor knows that. */
+        $guestAuth = \App\Support\HotelSimulationAuth::current();
+        $asGuest = is_array($guestAuth) && ($guestAuth['type'] ?? null) === 'customer';
+
         if ($isDineIn) {
             if (!\App\Support\HotelOrderAccess::canPlaceDineIn($membership)) {
                 return response()->json(['message' => 'Only Restaurant Services staff can take a dine-in order.'], 403);
             }
-        } elseif (!\App\Support\HotelOrderAccess::canPlace($membership)) {
+        } elseif (!$asGuest && !\App\Support\HotelOrderAccess::canPlace($membership)) {
             return response()->json(['message' => 'Only Front Desk staff can place room-service orders.'], 403);
         }
 
         $data = $request->validate([
-            'room_number'          => ($isDineIn ? 'nullable' : 'required') . '|string|max:100',
-            'guest_name'           => ($isDineIn ? 'nullable' : 'required') . '|string|max:255',
+            // A guest names neither: both are read off their account and their stay,
+            // so nobody can order to somebody else's room.
+            'room_number'          => (($isDineIn || $asGuest) ? 'nullable' : 'required') . '|string|max:100',
+            'guest_name'           => (($isDineIn || $asGuest) ? 'nullable' : 'required') . '|string|max:255',
             'dine_in_table_id'     => ($isDineIn ? 'required' : 'nullable') . '|integer',
             'items'                => 'required|array|min:1|max:50',
             'items.*.name'         => 'required|string|max:255',
@@ -1597,12 +3494,24 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                 return response()->json(['message' => 'That table was not found.'], 404);
             }
             if ($table->status !== 'Occupied') {
-                return response()->json(['message' => 'Seat a guest at this table before ordering.'], 422);
+                return response()->json([
+                    'message' => 'Mark the customer as arrived before taking their order.',
+                ], 422);
             }
+        } elseif ($asGuest) {
+            /* The guest's own stay decides where it goes. Checked in, and it is
+               room service billed to that room like any the desk would place;
+               not checked in, and the kitchen still cooks it - it is collected and
+               paid for at the front desk instead of being charged to a room that
+               does not exist yet. */
+            $booking = \App\Support\HotelGuestStay::checkedInBooking($membership);
+            $data['guest_name'] = $booking?->guest?->full_name ?: ($guestAuth['name'] ?? 'Guest');
+            $data['room_number'] = $booking?->room?->name;
         } else {
             // Room service is charged to a stay, so it has to resolve to one. The room
-            // is identified by name (that is all the ordering screen has), and only a
-            // guest who has actually checked in can order to their room.
+            // is identified by name (that is all the ordering screen has). Any guest
+            // booked into it - booked, arrived or checked in - can have the desk order
+            // for them; the order is billed to that stay.
             $room = HotelRoom::with('activeBooking')
                 ->where('group_name', $membership->group_name)
                 ->where('faculty_id', $membership->faculty_id)
@@ -1610,9 +3519,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                 ->first();
 
             $booking = $room?->activeBooking;
-            if (!$booking || $booking->status !== 'Checked In') {
+            if (!$booking || !$booking->isOpen()) {
                 return response()->json([
-                    'message' => 'That room has no checked-in guest to bill this order to.',
+                    'message' => 'That room has no booked guest to bill this order to.',
                 ], 422);
             }
         }
@@ -1687,7 +3596,20 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'status' => 'required|string|max:50',
         ]);
 
-        $next = HotelFoodOrder::normalizeStatus($data['status']);
+        // Type-aware: catering runs a longer pipeline (Pending .. Serving .. Completed),
+        // so a status is validated against this order's own flow rather than the kitchen's.
+        $requested = trim((string) $data['status']);
+        $next = HotelFoodOrder::normalizeStatus($requested, $order->order_type);
+
+        // normalizeStatus() falls back to the flow's first step, which would then be
+        // refused as a backwards move — a true answer to a question nobody asked. Say
+        // what is actually wrong instead.
+        if (mb_strtolower($next) !== mb_strtolower($requested)) {
+            return response()->json([
+                'message' => '"' . $requested . '" is not a step a '
+                    . str_replace('_', ' ', $order->order_type) . ' order goes through.',
+            ], 422);
+        }
 
         // The kitchen owns every step, delivery included. Front Desk reads the status
         // and nothing more, so any write from them is refused rather than ignored.
@@ -1700,7 +3622,9 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         // A room-service order is billed to a stay the moment it is placed, so there
         // is no cancelling it — it runs to Completed. Dine-in keeps the exit: nothing
         // is charged to a room there, and a table can change its mind.
-        if ($next === 'Cancelled' && $order->order_type !== 'dine_in') {
+        // Catering keeps the exit too: an event gets called off, and the reservation that
+        // raised the order is the thing that cancels it.
+        if ($next === 'Cancelled' && !in_array($order->order_type, ['dine_in', 'catering'], true)) {
             return response()->json([
                 'message' => 'A room-service order cannot be cancelled. See it through to Completed.',
             ], 422);
@@ -1708,7 +3632,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         // Status only ever moves forward, for every role — the kitchen included.
         // Once Completed or Cancelled, an order is done; nothing may reopen it.
-        if (!HotelFoodOrder::isForwardTransition($order->status, $next)) {
+        if (!HotelFoodOrder::isForwardTransition($order->status, $next, $order->order_type)) {
             return response()->json([
                 'message' => $order->status . ' cannot go back to ' . $next . '. Status only moves forward.',
             ], 422);
@@ -1746,7 +3670,8 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
     /*
     |--------------------------------------------------------------------------
-    | Guest complaints (Front Desk records, Maintenance / Housekeeping resolve)
+    | Guest complaints (Front Desk records and closes; Housekeeping, Maintenance,
+    | Room Management or Restaurant Services resolves)
     |--------------------------------------------------------------------------
     */
 
@@ -1761,6 +3686,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             ]);
         }
 
+        // Scoped to this team: a complaint never crosses into another team's queue.
         $complaints = HotelComplaint::where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
             ->orderByDesc('hotel_complaint_id')
@@ -1786,38 +3712,51 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         }
 
         $data = $request->validate([
-            'room_number' => 'required|string|max:100',
+            'room_number' => 'nullable|string|max:100',
             'guest_name'  => 'nullable|string|max:255',
-            'category'    => 'required|string|max:100',
-            'department'  => 'nullable|string|max:50',
+            'category'    => ['required', 'string', Rule::in(array_keys(HotelComplaint::CATEGORY_DEPARTMENTS))],
             'details'     => 'required|string|max:2000',
         ]);
 
-        $category = HotelComplaint::normalizeCategory($data['category']);
+        // The category decides the department, so a complaint always lands with the
+        // team that owns that kind of problem.
+        $department = HotelComplaint::departmentForCategory($data['category']);
+        $room = trim((string) ($data['room_number'] ?? ''));
+        $guest = trim((string) ($data['guest_name'] ?? ''));
 
-        $complaint = HotelComplaint::create([
+        // A dirty room or a broken aircon is always in a room. Room Management and the
+        // restaurant also hear from guests who are not staying in one.
+        if ($room === '' && in_array($department, ['housekeeping', 'maintenance'], true)) {
+            return response()->json(['message' => 'Choose the room this ' . HotelComplaint::DEPARTMENTS[$department] . ' problem is in.'], 422);
+        }
+        if ($room === '' && $guest === '') {
+            return response()->json(['message' => 'Enter the guest name or choose their room.'], 422);
+        }
+
+        $complaint = new HotelComplaint([
             'group_name'  => $membership->group_name,
             'faculty_id'  => $membership->faculty_id,
             'group_id'    => $membership->group_id,
-            'room_number' => trim($data['room_number']),
-            'guest_name'  => isset($data['guest_name']) ? trim($data['guest_name']) : null,
-            'category'    => $category,
-            // No explicit department means take the category's default.
-            'department'  => empty($data['department'])
-                ? HotelComplaint::departmentForCategory($category)
-                : HotelComplaint::normalizeDepartment($data['department']),
+            // The column is not nullable; an empty string is "no room".
+            'room_number' => $room,
+            'guest_name'  => $guest !== '' ? $guest : null,
+            'category'    => $data['category'],
+            'department'  => $department,
             'details'     => trim($data['details']),
-            'status'      => 'Open',
+            'status'      => 'Pending',
             'filed_by'    => auth()->user()?->name,
         ]);
+        $complaint->logHistory('Received and sent to ' . $complaint->departmentLabel(), $complaint->filed_by);
+        $complaint->save();
 
         \App\Support\Notifier::complaintFiled(auth()->user(), $complaint);
 
         ActivityLog::record(
             auth()->user(),
             ActivityLog::COMPLAINT_FILED,
-            'Recorded a ' . $complaint->departmentLabel() . ' complaint for room '
-                . $complaint->room_number . ' (' . $complaint->category . ').'
+            'Recorded a ' . $complaint->departmentLabel() . ' complaint'
+                . ($room !== '' ? ' for room ' . $room : ' from ' . $guest)
+                . ' (' . $complaint->category . ').'
         );
 
         return response()->json(['complaint' => $complaint->toTemplateArray()], 201);
@@ -1836,14 +3775,15 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         $data = $request->validate([
             'status'          => 'sometimes|string|max:50',
-            'department'      => 'sometimes|string|max:50',
+            'department'      => ['sometimes', 'string', Rule::in(array_keys(HotelComplaint::DEPARTMENTS))],
             'resolution_note' => 'sometimes|nullable|string|max:2000',
         ]);
 
         // Authorised against the department the complaint sits in *now* — that is
-        // also what lets Housekeeping hand a mis-routed one to Maintenance.
+        // also what lets a department hand a mis-routed one to another.
         $handles = \App\Support\HotelComplaintAccess::canHandle($membership, $complaint->department);
         $isFrontDesk = \App\Support\HotelComplaintAccess::canFile($membership);
+        $by = auth()->user()?->name;
 
         $reassignedFrom = null;
         if (array_key_exists('department', $data)) {
@@ -1852,51 +3792,63 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                     'message' => 'Only ' . $complaint->departmentLabel() . ' staff can reassign this complaint.',
                 ], 403);
             }
-            // A closed complaint has nowhere to be handed to — reassigning one used to
-            // reopen it, which is the same backward move the status pills forbid.
-            if (in_array($complaint->status, ['Resolved', 'Cancelled'], true)) {
+            // Once resolved there is nothing left to hand over — reassigning would
+            // reopen it, the same backward move the status flow forbids.
+            if (in_array($complaint->status, ['Resolved', 'Closed', 'Cancelled'], true)) {
                 return response()->json([
                     'message' => 'This complaint is already ' . $complaint->status . ' and cannot be reassigned.',
                 ], 422);
             }
-            $next = HotelComplaint::normalizeDepartment($data['department']);
+            $next = $data['department'];
             if ($next !== $complaint->department) {
                 $reassignedFrom = $complaint->department;
+                $fromLabel = $complaint->departmentLabel();
                 $complaint->department = $next;
                 // The status stays where the first department left it: status only ever
-                // moves forward, so a handed-over complaint cannot drop back to Open.
-                // handled_by clears because the new department has not worked it yet;
-                // any note the first department left stays — it is what they found.
+                // moves forward. handled_by clears because the new department has not
+                // worked it yet; any note the first department left stays.
                 $complaint->handled_by = null;
+                $complaint->logHistory('Handed from ' . $fromLabel . ' to ' . $complaint->departmentLabel(), $by);
             }
         }
 
         if (array_key_exists('status', $data)) {
             $next = HotelComplaint::normalizeStatus($data['status']);
-            // Front Desk took the complaint from the guest, so they may withdraw it —
-            // but working it is the department's job.
-            $maySet = $handles || ($isFrontDesk && $next === 'Cancelled');
+
+            // The department works it; the Front Desk closes it after checking with
+            // the guest, and may withdraw it. Staff-raised issues (an inspection or an
+            // amenity repair) have no guest to confirm with, so they finish at Resolved.
+            if ($next === 'Closed') {
+                if ($complaint->isInternal()) {
+                    return response()->json(['message' => 'This issue was raised by staff, not a guest. It is finished once Resolved.'], 422);
+                }
+                $maySet = $isFrontDesk;
+                $who = 'Front Desk';
+            } elseif ($next === 'Cancelled') {
+                $maySet = $handles || $isFrontDesk;
+                $who = $complaint->departmentLabel() . ' or Front Desk';
+            } else {
+                $maySet = $handles;
+                $who = $complaint->departmentLabel();
+            }
             if (!$maySet) {
-                return response()->json([
-                    'message' => 'Only ' . $complaint->departmentLabel() . ' staff can update this complaint.',
-                ], 403);
+                return response()->json(['message' => 'Only ' . $who . ' staff can mark this complaint ' . $next . '.'], 403);
             }
 
-            // Status only ever moves forward, for every role. Once Resolved or
-            // Cancelled, a complaint is done; nothing may reopen it this way —
-            // reassigning to the other department is the one deliberate reset,
-            // handled above, not through this field.
             if (!HotelComplaint::isForwardTransition($complaint->status, $next)) {
                 return response()->json([
-                    'message' => $complaint->status . ' cannot go back to ' . $next . '. Status only moves forward.',
+                    'message' => $complaint->status . ' cannot move to ' . $next . '.',
                 ], 422);
             }
 
             $complaint->status = $next;
-            $complaint->resolved_at = in_array($next, ['Resolved', 'Cancelled'], true) ? now() : null;
-            if ($handles) {
-                $complaint->handled_by = auth()->user()?->name;
+            if (in_array($next, ['Resolved', 'Cancelled'], true)) {
+                $complaint->resolved_at = now();
             }
+            if ($handles && $next !== 'Closed') {
+                $complaint->handled_by = $by;
+            }
+            $complaint->logHistory($next === 'Closed' ? 'Closed after confirming with the guest' : 'Marked ' . $next, $by);
         }
 
         if (array_key_exists('resolution_note', $data)) {
@@ -1905,31 +3857,43 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                     'message' => 'Only ' . $complaint->departmentLabel() . ' staff can leave a resolution note.',
                 ], 403);
             }
-            $note = $data['resolution_note'];
-            $complaint->resolution_note = $note === null ? null : trim($note);
+            $note = $data['resolution_note'] === null ? null : trim($data['resolution_note']);
+            if ($note !== $complaint->resolution_note) {
+                $complaint->resolution_note = $note;
+                $complaint->logHistory('Resolution note updated', $by, $note);
+            }
         }
 
-        $closed = $complaint->isDirty('status')
+        $finished = $complaint->isDirty('status')
             && in_array($complaint->status, ['Resolved', 'Cancelled'], true);
+        $closed = $complaint->isDirty('status') && $complaint->status === 'Closed';
 
         $complaint->save();
+
+        $where = $complaint->room_number !== '' ? 'room ' . $complaint->room_number : (string) $complaint->guest_name;
 
         if ($reassignedFrom) {
             \App\Support\Notifier::complaintReassigned(auth()->user(), $complaint, $reassignedFrom);
         }
-        if ($closed) {
+        if ($finished) {
             \App\Support\Notifier::complaintResolved(auth()->user(), $complaint);
 
             ActivityLog::record(
                 auth()->user(),
                 ActivityLog::COMPLAINT_RESOLVED,
-                'Marked the room ' . $complaint->room_number . ' complaint ('
-                    . $complaint->category . ') as ' . $complaint->status . '.'
+                'Marked the ' . $where . ' complaint (' . $complaint->category . ') as ' . $complaint->status . '.'
             );
 
             // Housekeeping's pass paused for this issue — see whether it can now
             // move on to a final re-inspection.
             \App\Support\HotelHousekeepingDesk::onIssueClosed($complaint, auth()->user());
+        }
+        if ($closed) {
+            ActivityLog::record(
+                auth()->user(),
+                ActivityLog::COMPLAINT_RESOLVED,
+                'Confirmed with the guest and closed the ' . $where . ' complaint (' . $complaint->category . ').'
+            );
         }
 
         return response()->json(['complaint' => $complaint->toTemplateArray()]);
@@ -1949,7 +3913,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
                 'can_inspect' => false,
                 'findings'    => \App\Models\HotelRoomInspection::FINDINGS,
                 'statuses'    => \App\Models\HotelRoomInspection::STATUSES,
-                'categories'  => HotelComplaint::CATEGORY_DEPARTMENTS,
+                'categories'  => array_intersect_key(HotelComplaint::CATEGORY_DEPARTMENTS, array_flip(HotelComplaint::categoriesFor('housekeeping', 'maintenance'))),
             ]);
         }
 
@@ -1966,7 +3930,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'can_inspect' => \App\Support\HotelHousekeepingAccess::canInspect($membership),
             'findings'    => \App\Models\HotelRoomInspection::FINDINGS,
             'statuses'    => \App\Models\HotelRoomInspection::STATUSES,
-            'categories'  => HotelComplaint::CATEGORY_DEPARTMENTS,
+            'categories'  => array_intersect_key(HotelComplaint::CATEGORY_DEPARTMENTS, array_flip(HotelComplaint::categoriesFor('housekeeping', 'maintenance'))),
         ]);
     })->name('hotel.inspections.index');
 
@@ -2044,7 +4008,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         return response()->json(['inspection' => $inspection->fresh(['room', 'complaints'])->toTemplateArray()], 201);
     })->name('hotel.inspections.issues.store');
 
-    // One page, three doors: each role opens it from its own module so the shell
+    // One page, five doors: each role opens it from its own module so the shell
     // keeps that role's theme, sidebar and Back target.
     Route::get('/frontdesk/complaints', function () {
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'front_desk');
@@ -2058,10 +4022,19 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'housekeeping');
         return view('students.complaints.manage', $data);
     })->name('housekeeping.complaints');
+    Route::get('/roommanagement/complaints', function () {
+        $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'room_management');
+        return view('students.complaints.manage', $data);
+    })->name('roommanagement.complaints');
+    Route::get('/restaurant/complaints', function () {
+        $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'restaurant_management');
+        return view('students.complaints.manage', $data);
+    })->name('restaurant.complaints');
 
     /*
     |--------------------------------------------------------------------------
-    | Dine-in tables (Restaurant Management manages, Front Desk seats guests)
+    | Dine-in tables (Restaurant Management manages, Front Desk reserves one for a
+    | customer — the reservation holds the table and nothing else)
     |--------------------------------------------------------------------------
     */
 
@@ -2071,6 +4044,10 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             return response()->json(['tables' => [], 'can_manage' => false, 'can_assign' => false]);
         }
 
+        // A team starts with a dining room to seat people in; see HotelTableDesk.
+        \App\Support\HotelTableDesk::ensureDefaultsFor($membership);
+        \App\Support\HotelTableDesk::releaseNoShows($membership->group_name, (int) $membership->faculty_id);
+
         $tables = HotelDineInTable::where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
             ->orderBy('name')
@@ -2079,6 +4056,7 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         return response()->json([
             'tables'      => $tables,
+            'no_shows'    => \App\Support\HotelTableDesk::noShows($membership->group_name, (int) $membership->faculty_id),
             'can_manage'  => \App\Support\HotelTableAccess::canManage($membership),
             'can_assign'  => \App\Support\HotelTableAccess::canAssign($membership),
         ]);
@@ -2128,12 +4106,44 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
             'name'        => 'sometimes|string|max:100',
             'capacity'    => 'sometimes|integer|min:1|max:50',
             'close'       => 'sometimes|boolean',
+            // The reserved customer has turned up and sat down.
+            'arrive'      => 'sometimes|boolean',
             'guest_name'  => 'sometimes|nullable|string|max:255',
+            'contact_no'  => 'sometimes|nullable|string|max:50',
             'party_size'  => 'sometimes|integer|min:1|max:50',
+            // When the customer is due. Sent as an ISO local datetime by the desk.
+            'reserved_for' => 'sometimes|nullable|date',
+            // A walk-in: they are here now, so the table goes straight to Occupied
+            // instead of being held as Reserved until they "arrive".
+            'seat_now'    => 'sometimes|boolean',
         ]);
 
-        $assignedNow = false;
+        /* A guest signed into the hotel's website reserves a table for themselves.
+           Their name and number come off their account, whatever the request says.
+           Only the website asks for this (as_guest): a Front Desk student still signed
+           in as a test guest keeps the desk's own path on the Dine-in page. */
+        $guestAuth = \App\Support\HotelSimulationAuth::current();
+        if ($request->boolean('as_guest')) {
+            if (!is_array($guestAuth) || ($guestAuth['type'] ?? null) !== 'customer'
+                || strcasecmp((string) ($guestAuth['group_name'] ?? ''), (string) $membership->group_name) !== 0) {
+                return response()->json(['message' => 'Sign in as a guest to reserve a table.'], 403);
+            }
+            if (empty($data['reserved_for']) || empty($data['party_size'])) {
+                return response()->json(['message' => 'Choose a date, a time and how many are coming.'], 422);
+            }
+            try {
+                $table = \App\Support\HotelTableDesk::reserveForGuest(
+                    $table, $guestAuth, (int) $data['party_size'], (string) $data['reserved_for']
+                );
+            } catch (\RuntimeException $e) {
+                return response()->json(['message' => $e->getMessage()], $e->getCode() === 409 ? 409 : 422);
+            }
+
+            return response()->json(['table' => $table->toTemplateArray()]);
+        }
+
         $closedNow = false;
+        $arrivedNow = false;
 
         if ($request->boolean('close')) {
             if (!$manages) {
@@ -2151,36 +4161,49 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
             $table->status = 'Available';
             $table->guest_name = null;
+            $table->contact_no = null;
             $table->party_size = null;
+            $table->reserved_for = null;
             $table->assigned_by = null;
             $table->assigned_at = null;
             $closedNow = true;
-        } elseif (array_key_exists('guest_name', $data) || array_key_exists('party_size', $data)) {
-            if (!$assigns) {
-                return response()->json(['message' => 'Only Front Desk staff can seat a guest.'], 403);
+        } elseif ($request->boolean('arrive')) {
+            // Either desk can seat the customer: they may announce themselves at the
+            // front desk or walk straight into the restaurant.
+            if (!$assigns && !$manages) {
+                return response()->json(['message' => 'Only Front Desk or Restaurant Services staff can seat a customer.'], 403);
             }
-            if ($table->status !== 'Available') {
-                return response()->json(['message' => 'This table is already occupied.'], 422);
-            }
-            $partySize = (int) ($data['party_size'] ?? 0);
-            if ($partySize < 1) {
-                return response()->json(['message' => 'Enter how many guests are in the party.'], 422);
-            }
-            if ($partySize > $table->capacity) {
+            if ($table->status !== 'Reserved') {
                 return response()->json([
-                    'message' => "This table seats {$table->capacity} — the party is too large for it.",
+                    'message' => $table->status === 'Occupied'
+                        ? 'This customer is already seated.'
+                        : 'This table has no reservation to seat.',
                 ], 422);
             }
 
             $table->status = 'Occupied';
-            $table->guest_name = isset($data['guest_name']) ? trim($data['guest_name']) : null;
-            $table->party_size = $partySize;
-            $table->assigned_by = auth()->user()?->name;
-            $table->assigned_at = now();
-            $assignedNow = true;
+            $arrivedNow = true;
+        } elseif (array_key_exists('guest_name', $data) || array_key_exists('party_size', $data)
+            || array_key_exists('contact_no', $data) || array_key_exists('reserved_for', $data)) {
+            if (!$assigns) {
+                return response()->json(['message' => 'Only Front Desk staff can reserve a table for a guest.'], 403);
+            }
+            // Shared with the guest path above; see HotelTableDesk.
+            try {
+                $table = \App\Support\HotelTableDesk::reserve(
+                    $table, $data, auth()->user(), auth()->user()?->name, $request->boolean('seat_now')
+                );
+            } catch (\RuntimeException $e) {
+                return response()->json(['message' => $e->getMessage()], $e->getCode() === 409 ? 409 : 422);
+            }
+
+            return response()->json(['table' => $table->toTemplateArray()]);
         } else {
             if (!$manages) {
                 return response()->json(['message' => 'Only Restaurant Management staff can edit a table.'], 403);
+            }
+            if ($table->status !== 'Available') {
+                return response()->json(['message' => 'Free this table before renaming or resizing it.'], 422);
             }
             if (array_key_exists('name', $data)) {
                 $table->name = trim($data['name']);
@@ -2192,14 +4215,11 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         $table->save();
 
-        if ($assignedNow) {
-            \App\Support\Notifier::tableAssigned(auth()->user(), $table);
-
+        if ($arrivedNow) {
             ActivityLog::record(
                 auth()->user(),
                 ActivityLog::TABLE_ASSIGNED,
-                'Seated ' . ($table->guest_name ?: 'a guest') . ' (party of ' . $table->party_size
-                    . ') at ' . $table->name . '.'
+                ($table->guest_name ?: 'A customer') . ' arrived and was seated at ' . $table->name . '.'
             );
         }
         if ($closedNow) {
@@ -2212,6 +4232,124 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
 
         return response()->json(['table' => $table->toTemplateArray()]);
     })->name('hotel.tables.update');
+
+    /*
+     * The dine-in final bill, and the one call that closes a table out properly.
+     *
+     * Front Desk reserved the table and Restaurant Services fed the customer; this is
+     * the last two steps of that flow — present the bill, take the money. Restaurant
+     * Management owns both, the same role that owns closing a table.
+     */
+    Route::get('/hotel/tables/{id}/bill', function (Request $request, $id) {
+        $membership = \App\Support\HotelTableAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelTableAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Restaurant Services staff can bill a table.'], 403);
+        }
+
+        $table = HotelDineInTable::where('hotel_dine_in_table_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        return response()->json(['bill' => \App\Support\HotelDineInBill::for($table)]);
+    })->name('hotel.tables.bill');
+
+    Route::post('/hotel/tables/{id}/settle', function (Request $request, $id) {
+        $membership = \App\Support\HotelTableAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelTableAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Restaurant Services staff can settle a table.'], 403);
+        }
+
+        $table = HotelDineInTable::where('hotel_dine_in_table_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        if ($table->status !== 'Occupied') {
+            return response()->json([
+                'message' => $table->status === 'Reserved'
+                    ? 'This customer has not been seated yet, so there is nothing to bill.'
+                    : 'This table has nobody at it to bill.',
+            ], 422);
+        }
+
+        $data = $request->validate([
+            'amount_paid' => 'required|numeric|min:0',
+            'method'      => 'required|string|max:50',
+            'reference'   => 'nullable|string|max:255',
+        ]);
+
+        $bill = \App\Support\HotelDineInBill::for($table);
+
+        if ($bill['unserved']) {
+            $ids = implode(', #', array_column($bill['unserved'], 'orderId'));
+
+            return response()->json([
+                'message' => 'Order #' . $ids . ' has not been served yet — finish it before billing the table.',
+            ], 422);
+        }
+
+        if (!$bill['orderIds']) {
+            return response()->json([
+                'message' => 'This table has no orders to bill. Close it out instead.',
+            ], 422);
+        }
+
+        $total = (float) $bill['total'];
+        $paid = round((float) $data['amount_paid'], 2);
+
+        // Settling and freeing the table are one move: a table left Occupied after the
+        // customer has paid and walked out is a table nobody can reserve.
+        $payment = \Illuminate\Support\Facades\DB::transaction(function () use ($membership, $table, $bill, $total, $paid, $data) {
+            $payment = \App\Models\HotelDineInPayment::create([
+                'group_name'             => $membership->group_name,
+                'faculty_id'             => $membership->faculty_id,
+                'group_id'               => $membership->group_id,
+                'hotel_dine_in_table_id' => $table->hotel_dine_in_table_id,
+                'table_name'             => $table->name,
+                'guest_name'             => $table->guest_name,
+                'party_size'             => $table->party_size,
+                'total_due'              => $total,
+                'amount_paid'            => $paid,
+                'balance'                => max(0, round($total - $paid, 2)),
+                'method'                 => \App\Models\HotelDineInPayment::normalizeMethod($data['method']),
+                'reference'              => isset($data['reference']) ? trim($data['reference']) : null,
+                'items'                  => $bill['items'],
+                'order_ids'              => $bill['orderIds'],
+                'collected_by'           => auth()->user()?->name,
+                'paid_at'                => now(),
+            ]);
+
+            $table->status = 'Available';
+            $table->guest_name = null;
+            $table->contact_no = null;
+            $table->party_size = null;
+            $table->reserved_for = null;
+            $table->assigned_by = null;
+            $table->assigned_at = null;
+            $table->save();
+
+            return $payment;
+        });
+
+        ActivityLog::record(
+            auth()->user(),
+            ActivityLog::TABLE_CLOSED,
+            'Settled ' . $payment->table_name . ' for '
+                . number_format($payment->amount_paid, 2) . ' (' . $payment->method . ') and freed it.'
+        );
+
+        return response()->json([
+            'payment' => $payment->toTemplateArray(),
+            'table'   => $table->fresh()->toTemplateArray(),
+        ], 201);
+    })->name('hotel.tables.settle');
 
     Route::delete('/hotel/tables/{id}', function (Request $request, $id) {
         $membership = \App\Support\HotelTableAccess::membership();
@@ -2241,6 +4379,12 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         return view('students.frontdesk.dine-in', $data);
     })->name('frontdesk.dine-in');
 
+    // A guest who walks in without a booking: a room for tonight, or a table now.
+    Route::get('/frontdesk/walk-in', function () {
+        $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'front_desk');
+        return view('students.frontdesk.walk-in', $data);
+    })->name('frontdesk.walk-in');
+
     Route::get('/frontdesk/room-service', function () {
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'front_desk');
         return view('students.frontdesk.room-service', $data);
@@ -2261,6 +4405,13 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'restaurant_management');
         return view('students.restaurant.manage', $data);
     })->name('restaurant.manage');
+
+    // Read-only: the orders this department has completed, drawn from the same
+    // orders endpoint the board uses. No new state.
+    Route::get('/restaurant/reports', function () {
+        $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'restaurant_management');
+        return view('students.restaurant.reports', $data);
+    })->name('restaurant.reports');
     Route::get('/maintenance', function () {
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'maintenance');
         return view('students.maintenance', $data);
@@ -2279,5 +4430,32 @@ Route::prefix('students')->middleware('auth')->name('students.')->group(function
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'housekeeping');
         return view('students.housekeeping.addons', $data);
     })->name('housekeeping.addons');
+
+    Route::get('/housekeeping/amenities', function () {
+        $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'housekeeping');
+        return view('students.housekeeping.amenities', $data);
+    })->name('housekeeping.amenities');
+
+    Route::get('/frontdesk/amenities', function () {
+        $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'front_desk');
+        return view('students.frontdesk.amenities', $data);
+    })->name('frontdesk.amenities');
+
+    Route::get('/frontdesk/promos', function () {
+        $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'front_desk');
+        return view('students.frontdesk.promos', $data);
+    })->name('frontdesk.promos');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Promos and packages (Simulation, Front Desk writes only)
+    |--------------------------------------------------------------------------
+    |
+    | The team's site reads the same index, so a change shows on its next poll.
+    */
+    Route::get('/hotel/promos', [\App\Http\Controllers\HotelPromoController::class, 'index'])->name('hotel.promos.index');
+    Route::post('/hotel/promos', [\App\Http\Controllers\HotelPromoController::class, 'store'])->name('hotel.promos.store');
+    Route::patch('/hotel/promos/{id}', [\App\Http\Controllers\HotelPromoController::class, 'update'])->name('hotel.promos.update');
+    Route::delete('/hotel/promos/{id}', [\App\Http\Controllers\HotelPromoController::class, 'destroy'])->name('hotel.promos.destroy');
 });
 

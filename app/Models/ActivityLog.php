@@ -57,6 +57,7 @@ class ActivityLog extends Model
     public const COMPLAINT_RESOLVED = 'complaint_resolved';
     public const TABLE_ASSIGNED = 'table_assigned';
     public const TABLE_CLOSED = 'table_closed';
+    public const GUEST_BOOKED = 'guest_booked';
     public const ROOM_INSPECTED = 'room_inspected';
     public const ROOM_READY = 'room_ready';
     public const CONCEPT_CREATED = 'concept_created';
@@ -90,6 +91,7 @@ class ActivityLog extends Model
         self::COMPLAINT_RESOLVED => 'Complaint Resolved',
         self::TABLE_ASSIGNED => 'Table Assigned',
         self::TABLE_CLOSED => 'Table Closed',
+        self::GUEST_BOOKED => 'Guest Booked',
         self::ROOM_INSPECTED => 'Room Inspected',
         self::ROOM_READY => 'Room Ready',
         self::CONCEPT_CREATED => 'Hotel Concept Created',
@@ -167,7 +169,7 @@ class ActivityLog extends Model
             'activity_label' => $this->activity_label,
             'description' => $this->description,
             'role' => $this->role,
-            'created_at' => optional($this->created_at)->format('M d, Y g:i A'),
+            'created_at' => $this->created_at?->timezone('Asia/Manila')->format('M d, Y g:i A'),
             'created_at_human' => optional($this->created_at)->diffForHumans(),
         ];
     }

@@ -30,20 +30,40 @@ class HotelFoodOrder extends Model
         'Delivering',
         'Completed',
         'Cancelled',
+        // Catering only — see CATERING_FLOW.
+        'Pending',
+        'Confirmed',
+        'Serving',
     ];
 
     /** The kitchen pipeline in order, so a screen can offer "the next step". */
     public const FLOW = ['Preparing', 'Ready', 'Delivering', 'Completed'];
 
+    /**
+     * Catering runs a longer pipeline than a dish, because it is agreed days ahead and
+     * served over hours rather than carried up in one trip. Pending is the booking landing
+     * on the kitchen's board before they have agreed to it; Confirmed is them accepting;
+     * Serving is the event itself, which replaces a room-service runner's Delivering.
+     */
+    public const CATERING_FLOW = ['Pending', 'Confirmed', 'Preparing', 'Ready', 'Serving', 'Completed'];
+
     /** Statuses that still owe the guest food. Anything else is finished. */
     public const OPEN_STATUSES = ['Preparing', 'Ready'];
 
+    /** The catering equivalent: everything before the event is over. */
+    public const CATERING_OPEN_STATUSES = ['Pending', 'Confirmed', 'Preparing', 'Ready', 'Serving'];
+
     protected $primaryKey = 'hotel_food_order_id';
 
-    /** Front Desk places a room-service order; Restaurant Management places one dine-in. */
+    /**
+     * Front Desk places a room-service order; Restaurant Management places one dine-in;
+     * a function room booking raises a catering order on their board without either desk
+     * typing it, from HotelCateringDesk.
+     */
     public const ORDER_TYPES = [
         'room_service',
         'dine_in',
+        'catering',
     ];
 
     protected $fillable = [
@@ -53,6 +73,7 @@ class HotelFoodOrder extends Model
         'order_type',
         'hotel_booking_id',
         'dine_in_table_id',
+        'hotel_amenity_reservation_id',
         'room_number',
         'guest_name',
         'items',
@@ -84,18 +105,37 @@ class HotelFoodOrder extends Model
      */
     public function nextStatus(): ?string
     {
-        $at = array_search($this->status, self::FLOW, true);
+        $flow = self::flowFor($this->order_type);
+        $at = array_search($this->status, $flow, true);
 
-        return $at === false || $at === count(self::FLOW) - 1 ? null : self::FLOW[$at + 1];
+        return $at === false || $at === count($flow) - 1 ? null : $flow[$at + 1];
     }
 
-    public static function normalizeStatus(?string $value): string
+    /** The event this catering order is feeding. Null for room service and dine-in. */
+    public function reservation(): BelongsTo
+    {
+        return $this->belongsTo(
+            HotelAmenityReservation::class,
+            'hotel_amenity_reservation_id',
+            'hotel_amenity_reservation_id'
+        );
+    }
+
+    public static function normalizeStatus(?string $value, ?string $orderType = null): string
     {
         $raw = strtolower(trim((string) $value));
-        foreach (self::STATUSES as $status) {
+        // Only the statuses this order type actually runs, so a room-service ticket can
+        // never be pushed to 'Serving' and a catering one can never land on 'Delivering'.
+        $allowed = array_merge(self::flowFor($orderType), ['Cancelled']);
+
+        foreach ($allowed as $status) {
             if (strtolower($status) === $raw) {
                 return $status;
             }
+        }
+
+        if ($orderType === 'catering') {
+            return 'Pending';
         }
 
         return 'Preparing';
@@ -114,7 +154,7 @@ class HotelFoodOrder extends Model
      * has reached Completed or Cancelled — those are the end of the line, for the
      * kitchen that owns the flow as much as for anyone else.
      */
-    public static function isForwardTransition(string $from, string $to): bool
+    public static function isForwardTransition(string $from, string $to, ?string $orderType = null): bool
     {
         if ($from === $to || in_array($from, ['Completed', 'Cancelled'], true)) {
             return false;
@@ -124,10 +164,34 @@ class HotelFoodOrder extends Model
             return true;
         }
 
-        $fromIndex = array_search($from, self::FLOW, true);
-        $toIndex = array_search($to, self::FLOW, true);
+        $flow = self::flowFor($orderType);
+        $fromIndex = array_search($from, $flow, true);
+        $toIndex = array_search($to, $flow, true);
 
         return $fromIndex !== false && $toIndex !== false && $toIndex > $fromIndex;
+    }
+
+    /**
+     * The pipeline this order runs. Catering's is longer and starts earlier; everything
+     * else uses the kitchen's.
+     *
+     * $orderType is passed rather than read off $this so the static transition check can
+     * answer for an order it does not hold, which is what the routes need.
+     */
+    public static function flowFor(?string $orderType): array
+    {
+        return $orderType === 'catering' ? self::CATERING_FLOW : self::FLOW;
+    }
+
+    /** The first status an order of this type is created at. */
+    public static function initialStatusFor(?string $orderType): string
+    {
+        return $orderType === 'catering' ? 'Pending' : 'Preparing';
+    }
+
+    public function isCatering(): bool
+    {
+        return $this->order_type === 'catering';
     }
 
     /**
@@ -193,6 +257,16 @@ class HotelFoodOrder extends Model
             'total'      => (int) $this->total,
             'status'     => $this->status,
             'nextStatus' => $this->nextStatus(),
+
+            // Catering only — what the kitchen needs to know to cook for an event, rather
+            // than a room number. Null on every other order type.
+            'reservationId' => $this->hotel_amenity_reservation_id,
+            'eventVenue'    => $this->reservation?->amenity_name,
+            'eventType'     => $this->reservation?->event_type,
+            'eventDate'     => optional($this->reservation?->scheduled_on)->toDateString(),
+            'eventTime'     => $this->reservation?->timeLabel(),
+            'guestCount'    => $this->reservation?->guest_count,
+            'eventRequests' => $this->reservation?->special_requests,
             'placedBy'   => $this->placed_by ?? '',
             'placedAt'   => optional($this->created_at)->toIso8601String(),
             'updatedAt'  => optional($this->updated_at)->toIso8601String(),

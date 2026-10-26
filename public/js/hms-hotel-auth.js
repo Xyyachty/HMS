@@ -56,13 +56,28 @@
       applyAuth(data.auth);
       return data;
     },
-    customerLogin: async function (email, password) {
-      const data = await api(routes.customerLogin, 'POST', { email, password });
+    customerLogin: async function (email, password, remember) {
+      const data = await api(routes.customerLogin, 'POST', { email, password, remember: !!remember });
       applyAuth(data.auth);
       return data;
     },
-    customerSignup: async function (name, email, password) {
-      const data = await api(routes.customerSignup, 'POST', { name, email, password });
+    /**
+     * Takes the whole guest record as one object — last/first name, email,
+     * contact number, password and its confirmation. The server checks the two
+     * passwords match rather than taking the browser's word for it.
+     */
+    customerSignup: async function (details) {
+      const d = details || {};
+      const data = await api(routes.customerSignup, 'POST', {
+        last_name: d.lastName,
+        first_name: d.firstName,
+        full_name: d.fullName,
+        email: d.email,
+        contact_number: d.contactNumber,
+        password: d.password,
+        password_confirmation: d.passwordConfirmation,
+        id_document: d.idDocument,
+      });
       applyAuth(data.auth);
       return data;
     },

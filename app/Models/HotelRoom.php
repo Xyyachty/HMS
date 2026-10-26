@@ -24,6 +24,12 @@ class HotelRoom extends Model
         'Maintenance',
     ];
 
+    /**
+     * How many photographs one room keeps, the primary one included. Three is what
+     * the picker draws and what the card rotates through.
+     */
+    public const GALLERY_MAX = 3;
+
     protected $primaryKey = 'hotel_room_id';
 
     protected $fillable = [
@@ -34,13 +40,59 @@ class HotelRoom extends Model
         'category',
         'status',
         'price',
+        'capacity',
         'description',
         'image',
+        'gallery',
     ];
 
     protected $casts = [
         'price' => 'integer',
+        'gallery' => 'array',
     ];
+
+    /**
+     * Whether this database has the `gallery` column yet.
+     *
+     * Asked because the column arrives in a migration of its own: between pulling
+     * the code and running that migration, a save carrying a gallery would be an
+     * INSERT against a column that is not there. Answered once per request.
+     */
+    public static function supportsGallery(): bool
+    {
+        static $has = null;
+
+        if ($has === null) {
+            $has = \Illuminate\Support\Facades\Schema::hasColumn('hotel_rooms', 'gallery');
+        }
+
+        return $has;
+    }
+
+    /**
+     * Every photograph of this room, primary first, as URLs.
+     *
+     * The primary one is not repeated if it also appears in the gallery: the card
+     * pages straight through this list, and a duplicate would read as the rotation
+     * stalling on the first slide.
+     *
+     * @return list<string>
+     */
+    public function imageUrls(): array
+    {
+        $paths = self::supportsGallery() && is_array($this->gallery) ? $this->gallery : [];
+        array_unshift($paths, $this->image);
+
+        $urls = [];
+        foreach ($paths as $path) {
+            $url = \App\Support\HotelImageStore::url(is_string($path) ? $path : '');
+            if ($url !== '' && !in_array($url, $urls, true)) {
+                $urls[] = $url;
+            }
+        }
+
+        return $urls;
+    }
 
     public function bookings(): HasMany
     {
@@ -112,8 +164,13 @@ class HotelRoom extends Model
             'category'     => $this->category,
             'status'       => $this->status,
             'price'        => (int) $this->price,
+            // The room's own guest limit; null means it follows its category's.
+            'capacity'     => $this->capacity === null ? null : (int) $this->capacity,
             'desc'         => $this->description ?? '',
             'img'          => \App\Support\HotelImageStore::url($this->image),
+            // Primary first. The card rotates through these; 'img' stays for the
+            // places that only ever draw one.
+            'imgs'         => $this->imageUrls(),
             'reservation'  => $booking?->toReservationArray(),
             'bookedRanges' => $openBookings
                 ->filter(fn (HotelBooking $b) => $b->check_in && $b->check_out)
@@ -123,6 +180,56 @@ class HotelRoom extends Model
                     'from'      => $b->check_in->toDateString(),
                     'to'        => $b->check_out->toDateString(),
                     'status'    => $b->status,
+                ])
+                ->values()
+                ->all(),
+            'amenities'    => [['icon' => 'fa-bed', 'text' => 'Bed'], ['icon' => 'fa-wifi', 'text' => 'WiFi']],
+        ];
+    }
+
+    /**
+     * The same room as a guest on the public site may see it.
+     *
+     * A separate method rather than a flag on toTemplateArray(), because the difference is
+     * not cosmetic and the default must stay the safe one: `reservation` carries the
+     * current occupant's full name, email, contact number, ID number and every payment
+     * row through HotelBooking::toReservationArray(). The staff grid needs all of that.
+     * A public page polling every eight seconds would be publishing the hotel's guest
+     * list, so here it is simply absent.
+     *
+     * bookedRanges stays. It is dates and statuses with nobody's name on it, and it is
+     * what the availability calendar a guest books against is drawn from.
+     */
+    public function toPublicArray(): array
+    {
+        $openBookings = $this->relationLoaded('openBookings')
+            ? $this->openBookings
+            : $this->openBookings()->get();
+
+        return [
+            'id'           => 'db-' . $this->hotel_room_id,
+            'dbId'         => $this->hotel_room_id,
+            'name'         => $this->name,
+            'label'        => $this->category,
+            'category'     => $this->category,
+            'status'       => $this->status,
+            'price'        => (int) $this->price,
+            // The room's own guest limit; null means it follows its category's.
+            'capacity'     => $this->capacity === null ? null : (int) $this->capacity,
+            'desc'         => $this->description ?? '',
+            'img'          => \App\Support\HotelImageStore::url($this->image),
+            // Primary first. The card rotates through these; 'img' stays for the
+            // places that only ever draw one.
+            'imgs'         => $this->imageUrls(),
+            'bookedRanges' => $openBookings
+                ->filter(fn (HotelBooking $b) => $b->check_in && $b->check_out)
+                ->map(fn (HotelBooking $b) => [
+                    // 'to' is exclusive — the checkout date itself is free for the next guest.
+                    'from'   => $b->check_in->toDateString(),
+                    'to'     => $b->check_out->toDateString(),
+                    // No bookingId and no guest: a visitor needs to know the room is taken,
+                    // not who has it or which record says so.
+                    'status' => $b->status,
                 ])
                 ->values()
                 ->all(),

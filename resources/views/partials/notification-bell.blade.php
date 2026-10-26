@@ -13,7 +13,7 @@
     this file rather than by its utility classes. The dean and student portals
     load Tailwind from the CDN, which generates whatever it sees, but the
     faculty portal is served a stylesheet that was built before this partial
-    existed — so w-[22rem], max-h-96, min-w-[18px], ring-slate-900/5 and
+    existed — so w-[22rem], max-h-96, min-w-[1.125rem], ring-slate-900/5 and
     bg-sky-50/60 simply had no rules there and the bell rendered unstyled. The
     utility classes are kept for readability; these rules are what make the
     three portals agree.
@@ -27,8 +27,8 @@
             class="relative w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors">
         <span class="iconify text-xl text-slate-500" data-icon="mdi:bell-outline"></span>
         <span data-notify-badge
-              class="hidden absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center
-                     rounded-full bg-rose-500 text-white text-[10px] font-bold leading-none shadow-sm">0</span>
+              class="hidden absolute -top-0.5 -right-0.5 min-w-[1.125rem] h-[1.125rem] px-1 flex items-center justify-center
+                     rounded-full bg-slate-700 text-white text-[0.625rem] font-bold leading-none shadow-sm">0</span>
     </button>
 
     <div data-notify-panel
@@ -39,7 +39,7 @@
             <div class="flex items-center gap-2">
                 <h3 class="text-sm font-bold text-slate-900">Notifications</h3>
                 <span data-notify-unread-pill
-                      class="hidden px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-600 text-[10px] font-bold">0 new</span>
+                      class="hidden px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[0.625rem] font-bold">0 new</span>
             </div>
             <button type="button"
                     data-notify-mark-all
@@ -73,10 +73,10 @@
 
     .hms-notify [data-notify-badge] {
         position: absolute; top: -0.125rem; right: -0.125rem;
-        min-width: 18px; height: 18px; padding: 0 0.25rem;
+        min-width: 1.125rem; height: 1.125rem; padding: 0 0.25rem;
         display: flex; align-items: center; justify-content: center;
-        border-radius: 9999px; background: #f43f5e; color: #fff;
-        font-size: 10px; font-weight: 700; line-height: 1;
+        border-radius: 9999px; background: #334155; color: #fff;
+        font-size: 0.625rem; font-weight: 700; line-height: 1;
         box-shadow: 0 1px 2px 0 rgb(0 0 0 / .05);
     }
 
@@ -102,7 +102,7 @@
     }
     .hms-notify [data-notify-unread-pill] {
         padding: 0.125rem 0.375rem; border-radius: 9999px;
-        background: #fff1f2; color: #e11d48; font-size: 10px; font-weight: 700;
+        background: #f1f5f9; color: #334155; font-size: 0.625rem; font-weight: 700;
     }
     .hms-notify [data-notify-mark-all] {
         background: none; border: 0; cursor: pointer;
@@ -119,6 +119,7 @@
         border-top: 1px solid #f1f5f9; cursor: pointer;
         transition: background-color .15s ease;
     }
+    .hms-notify [data-notify-list] > [data-notify-item] { border-color: #f1f5f9; } /* beats the palette's warm divide-slate-100 */
     .hms-notify [data-notify-list] > [data-notify-item]:first-child { border-top: 0; }
     .hms-notify [data-notify-item][data-read="0"] { background: rgb(240 249 255 / .6); }
     .hms-notify [data-notify-item]:hover { background: #f8fafc; }
@@ -127,7 +128,13 @@
         display: flex; align-items: center; justify-content: center;
     }
     .hms-notify [data-notify-item] > span:nth-child(2) { min-width: 0; flex: 1 1 0%; }
-    .hms-notify [data-notify-item] > span:nth-child(2) > span { line-height: 1.375; }
+    .hms-notify [data-notify-item] > span:nth-child(2) > span { line-height: 1.375; color: #64748b; }
+    /* Text colours spelled out too: faculty-palette.css re-points slate text
+       at wine-tinted grays, which turned the faculty bell's copy maroon. */
+    .hms-notify [data-notify-item] > span:nth-child(2) > span:first-child { color: #0f172a; }
+    .hms-notify [data-notify-item] > span:nth-child(2) > span:last-child:not(:first-child) { color: #94a3b8; }
+    .hms-notify [data-notify-list] > div, .hms-notify [data-notify-list] > div p { color: #94a3b8; }
+    .hms-notify [data-notify-list] > div .iconify { color: #cbd5e1; }
 
     /* The unread dot: last child, and only ever rendered on an unread row. */
     .hms-notify [data-notify-item][data-read="0"] > span:last-child {
@@ -141,7 +148,7 @@
     const ENDPOINTS = {
         index:   @json(route('notifications.index')),
         readAll: @json(route('notifications.read-all')),
-        read:    id => @json(url('/notifications')) + '/' + id + '/read',
+        open:    id => @json(url('/notifications')) + '/' + id + '/open',
     };
 
     const ACCENTS = {
@@ -150,7 +157,7 @@
         indigo:  { bg: '#e0e7ff', fg: '#4f46e5' },
         amber:   { bg: '#fef3c7', fg: '#d97706' },
         emerald: { bg: '#d1fae5', fg: '#059669' },
-        rose:    { bg: '#ffe4e6', fg: '#e11d48' },
+        rose:    { bg: '#f1f5f9', fg: '#475569' },
         slate:   { bg: '#f1f5f9', fg: '#475569' },
     };
 
@@ -199,7 +206,7 @@
                 list.innerHTML =
                     '<div class="px-4 py-12 text-center">' +
                     '<span class="iconify text-3xl text-slate-300" data-icon="mdi:bell-sleep-outline"></span>' +
-                    '<p class="mt-2 text-xs font-medium text-slate-400">No notifications yet</p>' +
+                    '<p class="mt-2 text-xs font-medium text-slate-400">No notifications</p>' +
                     '</div>';
                 return;
             }
@@ -211,14 +218,13 @@
                 return (
                     '<button type="button" data-notify-item data-id="' + n.id + '"' +
                         ' data-read="' + (n.read ? '1' : '0') + '"' +
-                        ' data-url="' + escapeHtml(n.url || '') + '"' +
                         ' class="w-full text-left px-4 py-3 flex gap-3 hover:bg-slate-50 transition-colors ' + unreadClasses + '">' +
                         '<span class="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"' +
                             ' style="background:' + accent.bg + ';color:' + accent.fg + '">' +
                             '<span class="iconify text-lg" data-icon="' + escapeHtml(n.icon) + '"></span>' +
                         '</span>' +
                         '<span class="min-w-0 flex-1">' +
-                            '<span class="block text-[13px] font-semibold text-slate-900 leading-snug">' +
+                            '<span class="block text-[0.8125rem] font-semibold text-slate-900 leading-snug">' +
                                 escapeHtml(n.title) +
                             '</span>' +
                             (n.body
@@ -226,8 +232,9 @@
                                     ' style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">' +
                                     escapeHtml(n.body) + '</span>'
                                 : '') +
-                            '<span class="block mt-1 text-[11px] text-slate-400">' +
+                            '<span class="block mt-1 text-[0.6875rem] text-slate-400">' +
                                 escapeHtml(n.created_at_human) +
+                                (n.created_at ? ' · ' + escapeHtml(n.created_at) : '') +
                             '</span>' +
                         '</span>' +
                         (n.read
@@ -293,22 +300,29 @@
             const item = e.target.closest('[data-notify-item]');
             if (!item) return;
 
-            const id = item.dataset.id;
-            const url = item.dataset.url;
-            const wasUnread = item.dataset.read === '0';
-
-            const done = wasUnread
-                ? postJson(ENDPOINTS.read(id)).catch(() => {})
-                : Promise.resolve();
-
-            done.then(() => {
-                if (url) {
-                    window.location.href = url;
-                } else {
-                    load();
-                }
-            });
+            // The server marks it read and checks the task or team it names still
+            // exists (NotificationTarget), so a stale one explains itself here
+            // instead of opening an unrelated page.
+            postJson(ENDPOINTS.open(item.dataset.id))
+                .then((d) => {
+                    if (d.url) {
+                        window.location.href = d.url;
+                        return;
+                    }
+                    showNotice(d.error || 'This notification has no page to open.');
+                })
+                .catch((status) => showNotice(status === 404
+                    ? 'This notification no longer exists.'
+                    : 'Could not open this notification. Please try again.'));
         });
+
+        function showNotice(message) {
+            load().then(() => {
+                list.insertAdjacentHTML('afterbegin',
+                    '<div data-notify-notice class="px-4 py-3 text-xs font-medium" style="background:#fef3c7;color:#92400e">' +
+                    escapeHtml(message) + '</div>');
+            });
+        }
 
         // Badge-only poll keeps the bell honest without opening the dropdown.
         fetch(@json(route('notifications.unread-count')), {
@@ -321,6 +335,15 @@
 
         setInterval(() => {
             if (!panel.classList.contains('hidden')) return; // open panel refreshes itself
+            // A parked background tab does not need a current badge, and this
+            // partial is on every authenticated page in the app — students
+            // included — so the tabs nobody is looking at were the bulk of this
+            // endpoint's traffic.
+            if (document.hidden) return;
+            // Some pages already poll something of their own on a faster tick
+            // and hand the count over (see faculty Manage Teams). Two writers
+            // would make the badge flip between a fresh number and a stale one.
+            if (window.HMS_BELL_EXTERNAL_POLL) return;
             fetch(@json(route('notifications.unread-count')), {
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
                 credentials: 'same-origin',
@@ -328,7 +351,18 @@
                 .then(r => r.ok ? r.json() : Promise.reject(r.status))
                 .then(d => setUnread(d.unread_count))
                 .catch(() => {});
-        }, 60000);
+        // Deans are few and want each task submission as it lands, so their
+        // badge ticks faster; everyone else keeps the minute.
+        }, @json(auth()->user()?->role === 'dean' ? 15000 : 60000));
+
+        /* Lets a page paint the badge from its own poll instead of adding a
+           request. isOpen() matters: while the panel is open it owns the count,
+           because open() has just marked everything read. */
+        window.HMS_BELL = {
+            setUnread: setUnread,
+            isOpen: () => !panel.classList.contains('hidden'),
+            refresh: load,
+        };
     }
 
     function initAll() {

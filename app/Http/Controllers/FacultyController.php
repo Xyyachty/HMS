@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use App\Events\StudentCreated;
 use App\Models\ActivityLog;
+use App\Models\Faculty;
 use App\Models\FacultyClass;
 use App\Models\Group;
 use App\Models\HotelConcept;
@@ -18,8 +19,11 @@ use App\Models\Task;
 use App\Models\TeamRoleTemplateVersion;
 use App\Models\User;
 use App\Models\UserInformation;
+use App\Models\UserNotification;
+use App\Rules\PhilippineMobile;
 use App\Support\HotelConceptDesk;
 use App\Support\Notifier;
+use App\Support\TaskChecklist;
 use App\Support\StudentWelcomeMailer;
 use Illuminate\Validation\Rule;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -51,20 +55,98 @@ class FacultyController extends Controller
             'housekeeping' => 'Housekeeping',
         ];
 
-        $recentActivity = $facultyId
+        // One pass over every task this faculty owns feeds both task panels, the
+        // per-team progress bars and the supporting figures on the stat cards.
+        $allTasks = $facultyId
             ? Task::with(['student.user', 'assignedTo'])
                 ->where('faculty_id', $facultyId)
+                ->whereIn('status', ['active', 'archived'])
                 ->orderByDesc('updated_at')
-                ->take(8)
                 ->get()
             : collect();
+
+        // Where each task stands, in the status-badge-styles keys. Work nobody has
+        // touched is 'assigned' and waits in Task Assigned; once a student starts
+        // it, it moves to Task Overview.
+        $conceptUnderReview = [];
+        $stageOf = function (Task $task) use (&$conceptUnderReview): string {
+            if ($task->status === 'archived') {
+                return $task->awaiting_review ? 'pending' : 'completed';
+            }
+            // The concept task stays active while it is reviewed; its concepts
+            // say whether it is waiting on faculty.
+            if ($task->is_hotel_concept) {
+                $conceptUnderReview[$task->group_name] ??= \App\Support\HotelConceptDesk::isUnderReview(
+                    \App\Support\HotelConceptDesk::conceptsFor($task->group_name, (int) $task->faculty_id)
+                );
+                if ($conceptUnderReview[$task->group_name]) {
+                    return 'pending';
+                }
+            }
+            // Sent back: feedback_at is stamped even when the note is empty.
+            if ($task->needs_revision || $task->feedback_at !== null) {
+                return 'revision';
+            }
+
+            return $task->is_started ? 'in_progress' : 'assigned';
+        };
+        $allTasks->each(fn (Task $task) => $task->dashboard_stage = $stageOf($task));
+
+        $recentActivity = $allTasks
+            ->where('dashboard_stage', '!=', 'assigned')
+            ->take(5)
+            ->values();
+
+        $completedTasks = $allTasks->where('status', 'archived')->count();
+        $completionRate = $allTasks->count() > 0
+            ? (int) round(($completedTasks / $allTasks->count()) * 100)
+            : 0;
+        $overdueTasks = $allTasks
+            ->where('status', 'active')
+            ->filter(fn ($task) => $task->due_date && $task->due_date->isPast())
+            ->count();
+
+        // Teams come from the roster rather than from the tasks, so a team with
+        // nothing assigned yet still shows up at 0%.
+        $teamProgress = $facultyId
+            ? StudentGroup::where('faculty_id', $facultyId)
+                ->distinct()
+                ->orderBy('group_name')
+                ->pluck('group_name')
+                ->values()
+                ->map(function ($name) use ($facultyId) {
+                    // Faculty-approved required tasks, not handed-in rows: approval
+                    // is what opens the team's Hotel Simulation.
+                    $phase = \App\Support\SimulationPhase::progress($name, (int) $facultyId);
+
+                    return [
+                        'name'     => $name,
+                        'total'    => $phase['required'],
+                        'done'     => $phase['approved'],
+                        'percent'  => $phase['percent'],
+                        'unlocked' => $phase['unlocked'],
+                    ];
+                })
+            : collect();
+
+        // Soonest due first; tasks with no due date still show, after the dated ones.
+        $upcomingTasks = $allTasks
+            ->where('dashboard_stage', 'assigned')
+            ->sortBy(fn ($task) => [$task->due_date === null, $task->due_date])
+            ->take(4)
+            ->values();
 
         return view('faculty.dashboard', compact(
             'totalStudents',
             'totalTeams',
             'assignedTasks',
             'recentActivity',
-            'roleLabels'
+            'roleLabels',
+            'teamProgress',
+            'upcomingTasks',
+            'completedTasks',
+            'completionRate',
+            'overdueTasks'
         ));
     }
 
@@ -72,7 +154,11 @@ class FacultyController extends Controller
     {
         $facultyId = auth()->user()?->faculty?->user_information_id;
         if (!$facultyId) {
-            return back()->withErrors(['group_name' => 'Faculty account not found for the current user.'])->withInput();
+            return back()->withErrors(['group_name' => 'Your faculty account could not be found. Please log in again.'])->withInput();
+        }
+
+        if ($lock = $this->intakeLockReason()) {
+            return back()->withErrors(['group_name' => $lock])->withInput();
         }
 
         $formSource = $request->input('_form_source', 'create_team');
@@ -82,7 +168,8 @@ class FacultyController extends Controller
         }
 
         $validated = $request->validate([
-            'group_name' => ['required', 'string', 'max:255'],
+            // Blank on Create Team means "next free Team N" — see claimTeamNames().
+            'group_name' => ['nullable', 'string', 'max:255'],
             'members' => ['required', 'array', 'min:1', 'max:4'],
             'members.*' => ['integer', Rule::exists('user_information', 'user_information_id')->where('user_type', UserInformation::TYPE_STUDENT)],
             'member_roles' => ['nullable', 'array'],
@@ -93,49 +180,17 @@ class FacultyController extends Controller
             return back()->withErrors(['members' => 'A team cannot have more than 4 members.'])->withInput();
         }
 
-        // If inserting into existing team, validate that the team already exists
-        if ($formSource === 'insert_student') {
-            $teamExists = StudentGroup::where('group_name', $validated['group_name'])
-                ->where('faculty_id', $facultyId)
-                ->exists();
-
-            if (!$teamExists) {
-                return back()->withErrors(['group_name' => 'The selected team does not exist.'])->withInput();
-            }
-
-            // Check that selected students are not already in this team
-            $existingMembers = StudentGroup::where('group_name', $validated['group_name'])
-                ->where('faculty_id', $facultyId)
-                ->pluck('student_id')
-                ->map(fn ($id) => (int) $id)
-                ->all();
-
-            $overlap = array_intersect($memberIds, $existingMembers);
-            if (!empty($overlap)) {
-                return back()->withErrors(['members' => 'Some selected students are already in this team.'])->withInput();
-            }
-
-            if (count($existingMembers) + count($memberIds) > 4) {
-                $slotsLeft = max(0, 4 - count($existingMembers));
-                return back()->withErrors([
-                    'members' => "This team already has " . count($existingMembers) . " member(s). You can add at most {$slotsLeft} more (max 4 per team).",
-                ])->withInput();
-            }
-        } elseif ($formSource === 'create_team') {
-            // Single team create: max 4 members
-            $nameTaken = StudentGroup::where('group_name', $validated['group_name'])
-                ->where('faculty_id', $facultyId)
-                ->exists();
-            if ($nameTaken) {
-                return back()->withErrors(['group_name' => 'A team with this name already exists.'])->withInput();
-            }
+        // Create Teams only builds new teams, so every member has to be one of
+        // this faculty's students who is not on a team yet. Adding to an existing
+        // team is Update Team's job.
+        if ($error = $this->newMemberError($memberIds, (int) $facultyId)) {
+            return back()->withErrors(['members' => $error])->withInput();
         }
 
-        $allowedRoles = $this->teamRoleKeys();
         $roleResult = $this->resolveMemberRoles(
             $memberIds,
             $validated['member_roles'] ?? [],
-            $allowedRoles
+            $this->teamRoleKeys()
         );
 
         if ($roleResult['error'] !== null) {
@@ -143,74 +198,163 @@ class FacultyController extends Controller
         }
         $rolesByMember = $roleResult['roles'];
 
-        $group = Group::firstOrCreate([
-            'group_name' => $validated['group_name'],
-            'faculty_id' => $facultyId,
-        ]);
+        DB::transaction(function () use (&$validated, $facultyId, $memberIds, $rolesByMember) {
+            $validated['group_name'] = $this->claimTeamNames(
+                [$validated['group_name'] ?? null],
+                fn () => 'group_name'
+            )[0];
 
-        foreach ($memberIds as $studentId) {
-            $roles = $rolesByMember[$studentId];
-
-            $studentGroup = StudentGroup::create([
+            $group = Group::firstOrCreate([
                 'group_name' => $validated['group_name'],
                 'faculty_id' => $facultyId,
-                'group_id' => $group->group_id,
-                'student_id' => $studentId,
-                'role' => $roles[0], // legacy column; real roles stored in student_group_roles
             ]);
 
-            foreach ($roles as $role) {
-                StudentGroupRole::create([
-                    'student_group_id' => $studentGroup->student_group_id,
-                    'role' => $role,
-                ]);
-            }
-        }
+            foreach ($memberIds as $studentId) {
+                $roles = $rolesByMember[$studentId];
 
-        // Every team starts with the same first task, so it is not on the faculty
-        // checklist — it is assigned the moment the team exists.
-        HotelConceptDesk::ensureTasksForTeam($validated['group_name'], (int) $facultyId);
+                $studentGroup = StudentGroup::create([
+                    'group_name' => $validated['group_name'],
+                    'faculty_id' => $facultyId,
+                    'group_id' => $group->group_id,
+                    'student_id' => $studentId,
+                    // Legacy column; the real roles live in student_group_roles. Null
+                    // when every role is already held by a teammate — see
+                    // resolveMemberRoles().
+                    'role' => $roles[0] ?? null,
+                ]);
+
+                foreach ($roles as $role) {
+                    StudentGroupRole::create([
+                        'student_group_id' => $studentGroup->student_group_id,
+                        'role' => $role,
+                    ]);
+                }
+            }
+
+            // Every team starts with the same first task, so it is not on the faculty
+            // checklist — it is assigned the moment the team exists.
+            HotelConceptDesk::ensureTasksForTeam($validated['group_name'], (int) $facultyId);
+
+            // And with the five facilities every hotel has, for the same reason: the
+            // preview and the team's public site read the table straight, so waiting
+            // for a student to open Housekeeping left both showing no amenities.
+            \App\Support\HotelAmenityAccess::seedDefaultsForTeam($validated['group_name'], (int) $facultyId);
+        });
 
         $memberCount = count($memberIds);
         $assignedRoles = collect($rolesByMember)->flatten()->unique()->values()->all();
 
-        if ($formSource === 'insert_student') {
-            ActivityLog::recordFor(
-                ActivityLog::STUDENT_ASSIGNED,
-                'Assigned ' . $memberCount . ' student(s) to team "' . $validated['group_name'] . '".'
-            );
+        ActivityLog::recordFor(
+            ActivityLog::TEAM_CREATED,
+            'Created ' . \App\Models\Group::label($validated['group_name']) . ' with ' . $memberCount . ' member(s).'
+        );
 
-            Notifier::teamMembersAdded(
-                auth()->user(),
-                $validated['group_name'],
-                $facultyId,
-                $memberIds
-            );
-        } else {
-            ActivityLog::recordFor(
-                ActivityLog::TEAM_CREATED,
-                'Created team "' . $validated['group_name'] . '" with ' . $memberCount . ' member(s).'
-            );
-
-            Notifier::teamCreated(
-                auth()->user(),
-                $validated['group_name'],
-                $facultyId,
-                $memberIds
-            );
-        }
+        Notifier::teamCreated(
+            auth()->user(),
+            $validated['group_name'],
+            $facultyId,
+            $memberIds
+        );
 
         ActivityLog::recordFor(
             ActivityLog::ROLE_ASSIGNED,
-            'Assigned role(s) ' . implode(', ', $assignedRoles) . ' in team "' . $validated['group_name'] . '".'
+            'Assigned role(s) ' . implode(', ', $assignedRoles) . ' in ' . \App\Models\Group::label($validated['group_name']) . '.'
         );
 
         return redirect()->route('faculty.role', array_filter([
             'tab' => 'teams',
             'class' => $request->input('class_letter') ?: null,
-        ]))->with('success', $formSource === 'insert_student'
-            ? 'Students added to the team.'
-            : 'Team created successfully.');
+        ]))->with('success', \App\Models\Group::label($validated['group_name']) . ' created successfully.')
+          ->with('success_title', 'Team Created');
+    }
+
+    /**
+     * The lowest unused "Team N" names, gaps first: with Team 1, 2 and 4 taken,
+     * the next is Team 3. Names compare case-insensitively, the same way the
+     * citext group_name column does.
+     *
+     * @param  array<string, true>  $taken  lowercased names already used
+     * @return array<int, string>
+     */
+    private function nextTeamNames(int $count, ?array $taken = null): array
+    {
+        $taken ??= $this->takenTeamNames();
+
+        $names = [];
+        for ($n = 1; count($names) < $count; $n++) {
+            if (!isset($taken["team {$n}"])) {
+                $names[] = "Team {$n}";
+            }
+        }
+
+        return $names;
+    }
+
+    /**
+     * Lowercased team names in use by any faculty, so Block A and Block B never
+     * both get a "Team 1". The groups table keeps a team's name after its last
+     * member leaves; reading it too stops a new team inheriting that team's tasks.
+     *
+     * @return array<string, true>
+     */
+    private function takenTeamNames(): array
+    {
+        return DB::table('groups')->pluck('group_name')
+            ->merge(StudentGroup::pluck('group_name'))
+            ->mapWithKeys(fn ($name) => [mb_strtolower(trim((string) $name)) => true])
+            ->all();
+    }
+
+    /**
+     * Settles the name of every team about to be created. Runs inside the
+     * creating transaction and first takes a lock, so two saves at once (from
+     * any faculty) queue up here instead of both taking the same number.
+     *
+     * A blank name, or a "Team N" someone already has, becomes the lowest free
+     * "Team N". Any other name already in use is refused — renaming a team the
+     * faculty named on purpose would be a surprise.
+     *
+     * @param  array<int, ?string>  $requested
+     * @param  callable(int): string  $errorKey  field to report a clash against
+     * @return array<int, string>  same keys as $requested
+     */
+    private function claimTeamNames(array $requested, callable $errorKey): array
+    {
+        // Names are shared by every faculty, so one faculty's row is not enough to
+        // lock. SQLite (tests) already runs one writer at a time.
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement('select pg_advisory_xact_lock(?)', [crc32('team-names')]);
+        }
+
+        $taken = $this->takenTeamNames();
+        $names = [];
+        $pending = [];
+
+        // Typed names first, so an auto number never lands on one later in the list.
+        foreach ($requested as $index => $name) {
+            $name = trim((string) $name);
+            $key = mb_strtolower($name);
+
+            if ($name !== '' && !isset($taken[$key])) {
+                $names[$index] = $name;
+                $taken[$key] = true;
+            } elseif ($name === '' || preg_match('/^team \d+$/i', $name)) {
+                $pending[] = $index;
+            } else {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    $errorKey($index) => "Team name \"{$name}\" is already used.",
+                ]);
+            }
+        }
+
+        foreach ($pending as $index) {
+            $names[$index] = $this->nextTeamNames(1, $taken)[0];
+            $taken[mb_strtolower($names[$index])] = true;
+        }
+
+        ksort($names);
+
+        return $names;
     }
 
     /**
@@ -220,18 +364,13 @@ class FacultyController extends Controller
     {
         $validated = $request->validate([
             'teams' => ['required', 'array', 'min:1'],
-            'teams.*.group_name' => ['required', 'string', 'max:255'],
+            'teams.*.group_name' => ['nullable', 'string', 'max:255'],
             'teams.*.members' => ['required', 'array', 'size:4'],
             'teams.*.members.*' => ['integer', Rule::exists('user_information', 'user_information_id')->where('user_type', UserInformation::TYPE_STUDENT)],
             'teams.*.member_roles' => ['nullable', 'array'],
         ]);
 
         $allowedRoles = $this->teamRoleKeys();
-        $existingNames = StudentGroup::where('faculty_id', $facultyId)
-            ->pluck('group_name')
-            ->map(fn ($n) => strtolower(trim((string) $n)))
-            ->unique()
-            ->all();
 
         $assignedStudentIds = StudentGroup::where('faculty_id', $facultyId)
             ->pluck('student_id')
@@ -244,22 +383,13 @@ class FacultyController extends Controller
             ->map(fn ($id) => (int) $id)
             ->all();
 
-        $seenNames = [];
         $seenMembers = [];
         $normalizedTeams = [];
 
         foreach ($validated['teams'] as $index => $team) {
-            $name = trim((string) $team['group_name']);
-            $nameKey = strtolower($name);
-            $row = $index + 1;
-
-            if ($name === '') {
-                return back()->withErrors(["teams.{$index}.group_name" => "Team #{$row} needs a name."])->withInput();
-            }
-
-            if (in_array($nameKey, $seenNames, true) || in_array($nameKey, $existingNames, true)) {
-                return back()->withErrors(["teams.{$index}.group_name" => "Team name \"{$name}\" is already used."])->withInput();
-            }
+            // Blank and clashing names are settled in claimTeamNames(), under the lock.
+            $name = trim((string) ($team['group_name'] ?? ''));
+            $name = $name !== '' ? $name : 'Team #' . ($index + 1);
 
             $memberIds = array_values(array_unique(array_map('intval', $team['members'] ?? [])));
             if (count($memberIds) !== 4) {
@@ -291,15 +421,22 @@ class FacultyController extends Controller
                 return back()->withErrors(["teams.{$index}.member_roles" => "Team \"{$name}\": {$roleResult['error']}"])->withInput();
             }
 
-            $seenNames[] = $nameKey;
             $normalizedTeams[] = [
-                'group_name' => $name,
+                'group_name' => $team['group_name'] ?? null,
                 'members' => $memberIds,
                 'roles_by_member' => $roleResult['roles'],
             ];
         }
 
-        DB::transaction(function () use ($normalizedTeams, $facultyId) {
+        DB::transaction(function () use (&$normalizedTeams, $facultyId) {
+            $names = $this->claimTeamNames(
+                array_column($normalizedTeams, 'group_name'),
+                fn (int $index) => "teams.{$index}.group_name"
+            );
+            foreach ($names as $index => $name) {
+                $normalizedTeams[$index]['group_name'] = $name;
+            }
+
             foreach ($normalizedTeams as $team) {
                 $group = Group::firstOrCreate([
                     'group_name' => $team['group_name'],
@@ -314,7 +451,7 @@ class FacultyController extends Controller
                         'faculty_id' => $facultyId,
                         'group_id' => $group->group_id,
                         'student_id' => $studentId,
-                        'role' => $roles[0],
+                        'role' => $roles[0] ?? null,
                     ]);
 
                     foreach ($roles as $role) {
@@ -324,6 +461,12 @@ class FacultyController extends Controller
                         ]);
                     }
                 }
+
+                // Same as the single-team path: the concept task and the five stock
+                // facilities are assigned the moment the team exists, not left for a
+                // student or faculty action to trigger later.
+                HotelConceptDesk::ensureTasksForTeam($team['group_name'], $facultyId);
+                \App\Support\HotelAmenityAccess::seedDefaultsForTeam($team['group_name'], $facultyId);
             }
         });
 
@@ -344,83 +487,177 @@ class FacultyController extends Controller
             'class' => $request->input('class_letter') ?: null,
         ]))->with('success', $count === 1
             ? 'Team created successfully.'
-            : "{$count} teams created successfully.");
+            : "{$count} teams created successfully.")
+          ->with('success_title', $count === 1 ? 'Team Created' : 'Teams Created');
     }
 
-    /** @return array<string, string> role key => display label */
+    /** @return array<string, string> seat key => display label */
     private function teamRoleLabels(): array
     {
-        return [
-            'front_desk'            => 'Front Desk',
-            'restaurant_management' => 'Restaurant Management',
-            'room_management'       => 'Room Management',
-            'maintenance'           => 'Maintenance',
-            'housekeeping'          => 'Housekeeping Services',
-        ];
+        return \App\Support\HotelTemplateBuilder::SEAT_LABELS;
     }
 
-    /** @return list<string> */
+    /** @return list<string> the four seats every team is built from */
     private function teamRoleKeys(): array
     {
-        return array_keys($this->teamRoleLabels());
+        return \App\Support\HotelTemplateBuilder::SEATS;
     }
 
     /**
-     * Build per-member roles for one team. A role may be held by at most one member —
-     * a duplicate pick returns a message naming the role. Missing selections still get
-     * an auto-assigned default, but only from roles the team hasn't used yet (always
-     * possible: teams top out at 4 members against 5 roles).
+     * Build per-member seats for one team from the four seats (Front Desk, Room
+     * Management, Restaurant Management, Housekeeping / Maintenance). A seat is
+     * held by one member at most — a duplicate pick returns a message naming it.
+     *
+     * A full team (4 members) is one seat each. A team short of members still has
+     * all four seats to cover, so there a member may hold more than one.
+     *
+     * A member left blank gets one seat nobody has claimed yet, in
+     * HotelTemplateBuilder::SEATS order, so Create Team / Randomize / Auto-Group
+     * fill the team without faculty having to pick manually. Blanks are settled
+     * after every explicit pick, so a blank member never takes a seat a later
+     * member asked for.
      *
      * @param  list<int|string>  $memberIds
-     * @param  array<int|string, mixed>  $memberRoles
-     * @param  list<string>  $allowedRoles
+     * @param  array<int|string, mixed>  $memberRoles  seat key(s) per member id
+     * @param  list<string>  $allowedRoles  the four seats
      * @return array{roles: array<int, list<string>>|null, error: string|null}
      */
     private function resolveMemberRoles(array $memberIds, array $memberRoles, array $allowedRoles): array
     {
         $labels = $this->teamRoleLabels();
-        $resolved = [];
-        $usedRoles = []; // role => true, claimed by an earlier member in this same save
-        $index = 0;
+        $usedRoles = [];
+        $multiSeat = count($memberIds) < count($allowedRoles);
+        $picked = [];
+        $blank = [];
 
         foreach ($memberIds as $studentId) {
-            $roles = $memberRoles[$studentId] ?? [];
-            if (!is_array($roles)) {
-                $roles = [$roles];
-            }
+            $roles = array_values(array_unique(array_filter(
+                (array) ($memberRoles[$studentId] ?? []),
+                fn ($role) => $role !== null && $role !== ''
+            )));
 
-            $roles = array_values(array_unique(array_filter($roles, fn ($r) => $r !== null && $r !== '')));
+            if ($roles === []) {
+                $blank[] = (int) $studentId;
+                continue;
+            }
+            if (count($roles) > 1 && !$multiSeat) {
+                return ['roles' => null, 'error' => 'A team of 4 gives each member one role. Only a team with fewer members can give a member more than one.'];
+            }
 
             foreach ($roles as $role) {
                 if (!in_array($role, $allowedRoles, true)) {
-                    return ['roles' => null, 'error' => 'Please select valid roles for each selected member.'];
+                    return ['roles' => null, 'error' => 'Please select a valid role for each member.'];
                 }
                 if (isset($usedRoles[$role])) {
                     $label = $labels[$role] ?? $role;
                     return ['roles' => null, 'error' => "\"{$label}\" is already assigned to another member on this team."];
                 }
-            }
-
-            if ($roles === []) {
-                $free = array_values(array_diff($allowedRoles, array_keys($usedRoles)));
-                // Always non-empty: teams top out at 4 members against 5 roles.
-                $roles = [$free[$index % count($free)]];
-            }
-
-            foreach ($roles as $role) {
                 $usedRoles[$role] = true;
             }
+            $picked[(int) $studentId] = $roles;
+        }
 
-            $resolved[(int) $studentId] = $roles;
-            $index++;
+        // Somebody has to hold the seat, so a member left blank is given one of
+        // the seats nobody has claimed yet rather than joining with none.
+        foreach ($blank as $studentId) {
+            $free = array_values(array_diff($allowedRoles, array_keys($usedRoles)));
+            if ($free === []) {
+                return ['roles' => null, 'error' => 'Every role is already held by another member. Untick one so each member has a role.'];
+            }
+            $usedRoles[$free[0]] = true;
+            $picked[$studentId] = [$free[0]];
+        }
+
+        // Back in the order the members were given.
+        $resolved = [];
+        foreach ($memberIds as $studentId) {
+            $resolved[(int) $studentId] = $picked[(int) $studentId];
         }
 
         return ['roles' => $resolved, 'error' => null];
     }
 
+    /**
+     * Why these students cannot join a team, or null when they all can.
+     *
+     * A student is on one team at a time: each one joining has to be this
+     * faculty's own student and not already on any of this faculty's teams.
+     *
+     * @param  list<int>  $studentIds
+     */
+    private function newMemberError(array $studentIds, int $facultyId): ?string
+    {
+        if ($studentIds === []) {
+            return null;
+        }
+
+        $owned = Student::where('faculty_id', $facultyId)
+            ->whereIn('user_information_id', $studentIds)
+            ->count();
+        if ($owned !== count($studentIds)) {
+            return 'Some selected students are not in your class.';
+        }
+
+        $taken = StudentGroup::with('student.user')
+            ->where('faculty_id', $facultyId)
+            ->whereIn('student_id', $studentIds)
+            ->get();
+        if ($taken->isNotEmpty()) {
+            $first = $taken->first();
+            $user = $first->student?->user;
+            $name = trim(($user?->first_name ?? '') . ' ' . ($user?->last_name ?? '')) ?: ($user?->name ?? 'A selected student');
+
+            return $name . ' is already on ' . \App\Models\Group::label($first->group_name) . '. A student can only be on one team.';
+        }
+
+        return null;
+    }
+
+    /**
+     * Why the signed-in faculty cannot add students or create teams yet, or null.
+     *
+     * No block assigned, or a block whose turn has not come (Block B waits for
+     * Block A to fill) — see Faculty::intakeLockReason(). Add Student, Bulk Upload
+     * and team creation all refuse while this is set.
+     */
+    private function intakeLockReason(): ?string
+    {
+        return auth()->user()?->faculty?->intakeLockReason();
+    }
+
+    /**
+     * Why the signed-in faculty cannot add students right now, or null.
+     *
+     * Only the intake lock above. A full block no longer stops Add Student or Bulk
+     * Upload: the student is enrolled under the next block's faculty instead
+     * (Faculty::intakeFaculty).
+     */
+    private function enrolmentBlockedReason(): ?string
+    {
+        return $this->intakeLockReason();
+    }
+
+    /**
+     * Tell the next block's faculty their block opened, when this enrolment is what
+     * filled the signed-in faculty's block. Returns that faculty, or null.
+     */
+    private function notifyIfBlockFilled(int $countBefore): ?Faculty
+    {
+        $faculty = auth()->user()?->faculty;
+        $next = $faculty?->nextBlockFaculty();
+        if (!$next || $countBefore >= FacultyClass::CAPACITY || $faculty->students()->count() < FacultyClass::CAPACITY) {
+            return null;
+        }
+
+        Notifier::blockOpened(auth()->user(), $faculty, $next);
+
+        return $next;
+    }
+
     public function students()
     {
         $facultyId = auth()->user()?->faculty?->user_information_id;
+        $intakeLock = $this->enrolmentBlockedReason();
 
         if (!$facultyId) {
             return view('faculty.managestudent', [
@@ -429,6 +666,7 @@ class FacultyController extends Controller
                 'activeClass' => null,
                 'openClass' => null,
                 'classCapacity' => FacultyClass::CAPACITY,
+                'intakeLock' => 'Faculty account not found.',
             ]);
         }
 
@@ -439,12 +677,37 @@ class FacultyController extends Controller
 
         $openClass = $classes->firstWhere('status', 'open') ?? $classes->last();
 
+        // A new block's tab stays hidden until its first student joins, so a
+        // freshly opened, empty Block B does not show next to a full Block A.
+        $classes = $classes->filter(fn ($class, $index) => $index === 0 || $class->seats_taken > 0)->values();
+
         $requestedLetter = strtoupper((string) request('class', $openClass?->letter ?? 'A'));
-        $activeClass = $classes->firstWhere('letter', $requestedLetter) ?? $openClass;
+        $activeClass = $classes->firstWhere('letter', $requestedLetter) ?? $classes->last();
+
+        // Search runs on the server so it finds students on every page, not only the
+        // five on screen. Each word must match the student number or a name, email
+        // or phone column, so "Cruz Juan" finds Juan Dela Cruz.
+        $search = trim((string) request('q', ''));
+        $words = $search === '' ? [] : preg_split('/\s+/', mb_strtolower($search));
 
         $students = Student::with('user')
             ->where('faculty_id', $facultyId)
             ->when($activeClass, fn ($q) => $q->where('faculty_class_id', $activeClass->faculty_class_id))
+            ->when($words, function ($q) use ($words) {
+                foreach ($words as $word) {
+                    $like = '%' . addcslashes($word, '\\%_') . '%';
+                    $q->where(function ($w) use ($like) {
+                        $w->whereRaw('LOWER(student_number) LIKE ?', [$like])
+                            ->orWhereHas('user', function ($u) use ($like) {
+                                $u->where(function ($f) use ($like) {
+                                    foreach (['first_name', 'last_name', 'middle_name', 'email', 'phone_number'] as $column) {
+                                        $f->orWhereRaw("LOWER({$column}) LIKE ?", [$like]);
+                                    }
+                                });
+                            });
+                    });
+                }
+            })
             ->latest()
             ->paginate(5)
             ->withQueryString();
@@ -456,7 +719,9 @@ class FacultyController extends Controller
             'classes',
             'activeClass',
             'openClass',
-            'classCapacity'
+            'classCapacity',
+            'intakeLock',
+            'search'
         ));
     }
 
@@ -509,15 +774,23 @@ class FacultyController extends Controller
             return back()->withErrors(['error' => 'Faculty account not found.'])->withInput();
         }
 
+        if ($lock = $this->enrolmentBlockedReason()) {
+            return back()->withErrors(['error' => $lock])->withInput();
+        }
+
         $validated = $request->validate([
             // Request field keeps its name — it is what the form and the bulk-upload
             // spreadsheet send. The column it validates against is student_number.
-            'student_id' => ['required', 'string', 'max:50', 'unique:user_information,student_number'],
+            'student_id' => ['required', 'regex:' . Student::NUMBER_PATTERN, 'unique:user_information,student_number'],
             'first_name' => ['required', 'string', 'max:255'],
-            'middle_name' => ['nullable', 'string', 'max:255'],
+            // The complete middle name, not an initial like "A.".
+            'middle_name' => ['nullable', 'string', 'max:255', "regex:/^\p{L}[\p{L}\s'-]*\p{L}$/u"],
             'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'max:255'],
-            'phone_number' => ['nullable', 'string', 'max:30'],
+            'phone_number' => ['nullable', 'string', new PhilippineMobile()],
+        ], [
+            'student_id.regex' => 'Student ID must be numbers only, up to 10 digits.',
+            'middle_name.regex' => 'Enter the complete middle name, not an initial.',
         ]);
 
         // Generated rather than typed, same as the bulk upload. The only place it is
@@ -546,12 +819,19 @@ class FacultyController extends Controller
             $validated['last_name'],
         ])));
 
+        // Past a full block, a faculty holding the next block takes the student.
+        $ownFacultyId = (int) $facultyId;
+        $target = auth()->user()->faculty->intakeFaculty();
+        $facultyId = (int) $target->user_information_id;
+        $handedOver = $facultyId !== $ownFacultyId;
+
         // Which class was accepting enrollments before this student took a seat —
         // if it differs afterwards, seating them is what opened the next one.
         $openClassIdBefore = FacultyClass::where('faculty_id', $facultyId)
             ->where('status', 'open')
             ->orderBy('sort_order')
             ->value('faculty_class_id');
+        $countBefore = Student::where('faculty_id', $ownFacultyId)->count();
 
         [$user, $student, $class] = DB::transaction(function () use ($validated, $email, $fullName, $facultyId, $plainPassword) {
             $class = FacultyClass::claimSeat($facultyId);
@@ -565,8 +845,10 @@ class FacultyController extends Controller
                 'password' => Hash::make($plainPassword),
                 'role' => 'student',
                 'status' => 'active',
-                'phone_number' => User::cleanOptional($validated['phone_number'] ?? null),
+                'phone_number' => User::normalizePhone($validated['phone_number'] ?? null),
                 'email_verified_at' => now(),
+                // The generated password is a temporary one; see EnsurePasswordChanged.
+                'must_change_password' => true,
             ]);
 
             $student = Student::create([
@@ -590,6 +872,7 @@ class FacultyController extends Controller
 
         Notifier::studentAdded(auth()->user(), $user, $fullName, $class, $facultyId);
         $this->notifyIfClassOpened($facultyId, $openClassIdBefore);
+        $handedTo = $this->notifyIfBlockFilled($countBefore);
 
         // Only now that the account exists. This is the last point the generated
         // password is readable — the column holds a hash from here on, so a student
@@ -602,7 +885,13 @@ class FacultyController extends Controller
         );
 
         $message = 'Student account created successfully and added to ' . ($class->name ?? 'their block') . '.';
-        if ($class->status === 'closed') {
+        if ($handedOver) {
+            $message = 'Your block is full, so the student was added to ' . $class->name . ' under '
+                . ($target->user?->name ?? 'its faculty') . '.';
+        } elseif ($handedTo) {
+            $message .= ' ' . $class->name . ' is now full. New students go to Block ' . strtoupper((string) $handedTo->block)
+                . ' (' . ($handedTo->user?->name ?? 'another faculty') . ').';
+        } elseif ($class->status === 'closed') {
             $message .= ' ' . $class->name . ' is now full. A new block tab was opened.';
         }
 
@@ -615,7 +904,7 @@ class FacultyController extends Controller
                 . ' — write it down now and give it to them, it is not shown again.';
 
         return redirect()
-            ->route('faculty.students', ['class' => $class->letter])
+            ->route('faculty.students', $handedOver ? [] : ['class' => $class->letter])
             ->with('success', $message)
             ->with('success_title', 'Student Created');
     }
@@ -643,39 +932,115 @@ class FacultyController extends Controller
 
     public function updateStudent(Request $request, $userId)
     {
-        $validated = $request->validate([
-            'phone_number' => ['nullable', 'string', 'max:30'],
-            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
-            'status' => ['required', 'in:active,inactive'],
-        ]);
-
         $user = User::findOrFail($userId);
 
         if ($user->role !== 'student') {
             return back()->withErrors(['error' => 'Only student accounts can be updated.']);
         }
 
+        // The user id arrives in the URL, and this form now changes an address and can
+        // reset a password — enough to take an account over. Nothing here previously
+        // checked whose student it was.
+        $facultyId = auth()->user()?->faculty?->user_information_id;
+
+        if (!$facultyId || (int) ($user->student?->faculty_id) !== (int) $facultyId) {
+            return back()->withErrors(['error' => 'You can only update students in your own class.']);
+        }
+
+        // Normalised before validation, not after: the User mutator lowercases on the
+        // way in, so a unique check on the raw input would let "A@x.com" through
+        // against a stored "a@x.com" and only fail at the index.
+        $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
+
+        $validated = $request->validate([
+            // Editable because bulk import takes the address off a spreadsheet, and a
+            // typo there creates an account whose welcome email went to nobody. This
+            // is where that is put right.
+            'email' => [
+                'required', 'string', 'email', 'max:255',
+                Rule::unique('users', 'email')->ignore($user->user_id, 'user_id'),
+            ],
+            'phone_number' => ['nullable', 'string', new PhilippineMobile()],
+            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+            'status' => ['required', 'in:active,inactive'],
+        ]);
+
+        $previousEmail = strtolower(trim((string) $user->email));
+        $emailChanged  = $validated['email'] !== $previousEmail;
+
         $updateData = [
-            'phone_number' => User::cleanOptional($validated['phone_number'] ?? null) !== ''
-                ? User::cleanOptional($validated['phone_number'] ?? null)
+            'email' => $validated['email'],
+            'phone_number' => User::normalizePhone($validated['phone_number'] ?? null) !== ''
+                ? User::normalizePhone($validated['phone_number'] ?? null)
                 : ($user->phone_number ?? ''),
             'status' => $validated['status'],
         ];
 
-        if (!empty($validated['password'])) {
-            $updateData['password'] = Hash::make($validated['password']);
+        $plainPassword = $validated['password'] ?? null;
+
+        if (!empty($plainPassword)) {
+            $updateData['password'] = Hash::make($plainPassword);
+            // Faculty knows this one, so the student replaces it; see EnsurePasswordChanged.
+            $updateData['must_change_password'] = true;
+        }
+
+        // A corrected address means the account email reached nobody, so it is sent
+        // again — and it carries a password, which is stored only as a hash and cannot
+        // be read back. One is generated when faculty did not type one.
+        //
+        // Only for a student who has never signed in. Once last_seen_at is set the
+        // account is in use and its password is the student's, not ours to replace;
+        // an address changed at that point is a change of address, not a repair.
+        $resendWelcome = false;
+
+        if ($emailChanged) {
+            if (!empty($plainPassword)) {
+                $resendWelcome = true;
+            } elseif ($user->last_seen_at === null) {
+                $plainPassword = StudentWelcomeMailer::generatePassword();
+                $updateData['password'] = Hash::make($plainPassword);
+                $updateData['must_change_password'] = true;
+                $resendWelcome = true;
+            }
         }
 
         $user->update($updateData);
 
-        ActivityLog::recordFor(
-            ActivityLog::ACCOUNT_UPDATED,
-            'Updated student account ' . ($user->name ?? $user->email) . ' — status set to ' . $validated['status'] . '.'
-        );
+        $description = 'Updated student account ' . ($user->name ?? $user->email)
+            . ' — status set to ' . $validated['status'] . '.';
+
+        if ($emailChanged) {
+            $description = 'Updated student account ' . ($user->name ?? $validated['email'])
+                . ' — email corrected from ' . ($previousEmail !== '' ? $previousEmail : 'blank')
+                . ' to ' . $validated['email']
+                . ', status set to ' . $validated['status'] . '.';
+        }
+
+        ActivityLog::recordFor(ActivityLog::ACCOUNT_UPDATED, $description);
+
+        $message = 'Student updated successfully.';
+
+        if ($resendWelcome) {
+            $classLetter = $user->student?->facultyClass?->block_letter;
+
+            $mailResult = StudentWelcomeMailer::send(
+                $user->fresh(),
+                $plainPassword,
+                $classLetter ? 'Block ' . $classLetter : null,
+                $user->student?->student_number
+            );
+
+            $message = $mailResult['sent']
+                ? 'Email corrected and the account email was sent to ' . $validated['email'] . '.'
+                : 'Email corrected, but the account email was not sent — ' . $mailResult['reason'] . '.';
+        } elseif ($emailChanged) {
+            $message = 'Email corrected to ' . $validated['email']
+                . '. The password was left alone because this student has already signed in.';
+        }
 
         return redirect()->route('faculty.students', ['class' => request('class')])
-            ->with('success', 'Student updated successfully.')
-            ->with('success_title', 'Student Updated');
+            ->with('success', $message)
+            ->with('success_title', $emailChanged ? 'Email Updated' : 'Student Updated');
     }
 
     public function bulkImportStudents(Request $request)
@@ -683,6 +1048,10 @@ class FacultyController extends Controller
         $facultyId = auth()->user()?->faculty?->user_information_id;
         if (!$facultyId) {
             return response()->json(['message' => 'Faculty account not found.'], 403);
+        }
+
+        if ($lock = $this->enrolmentBlockedReason()) {
+            return response()->json(['message' => $lock], 422);
         }
 
         $request->validate([
@@ -728,6 +1097,12 @@ class FacultyController extends Controller
         $classesOpened = [];
         $lastClassLetter = null;
 
+        // Rows past a full block go to the faculty holding the next block, or to
+        // this faculty's own next block tab when nobody holds it (intakeFaculty).
+        $ownFaculty = auth()->user()->faculty;
+        $countBefore = Student::where('faculty_id', $facultyId)->count();
+        $handedOver = []; // faculty id => faculty, how many, and which block
+
         // Each welcome email is a round trip to Gmail, so a full class costs a minute
         // or two. The default 30 seconds would cut the import in half — some students
         // created and emailed, the rest silently not.
@@ -748,6 +1123,7 @@ class FacultyController extends Controller
             // Basic validation
             $errors = [];
             if ($studentId === '') $errors[] = 'student number is required';
+            elseif (!preg_match(Student::NUMBER_PATTERN, $studentId)) $errors[] = 'student ID must be numbers only, up to 10 digits';
             if ($firstName  === '') $errors[] = 'first name is required';
             if ($lastName   === '') $errors[] = 'last name is required';
             // Registrar lists carry "N/A" where a student never gave an address; the
@@ -780,20 +1156,24 @@ class FacultyController extends Controller
                 continue;
             }
 
+            $target = $ownFaculty->intakeFaculty();
+            $targetId = (int) $target->user_information_id;
+
             $fullName = trim(implode(' ', array_filter([$firstName, $middleName, $lastName])));
 
-            // One password per student rather than a shared default. These go out by
-            // email, and a password every student knows is one every student can use
-            // on any classmate's account.
+            // One password per student rather than a shared default. A shared one
+            // was tried and reverted: a password every student knows is one every
+            // student can use on any classmate's account. It reaches the student
+            // through the welcome email below and is readable nowhere else.
             $plainPassword   = StudentWelcomeMailer::generatePassword();
             $defaultPassword = Hash::make($plainPassword);
 
             try {
-                [$user, $student, $classLetter] = DB::transaction(function () use (
+                [$user, $student, $classLetter, $blockLetter] = DB::transaction(function () use (
                     $studentId, $firstName, $middleName, $lastName,
-                    $email, $phone, $fullName, $defaultPassword, $facultyId
+                    $email, $phone, $fullName, $defaultPassword, $targetId
                 ) {
-                    $class = FacultyClass::claimSeat($facultyId);
+                    $class = FacultyClass::claimSeat($targetId);
 
                     $user = User::create([
                         'name'         => $fullName,
@@ -806,11 +1186,13 @@ class FacultyController extends Controller
                         'status'       => 'active',
                         'phone_number' => $phone,
                         'email_verified_at' => now(),
+                        // The generated password is a temporary one; see EnsurePasswordChanged.
+                        'must_change_password' => true,
                     ]);
 
                     $student = Student::create([
                         'user_id'          => $user->user_id,
-                        'faculty_id'       => $facultyId,
+                        'faculty_id'       => $targetId,
                         'faculty_class_id' => $class->faculty_class_id,
                         'student_number'   => $studentId,
                     ]);
@@ -818,19 +1200,24 @@ class FacultyController extends Controller
                     $class->syncCapacity();
                     $class->refresh();
 
-                    return [$user, $student, $class->letter];
+                    return [$user, $student, $class->letter, $class->block_letter];
                 });
 
                 event(new StudentCreated($user, $student));
 
                 // Only the student's own welcome here — faculty and dean get one
                 // summary after the loop instead of a row per imported student.
-                Notifier::studentWelcomed(auth()->user(), $user, 'Block ' . $classLetter);
+                Notifier::studentWelcomed(auth()->user(), $user, 'Block ' . $blockLetter);
 
-                if ($lastClassLetter !== null && $classLetter !== $lastClassLetter) {
-                    $classesOpened[] = $classLetter;
+                if ($targetId !== (int) $facultyId) {
+                    $handedOver[$targetId] ??= ['faculty' => $target, 'count' => 0, 'block' => 'Block ' . $blockLetter];
+                    $handedOver[$targetId]['count']++;
+                } else {
+                    if ($lastClassLetter !== null && $classLetter !== $lastClassLetter) {
+                        $classesOpened[] = $classLetter;
+                    }
+                    $lastClassLetter = $classLetter;
                 }
-                $lastClassLetter = $classLetter;
 
                 // Sent only on this path, where the account is known to exist. A row
                 // that failed above never reaches here, so nobody is told an account
@@ -838,7 +1225,7 @@ class FacultyController extends Controller
                 $mailResult = StudentWelcomeMailer::send(
                     $user,
                     $plainPassword,
-                    'Block ' . $classLetter,
+                    'Block ' . $blockLetter,
                     $studentId
                 );
 
@@ -849,6 +1236,7 @@ class FacultyController extends Controller
                     'student_id' => $studentId,
                     'email'      => $email,
                     'class'      => $classLetter,
+                    'block'      => 'Block ' . $blockLetter,
                     'emailed'    => $mailResult['sent'],
                     'reason'     => $mailResult['sent'] ? '' : $mailResult['reason'],
                 ];
@@ -874,7 +1262,17 @@ class FacultyController extends Controller
                 . ($notEmailed > 0 ? ", {$notEmailed} could not be emailed" : '') . '.';
         }
         if (!empty($classesOpened)) {
-            $message .= ' New block tab(s) opened: Block ' . implode(', Block ', array_unique($classesOpened)) . '.';
+            $opened = FacultyClass::where('faculty_id', $facultyId)
+                ->whereIn('letter', array_unique($classesOpened))
+                ->get()
+                ->map(fn (FacultyClass $class) => $class->name)
+                ->implode(', ');
+            $message .= ' New block tab(s) opened: ' . $opened . '.';
+        }
+        $this->notifyIfBlockFilled($countBefore);
+        foreach ($handedOver as $hand) {
+            $message .= ' Your block is full, so ' . $hand['count'] . ' student(s) went to ' . $hand['block']
+                . ' under ' . ($hand['faculty']->user?->name ?? 'its faculty') . '.';
         }
 
         if ($created > 0) {
@@ -884,7 +1282,13 @@ class FacultyController extends Controller
                     . ($failed > 0 ? ', ' . $failed . ' row(s) failed' : '') . '.'
             );
 
-            Notifier::studentsImported(auth()->user(), $facultyId, $created);
+            $ownCreated = $created - array_sum(array_column($handedOver, 'count'));
+            if ($ownCreated > 0) {
+                Notifier::studentsImported(auth()->user(), $facultyId, $ownCreated);
+            }
+            foreach ($handedOver as $handedId => $hand) {
+                Notifier::studentsImported(auth()->user(), $handedId, $hand['count']);
+            }
 
             foreach (array_unique($classesOpened) as $letter) {
                 $opened = FacultyClass::where('faculty_id', $facultyId)
@@ -903,6 +1307,8 @@ class FacultyController extends Controller
             'results' => $results,
             'open_class' => $openClass?->letter,
             'classes_opened' => array_values(array_unique($classesOpened)),
+            // Students past a full block that went to the next block's faculty.
+            'handed_over' => array_sum(array_column($handedOver, 'count')),
         ]);
     }
 
@@ -926,6 +1332,11 @@ class FacultyController extends Controller
                 'roles'           => [],
                 'teamActivityByGroup' => [],
                 'conceptsByGroup' => collect(),
+                'teamPendingReviewByGroup' => [],
+                'teamConceptPendingByGroup' => [],
+                'teamHeldTitles' => collect(),
+                'teamTemplateByGroup' => [],
+                'teamApprovalByGroup' => [],
             ]);
         }
 
@@ -935,8 +1346,18 @@ class FacultyController extends Controller
         });
 
         $openClass = $classes->firstWhere('status', 'open') ?? $classes->first();
-        $requestedLetter = strtoupper((string) request('class', $openClass?->letter ?? 'A'));
-        $activeClass = $classes->firstWhere('letter', $requestedLetter) ?? $openClass;
+        // A notification link names a team, not its block: open the block most
+        // of its members are in, or the page would not have the team's card.
+        $linkedClassId = request()->filled('team') && !request()->filled('class')
+            ? StudentGroup::where('faculty_id', $facultyId)->where('group_name', (string) request('team'))
+                ->with('student')->get()
+                ->map(fn ($m) => $m->student?->faculty_class_id)->filter()->countBy()->sortDesc()->keys()->first()
+            : null;
+        // Opened from the sidebar, Manage Teams starts on the first block (Block A),
+        // not the one open for enrolment: once A fills, that was B every time.
+        $firstClass = $classes->first();
+        $requestedLetter = strtoupper((string) request('class', $classes->firstWhere('faculty_class_id', $linkedClassId)?->letter ?? $firstClass?->letter ?? 'A'));
+        $activeClass = $classes->firstWhere('letter', $requestedLetter) ?? $firstClass;
         $classCapacity = FacultyClass::CAPACITY;
 
         $assignedStudentIds = StudentGroup::where('faculty_id', $facultyId)
@@ -996,7 +1417,73 @@ class FacultyController extends Controller
             }
 
             return ($teamClassIdByName[$groupName] ?? null) === $activeClass->faculty_class_id;
-        });
+        })->sortKeys(SORT_NATURAL | SORT_FLAG_CASE); // Team 2 before Team 10
+
+        /* Whether Set Task has anywhere to send work.
+         *
+         * A task is handed to a team and fanned out to its members, so a block
+         * with no students, or with teams that have nobody in them, has nothing
+         * for a task to land on - and setting one there used to look like it
+         * had worked while creating nothing at all.
+         *
+         * A team with no students is not a team for this purpose: its rows have
+         * no student behind them (the student was removed), so there is no one
+         * to hand the work to.
+         */
+        $classStudentCount = Student::where('faculty_id', $facultyId)
+            ->when($activeClass, fn ($q) => $q->where('faculty_class_id', $activeClass->faculty_class_id))
+            ->count();
+
+        $teamsWithStudents = $groups->filter(
+            fn ($members) => $members->contains(fn ($member) => $member->student !== null)
+        );
+
+        /* Set Task is per block, but a block with nothing to set work on must not
+           lock out the faculty's other blocks. Block A filling up opens Block B,
+           and the page lands on the open block - so a faculty whose new Block B
+           students have no team yet was told "No teams are available" while
+           Team 1 in Block A sat ready. Set Task goes to the first block that has
+           a team instead. */
+        $setTaskClass = $activeClass;
+        if ($teamsWithStudents->isEmpty()) {
+            $staffedClassIds = $allGroups
+                ->filter(fn ($members) => $members->contains(fn ($member) => $member->student !== null))
+                ->keys()
+                ->map(fn ($groupName) => $teamClassIdByName[$groupName] ?? null)
+                ->filter()
+                ->all();
+            $setTaskClass = $classes->first(
+                fn ($class) => in_array($class->faculty_class_id, $staffedClassIds, true)
+            ) ?? $activeClass;
+        }
+        $setTaskClassLetter = $setTaskClass?->letter;
+
+        if ($setTaskClass !== $activeClass && request('tab') === 'create_task') {
+            return redirect()->route('faculty.role', ['class' => $setTaskClassLetter, 'tab' => 'create_task']);
+        }
+
+        $intakeLock = $this->intakeLockReason();
+        $setTaskBlockReason = null;
+        // Blocked only when no block at all has a team to set work on.
+        if ($setTaskClass === $activeClass) {
+            if ($classStudentCount === 0) {
+                $setTaskBlockReason = 'No students are available. Please add students before setting tasks.';
+            } elseif ($teamsWithStudents->isEmpty()) {
+                $setTaskBlockReason = 'No teams are available. Please create a team and assign students before setting tasks.';
+            }
+        }
+
+        /* Typing the address of the Set Task tab is not a way around the above.
+           Sent back to the team list with the same sentence the button carries,
+           so the two never disagree about why. */
+        if ($setTaskBlockReason && request('tab') === 'create_task') {
+            return redirect()
+                ->route('faculty.role', array_filter([
+                    'class' => $activeClass?->letter,
+                    'tab' => 'teams',
+                ]))
+                ->with('error', $setTaskBlockReason);
+        }
 
         // Role definitions + task counts for the Create Task tab
         $rolesMeta = [
@@ -1010,7 +1497,6 @@ class FacultyController extends Controller
         $tasksByRole = Task::where('faculty_id', $facultyId)
             ->where('status', 'active')
             ->orderBy('due_date')
-            ->orderByPriority()
             ->get()
             ->groupBy('role');
 
@@ -1024,80 +1510,68 @@ class FacultyController extends Controller
         // one for the checklist and lose the real rows for the rest of the page.
         $taskChecklist = \App\Support\TaskChecklist::all();
 
-        $roleLabels = [
-            'front_desk'            => 'Front Desk',
-            'restaurant_management' => 'Restaurant',
-            'room_management'       => 'Rooms',
-            'maintenance'           => 'Maintenance',
-            'housekeeping'          => 'Housekeeping',
-        ];
+        // The same checklist as numbered tasks, one per department: TASK 01 is
+        // Front Desk's customization, TASK 02 Room Management's, and so on.
+        $taskSteps = \App\Support\TaskChecklist::allByStep();
 
-        $allTasks = Task::with('assignedTo')
-            ->where('faculty_id', $facultyId)
-            // The hotel concept heads each team's list — it is their first task.
-            ->conceptFirst()
-            ->orderByDesc('updated_at')
-            ->limit(500)
-            ->get();
+        // How many of each team's members hold each role, so the Create Task wizard
+        // can say "2 members" or "nobody holds this" once a team is picked. Read off
+        // the roster already in memory rather than a query per team.
+        $teamRoleCounts = [];
+        foreach ($allGroups as $groupName => $members) {
+            $counts = array_fill_keys(array_keys($rolesMeta), 0);
+
+            foreach ($members as $member) {
+                foreach ($member->roles as $memberRole) {
+                    if (array_key_exists($memberRole->role, $counts)) {
+                        $counts[$memberRole->role]++;
+                    }
+                }
+            }
+
+            $teamRoleCounts[$groupName] = $counts;
+        }
+
+        $allTasks = $this->teamActivityTasks((int) $facultyId);
 
         $teamActivityByGroup = [];
+        $teamApprovalByGroup = [];
         foreach ($allGroups as $groupName => $members) {
-            $memberStudentIds = $members->pluck('student_id')->filter()->map(fn ($id) => (int) $id)->unique()->all();
-            $memberRoles = $members
-                ->flatMap(fn ($m) => $m->roles->pluck('role'))
+            $teamApprovalByGroup[$groupName] = $this->approvalSummary((string) $groupName, (int) $facultyId);
+            $teamActivityByGroup[$groupName] = $this->teamActivityRows(
+                (string) $groupName,
+                $members,
+                $allTasks,
+                (int) $facultyId,
+                $teamApprovalByGroup[$groupName]['unlocked']
+            );
+        }
+
+        // The Task Submission Indicator on each card, first-paint — the poll
+        // endpoint recomputes this same shape afterward, so the card never has
+        // to tell an initial render apart from a live update.
+        $teamPendingReviewByGroup = $this->pendingReviewByGroup($facultyId);
+
+        // Its hotel-concept counterpart: a team just handed both proposals in
+        // and neither has a verdict yet.
+        $teamConceptPendingByGroup = $this->conceptPendingReviewByGroup($facultyId);
+
+        /* Which activities each team already holds, by lowercased title, so Set
+           Task can grey out work they have been given instead of letting it be
+           sent a second time. Per activity rather than per numbered task: one
+           task holds a whole department's activities, and holding one of them
+           must not lock the rest. storeTask refuses a duplicate either way; this
+           is so the faculty sees it before filling the form in. */
+        $teamHeldTitles = Task::where('faculty_id', $facultyId)
+            ->whereNotNull('group_name')
+            ->get(['group_name', 'title'])
+            ->groupBy('group_name')
+            ->map(fn ($rows) => $rows->pluck('title')
                 ->filter()
+                ->map(fn ($title) => mb_strtolower((string) $title))
                 ->unique()
                 ->values()
-                ->all();
-
-            $teamActivityByGroup[$groupName] = $allTasks
-                ->filter(function (Task $task) use ($memberStudentIds, $memberRoles) {
-                    // The hotel concept has its own "Hotel Concept" tab in this same
-                    // modal — it should not also clutter Team Task Activity.
-                    if ($task->is_hotel_concept) {
-                        return false;
-                    }
-
-                    // A claimed row belongs to exactly one student, so show it only to
-                    // that student's team. Falling through to the role match here listed
-                    // every team's rows under every team holding the same role.
-                    if ($task->student_id) {
-                        return in_array((int) $task->student_id, $memberStudentIds, true);
-                    }
-
-                    // Unclaimed pool rows still show for any team holding the role.
-                    return in_array($task->role, $memberRoles, true);
-                })
-                ->take(100)
-                ->values()
-                ->map(function (Task $task) use ($roleLabels) {
-                    // Tasks fan out one row per member, so name the student the row
-                    // belongs to — otherwise identical titles are indistinguishable.
-                    $u = $task->assignedTo;
-                    $studentName = trim(implode(' ', array_filter([$u?->last_name, $u?->first_name])));
-                    $studentName = $studentName !== '' ? $studentName : ($u?->name ?? null);
-
-                    return [
-                        'id' => $task->task_id,
-                        'title' => $task->title,
-                        'description' => $task->description,
-                        'role' => $task->role,
-                        'role_label' => $roleLabels[$task->role] ?? $task->role,
-                        'priority' => strtolower($task->priority ?? 'medium'),
-                        'status' => $task->status,
-                        // The concept task is not deletable and reviews differently.
-                        'is_hotel_concept' => $task->is_hotel_concept,
-                        'has_feedback' => filled($task->feedback),
-                        'student_name' => $studentName,
-                        'submitted_at' => $task->status === 'archived'
-                            ? optional($task->updated_at)->format('M d, Y')
-                            : null,
-                        'due_date' => optional($task->due_date)->format('M d, Y g:i A'),
-                        'updated_at' => optional($task->updated_at)->format('M d, Y'),
-                    ];
-                })
-                ->all();
-        }
+                ->all());
 
         // The hotel concepts, so the teams list names what each team proposed. Grouped
         // rather than keyed: a team has two, and keyBy would silently keep one. The
@@ -1110,7 +1584,19 @@ class FacultyController extends Controller
             ->groupBy('group_name')
             ->map(fn ($concepts) => \App\Support\HotelConceptDesk::visibleConcepts($concepts));
 
+        // The site template each team chose. Front Desk makes the pick for the
+        // whole team, so its row is the one that counts.
+        $teamTemplateByGroup = \App\Models\TeamRoleTemplate::where('faculty_id', $facultyId)
+            ->where('role', 'front_desk')
+            ->whereNotNull('selected_template')
+            ->pluck('selected_template', 'group_name')
+            ->all();
+
+        // Prefilled into Create Team; up to 40 since that is the bulk form's cap.
+        $nextTeamNames = $this->nextTeamNames(40);
+
         return view('faculty.pagerole', compact(
+            'nextTeamNames',
             'students',
             'allStudents',
             'studentTeamMap',
@@ -1120,13 +1606,447 @@ class FacultyController extends Controller
             'openClass',
             'classCapacity',
             'teamCountsByClass',
+            'setTaskBlockReason',
+            'setTaskClassLetter',
+            'intakeLock',
             'rolesMeta',
             'tasksByRole',
             'taskCounts',
             'taskChecklist',
+            'taskSteps',
+            'teamRoleCounts',
             'teamActivityByGroup',
-            'conceptsByGroup'
+            'conceptsByGroup',
+            'teamPendingReviewByGroup',
+            'teamConceptPendingByGroup',
+            'teamHeldTitles',
+            'teamTemplateByGroup',
+            'teamApprovalByGroup'
         ));
+    }
+
+    /**
+     * A team's Hotel Customization approval progress and Simulation roles, the
+     * shape the Manage Teams modal paints from. Recomputed after every verdict so
+     * the modal never shows a count the verdict just changed.
+     */
+    private const ACTIVITY_ROLE_LABELS = [
+        'front_desk'            => 'Front Desk',
+        'restaurant_management' => 'Restaurant',
+        'room_management'       => 'Rooms',
+        'maintenance'           => 'Maintenance',
+        'housekeeping'          => 'Housekeeping',
+    ];
+
+    /** The task pool every team's Team Task Activity list is cut from. */
+    private function teamActivityTasks(int $facultyId)
+    {
+        return Task::with('assignedTo')
+            ->where('faculty_id', $facultyId)
+            // The hotel concept heads each team's list — it is their first task.
+            ->conceptFirst()
+            ->orderByDesc('updated_at')
+            ->limit(500)
+            ->get();
+    }
+
+    /**
+     * One team's Team Task Activity rows, as the team modal's Tasks tab renders
+     * them (Review now buttons included). Shared by the first paint and
+     * teamActivity(), so a live refresh paints exactly what a reload would.
+     */
+    private function teamActivityRows(string $groupName, $members, $allTasks, int $facultyId, bool $teamUnlocked): array
+    {
+        $teamEdits = null;
+        $memberStudentIds = $members->pluck('student_id')->filter()->map(fn ($id) => (int) $id)->unique()->all();
+        $memberRoles = $members
+            ->flatMap(fn ($m) => $m->roles->pluck('role'))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        return $allTasks
+            ->filter(function (Task $task) use ($memberStudentIds, $memberRoles) {
+                // The hotel concept has its own "Hotel Concept" tab in this same
+                // modal — it should not also clutter Team Task Activity.
+                if ($task->is_hotel_concept) {
+                    return false;
+                }
+
+                // A claimed row belongs to exactly one student, so show it only to
+                // that student's team. Falling through to the role match here listed
+                // every team's rows under every team holding the same role.
+                if ($task->student_id) {
+                    return in_array((int) $task->student_id, $memberStudentIds, true);
+                }
+
+                // Unclaimed pool rows still show for any team holding the role.
+                return in_array($task->role, $memberRoles, true);
+            })
+            ->take(100)
+            ->values()
+            ->map(function (Task $task) use (&$teamEdits, $groupName, $facultyId, $teamUnlocked) {
+                // Tasks fan out one row per member, so name the student the row
+                // belongs to — otherwise identical titles are indistinguishable.
+                $u = $task->assignedTo;
+                $studentName = trim(implode(' ', array_filter([$u?->last_name, $u?->first_name])));
+                $studentName = $studentName !== '' ? $studentName : ($u?->name ?? null);
+
+                return [
+                    'id' => $task->task_id,
+                    'title' => $task->title,
+                    'description' => $task->description,
+                    'role' => $task->role,
+                    'role_label' => self::ACTIVITY_ROLE_LABELS[$task->role] ?? $task->role,
+                    'status' => $task->status,
+                    // The concept task is not deletable and reviews differently.
+                    'is_hotel_concept' => $task->is_hotel_concept,
+                    'has_feedback' => filled($task->feedback),
+                    // Submitted with no verdict yet. has_feedback reads the comment,
+                    // which an approval may leave empty, so it cannot tell this apart.
+                    'awaiting_review' => $task->awaiting_review,
+                    // Awaiting review again after a send-back: shown as Resubmitted.
+                    'resubmitted' => $task->is_resubmitted,
+                    // One of SimulationPhase::STATUS_LABELS' keys.
+                    'state' => \App\Support\SimulationPhase::taskState($task),
+                    // Approved, then the department's page changed. A hint only:
+                    // faculty decide whether to send it back. Not raised once the
+                    // simulation is open, where rooms and menus change every shift.
+                    'edited_since_approval' => $task->status === 'archived'
+                        && $task->feedback_at !== null
+                        && !$teamUnlocked
+                        && \App\Support\SimulationPhase::editedSinceApproval(
+                            $task,
+                            $teamEdits ??= \App\Support\SimulationPhase::lastEdits((string) $groupName, (int) $facultyId)
+                        ),
+                    'student_name' => $studentName,
+                    'submitted_at' => $task->status === 'archived'
+                        ? $task->updated_at?->timezone('Asia/Manila')->format('M d, Y')
+                        : null,
+                    'due_date' => optional($task->due_date)->format('M d, Y g:i A'),
+                    'updated_at' => $task->updated_at?->timezone('Asia/Manila')->format('M d, Y'),
+                ];
+            })
+            ->all();
+    }
+
+    /**
+     * Fresh Team Task Activity for one team. The team buttons carry the list
+     * as it stood at page load, so the modal refetches it on open and whenever
+     * the review pulse moves - a submission then shows Review now without a reload.
+     */
+    public function teamActivity(string $groupName)
+    {
+        $facultyId = (int) auth()->user()?->faculty?->user_information_id;
+        $members = StudentGroup::with('roles')
+            ->where('faculty_id', $facultyId)
+            ->where('group_name', $groupName)
+            ->get();
+        if (!$facultyId || $members->isEmpty()) {
+            return response()->json(['logs' => []]);
+        }
+
+        $unlocked = $this->approvalSummary($groupName, $facultyId)['unlocked'];
+
+        return response()->json([
+            'logs' => $this->teamActivityRows($groupName, $members, $this->teamActivityTasks($facultyId), $facultyId, $unlocked),
+        ])->header('Cache-Control', 'no-store');
+    }
+
+    private function approvalSummary(string $groupName, int $facultyId): array
+    {
+        \App\Support\SimulationPhase::forget();
+        $phase = \App\Support\SimulationPhase::progress($groupName, $facultyId);
+
+        $members = StudentGroup::with('roles')
+            ->where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
+            ->get();
+
+        return \Illuminate\Support\Arr::except($phase, 'items') + [
+            'simulation_roles' => $members
+                ->mapWithKeys(fn (StudentGroup $m) => [(string) $m->student_id => \App\Support\SimulationPhase::seatsFor($m)])
+                ->all(),
+        ];
+    }
+
+    /**
+     * Faculty confirms who runs which Simulation desk. Saving is the
+     * confirmation: the team's simulation does not open before it, even with
+     * every task approved. No desk goes to two members. On a full team each
+     * member gets exactly one desk; a team short of students still has four
+     * desks to run, so there a member may take several. The Customization
+     * seats in student_group_roles are left exactly as they were.
+     */
+    public function storeSimulationRoles(Request $request, string $groupName)
+    {
+        $facultyUser = auth()->user();
+        $facultyId = $facultyUser?->faculty?->user_information_id;
+        if (!$facultyId) {
+            return response()->json(['error' => 'Your faculty account could not be found. Please log in again.'], 403);
+        }
+        if (!\App\Support\SimulationPhase::supported()) {
+            return response()->json(['error' => 'Simulation roles are not available right now. Please contact the administrator.'], 422);
+        }
+
+        // Confirming is final: each student has already been told their desk.
+        if (\App\Support\SimulationPhase::rolesConfirmed($groupName, (int) $facultyId)) {
+            return response()->json(['error' => 'These simulation roles are already confirmed.'], 422);
+        }
+
+        // One desk key per member, or a list of them (a member of a short team).
+        $data = $request->validate([
+            'roles' => ['required', 'array', 'min:1'],
+            'roles.*' => ['required'],
+        ]);
+
+        $members = StudentGroup::where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
+            ->get()
+            ->keyBy(fn (StudentGroup $m) => (string) $m->student_id);
+
+        if ($members->isEmpty()) {
+            return response()->json(['error' => 'Team not found.'], 404);
+        }
+
+        $deskKeys = array_keys(\App\Support\HotelTemplateBuilder::SIMULATION_ROLES);
+        $roles = collect($data['roles'])->mapWithKeys(fn ($seats, $studentId) => [
+            (string) $studentId => array_values(array_unique(array_filter((array) $seats, 'is_string'))),
+        ]);
+
+        if ($roles->keys()->sort()->values()->all() !== $members->keys()->sort()->values()->all()
+            || $roles->contains(fn ($seats) => $seats === [])) {
+            return response()->json(['error' => 'Give every member of the team a simulation role.'], 422);
+        }
+        if ($roles->flatten()->diff($deskKeys)->isNotEmpty()) {
+            return response()->json(['error' => 'Pick a valid simulation role for each member.'], 422);
+        }
+        if ($roles->flatten()->unique()->count() !== $roles->flatten()->count()) {
+            return response()->json(['error' => 'Each simulation role can go to one student only.'], 422);
+        }
+        if ($members->count() >= count($deskKeys) && $roles->contains(fn ($seats) => count($seats) > 1)) {
+            return response()->json(['error' => 'A team of 4 gives each student one simulation role. Only a team with fewer members can give a student more than one.'], 422);
+        }
+
+        DB::transaction(function () use ($members, $roles, $groupName, $facultyId) {
+            foreach ($members as $studentId => $member) {
+                $member->forceFill(['simulation_role' => implode(',', $roles[$studentId])])->save();
+            }
+
+            Group::firstOrCreate(['group_name' => $groupName, 'faculty_id' => $facultyId])
+                ->forceFill(['simulation_roles_confirmed_at' => now()])
+                ->save();
+        });
+
+        ActivityLog::record(
+            $facultyUser,
+            ActivityLog::ROLE_ASSIGNED,
+            'Confirmed the simulation roles for ' . \App\Models\Group::label($groupName) . '.'
+        );
+
+        $approval = $this->approvalSummary($groupName, (int) $facultyId);
+
+        // Each student hears their own desk, and whether they can start now.
+        Notifier::simulationRolesConfirmed($facultyUser, $roles->all());
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Simulation roles confirmed.',
+            'approval' => $approval,
+        ]);
+    }
+
+    /**
+     * Every team's tasks sitting submitted with no verdict yet - archived, but
+     * with no feedback recorded - keyed by group_name to a count and the most
+     * recent one. This is all the Task Submission Indicator on each Manage
+     * Teams card needs, and it is what /role/pending-review polls to keep that
+     * indicator live without the page reloading.
+     *
+     * The hotel concept is excluded: it carries its own submitted/needs_revision
+     * states on HotelConcept and its own review flow, not this table.
+     */
+    /**
+     * The one definition of "a task sitting submitted, no verdict yet".
+     *
+     * Both pendingReviewByGroup() and reviewPulse() build off this. They have
+     * to: the pulse decides whether the payload is worth refetching, so if the
+     * two ever disagreed on a predicate, a row the payload cannot see would
+     * still move the signature and the page would refetch forever. Null
+     * group_name matters most here — those rows exist on purpose (a student who
+     * has left every team) and this surface deliberately does not list them.
+     */
+    private function pendingReviewTaskQuery(int $facultyId)
+    {
+        return Task::where('faculty_id', $facultyId)
+            ->where('status', 'archived')
+            ->whereNull('feedback_at')
+            ->whereNull('kind')
+            ->whereNotNull('group_name');
+    }
+
+    /** The hotel-concept half of the same question. See pendingReviewTaskQuery(). */
+    private function pendingReviewConceptQuery(int $facultyId)
+    {
+        return HotelConcept::where('faculty_id', $facultyId)
+            ->where('status', HotelConceptDesk::STATUS_SUBMITTED);
+    }
+
+    private function pendingReviewByGroup(int $facultyId): array
+    {
+        $tasks = $this->pendingReviewTaskQuery($facultyId)
+            ->with('assignedTo')
+            ->orderByDesc('updated_at')
+            ->get();
+
+        $byGroup = [];
+        foreach ($tasks as $task) {
+            $groupName = (string) $task->group_name;
+            $byGroup[$groupName]['count'] = ($byGroup[$groupName]['count'] ?? 0) + 1;
+
+            /* Every pending id, not just the latest. The poller diffs these to
+               decide what is genuinely new, and it has to be the whole set:
+               a task sent back and resubmitted keeps its id, so "did this id
+               leave and come back" is the only reliable test. */
+            $byGroup[$groupName]['task_ids'][] = (int) $task->task_id;
+
+            // Rows arrived newest first, so a group's first row is its latest.
+            if (isset($byGroup[$groupName]['latest'])) {
+                continue;
+            }
+
+            $u = $task->assignedTo;
+            $studentName = trim(implode(' ', array_filter([$u?->last_name, $u?->first_name])));
+            $studentName = $studentName !== '' ? $studentName : ($u?->name ?? 'A student');
+
+            $byGroup[$groupName]['latest'] = [
+                'task_id' => $task->task_id,
+                'student_id' => $task->student_id,
+                'student_name' => $studentName,
+                'role' => $task->role,
+                'role_label' => $task->role_label,
+                'title' => $task->title,
+                'submitted_at' => $task->updated_at?->timezone('Asia/Manila')->format('M d, Y g:i A'),
+                'submitted_human' => optional($task->updated_at)->diffForHumans(),
+                /* Epoch so the badge can age itself between payload fetches.
+                   submitted_human is computed here and would otherwise still
+                   read "2 minutes ago" an hour later, because the payload is
+                   now refetched only when the signature moves. */
+                'submitted_ts' => optional($task->updated_at)->getTimestamp(),
+            ];
+        }
+
+        return $byGroup;
+    }
+
+    /**
+     * Every team with a hotel concept sitting submitted, no verdict yet — the
+     * concept's own equivalent of pendingReviewByGroup(). Kept separate rather
+     * than folded into that query: a concept's "submitted" is HotelConcept.status,
+     * not Task.status, and the two tables agreeing on the word does not mean
+     * one query can read both.
+     */
+    private function conceptPendingReviewByGroup(int $facultyId): array
+    {
+        $concepts = $this->pendingReviewConceptQuery($facultyId)
+            ->with('submitter')
+            ->orderByDesc('submitted_at')
+            ->get();
+
+        $byGroup = [];
+        foreach ($concepts as $concept) {
+            $groupName = (string) $concept->group_name;
+            $byGroup[$groupName]['count'] = ($byGroup[$groupName]['count'] ?? 0) + 1;
+            $byGroup[$groupName]['hotel_concept_ids'][] = (int) $concept->hotel_concept_id;
+
+            // Rows arrived newest first, so a group's first row is its latest.
+            if (isset($byGroup[$groupName]['latest'])) {
+                continue;
+            }
+
+            $byGroup[$groupName]['latest'] = [
+                'hotel_concept_id' => $concept->hotel_concept_id,
+                'slot' => (int) $concept->slot,
+                'slot_label' => HotelConceptDesk::slotLabel($concept->slot),
+                'title' => $concept->title,
+                'submitted_by' => $concept->submitter
+                    ? \App\Http\Controllers\HotelConceptController::displayName($concept->submitter)
+                    : 'A team member',
+                'submitted_at' => $concept->submitted_at?->timezone('Asia/Manila')->format('M d, Y g:i A'),
+                'submitted_human' => optional($concept->submitted_at)->diffForHumans(),
+                'submitted_ts' => optional($concept->submitted_at)->getTimestamp(),
+            ];
+        }
+
+        return $byGroup;
+    }
+
+    /**
+     * Polled by every team card on Manage Teams — see pendingReviewByGroup()
+     * and conceptPendingReviewByGroup(). One request for both, since a card
+     * repaints both badges from the same tick.
+     */
+    public function pendingReview(Request $request)
+    {
+        $facultyId = auth()->user()?->faculty?->user_information_id;
+        if (!$facultyId) {
+            return response()->json(['tasks' => [], 'concepts' => []]);
+        }
+
+        return response()->json([
+            'tasks' => $this->pendingReviewByGroup((int) $facultyId),
+            'concepts' => $this->conceptPendingReviewByGroup((int) $facultyId),
+        ]);
+    }
+
+    /**
+     * The cheap tick behind near-real-time review.
+     *
+     * A student submitting is the thing faculty should hear about within
+     * seconds, which means polling often. Polling pendingReview() often is not
+     * affordable: it hydrates models, eager-loads two relations and formats
+     * dates, and production runs one free instance against Supabase's
+     * transaction pooler. So this returns only what is needed to answer "has
+     * anything changed", and the page refetches the real payload just when the
+     * answer is yes.
+     *
+     * Two aggregates, no hydration. The count catches a row arriving or being
+     * reviewed; max(updated_at) catches a resubmission that leaves the count
+     * unchanged. Both are needed. It also carries the bell's unread count so
+     * the page can drive the bell from this one request instead of a second.
+     *
+     * Known and accepted: a review and a submission landing in the same clock
+     * second, with identical max timestamps, leave the signature still. The next
+     * real change corrects it. Do not "fix" this by hashing the id set here,
+     * which would cost the full query this endpoint exists to avoid.
+     */
+    public function reviewPulse(Request $request)
+    {
+        $quiet = response()->json(['sig' => '', 'unread' => 0])
+            ->header('Cache-Control', 'no-store');
+
+        $facultyId = auth()->user()?->faculty?->user_information_id;
+        if (!$facultyId) {
+            // A student on a stale faculty URL must get a cheap answer, not a
+            // 500 retried every few seconds.
+            return $quiet;
+        }
+
+        $tasks = $this->pendingReviewTaskQuery((int) $facultyId);
+        $concepts = $this->pendingReviewConceptQuery((int) $facultyId);
+
+        $signature = implode('|', [
+            (int) $tasks->count(),
+            (string) $tasks->max('updated_at'),
+            (int) $concepts->count(),
+            (string) $concepts->max('submitted_at'),
+        ]);
+
+        return response()->json([
+            'sig' => $signature,
+            'unread' => UserNotification::forUser(auth()->id())->unread()->count(),
+        ])->header('Cache-Control', 'no-store');
     }
 
     public function updateGroup(Request $request, $groupName)
@@ -1141,13 +2061,38 @@ class FacultyController extends Controller
             'members'       => ['required', 'array', 'min:1', 'max:4'],
             'members.*'     => ['integer', Rule::exists('user_information', 'user_information_id')->where('user_type', UserInformation::TYPE_STUDENT)],
             'member_roles'  => ['nullable', 'array'],
+        ], [
+            'members.max' => 'This team is already full. Maximum of 4 members allowed.',
         ]);
 
         $allowedRoles = $this->teamRoleKeys();
-        $memberIds    = array_values(array_unique($validated['members']));
+        $memberIds    = array_values(array_unique(array_map('intval', $validated['members'])));
         if (count($memberIds) > 4) {
-            return back()->withErrors(['members' => 'A team cannot have more than 4 members.'])->withInput();
+            return back()->withErrors(['members' => 'This team is already full. Maximum of 4 members allowed.'])->withInput();
         }
+
+        $currentMemberIds = StudentGroup::where('faculty_id', $facultyId)
+            ->where('group_name', $groupName)
+            ->pluck('student_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+        if ($currentMemberIds === []) {
+            return back()->withErrors(['group_name' => 'The selected team does not exist.'])->withInput();
+        }
+
+        // Renaming onto a name another team holds would merge the two teams.
+        $newKey = mb_strtolower(trim($validated['group_name']));
+        if ($newKey !== mb_strtolower(trim($groupName)) && isset($this->takenTeamNames()[$newKey])) {
+            return back()->withErrors(['group_name' => "Team name \"{$validated['group_name']}\" is already used."])->withInput();
+        }
+
+        // Students joining in this save. Update Team is the one place a student is
+        // added to an existing team, and only one who has no team yet.
+        $addedIds = array_values(array_diff($memberIds, $currentMemberIds));
+        if ($error = $this->newMemberError($addedIds, (int) $facultyId)) {
+            return back()->withErrors(['members' => $error])->withInput();
+        }
+
         $roleResult = $this->resolveMemberRoles(
             $memberIds,
             $validated['member_roles'] ?? [],
@@ -1177,17 +2122,6 @@ class FacultyController extends Controller
             $oldGroup->delete();
         }
 
-        // If a student is moved onto this team, drop them from any other team first
-        $otherMemberships = StudentGroup::where('faculty_id', $facultyId)
-            ->whereIn('student_id', $memberIds)
-            ->where('group_name', '!=', $validated['group_name'])
-            ->get();
-
-        foreach ($otherMemberships as $other) {
-            StudentGroupRole::where('student_group_id', $other->student_group_id)->delete();
-            $other->delete();
-        }
-
         foreach ($memberIds as $studentId) {
             $roles = $rolesByMember[$studentId];
 
@@ -1196,7 +2130,10 @@ class FacultyController extends Controller
                 'faculty_id' => $facultyId,
                 'group_id' => $group->group_id,
                 'student_id' => $studentId,
-                'role' => $roles[0], // legacy column; real roles stored in student_group_roles
+                // Legacy column; the real roles live in student_group_roles. Null
+                // when every role is already held by a teammate — see
+                // resolveMemberRoles().
+                'role' => $roles[0] ?? null,
             ]);
 
             foreach ($roles as $role) {
@@ -1207,46 +2144,47 @@ class FacultyController extends Controller
             }
         }
 
+        // Everything else the team owns — concepts, tasks, site, bookings — is keyed
+        // by name, so it follows the rename. Left behind, a submitted concept read as
+        // never submitted and Set Task stayed locked for the team.
+        if ($groupName !== $validated['group_name']) {
+            foreach (Group::teamOwnedTables() as $table) {
+                DB::table($table)->where('faculty_id', $facultyId)->where('group_name', $groupName)
+                    ->update(['group_name' => $validated['group_name']]);
+            }
+        }
+
         // A reshuffle can hand Front Desk to somebody new, and they need the task.
         // Existing rows are left alone, so a submitted concept stays submitted.
         HotelConceptDesk::ensureTasksForTeam($validated['group_name'], (int) $facultyId);
 
+        // Catches teams built before the facilities were seeded at creation. No-ops
+        // the moment the team has any amenity of its own.
+        \App\Support\HotelAmenityAccess::seedDefaultsForTeam($validated['group_name'], (int) $facultyId);
+
         ActivityLog::recordFor(
             ActivityLog::TEAM_UPDATED,
-            'Updated team "' . $groupName . '"'
+            'Updated ' . \App\Models\Group::label($groupName)
                 . ($groupName !== $validated['group_name'] ? ' (renamed to "' . $validated['group_name'] . '")' : '')
                 . ' — ' . count($memberIds) . ' member(s) and their roles reassigned.'
         );
 
+        if ($addedIds !== []) {
+            ActivityLog::recordFor(
+                ActivityLog::STUDENT_ASSIGNED,
+                'Assigned ' . count($addedIds) . ' student(s) to ' . \App\Models\Group::label($validated['group_name']) . '.'
+            );
+
+            Notifier::teamMembersAdded(auth()->user(), $validated['group_name'], (int) $facultyId, $addedIds);
+        }
+
         return redirect()->route('faculty.role', array_filter([
             'tab' => 'teams',
             'class' => $request->input('class_letter') ?: null,
-        ]))->with('success', 'Team updated successfully.');
-    }
-
-    public function tasks()
-    {
-        $facultyId = auth()->user()?->faculty?->user_information_id;
-        if (!$facultyId) {
-            return view('faculty.tasks', ['tasksByRole' => collect(), 'taskCounts' => []]);
-        }
-
-        $roles = ['front_desk', 'restaurant_management', 'room_management', 'maintenance', 'housekeeping'];
-
-        $tasksByRole = Task::where('faculty_id', $facultyId)
-            ->where('status', 'active')
-            ->conceptFirst()
-            ->orderBy('due_date')
-            ->orderByPriority()
-            ->get()
-            ->groupBy('role');
-
-        $taskCounts = [];
-        foreach ($roles as $role) {
-            $taskCounts[$role] = $tasksByRole->get($role, collect())->count();
-        }
-
-        return view('faculty.tasks', compact('tasksByRole', 'taskCounts'));
+        ]))->with('success', $addedIds !== []
+            ? count($addedIds) . ' student(s) added and team updated successfully.'
+            : 'Team updated successfully.')
+          ->with('success_title', 'Team Updated');
     }
 
     public function storeTask(Request $request)
@@ -1256,16 +2194,118 @@ class FacultyController extends Controller
             return back()->withErrors(['title' => 'Faculty account not found.'])->withInput();
         }
 
+        /* One tick can now hand the same work to several teams, or to every team in
+           the block — a checklist step is written for the course, not for one team,
+           and setting it twenty times over was the same form filled twenty times.
+           group_name is still read for anything posting the older single field. */
         $validated = $request->validate([
+            'group_names' => ['required_without:group_name', 'array', 'min:1'],
+            'group_names.*' => ['string'],
+            'group_name' => ['required_without:group_names', 'string'],
             'tasks' => ['nullable', 'array'],
             'tasks.*' => ['array'],
             'task_titles' => ['nullable', 'array'],
             'task_descriptions' => ['nullable', 'array'],
-            'task_priorities' => ['nullable', 'array'],
             'due_date' => ['nullable', 'date', 'after_or_equal:today'],
+        ], [
+            'group_names.required_without' => 'Pick at least one team this task is for.',
+            'group_name.required_without' => 'Pick at least one team this task is for.',
         ]);
 
+        $requested = array_values(array_unique(array_filter(
+            $validated['group_names'] ?? [$validated['group_name'] ?? null]
+        )));
+
+        /* A team is one (group_name, faculty_id) pair, so a name is only a team once
+           it is read under this faculty — checked here rather than with a bare exists
+           rule, which would accept another faculty's team of the same name. Every
+           requested team is fetched at once and grouped, so twenty teams is one query
+           rather than twenty. */
+        $membersByTeam = StudentGroup::with(['student', 'roles'])
+            ->where('faculty_id', $facultyId)
+            ->whereIn('group_name', $requested)
+            ->get()
+            ->groupBy('group_name');
+
+        if ($membersByTeam->isEmpty()) {
+            return back()->withErrors(['group_name' => 'None of those teams are yours.'])->withInput();
+        }
+
+        /* A team whose rows have no student behind them - everyone in it was
+           removed - has nobody to hand the work to, and a task set on it is a
+           row nobody will ever see. Dropped here rather than at the form,
+           because the form is not the only way in. */
+        $membersByTeam = $membersByTeam->filter(
+            fn ($members) => $members->contains(fn ($member) => $member->student !== null)
+        );
+
+        if ($membersByTeam->isEmpty()) {
+            return back()->withErrors([
+                'group_name' => 'No teams are available. Please create a team and assign students before setting tasks.',
+            ])->withInput();
+        }
+
+        /* The hotel concept comes first: until Front Desk has handed one in, the
+           rest of the customization has no brief, so anything other than the
+           concept itself - including the rest of TASK 01 - is refused. Once it is
+           submitted, faculty may line the work up while reviewing it; students
+           still cannot start it until a concept is approved
+           (HotelConceptDesk::hasApprovedConcept). Refused for the whole post
+           rather than quietly dropped per team - a Set Task that reports success
+           and creates nothing is exactly the failure this screen has already
+           been fixed for once. */
+        $setsCustomization = collect($validated['tasks'] ?? [])
+            ->filter(fn ($indices) => is_array($indices))
+            ->contains(function ($indices, $role) use ($validated) {
+                foreach ($indices as $index) {
+                    $title = (string) ($validated['task_titles'][$role][$index] ?? '');
+                    if ($title !== '' && !TaskChecklist::isConceptTitle($title)) {
+                        return true;
+                    }
+                }
+
+                return false;
+            });
+
+        if ($setsCustomization) {
+            $lockedTeams = $membersByTeam->keys()->reject(
+                fn ($groupName) => HotelConceptDesk::hasSubmittedConcept((string) $groupName, (int) $facultyId)
+            );
+
+            if ($lockedTeams->isNotEmpty()) {
+                return back()->withErrors([
+                    'group_name' => 'Customization tasks stay locked until Front Desk submits the hotel concept for '
+                        . $lockedTeams->implode(', ') . '.',
+                ])->withInput();
+            }
+        }
+
+        /* What each team already holds, by title, so the same work is never handed
+           to them twice. A team keeps a task once it is given - submitted, sent
+           back or approved, the row stays - so existence is the whole test, not
+           status. Read once for every team in the post rather than per tick.
+
+           Task 01 is the one that would be re-sent most: a team is given the
+           hotel concept the moment it exists (storeGroup), so it is already
+           there before faculty ever opens this screen. */
+        $heldTitlesByTeam = Task::where('faculty_id', $facultyId)
+            ->whereIn('group_name', $membersByTeam->keys())
+            ->get(['group_name', 'title'])
+            ->groupBy('group_name')
+            ->map(fn ($rows) => $rows->pluck('title')
+                ->filter()
+                ->map(fn ($title) => mb_strtolower((string) $title))
+                ->unique()
+                ->all());
+
+        // (team, title) pairs the post asked for that the team already has, so the
+        // faculty is told what was left alone rather than it vanishing quietly.
+        $alreadyHeld = [];
+        // (team, title) pairs already held whose due date this post moved.
+        $dueUpdated = [];
+
         // Check if any tasks were selected
+        $titlesByTeam = [];
         $tasksCreated = 0;
         // users.id => how many task rows landed on them, so each student gets one
         // "3 new tasks" notification rather than one per row.
@@ -1279,56 +2319,120 @@ class FacultyController extends Controller
         // than once per task row.
         $baselineVersionIds = [];
 
-        if (!empty($validated['tasks']) && is_array($validated['tasks'])) {
-            foreach ($validated['tasks'] as $role => $taskIndices) {
-                if (!is_array($taskIndices)) continue;
+        // The names as their own rows spell them, in the order they were asked for.
+        $teamNames = [];
 
-                foreach ($taskIndices as $index) {
-                    $title = $validated['task_titles'][$role][$index] ?? null;
-                    $description = $validated['task_descriptions'][$role][$index] ?? null;
-                    $priority = $validated['task_priorities'][$role][$index] ?? 'medium';
+        foreach ($membersByTeam as $teamMembers) {
+            $groupName = $teamMembers->first()->group_name;
+            $groupId = $teamMembers->first()->group_id;
+            $teamNames[] = $groupName;
 
-                    if ($title) {
-                        $members = StudentGroup::with('student')
-                            ->where('faculty_id', $facultyId)
-                            ->whereHas('roles', fn ($q) => $q->where('role', $role))
-                            ->get();
+            if (!empty($validated['tasks']) && is_array($validated['tasks'])) {
+                foreach ($validated['tasks'] as $role => $taskIndices) {
+                    if (!is_array($taskIndices)) continue;
 
-                        $payload = [
-                            'faculty_id'  => $facultyId,
-                            'role'        => $role,
-                            'title'       => $title,
-                            'description' => User::cleanOptional($description),
-                            'priority'    => $priority,
-                            'due_date'    => $validated['due_date'] ?? null,
-                            'status'      => 'active',
-                        ];
+                    foreach ($taskIndices as $index) {
+                        $title = $validated['task_titles'][$role][$index] ?? null;
+                        $description = $validated['task_descriptions'][$role][$index] ?? null;
 
-                        if ($members->isEmpty()) {
-                            Task::create($payload);
-                            $tasksCreated++;
-                        } else {
-                            foreach ($members as $member) {
-                                $assigneeUserId = $member->student?->user_id;
+                        if ($title) {
+                            /* Already given to this team: no second copy - a student
+                               halfway through a task must not have a fresh empty one
+                               appear next to it. A due date posted with it does move
+                               the deadline on the copies still being worked on, so
+                               setting a task again is how faculty changes when it is
+                               due; before this the new date was silently dropped. */
+                            if (in_array(mb_strtolower($title), $heldTitlesByTeam[$groupName] ?? [], true)) {
+                                $moved = !empty($validated['due_date'])
+                                    ? Task::where('faculty_id', $facultyId)
+                                        ->where('group_name', $groupName)
+                                        ->whereRaw('LOWER(title) = ?', [mb_strtolower($title)])
+                                        ->where('status', 'active')
+                                        ->update(['due_date' => $validated['due_date']])
+                                    : 0;
 
-                                $baselineKey = $member->group_name . '|' . $role;
-                                if (!array_key_exists($baselineKey, $baselineVersionIds)) {
-                                    $baselineVersionIds[$baselineKey] = \App\Support\HotelTemplateBuilder::snapshotForReview(
-                                        \App\Support\HotelTemplateBuilder::ensureTemplate($member, $role),
-                                        $facultyUser,
-                                        'Assigned'
-                                    );
+                                if ($moved > 0) {
+                                    $dueUpdated[$groupName][$title] = true;
+                                } else {
+                                    $alreadyHeld[$groupName][$title] = true;
                                 }
+                                continue;
+                            }
 
-                                Task::create(array_merge($payload, [
-                                    'student_id'  => $member->student_id,
-                                    'assigned_to' => $assigneeUserId,
-                                    'previous_version_id' => $baselineVersionIds[$baselineKey],
-                                ]));
+                            /* The hotel concept is not an ordinary row. It is seeded for
+                               every Front Desk student the moment they hold the role, has
+                               its own submit and review path, and heads the list on its
+                               own. Ticking it in Task 01 makes sure that row exists for
+                               this team rather than writing a second one beside it, which
+                               would leave two copies of the same work on one student. */
+                            if (strcasecmp($title, \App\Support\HotelConceptDesk::TASK_TITLE) === 0) {
+                                \App\Support\HotelConceptDesk::ensureTasksForTeam($groupName, (int) $facultyId);
+                                continue;
+                            }
+
+                            // Only this team's holders of the role. Assigning used to read
+                            // every team under the faculty, so one tick handed the same task
+                            // to everybody at once.
+                            $members = $teamMembers->filter(
+                                fn ($member) => $member->roles->contains('role', $role)
+                            );
+
+                            $payload = [
+                                'faculty_id'  => $facultyId,
+                                'group_name'  => $groupName,
+                                'group_id'    => $groupId,
+                                'role'        => $role,
+                                'title'       => $title,
+                                'description' => User::cleanOptional($description),
+                                'due_date'    => $validated['due_date'] ?? null,
+                                'status'      => 'active',
+                            ];
+                            // For the dean's notification: each title once per team, not per member.
+                            $titlesByTeam[$groupName][$title] = true;
+
+                            /* The four activities come off the checklist here rather
+                               than out of the form: they are the same four for every
+                               team assigned this task, and reading them server-side
+                               keeps a posted list from putting words in faculty's
+                               mouth. Copied onto the row so a later edit to the
+                               checklist cannot change the steps under a student who
+                               is halfway through them. */
+                            if (Task::supportsActivities()) {
+                                $payload['activities'] = array_map(
+                                    fn (string $text) => ['text' => $text, 'done' => false],
+                                    \App\Support\TaskChecklist::activitiesFor($title)
+                                );
+                            }
+
+                            // Nobody on this team fills the role yet. The row is still the
+                            // team's — it carries group_name — so it waits for whoever takes
+                            // the role rather than showing up on every team's dashboard.
+                            if ($members->isEmpty()) {
+                                Task::create($payload);
                                 $tasksCreated++;
+                            } else {
+                                foreach ($members as $member) {
+                                    $assigneeUserId = $member->student?->user_id;
 
-                                if ($assigneeUserId) {
-                                    $assignedCounts[$assigneeUserId] = ($assignedCounts[$assigneeUserId] ?? 0) + 1;
+                                    $baselineKey = $member->group_name . '|' . $role;
+                                    if (!array_key_exists($baselineKey, $baselineVersionIds)) {
+                                        $baselineVersionIds[$baselineKey] = \App\Support\HotelTemplateBuilder::snapshotForReview(
+                                            \App\Support\HotelTemplateBuilder::ensureTemplate($member, $role),
+                                            $facultyUser,
+                                            'Assigned'
+                                        );
+                                    }
+
+                                    Task::create(array_merge($payload, [
+                                        'student_id'  => $member->student_id,
+                                        'assigned_to' => $assigneeUserId,
+                                        'previous_version_id' => $baselineVersionIds[$baselineKey],
+                                    ]));
+                                    $tasksCreated++;
+
+                                    if ($assigneeUserId) {
+                                        $assignedCounts[$assigneeUserId][] = $title;
+                                    }
                                 }
                             }
                         }
@@ -1337,19 +2441,125 @@ class FacultyController extends Controller
             }
         }
 
-        if ($tasksCreated === 0) {
+        /* "Nothing was created" has two very different causes, and telling them
+           apart is the whole point: an empty tick list is a mistake to correct,
+           work the team already holds is the guard doing its job. */
+        if ($tasksCreated === 0 && $dueUpdated === [] && $alreadyHeld !== []) {
+            return back()->withErrors([
+                'tasks' => 'No new tasks were assigned. ' . $this->alreadyHeldMessage($alreadyHeld),
+            ])->withInput();
+        }
+
+        if ($tasksCreated === 0 && $dueUpdated === []) {
             return back()->withErrors(['tasks' => 'Please select at least one task from the checklist.'])->withInput();
         }
 
-        ActivityLog::recordFor(
-            ActivityLog::TASK_CREATED,
-            'Created ' . $tasksCreated . ' task assignment(s) for team roles.'
-        );
+        $teamLabel = count($teamNames) === 1
+            ? $teamNames[0]
+            : count($teamNames) . ' teams';
 
-        Notifier::tasksAssigned(auth()->user(), $assignedCounts);
+        if ($tasksCreated > 0) {
+            ActivityLog::recordFor(
+                ActivityLog::TASK_CREATED,
+                'Created ' . $tasksCreated . ' task assignment(s) for ' . $teamLabel . '.'
+            );
+        }
+        $dueMessage = $dueUpdated === [] ? '' : collect($dueUpdated)
+            ->map(fn ($titles, $team) => $team . ': ' . collect(array_keys($titles))->map(fn ($t) => '"' . $t . '"')->join(', ', ' and '))
+            ->prepend('Due date updated for')
+            ->join(' ') . '.';
+        if ($dueUpdated !== []) {
+            ActivityLog::recordFor(ActivityLog::TASK_CREATED, $dueMessage);
+        }
 
-        return redirect()->route('faculty.role', ['tab' => 'create_task'])
-            ->with('success', $tasksCreated . ' task(s) created successfully.');
+        Notifier::tasksAssigned(auth()->user(), $assignedCounts, $validated['due_date'] ?? null);
+        if ($tasksCreated > 0) {
+            Notifier::teamTasksAssigned(auth()->user(), $titlesByTeam, $validated['due_date'] ?? null);
+        }
+
+        /* Land on the block the team belongs to - the block most of its members
+           sit in, as role() places teams. The posted block was the tab the form
+           was opened from, which can be the open Block B while the team is in
+           Block A; a second redirect from there would also eat the success flash. */
+        $teamClassId = $membersByTeam->first()
+            ->map(fn ($member) => $member->student?->faculty_class_id)
+            ->filter()
+            ->countBy()
+            ->sortDesc()
+            ->keys()
+            ->first();
+        $teamClassLetter = $teamClassId
+            ? FacultyClass::where('faculty_id', $facultyId)->whereKey($teamClassId)->value('letter')
+            : null;
+
+        return redirect()->route('faculty.role', array_filter([
+            'tab' => 'create_task',
+            'class' => $teamClassLetter ?: $request->input('class'),
+        ]))->with('success', trim(
+                ($tasksCreated > 0 ? $tasksCreated . ' ' . Str::plural('task', $tasksCreated) . ' assigned to ' . $teamLabel . '. ' : '')
+                . $dueMessage
+                . ($alreadyHeld !== [] ? ' Skipped: ' . $this->alreadyHeldMessage($alreadyHeld) : '')
+            ))
+          ->with('success_title', $tasksCreated === 0 ? 'Due Date Updated' : ($tasksCreated === 1 ? 'Task Assigned' : 'Tasks Assigned'))
+          // Stays up until OK: the message can name tasks that were skipped.
+          ->with('success_confirm', true);
+    }
+
+    /**
+     * What the duplicate guard left alone, named team by team.
+     *
+     * Listed rather than counted: "2 skipped" leaves faculty guessing which tick
+     * did nothing, and the answer is usually Task 01, which every team is given
+     * the moment it exists.
+     *
+     * @param  array<string, array<string, true>>  $alreadyHeld
+     */
+    private function alreadyHeldMessage(array $alreadyHeld): string
+    {
+        // Grouped by task, not team: one task ticked for seven teams reads as
+        // one sentence instead of the same title repeated seven times.
+        $teamsByTitle = [];
+        foreach ($alreadyHeld as $groupName => $titles) {
+            foreach (array_keys($titles) as $title) {
+                $teamsByTitle[$title][] = $groupName;
+            }
+        }
+
+        // ""Propose Two Hotel Concepts" is already assigned to Peak Horizon and Els Resort Hotel."
+        return collect($teamsByTitle)
+            ->map(fn ($teams, $title) => '"' . $title . '" is already assigned to ' . collect($teams)->join(', ', ' and ') . '.')
+            ->join(' ');
+    }
+
+    /**
+     * A membership row standing for the task's team, which is what the template
+     * helpers take to reach the right team's site.
+     *
+     * The task names its own team, so read that first: it is right for an unclaimed
+     * row, and it does not depend on the submitting student still being on the team.
+     * Rows assigned before tasks carried a team fall back to the student's membership,
+     * which is how their team used to be worked out.
+     */
+    private function teamMembershipFor(Task $task, int $facultyId): ?StudentGroup
+    {
+        if (filled($task->group_name)) {
+            $membership = StudentGroup::where('faculty_id', $facultyId)
+                ->where('group_name', $task->group_name)
+                // The submitter's own row when there is one, so the preview links
+                // read as that student's, but any member resolves the same team.
+                ->orderByRaw('CASE WHEN student_id = ? THEN 0 ELSE 1 END', [$task->student_id])
+                ->first();
+
+            if ($membership) {
+                return $membership;
+            }
+        }
+
+        return $task->student_id
+            ? StudentGroup::where('student_id', $task->student_id)
+                ->where('faculty_id', $facultyId)
+                ->first()
+            : null;
     }
 
     /** The task plus who did it and where their work can be seen. */
@@ -1360,23 +2570,29 @@ class FacultyController extends Controller
             return response()->json(['error' => 'Not your task.'], 403);
         }
 
+        return response()->json($this->reviewPayload($task, (int) $facultyId));
+    }
+
+    /**
+     * What a review of the task shows. Shared with the dean's read-only review,
+     * which passes $previewQuery = ['faculty' => id] so the site previews know
+     * whose team to render — a dean has no faculty of their own.
+     */
+    public function reviewPayload(Task $task, int $facultyId, array $previewQuery = []): array
+    {
         $task->loadMissing(['assignedTo', 'feedbackBy', 'student']);
         $u = $task->assignedTo;
         $name = trim(implode(' ', array_filter([$u?->last_name, $u?->first_name, $u?->middle_name])));
 
-        // The work lives on the team's site, so resolve the student's group.
-        $membership = $task->student_id
-            ? StudentGroup::where('student_id', $task->student_id)
-                ->where('faculty_id', $facultyId)
-                ->first()
-            : null;
+        // The work lives on the team's site, so resolve the team.
+        $membership = $this->teamMembershipFor($task, (int) $facultyId);
 
         $previewUrl = null;
         $beforePreviewUrl = null;
         $changes = [];
         $changeSummary = ['added' => 0, 'modified' => 0, 'removed' => 0];
         if ($membership && !$task->is_hotel_concept) {
-            $previewUrl = route('faculty.teams.preview', [
+            $previewUrl = route('faculty.teams.preview', $previewQuery + [
                 'group' => $membership->group_name,
                 'role' => $task->role,
             ]);
@@ -1392,21 +2608,19 @@ class FacultyController extends Controller
                 // Pin "After" to the submitted snapshot: the team keeps working
                 // while the task sits in the queue, and the live site would
                 // quietly drift away from what was actually handed in.
-                $previewUrl = route('faculty.teams.preview', [
+                $previewUrl = route('faculty.teams.preview', $previewQuery + [
                     'group' => $membership->group_name,
                     'role' => $task->role,
                     'before_version' => $afterVersionId,
                     'highlight_task' => $task->task_id,
                 ]);
 
-                $beforeVersionId = ($task->previous_version_id && TeamRoleTemplateVersion::whereKey($task->previous_version_id)->exists())
-                    ? (int) $task->previous_version_id
-                    : null;
+                $beforeVersionId = $task->reviewBeforeVersionId();
 
                 // No earlier snapshot (e.g. a task predating this feature) renders
                 // Before as the pristine template rather than hiding the toggle —
                 // every customization then correctly reads as "added".
-                $beforePreviewUrl = route('faculty.teams.preview', [
+                $beforePreviewUrl = route('faculty.teams.preview', $previewQuery + [
                     'group' => $membership->group_name,
                     'role' => $task->role,
                     'before_version' => $beforeVersionId ?? 'baseline',
@@ -1425,24 +2639,38 @@ class FacultyController extends Controller
             'description' => $task->description,
             'role' => $task->role,
             'role_label' => $task->role_label,
-            'priority' => $task->priority,
             'status' => $task->status,
             'needs_revision' => $task->needs_revision,
+            'awaiting_review' => $task->awaiting_review,
+            'edited_since_approval' => $task->status === 'archived'
+                && $task->feedback_at !== null
+                && $membership
+                && \App\Support\SimulationPhase::editedSinceApproval(
+                    $task,
+                    \App\Support\SimulationPhase::lastEdits((string) $membership->group_name, (int) $facultyId)
+                ),
             'is_hotel_concept' => $task->is_hotel_concept,
+            // Saved on in the editor at least once: In Progress rather than Not Started.
+            'started' => $task->is_started,
             'student_name' => $name !== '' ? $name : ($u?->name ?? null),
             'group_name' => $membership?->group_name,
             'due_date' => optional($task->due_date)->format('M d, Y g:i A'),
             'submitted_at' => $task->status === 'archived'
-                ? optional($task->updated_at)->format('M d, Y g:i A')
+                ? $task->updated_at?->timezone('Asia/Manila')->format('M d, Y g:i A')
                 : null,
             'feedback' => $task->feedback,
-            'feedback_at' => optional($task->feedback_at)->format('M d, Y g:i A'),
+            // Campus time: this is the approval stamp faculty read on the review.
+            'feedback_at' => $task->feedback_at?->timezone('Asia/Manila')->format('M d, Y g:i A'),
             'feedback_by' => $task->feedbackBy?->name,
             'revision_count' => (int) $task->revision_count,
             'preview_url' => $previewUrl,
             'before_preview_url' => $beforePreviewUrl,
             'changes' => $changes,
             'change_summary' => $changeSummary,
+            // The After preview outlines what differs from the stock template
+            // (branding: logo, name, links; home: slides and hero text),
+            // without relying on any snapshot.
+            'stock_review' => \App\Support\TaskChecklist::stockReviewFor((string) $task->title),
         ];
 
         // The concept is text, not a page, so the review dialog reads it inline —
@@ -1453,7 +2681,7 @@ class FacultyController extends Controller
             );
         }
 
-        return response()->json($payload);
+        return $payload;
     }
 
     /**
@@ -1509,6 +2737,12 @@ class FacultyController extends Controller
             ], 422);
         }
 
+        // Approved is final here: the review only offers a verdict while a task is
+        // Pending Review, and a second open tab must not undo the approval.
+        if ($task->feedback_at !== null) {
+            return response()->json(['error' => 'This task is already approved.'], 422);
+        }
+
         $task->fill([
             'feedback' => $data['feedback'] ?: null,
             'feedback_at' => now(),
@@ -1518,17 +2752,15 @@ class FacultyController extends Controller
         if ($revise) {
             $task->status = 'active';
             $task->revision_count = (int) $task->revision_count + 1;
+            // The resubmission needs a change of its own, made after this feedback.
+            $task->started_at = null;
 
             // Freeze the work as it stands at the moment changes are asked for. This
             // is the "Before" the next submission is judged against, and it is the
             // honest one: what the student was looking at when the feedback landed.
             // Anchoring here rather than only at submit time also means a single
             // revise/resubmit round is enough to have something to compare.
-            $membership = $task->student_id
-                ? StudentGroup::where('student_id', $task->student_id)
-                    ->where('faculty_id', $facultyId)
-                    ->first()
-                : null;
+            $membership = $this->teamMembershipFor($task, (int) $facultyId);
 
             if ($membership) {
                 $beforeId = \App\Support\HotelTemplateBuilder::snapshotForReview(
@@ -1553,13 +2785,40 @@ class FacultyController extends Controller
 
         Notifier::taskFeedback($facultyUser, $task, $revise);
 
+        // Some design work only makes sense once faculty has accepted the step
+        // before it — describing the room categories once the categories are
+        // agreed. That follow-up is not on the checklist; approving its trigger is
+        // what hands it out. Nothing happens for every other task.
+        $unlocked = null;
+        if (!$revise) {
+            $unlocked = \App\Support\DesignTaskChain::unlockNext($task, $facultyUser);
+
+            if ($unlocked) {
+                ActivityLog::record(
+                    $facultyUser,
+                    ActivityLog::TASK_CREATED,
+                    'Approving "' . $task->title . '" unlocked "' . $unlocked->title
+                        . '" for ' . $unlocked->group_name . '.'
+                );
+
+                if ($unlocked->assigned_to) {
+                    Notifier::tasksAssigned($facultyUser, [$unlocked->assigned_to => [$unlocked->title]], $unlocked->due_date);
+                }
+            }
+        }
+
         return response()->json([
             'success' => true,
             'status' => $task->status,
+            'group_name' => $task->group_name,
+            'approval' => $task->group_name ? $this->approvalSummary((string) $task->group_name, (int) $facultyId) : null,
             'revision_count' => (int) $task->revision_count,
+            'unlocked' => $unlocked ? ['title' => $unlocked->title, 'role' => $unlocked->role] : null,
             'message' => $revise
                 ? 'Sent back to the student with your feedback.'
-                : 'Task approved.',
+                : ($unlocked
+                    ? 'Task approved — "' . $unlocked->title . '" is now assigned to the team.'
+                    : 'Task approved.'),
         ]);
     }
 
@@ -1582,11 +2841,7 @@ class FacultyController extends Controller
         bool $revise,
         ?string $feedback
     ) {
-        $membership = $task->student_id
-            ? StudentGroup::where('student_id', $task->student_id)
-                ->where('faculty_id', $facultyId)
-                ->first()
-            : null;
+        $membership = $this->teamMembershipFor($task, (int) $facultyId);
 
         if (!$membership) {
             return response()->json([
@@ -1644,7 +2899,7 @@ class FacultyController extends Controller
      */
     public function previewTeamSite(Request $request)
     {
-        $facultyId = auth()->user()?->faculty?->user_information_id;
+        $facultyId = FacultyPreviewController::facultyIdFor($request);
         if (!$facultyId) {
             abort(403);
         }
@@ -1720,53 +2975,38 @@ class FacultyController extends Controller
                 && (int) $data['before_version'] === (int) $task->submitted_version_id
             ) {
                 $roleTemplate = \App\Support\HotelTemplateBuilder::ensureTemplate($membership, $task->role);
-                $beforeVersionId = ($task->previous_version_id && TeamRoleTemplateVersion::whereKey($task->previous_version_id)->exists())
-                    ? (int) $task->previous_version_id
-                    : null;
+                $beforeVersionId = $task->reviewBeforeVersionId();
                 $reviewHighlight = \App\Support\TemplateDiff::between(
                     $roleTemplate,
                     $beforeVersionId,
                     (int) $task->submitted_version_id
                 )['highlight'];
+                // The branding and Home Page tasks are also checked on the page
+                // against the stock template, so the outlines do not hang on the
+                // snapshots alone.
+                $reviewHighlight['stock_review'] = \App\Support\TaskChecklist::stockReviewFor((string) $task->title);
             }
         }
 
-        // Read-only: no edit permission, no editable pages.
+        // Read-only: no edit permission, no editable pages. previewGroup is what
+        // points the template's catalogue reads at this team rather than at the
+        // student endpoints a faculty cannot use — see FacultyPreviewController.
         return view('students.template.' . $selected . 'defaulttemplate', [
             'customizations' => $customizations,
             'canEditTemplate' => false,
             'editablePages' => [],
             'builderRole' => $data['role'] ?? 'front_desk',
             'reviewHighlight' => $reviewHighlight,
+            'previewGroup' => (string) $membership->group_name,
+            // Set for a dean only, whose catalogue reads must name the faculty.
+            'previewFacultyId' => auth()->user()?->role === 'dean' ? $facultyId : null,
+            // The approved concept's name and words, as the team's own builder
+            // shows them; without it the preview fell back to the stock hotel.
+            'hotelDefaults' => \App\Support\HotelTemplateBuilder::hotelDefaults(
+                (string) $membership->group_name,
+                (int) $membership->faculty_id
+            ),
         ]);
-    }
-
-    public function destroyTask(Task $task)
-    {
-        $facultyId = auth()->user()?->faculty?->user_information_id;
-        if ($task->faculty_id !== $facultyId) {
-            abort(403);
-        }
-
-        // Every team is assigned the hotel concept automatically, and the rest of
-        // their simulation is built on it, so it is not a task to hand back.
-        if ($task->is_hotel_concept) {
-            return back()->withErrors([
-                'task' => 'The hotel concept is assigned to every team automatically and cannot be deleted.',
-            ]);
-        }
-
-        $role = $task->role;
-        $title = $task->title;
-        $task->delete();
-
-        ActivityLog::recordFor(
-            ActivityLog::TASK_DELETED,
-            'Deleted task "' . $title . '" from the ' . $role . ' role.'
-        );
-
-        return redirect()->route('faculty.tasks', ['tab' => $role])
-            ->with('success', 'Task deleted.');
     }
 
     public function results()
@@ -1797,7 +3037,7 @@ class FacultyController extends Controller
         return view('faculty.results', compact('outputs', 'roleLabels', 'countsByRole'));
     }
 
-    public function reports()
+    public function reports(Request $request)
     {
         $facultyId = auth()->user()?->faculty?->user_information_id;
         if (!$facultyId) {
@@ -1806,132 +3046,7 @@ class FacultyController extends Controller
 
         ActivityLog::recordFor(ActivityLog::REPORT_GENERATED, 'Generated the faculty performance report.');
 
-        $roleLabels = [
-            'front_desk' => 'Front Desk',
-            'restaurant_management' => 'Restaurant',
-            'room_management' => 'Room',
-            'maintenance' => 'Maintenance',
-            'housekeeping' => 'Housekeeping',
-        ];
-
-        // Finalized/completed tasks (archived) — reflected here as soon as status becomes archived
-        $completedTasks = Task::with(['student.user', 'assignedTo'])
-            ->where('faculty_id', $facultyId)
-            ->where('status', 'archived')
-            ->orderByDesc('updated_at')
-            ->get();
-
-        $membershipByStudentId = StudentGroup::with(['roles', 'student.user'])
-            ->where('faculty_id', $facultyId)
-            ->get()
-            ->groupBy('student_id');
-
-        $teamMembersByName = StudentGroup::with(['roles', 'student.user'])
-            ->where('faculty_id', $facultyId)
-            ->get()
-            ->groupBy(fn ($m) => $m->group_name ?? 'Unassigned');
-
-        $buckets = [];
-
-        foreach ($completedTasks as $task) {
-            $studentId = $task->student_id ? (int) $task->student_id : null;
-            if (!$studentId && $task->assigned_to) {
-                $studentId = Student::where('user_id', $task->assigned_to)->value('user_information_id');
-                $studentId = $studentId ? (int) $studentId : null;
-            }
-
-            $membership = $studentId
-                ? ($membershipByStudentId->get($studentId)?->first())
-                : null;
-
-            $teamName = $membership?->group_name ?: 'Unassigned';
-            $key = $teamName;
-
-            $studentUser = $task->student?->user ?? $task->assignedTo;
-            $studentName = trim(implode(' ', array_filter([
-                $studentUser?->last_name,
-                $studentUser?->first_name,
-                $studentUser?->middle_name,
-            ]))) ?: ($studentUser?->name ?? '—');
-
-            if (!isset($buckets[$key])) {
-                $buckets[$key] = [
-                    'id' => $key,
-                    'team_name' => $teamName,
-                    'page_roles' => [],
-                    'assigned_at' => $task->created_at,
-                    'completed_at' => $task->updated_at,
-                    'tasks' => [],
-                    'members' => [],
-                ];
-            }
-
-            $roleKey = (string) ($task->role ?? '');
-            if ($roleKey !== '') {
-                $buckets[$key]['page_roles'][$roleKey] = $roleLabels[$roleKey] ?? $roleKey;
-            }
-
-            if ($task->created_at && (!$buckets[$key]['assigned_at'] || $task->created_at->lt($buckets[$key]['assigned_at']))) {
-                $buckets[$key]['assigned_at'] = $task->created_at;
-            }
-            if ($task->updated_at && (!$buckets[$key]['completed_at'] || $task->updated_at->gt($buckets[$key]['completed_at']))) {
-                $buckets[$key]['completed_at'] = $task->updated_at;
-            }
-
-            $buckets[$key]['tasks'][] = [
-                'title' => $task->title,
-                'description' => $task->description,
-                'student_name' => $studentName,
-                'role' => $roleKey,
-                'role_label' => $roleLabels[$roleKey] ?? $roleKey,
-                'due_date' => optional($task->due_date)->format('M d, Y g:i A'),
-                'completed_at' => optional($task->updated_at)->format('M d, Y'),
-                'priority' => strtolower($task->priority ?? 'medium'),
-            ];
-        }
-
-        foreach ($buckets as $key => &$bucket) {
-            $members = $teamMembersByName->get($key, collect());
-            $bucket['members'] = $members->map(function ($m) use ($roleLabels) {
-                $user = $m->student?->user;
-                $name = trim(implode(' ', array_filter([
-                    $user?->last_name,
-                    $user?->first_name,
-                    $user?->middle_name,
-                ]))) ?: ($user?->name ?? 'Member');
-
-                $roles = $m->roles->pluck('role')->filter()->values();
-                if ($roles->isEmpty() && $m->role) {
-                    $roles = collect([$m->role]);
-                }
-
-                return [
-                    'name' => $name,
-                    'roles' => $roles->map(fn ($r) => $roleLabels[$r] ?? $r)->values()->all(),
-                ];
-            })->values()->all();
-
-            $bucket['page_name'] = !empty($bucket['page_roles'])
-                ? implode(', ', array_values($bucket['page_roles']))
-                : '—';
-            $bucket['assigned_date'] = optional($bucket['assigned_at'])->format('M d, Y') ?? '—';
-            $bucket['date_completed'] = optional($bucket['completed_at'])->format('M d, Y') ?? '—';
-            $bucket['completed_sort'] = optional($bucket['completed_at'])->timestamp ?? 0;
-            $bucket['task_count'] = count($bucket['tasks']);
-            $bucket['final_grade'] = 'TBA';
-            unset($bucket['page_roles'], $bucket['assigned_at'], $bucket['completed_at']);
-        }
-        unset($bucket);
-
-        $teamReports = collect($buckets)
-            ->sortByDesc('completed_sort')
-            ->map(function ($row) {
-                unset($row['completed_sort']);
-                return $row;
-            })
-            ->values();
-
-        return view('faculty.reports', compact('teamReports', 'roleLabels'));
+        return view('faculty.reports', \App\Support\ReportDesk::build((int) $facultyId, $request->only(['team', 'task', 'role'])));
     }
 
     public function activityLogs(Request $request)
@@ -1990,7 +3105,7 @@ class FacultyController extends Controller
             // Fourth argument names the column to ignore by. Without it the rule looks
             // for a column called "id", which users no longer has.
             'email' => ['required', 'email', 'max:255', 'unique:users,email,' . $user->user_id . ',user_id'],
-            'phone_number' => ['nullable', 'string', 'max:30'],
+            'phone_number' => ['nullable', 'string', new PhilippineMobile()],
             'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:2048'],
             'remove_avatar' => ['nullable', 'boolean'],
         ]);
@@ -2007,7 +3122,7 @@ class FacultyController extends Controller
             'middle_name' => $validated['middle_name'] ?? null,
             'last_name' => $validated['last_name'],
             'email' => $validated['email'],
-            'phone_number' => $validated['phone_number'] ?? null,
+            'phone_number' => User::normalizePhone($validated['phone_number'] ?? null),
         ];
 
         if ($request->boolean('remove_avatar') && $user->avatar) {
@@ -2025,7 +3140,7 @@ class FacultyController extends Controller
                     'error' => $e->getMessage(),
                 ]);
 
-                return back()->withErrors(['avatar' => 'Could not upload the photo to storage. Please try again.']);
+                return back()->withErrors(['avatar' => 'Could not upload the photo. Please try again.']);
             }
 
             if ($user->avatar) {
@@ -2038,7 +3153,7 @@ class FacultyController extends Controller
         $user->update($userData);
 
         $faculty->update([
-            'phone_number' => $validated['phone_number'] ?? null,
+            'phone_number' => $userData['phone_number'],
         ]);
 
         ActivityLog::recordFor(ActivityLog::ACCOUNT_UPDATED, 'Updated their own faculty profile.');

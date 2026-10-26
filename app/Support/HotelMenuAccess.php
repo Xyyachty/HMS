@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\HotelMenuItem;
 use App\Models\StudentGroup;
+use App\Models\Task;
 
 /**
  * Authorization + bootstrap for the hotel restaurant menu.
@@ -41,6 +42,75 @@ class HotelMenuAccess
         return count(array_intersect($roles, self::MANAGE_ROLES)) > 0;
     }
 
+    /** The checklist entry this page's design work is reviewed against. */
+    // RS TASK 5, the one that hands the whole menu in. The four tasks before it
+    // are small pieces of the same menu and do not close it while they are marked.
+    public const TASK_TITLE = 'Review Restaurant Menu';
+
+    /**
+     * The team's copy of the Build Your Menu task, newest first.
+     *
+     * Scoped to the team rather than the student: how far this work has got is the
+     * team's fact, and every member of the Restaurant role reads the same line.
+     */
+    public static function taskFor(?StudentGroup $membership): ?Task
+    {
+        if (!$membership || !filled($membership->group_name)) {
+            return null;
+        }
+
+        return Task::where('faculty_id', $membership->faculty_id)
+            ->where('role', self::MANAGE_ROLE)
+            ->whereRaw('LOWER(group_name) = LOWER(?)', [(string) $membership->group_name])
+            ->whereRaw('LOWER(title) = LOWER(?)', [self::TASK_TITLE])
+            ->orderByDesc('task_id')
+            ->first();
+    }
+
+    /**
+     * Whether the menu is sitting with faculty right now.
+     *
+     * 'archived' is this app's "submitted" — see the tasks.complete route — and
+     * feedback_at is what separates a submission from an answered one. A task sent
+     * back for revision goes to 'active' and carries feedback, which reopens the
+     * menu with it.
+     */
+    public static function isUnderReview(?StudentGroup $membership): bool
+    {
+        return self::taskIsUnderReview(self::taskFor($membership));
+    }
+
+    /** The same question of a task already in hand, so it can be reasoned about alone. */
+    public static function taskIsUnderReview(?Task $task): bool
+    {
+        return $task && $task->status === 'archived' && $task->feedback_at === null;
+    }
+
+    /**
+     * Whether the menu's design may be changed: the role, and the work not being
+     * with faculty.
+     *
+     * The menu is read live wherever it is shown, the faculty review included, so
+     * a dish added after submitting would quietly change what is being marked.
+     * Freezing the rows at submission would do the same job; closing the door is
+     * smaller, and it is what the hotel concept already does.
+     *
+     * Deliberately not gated on the task being assigned at all. That was tried for
+     * the amenities list and reverted — see AmenityTaskDesk — because it left every
+     * team whose faculty had not handed the task out unable to build anything.
+     */
+    public static function canCustomize(StudentGroup $membership): bool
+    {
+        return self::canManage($membership) && !self::isUnderReview($membership);
+    }
+
+    /** Why the menu is closed, in the sentence the screens print. */
+    public static function lockMessage(): string
+    {
+        return 'Your menu has been submitted and is with your faculty for review. '
+            . 'It reopens if they send it back for changes.';
+    }
+
     /**
      * First load for a team starts from the house menu so the Restaurant page is
      * never empty. Runs once — after that the DB is the only source of truth.
@@ -75,6 +145,94 @@ class HotelMenuAccess
      * random placeholder the seed used to carry: whoever is taking a dine-in order
      * picks by sight, and a picture of the wrong food is worse than none.
      */
+    /**
+     * How a team's menu differs from the house menu it started with, for the
+     * faculty review of RS TASK 2-5.
+     *
+     * Dishes: the house menu is seeded in one insert, so its rows share the
+     * team's earliest created_at, and a later dish is one the team added. A
+     * row keeps no reference to the dish it was seeded as, so each is matched
+     * to the house dish it still agrees with most; one that no longer agrees
+     * in every field (name, course, price, description, picture) is changed.
+     *
+     * Courses: a course keeps its slot when renamed, so one on a starting slot
+     * is renamed when its name is not that slot's default, and one on any other
+     * slot is one the team added.
+     *
+     * @param  \Illuminate\Support\Collection<int, \App\Models\HotelMenuItem>  $items
+     * @return array{items: array<int, string>, removed_items: int, categories: array<string, array{added: bool, renamed: bool}>, removed_categories: int}
+     */
+    public static function reviewFor($items, StudentGroup $membership): array
+    {
+        $defaults = self::defaultMenu();
+        $fields = fn ($row) => [
+            'name' => trim((string) ($row['name'] ?? '')),
+            'category' => trim((string) ($row['category'] ?? '')),
+            'price' => (int) ($row['price'] ?? 0),
+            'description' => trim((string) ($row['description'] ?? '')),
+            'image' => (string) ($row['image'] ?? ''),
+        ];
+        $stock = array_map($fields, $defaults);
+
+        $seededAt = (string) $items->min('created_at');
+        $unclaimed = array_keys($stock);
+        $states = [];
+        $seeds = 0;
+        foreach ($items as $item) {
+            if ($seededAt === '' || (string) $item->created_at !== $seededAt) {
+                $states[$item->hotel_menu_item_id] = 'added';
+                continue;
+            }
+            $seeds++;
+            $mine = $fields($item->getAttributes());
+            $best = null;
+            $bestScore = -1;
+            foreach ($unclaimed as $i) {
+                $score = count(array_intersect_assoc($mine, $stock[$i]));
+                if ($score > $bestScore) {
+                    [$best, $bestScore] = [$i, $score];
+                }
+            }
+            if ($best !== null) {
+                $unclaimed = array_values(array_diff($unclaimed, [$best]));
+            }
+            if ($best === null || $bestScore < count($mine)) {
+                $states[$item->hotel_menu_item_id] = 'changed';
+            }
+        }
+
+        $categories = [];
+        $kept = 0;
+        $bySlot = array_flip(HotelMenuDefaults::CATEGORIES);
+        if (\App\Models\HotelMenuCategory::tableReady()) {
+            $rows = \App\Models\HotelMenuCategory::where('group_name', $membership->group_name)
+                ->where('faculty_id', $membership->faculty_id)
+                ->get(['name', 'position']);
+            foreach ($rows as $row) {
+                $default = $bySlot[(int) $row->position] ?? null;
+                if ($default !== null) {
+                    $kept++;
+                }
+                $categories[(string) $row->name] = [
+                    'added' => $default === null,
+                    'renamed' => $default !== null && strcasecmp(trim((string) $row->name), $default) !== 0,
+                ];
+            }
+            // A team whose courses were never written down still has all five.
+            if ($rows->isEmpty()) {
+                $kept = count(HotelMenuDefaults::CATEGORIES);
+            }
+        }
+
+        return [
+            'items' => $states,
+            // A team whose menu was never opened has no dishes yet, not none left.
+            'removed_items' => $items->isEmpty() ? 0 : max(0, count($defaults) - $seeds),
+            'categories' => $categories,
+            'removed_categories' => max(0, count(HotelMenuDefaults::CATEGORIES) - $kept),
+        ];
+    }
+
     public static function defaultMenu(): array
     {
         return [

@@ -53,7 +53,8 @@ class StudentWelcomeMailer
     }
 
     /**
-     * Sends the welcome to one student.
+     * Sends the welcome to one student, or to a faculty member the dean just added
+     * ($accountType 'faculty' - same email, faculty wording).
      *
      * Never throws: a mail server that is down or refusing must not roll back or
      * abort an import whose accounts were created successfully. The outcome is
@@ -61,12 +62,14 @@ class StudentWelcomeMailer
      *
      * @return array{sent: bool, reason: string} reason is '' when sent
      */
-    public static function send(User $user, string $plainPassword, ?string $className = null, ?string $studentNumber = null): array
+    public static function send(User $user, string $plainPassword, ?string $className = null, ?string $studentNumber = null, string $accountType = 'student'): array
     {
+        $label = ucfirst($accountType);
+
         if (!self::isDeliverable($user->email)) {
             // Logged as well as returned. This path used to fail in silence, which
             // left nothing to look at when a student said no email arrived.
-            Log::warning('Student welcome email skipped, address not deliverable: ' . var_export($user->email, true));
+            Log::warning($label . ' welcome email skipped, address not deliverable: ' . var_export($user->email, true));
 
             return [
                 'sent'   => false,
@@ -83,18 +86,21 @@ class StudentWelcomeMailer
                 studentName: $displayName,
                 loginEmail: $user->email,
                 plainPassword: $plainPassword,
-                loginUrl: route('login'),
+                // From APP_URL, not the request: these emails are sent from a
+                // local machine, where route() alone would link to localhost.
+                loginUrl: rtrim((string) config('app.url'), '/') . route('login', [], false),
                 className: $className,
                 studentNumber: $studentNumber,
+                accountType: $accountType,
             ));
 
-            Log::info('Student welcome email handed to the mail server for ' . $user->email . '.');
+            Log::info($label . ' welcome email handed to the mail server for ' . $user->email . '.');
 
             return ['sent' => true, 'reason' => ''];
         } catch (\Throwable $e) {
             // Logged in full, summarised for the screen — an SMTP error runs to
             // several lines and none of it helps whoever is looking at the roster.
-            Log::error('Student welcome email failed for ' . $user->email . ': ' . $e->getMessage());
+            Log::error($label . ' welcome email failed for ' . $user->email . ': ' . $e->getMessage());
 
             return [
                 'sent'   => false,

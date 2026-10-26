@@ -1,5 +1,15 @@
+@php
+    /* The background the team picked for their site, turned into the same
+       palette the landing page derives, so the staff shell follows the hotel
+       instead of staying stock near-black. Null until a team picks a colour,
+       and then the shell keeps the stock palette it has always had. */
+    $opsSitePalette = \App\Support\SitePalette::forBackground(
+        \App\Support\SitePalette::siteBackground($templateCustomizations ?? []),
+        ($selectedTemplate ?? null) === '2' ? '2' : '1'
+    );
+@endphp
 <!DOCTYPE html>
-<html lang="en" data-ops-theme="{{ ($selectedTemplate ?? null) === '2' ? '2' : '1' }}">
+<html lang="en" data-ops-theme="{{ ($selectedTemplate ?? null) === '2' ? '2' : '1' }}"@if($opsSitePalette) data-ops-site-themed="1"@endif>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -79,6 +89,9 @@
     @endphp
     <title>Hotel Management System | {{ $moduleLabel }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    @include('partials.swal-theme')
+    <script src="{{ asset('js/hms-swal-theme.js') }}?v={{ filemtime(public_path('js/hms-swal-theme.js')) }}"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
@@ -86,9 +99,9 @@
         * { box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background: #050507; color: #fff; }
 
-        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar { width: 0.25rem; height: 0.25rem; }
         ::-webkit-scrollbar-track { background: #0a0a0c; }
-        ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 0.625rem; }
         ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
 
         /* ── TOPBAR ── */
@@ -108,20 +121,18 @@
         }
         
         .logo-icon {
-            width: 32px; height: 32px;
-            background: {{ $theme['logo_gradient'] }};
-            border-radius: 8px;
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: {{ $theme['logo_shadow'] }};
+            width: 2rem; height: 2rem;
+            border-radius: 50%;
+            object-fit: contain;
         }
         
         .module-badge {
             background: {{ $theme['badge_bg'] }};
             border: 1px solid {{ $theme['badge_border'] }};
             color: {{ $theme['badge_color'] }};
-            font-size: 10px;
-            padding: 4px 10px;
-            border-radius: 6px;
+            font-size: 0.625rem;
+            padding: 0.25rem 0.625rem;
+            border-radius: 0.375rem;
             font-weight: 600;
             text-transform: uppercase;
         }
@@ -129,25 +140,25 @@
         /* ── MODULE SWITCHER (only when a member holds more than one role) ── */
         .module-switcher { position: relative; flex-shrink: 0; }
         .module-switcher .module-badge {
-            display: inline-flex; align-items: center; gap: 6px;
+            display: inline-flex; align-items: center; gap: 0.375rem;
             cursor: pointer; transition: filter 0.15s;
         }
         .module-switcher .module-badge:hover { filter: brightness(1.25); }
         .module-menu {
-            position: absolute; top: calc(100% + 10px); left: 0; width: 230px;
-            background: #18181b; border: 1px solid #27272a; border-radius: 12px;
-            padding: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); z-index: 999;
+            position: absolute; top: calc(100% + 0.625rem); left: 0; width: 14.375rem;
+            background: #18181b; border: 1px solid #27272a; border-radius: 0.75rem;
+            padding: 0.5rem; box-shadow: 0 10px 40px rgba(0,0,0,0.5); z-index: 999;
             display: none; animation: dropIn 0.2s ease-out;
         }
         .module-menu.show { display: block; }
         .module-menu-label {
-            padding: 4px 12px 8px; font-size: 10px; letter-spacing: 0.12em;
+            padding: 0.25rem 0.75rem 0.5rem; font-size: 0.625rem; letter-spacing: 0.12em;
             text-transform: uppercase; color: #52525b; font-weight: 700;
         }
         .module-menu a {
-            display: flex; align-items: center; gap: 10px;
-            padding: 9px 12px; border-radius: 6px;
-            color: #a1a1aa; font-size: 13px; text-decoration: none;
+            display: flex; align-items: center; gap: 0.625rem;
+            padding: 0.5625rem 0.75rem; border-radius: 0.375rem;
+            color: #a1a1aa; font-size: 0.8125rem; text-decoration: none;
             transition: all 0.15s;
         }
         .module-menu a:hover { background: #27272a; color: #fafafa; }
@@ -155,13 +166,13 @@
             background: {{ $theme['badge_bg'] }};
             color: {{ $theme['badge_color'] }};
         }
-        .module-menu a i { width: 16px; font-size: 13px; }
+        .module-menu a i { width: 1rem; font-size: 0.8125rem; }
         .module-menu .view-only-chip {
-            margin-left: auto; font-size: 9px; letter-spacing: 0.06em;
+            margin-left: auto; font-size: 0.5625rem; letter-spacing: 0.06em;
             text-transform: uppercase; font-weight: 700;
             color: #fbbf24; background: rgba(245,158,11,0.12);
             border: 1px solid rgba(245,158,11,0.25);
-            padding: 2px 6px; border-radius: 4px;
+            padding: 2px 0.375rem; border-radius: 0.25rem;
         }
 
         /* ── SIDEBARS ── */
@@ -171,12 +182,12 @@
         }
         
         .tool-card {
-            margin: 2px 12px;
-            padding: 12px;
-            border-radius: 8px;
+            margin: 2px 0.75rem;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
             border: 1px solid transparent;
             background: transparent;
-            display: flex; align-items: center; gap: 12px;
+            display: flex; align-items: center; gap: 0.75rem;
             cursor: grab; transition: all 0.2s;
         }
         .tool-card:hover { 
@@ -186,13 +197,19 @@
         .tool-card:active { cursor: grabbing; }
         
         .tool-icon {
-            width: 40px; height: 40px; border-radius: 8px;
+            width: 2.5rem; height: 2.5rem; border-radius: 0.5rem;
             display: flex; align-items: center; justify-content: center;
-            flex-shrink: 0; font-size: 16px;
+            flex-shrink: 0; font-size: 1rem;
             color: #fff;
             transition: transform 0.2s;
         }
         .tool-card:hover .tool-icon { transform: scale(1.05); }
+
+        /* SweetAlert2's heightAuto sets body to height:auto while a dialog is open
+           (Submit Changes asks first). This page is one h-screen flex column, so
+           the canvas grew to the full height of its content behind the dialog.
+           Keep the body at the viewport height instead. */
+        html body.swal2-height-auto { height: 100vh !important; }
 
         /* ── CANVAS AREA ── */
         .canvas-bg {
@@ -203,7 +220,7 @@
         
         .canvas-frame {
             background: #ffffff;
-            border-radius: 12px;
+            border-radius: 0.75rem;
             overflow: hidden;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
             border: 1px solid #27272a;
@@ -216,29 +233,29 @@
         .browser-bar { 
             background: #f4f4f5; 
             border-bottom: 1px solid #e4e4e7; 
-            padding: 0 12px;
-            height: 40px;
-            min-height: 40px;
+            padding: 0 0.75rem;
+            height: 2.5rem;
+            min-height: 2.5rem;
         }
         .browser-btn {
-            width: 24px;
-            height: 24px;
-            border-radius: 6px;
+            width: 1.5rem;
+            height: 1.5rem;
+            border-radius: 0.375rem;
             border: 1px solid #e4e4e7;
             background: #ffffff;
             color: #71717a;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 11px;
+            font-size: 0.6875rem;
         }
         .url-pill { 
             background: #ffffff; 
             border: 1px solid #e4e4e7; 
             color: #71717a; 
-            font-size: 11px; 
-            border-radius: 4px; 
-            padding: 4px 12px;
+            font-size: 0.6875rem; 
+            border-radius: 0.25rem; 
+            padding: 0.25rem 0.75rem;
         }
 
         .dropzone {
@@ -260,10 +277,10 @@
         }
         
         .empty-icon-ring {
-            width: 80px; height: 80px; border-radius: 50%;
+            width: 5rem; height: 5rem; border-radius: 50%;
             border: 2px dashed #d4d4d8;
             display: flex; align-items: center; justify-content: center;
-            margin-bottom: 20px; color: #a1a1aa; font-size: 28px;
+            margin-bottom: 1.25rem; color: #a1a1aa; font-size: 1.75rem;
             animation: pulse-ring 3s ease-in-out infinite;
         }
         @keyframes pulse-ring { 0%,100%{border-color:#d4d4d8; color:#a1a1aa;} 50%{border-color:#06b6d4; color:#06b6d4;} }
@@ -277,20 +294,20 @@
         
         .dropped-block:hover { 
             border-color: #06b6d4; 
-            border-radius: 12px; 
+            border-radius: 0.75rem; 
             box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.1);
         }
         
         .block-toolbar {
-            position: absolute; top: -16px; right: 10px;
-            display: none; gap: 4px; z-index: 20;
+            position: absolute; top: -1rem; right: 0.625rem;
+            display: none; gap: 0.25rem; z-index: 20;
         }
         .dropped-block:hover .block-toolbar { display: flex; }
         
         .tb-btn {
-            height: 28px; padding: 0 10px; border-radius: 6px;
-            font-size: 10px; font-weight: 600; border: none; cursor: pointer;
-            display: flex; align-items: center; gap: 4px;
+            height: 1.75rem; padding: 0 0.625rem; border-radius: 0.375rem;
+            font-size: 0.625rem; font-weight: 600; border: none; cursor: pointer;
+            display: flex; align-items: center; gap: 0.25rem;
             font-family: 'Inter', sans-serif; transition: all 0.15s;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
@@ -301,29 +318,29 @@
 
         /* ── UI COMPONENTS ── */
         .block-heading {
-            font-size: 14px; font-weight: 600; color: #18181b;
-            display: flex; align-items: center; gap: 8px;
-            margin-bottom: 16px;
+            font-size: 0.875rem; font-weight: 600; color: #18181b;
+            display: flex; align-items: center; gap: 0.5rem;
+            margin-bottom: 1rem;
         }
 
-        .hms-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        .hms-table th { background: #f4f4f5; color: #52525b; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 10px 14px; text-align: left; border-bottom: 1px solid #e4e4e7; }
-        .hms-table td { padding: 12px 14px; border-bottom: 1px solid #f4f4f5; color: #27272a; }
+        .hms-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+        .hms-table th { background: #f4f4f5; color: #52525b; font-size: 0.625rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.625rem 0.875rem; text-align: left; border-bottom: 1px solid #e4e4e7; }
+        .hms-table td { padding: 0.75rem 0.875rem; border-bottom: 1px solid #f4f4f5; color: #27272a; }
         .hms-table tr:last-child td { border-bottom: none; }
         .hms-table tr:hover td { background: #fafafa; }
         
-        .status-pill { padding: 4px 10px; border-radius: 9999px; font-size: 10px; font-weight: 600; display: inline-block; }
+        .status-pill { padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.625rem; font-weight: 600; display: inline-block; }
 
         .stat-card {
-            background: #fff; border-radius: 12px; padding: 16px;
+            background: #fff; border-radius: 0.75rem; padding: 1rem;
             border-top: 3px solid;
             box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         }
 
         .hk-row {
             display: flex; justify-content: space-between; align-items: center;
-            padding: 12px 14px; border-radius: 8px; background: #fafafa;
-            border: 1px solid #f4f4f5; font-size: 12px; transition: all 0.15s;
+            padding: 0.75rem 0.875rem; border-radius: 0.5rem; background: #fafafa;
+            border: 1px solid #f4f4f5; font-size: 0.75rem; transition: all 0.15s;
         }
         .hk-row:hover { border-color: #d4d4d8; background: #fff; }
 
@@ -331,33 +348,33 @@
         .settings-card {
             background: rgba(24, 24, 27, 0.5);
             border: 1px solid rgba(255,255,255,0.05);
-            border-radius: 10px;
-            padding: 16px;
-            margin-bottom: 12px;
+            border-radius: 0.625rem;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
         }
         .settings-label {
-            font-size: 10px; font-weight: 600; color: #71717a;
-            letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 8px; display: block;
+            font-size: 0.625rem; font-weight: 600; color: #71717a;
+            letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 0.5rem; display: block;
         }
         .settings-input, .settings-select {
-            width: 100%; padding: 8px 10px; border-radius: 6px;
+            width: 100%; padding: 0.5rem 0.625rem; border-radius: 0.375rem;
             background: #09090b; border: 1px solid #27272a;
-            color: #d4d4d8; font-size: 12px; font-family: 'Inter', sans-serif;
+            color: #d4d4d8; font-size: 0.75rem; font-family: 'Inter', sans-serif;
             transition: border-color 0.2s; outline: none;
         }
         .settings-input:focus, .settings-select:focus { border-color: #06b6d4; }
 
         .style-input {
-            width: 100%; padding: 8px 10px; border-radius: 6px;
+            width: 100%; padding: 0.5rem 0.625rem; border-radius: 0.375rem;
             background: #09090b; border: 1px solid #27272a;
-            color: #d4d4d8; font-size: 12px; font-family: 'Inter', sans-serif;
+            color: #d4d4d8; font-size: 0.75rem; font-family: 'Inter', sans-serif;
             transition: border-color 0.2s; outline: none;
         }
         .style-input:focus { border-color: #06b6d4; }
         .style-input option { background: #18181b; color: #d4d4d8; }
         
         .color-swatch {
-            width: 24px; height: 24px; border-radius: 6px; cursor: pointer;
+            width: 1.5rem; height: 1.5rem; border-radius: 0.375rem; cursor: pointer;
             border: 2px solid transparent; transition: all 0.15s;
         }
         .color-swatch:hover { transform: scale(1.15); }
@@ -366,39 +383,39 @@
         /* ── PROFILE DROPDOWN ── */
 
         .avatar {
-            width: 32px; height: 32px; border-radius: 6px;
+            width: 2rem; height: 2rem; border-radius: 0.375rem;
             background: linear-gradient(135deg, #06b6d4, #0891b2);
             display: flex; align-items: center; justify-content: center;
-            font-size: 12px; font-weight: 700; color: #fff;
+            font-size: 0.75rem; font-weight: 700; color: #fff;
         }
         
         .profile-dropdown {
-            position: absolute; top: calc(100% + 12px); right: 0; width: 220px;
-            background: #18181b; border: 1px solid #27272a; border-radius: 12px;
-            padding: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); z-index: 999;
+            position: absolute; top: calc(100% + 0.75rem); right: 0; width: 13.75rem;
+            background: #18181b; border: 1px solid #27272a; border-radius: 0.75rem;
+            padding: 0.5rem; box-shadow: 0 10px 40px rgba(0,0,0,0.5); z-index: 999;
             display: none; animation: dropIn 0.2s ease-out;
         }
         @keyframes dropIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
         .profile-dropdown.show { display: block; }
         
         .dd-item {
-            display: flex; align-items: center; gap: 10px;
-            padding: 10px 12px; border-radius: 6px;
-            color: #a1a1aa; font-size: 13px; cursor: pointer;
+            display: flex; align-items: center; gap: 0.625rem;
+            padding: 0.625rem 0.75rem; border-radius: 0.375rem;
+            color: #a1a1aa; font-size: 0.8125rem; cursor: pointer;
             transition: all 0.15s;
         }
         .dd-item:hover { background: #27272a; color: #fafafa; }
-        .dd-item i { width: 16px; font-size: 14px; color: #71717a; }
-        .dd-divider { height: 1px; background: #27272a; margin: 6px 0; }
+        .dd-item i { width: 1rem; font-size: 0.875rem; color: #71717a; }
+        .dd-divider { height: 1px; background: #27272a; margin: 0.375rem 0; }
         .dd-logout { color: #ef4444 !important; }
         .dd-logout i { color: #ef4444 !important; }
 
         /* ── ACTION BUTTONS ── */
         .hdr-btn {
-            height: 36px; padding: 0 16px; border-radius: 8px;
-            font-size: 12px; font-weight: 600; cursor: pointer;
+            height: 2.25rem; padding: 0 1rem; border-radius: 0.5rem;
+            font-size: 0.75rem; font-weight: 600; cursor: pointer;
             font-family: 'Inter', sans-serif; border: none;
-            display: flex; align-items: center; gap: 6px; transition: all 0.2s;
+            display: flex; align-items: center; gap: 0.375rem; transition: all 0.2s;
             text-decoration: none;
         }
         .btn-secondary { background: #18181b; color: #d4d4d8; border: 1px solid #27272a; }
@@ -406,41 +423,33 @@
         .btn-primary { background: {{ $theme['primary'] }}; color: #fff; }
         .btn-primary:hover { background: {{ $theme['primary_hover'] }}; box-shadow: 0 0 20px {{ $theme['primary_glow'] }}; }
 
-        /* Save Draft — unsaved changes highlight */
-        #saveDraftBtn.has-unsaved {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f1aeb5;
-            box-shadow: 0 0 0 1px rgba(114, 28, 36, 0.08);
-            animation: saveDraftPulse 1.6s ease-in-out infinite;
-        }
-        #saveDraftBtn.has-unsaved:hover {
-            background: #f1aeb5;
-            color: #58151c;
-            border-color: #ea868f;
-        }
-        #saveDraftBtn.has-unsaved i { color: #721c24; }
-        @keyframes saveDraftPulse {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.18); }
-            50% { box-shadow: 0 0 0 4px rgba(220, 53, 69, 0.12); }
-        }
+        /* Submit Changes — the one button that leaves the draft behind and puts
+           the work in front of faculty, so it does not share Publish's styling. */
+        .btn-submit { background: #059669; color: #fff; border: 1px solid #047857; }
+        .btn-submit:hover { background: #047857; box-shadow: 0 0 20px rgba(5, 150, 105, 0.35); }
+        .btn-submit:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
+
+        /* Save state, spelled out in the status bar rather than only in a toast:
+           saving, saved and submitted have to be told apart at a glance. */
+        .save-hint.is-saving { color: #fbbf24; }
+        .save-hint.is-saved { color: #34d399; }
+        .save-hint.is-submitted { color: #34d399; font-weight: 700; }
+        .save-hint.is-dirty { color: #fca5a5; }
+        .save-hint.is-error { color: #f87171; font-weight: 600; }
 
         /* Toast */
         #toast {
-            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
-            background: #18181b; border: 1px solid #27272a; color: #fafafa; padding: 12px 24px; border-radius: 8px;
-            font-size: 13px; font-family: 'Inter', sans-serif; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(80px);
+            background: #18181b; border: 1px solid #27272a; color: #fafafa; padding: 0.75rem 1.5rem; border-radius: 0.5rem;
+            font-size: 0.8125rem; font-family: 'Inter', sans-serif; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s;
             opacity: 0; z-index: 9999;
         }
         #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
-        .status-bar { background: #09090b; border-top: 1px solid #18181b; }
-
         /* ── Fullscreen Redesign Mode ── */
-        body.fs-redesign .topbar { height: 52px; }
-        body.fs-redesign .topbar-row { height: 52px; }
-        body.fs-redesign #leftSidebar,
-        body.fs-redesign .status-bar { display: none !important; }
+        body.fs-redesign .topbar { height: 3.25rem; }
+        body.fs-redesign .topbar-row { height: 3.25rem; }
+        body.fs-redesign #leftSidebar { display: none !important; }
         body.fs-redesign #mainLayout { position: relative; }
         body.fs-redesign #centerCanvasWrap {
             flex: 1 1 100%;
@@ -466,10 +475,10 @@
         }
         body.fs-redesign #rightSidebar {
             position: fixed;
-            top: 52px;
+            top: 3.25rem;
             right: 0;
             bottom: 0;
-            width: 320px;
+            width: 20rem;
             max-width: 90vw;
             z-index: 60;
             transform: translateX(0);
@@ -487,38 +496,38 @@
         .fs-float-btn {
             position: fixed;
             z-index: 70;
-            right: 16px;
-            bottom: 20px;
-            height: 44px;
-            padding: 0 16px;
+            right: 1rem;
+            bottom: 1.25rem;
+            height: 2.75rem;
+            padding: 0 1rem;
             border-radius: 999px;
             background: linear-gradient(135deg, #06b6d4, #2563eb);
             color: #fff;
-            font-size: 12px;
+            font-size: 0.75rem;
             font-weight: 700;
             border: none;
             cursor: pointer;
             align-items: center;
-            gap: 8px;
+            gap: 0.5rem;
             box-shadow: 0 10px 28px rgba(6, 182, 212, 0.35);
             transition: transform 0.15s ease;
         }
         .fs-float-btn:hover { transform: scale(1.04); }
-        body.fs-redesign.fs-panel-collapsed .fs-float-btn { right: 16px; }
-        body.fs-redesign:not(.fs-panel-collapsed) .fs-float-btn { right: 336px; }
+        body.fs-redesign.fs-panel-collapsed .fs-float-btn { right: 1rem; }
+        body.fs-redesign:not(.fs-panel-collapsed) .fs-float-btn { right: 21rem; }
         .topbar-row {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 0.75rem;
             width: 100%;
-            height: 56px;
-            padding: 0 16px;
+            height: 3.5rem;
+            padding: 0 1rem;
             box-sizing: border-box;
         }
         .topbar-brand {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 0.625rem;
             flex-shrink: 0;
             min-width: 0;
         }
@@ -533,11 +542,11 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
-            padding: 0 8px;
+            gap: 0.625rem;
+            padding: 0 0.5rem;
         }
         .topbar-mid .save-hint {
-            font-size: 11px;
+            font-size: 0.6875rem;
             color: #71717a;
             white-space: nowrap;
             overflow: hidden;
@@ -548,38 +557,27 @@
             display: flex;
             align-items: center;
             justify-content: flex-end;
-            gap: 8px;
+            gap: 0.5rem;
             flex-shrink: 0;
             flex-wrap: nowrap;
         }
         .topbar-actions .hdr-btn {
             white-space: nowrap;
-            height: 34px;
-            padding: 0 12px;
+            height: 2.125rem;
+            padding: 0 0.75rem;
         }
         .topbar-actions #profileWrapper {
             margin-left: 2px;
             flex-shrink: 0;
         }
         .topbar-actions .avatar {
-            width: 26px;
-            height: 26px;
-            font-size: 10px;
-        }
-        .template-chip {
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 0.04em;
-            color: #fbbf24;
-            background: rgba(251, 191, 36, 0.1);
-            border: 1px solid rgba(251, 191, 36, 0.25);
-            border-radius: 6px;
-            padding: 3px 8px;
-            white-space: nowrap;
+            width: 1.625rem;
+            height: 1.625rem;
+            font-size: 0.625rem;
         }
         @media (max-width: 1100px) {
             .topbar-mid .save-hint { display: none; }
-            .hms-logo-text { max-width: 140px; }
+            .hms-logo-text { max-width: 8.75rem; }
         }
         @media (max-width: 900px) {
             #fsToggleLabel { display: none; }
@@ -600,9 +598,6 @@
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         }
         html[data-ops-theme="2"] .w-px.h-5.bg-zinc-800 { background: #e2ddd5; }
-        html[data-ops-theme="2"] .template-chip {
-            color: #b45309; background: rgba(180,83,9,0.1); border-color: rgba(180,83,9,0.25);
-        }
         html[data-ops-theme="2"] .sidebar-base { background: #ffffff; border-color: #e2ddd5; }
         html[data-ops-theme="2"] .canvas-bg {
             background: #f7f4ef;
@@ -623,7 +618,6 @@
         html[data-ops-theme="2"] .dd-divider { background: #e2ddd5; }
         html[data-ops-theme="2"] .module-menu-label { color: #9a958e; }
         html[data-ops-theme="2"] #toast { background: #1a1a1a; border: 1px solid #2d2d2d; color: #f7f4ef; }
-        html[data-ops-theme="2"] .status-bar { background: #efe9e0; border-top: 1px solid #e2ddd5; color: #7a7570; }
         html[data-ops-theme="2"] #editorModeTabs { background: rgba(27,67,50,0.05) !important; border-color: #e2ddd5 !important; }
         html[data-ops-theme="2"] .mode-tab { color: #7a7570 !important; }
         html[data-ops-theme="2"] .mode-tab.active-tab {
@@ -650,7 +644,7 @@
         html[data-ops-theme="2"] #hbVersionList .text-zinc-200 { color: #1a1a1a !important; }
         html[data-ops-theme="2"] #hbLayoutList p.text-zinc-600,
         html[data-ops-theme="2"] #hbVersionList p.text-zinc-600,
-        html[data-ops-theme="2"] #hbVersionList p.text-\[10px\] { color: #9a958e !important; }
+        html[data-ops-theme="2"] #hbVersionList p.text-\[0\.625rem\] { color: #9a958e !important; }
         html[data-ops-theme="2"] #hbLayoutList button.text-zinc-500,
         html[data-ops-theme="2"] #hbVersionList button.text-zinc-500 { color: #9a958e !important; }
         html[data-ops-theme="2"] #hbLayoutList button.hover\:text-white:hover { color: #1a1a1a !important; }
@@ -674,49 +668,63 @@
         html[data-ops-theme="2"] #leftSidebar .bg-zinc-950\/80 { background: #efe9e0; }
         html[data-ops-theme="2"] #leftSidebar #backToTasksBtn { background: #ffffff; color: #1a1a1a; border-color: #e2ddd5; }
         html[data-ops-theme="2"] #leftSidebar #backToTasksBtn:hover { background: #efe9e0; border-color: #2d6a4f; color: #1b4332; }
+
+        /* Assigned Tasks: the revision pill has no zinc/cyan/emerald class to ride
+           the theme overrides above, so it carries its own for both shells. */
+        #leftSidebar .assigned-task-revision { color: #fbbf24; background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.35); }
+        html[data-ops-theme="2"] #leftSidebar .assigned-task-revision { color: #b45309; background: rgba(180, 83, 9, 0.08); border-color: rgba(180, 83, 9, 0.3); }
+        #leftSidebar .assigned-task-card.is-active { box-shadow: inset 3px 0 0 #34d399; }
+        html[data-ops-theme="2"] #leftSidebar .assigned-task-card.is-active { box-shadow: inset 3px 0 0 #2d6a4f; }
+        html[data-ops-theme="2"] #assignedTaskPager { background: #efe9e0; border-color: #e2ddd5; }
+        html[data-ops-theme="2"] #assignedTaskPager button { background: #ffffff; border-color: #e2ddd5; color: #1a1a1a; }
+        html[data-ops-theme="2"] #assignedTaskPager button:hover:not(:disabled) { border-color: #2d6a4f; color: #1b4332; }
     </style>
+@if($opsSitePalette)
+    @include('students.builder.site-theme', ['p' => $opsSitePalette])
+@endif
+    @include('partials.portal-scale')
+@include('partials.no-horizontal-scroll')
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
 
     <!-- ═══════ TOP NAVIGATION BAR ═══════ -->
     <header class="topbar topbar-row shrink-0 z-50">
         <div class="topbar-brand">
-            <div class="logo-icon shrink-0">
-                <i class="fas {{ $theme['icon'] }} text-white text-sm"></i>
-            </div>
+            <img src="{{ asset('new_logo_in_chtm....png') }}" alt="College of Hospitality and Tourism Management logo" class="logo-icon shrink-0">
             <span class="hms-logo-text text-sm truncate">Hotel Management System</span>
             <div class="w-px h-5 bg-zinc-800 shrink-0"></div>
             @php
-                // A member may hold several roles; give them a way to move between modules.
+                // A member may hold several roles; give them a way to move between
+                // modules. Filtered to editable ones — this switcher lives inside
+                // Customize, so a role with nothing to design has no reason here.
                 $myModules = \App\Support\HotelTemplateBuilder::modulesForRoles($studentRoles ?? []);
+                $editorModules = array_values(array_filter($myModules, fn ($m) => $m['editable']));
             @endphp
-            @if(count($myModules) > 1)
+            @if(count($editorModules) > 1)
                 <div class="module-switcher" id="moduleSwitcher">
                     <span class="module-badge" onclick="toggleModuleMenu()" title="Switch module">
                         {{ $moduleLabel }}
-                        <i class="fas fa-chevron-down text-[8px]" id="moduleChevron"></i>
+                        <i class="fas fa-chevron-down text-[0.5rem]" id="moduleChevron"></i>
                     </span>
                     <div class="module-menu" id="moduleMenu">
                         <p class="module-menu-label">My Modules</p>
-                        @foreach($myModules as $module)
-                            <a href="{{ route($module['route']) }}"
+                        @foreach($editorModules as $module)
+                            <a href="{{ $module['customize_url'] }}"
                                class="{{ $module['role'] === $builderRole ? 'is-active' : '' }}"
                                @if($module['role'] !== $builderRole) onclick="return confirmLeaveBuilder(event)" @endif>
                                 <i class="fas {{ $roleThemes[$module['role']]['icon'] ?? 'fa-layer-group' }}"></i>
                                 {{ $module['label'] }}
-                                @if(!$module['editable'])
-                                    <span class="view-only-chip">View only</span>
-                                @endif
                             </a>
                         @endforeach
                     </div>
                 </div>
-            @else
-                <span class="module-badge shrink-0">{{ $moduleLabel }}</span>
             @endif
-            @if(!empty($selectedTemplate))
-                <span class="template-chip shrink-0">Template {{ $selectedTemplate }}</span>
-            @endif
+            {{-- The role name and template number used to sit here as static
+                 badges (FRONT DESK / Template 1). Both are redundant with the
+                 sidebar now — every member's role is labelled there, and the
+                 template number lives above the member list — so the header
+                 stays just the brand and, for a multi-role member, the module
+                 switcher above. --}}
         </div>
 
         <div class="topbar-modes">
@@ -749,16 +757,22 @@
                         <i class="fas fa-up-right-from-square"></i> View Live
                     </button>
                 @endif
-                <button class="hdr-btn btn-primary" onclick="saveTemplateDraft(true)"><i class="fas fa-paper-plane"></i> Publish</button>
+                {{-- Save Draft and Publish used to live here as explicit buttons.
+                     The work still saves the same way — autosave persists every
+                     change, and Ctrl+S (saveTemplateDraft(false)) still forces
+                     one — just without a button taking up toolbar space. --}}
+                {{-- Saving and submitting are different acts, so they are different
+                     buttons. Everything else here keeps a draft; this one hands the
+                     work to faculty and closes the role's open tasks against a
+                     snapshot of exactly what was handed in. --}}
+                <button class="hdr-btn btn-submit" onclick="submitTemplateChanges()" id="submitChangesBtn"
+                        title="Send this work to your faculty for review">
+                    <i class="fas fa-circle-check"></i> Submit Changes
+                </button>
+
             @endif
 
             <div class="relative" id="profileWrapper">
-                <?php
-                    $authUser = auth()->user();
-                    $profileName = $authUser?->name ?? 'Student';
-                    $nameParts = preg_split('/\s+/', trim($profileName));
-                    $initials = strtoupper(($nameParts[0][0] ?? 'S') . (count($nameParts) > 1 ? substr(end($nameParts), 0, 1) : ''));
-                ?>
                 <div class="profile-dropdown" id="profileDropdown">
                     <div class="dd-item" onclick="toast('Opening profile...')"><i class="fas fa-user-circle"></i> My Profile</div>
                     <div class="dd-item" onclick="toast('Opening settings...')"><i class="fas fa-cog"></i> Settings</div>
@@ -774,8 +788,8 @@
 
     <!-- ═══════ MAIN 3-COLUMN LAYOUT ═══════ -->
     <div id="mainLayout" class="flex flex-1 overflow-hidden">
-        <div id="leftSidebar" class="w-72 shrink-0 sidebar-base border-r overflow-y-auto">
-            @include('students.frontdesk.left-sidebar.index')
+        <div id="leftSidebar" class="w-72 shrink-0 sidebar-base border-r overflow-hidden">
+            @include('students.frontdesk.left-sidebar.index', ['showStaffTools' => false, 'showAssignedTasks' => true])
         </div>
 
         <div id="centerCanvasWrap" class="flex-1 flex flex-col min-w-0 canvas-bg">
@@ -786,13 +800,6 @@
             @include('students.frontdesk.right-sidebar.index')
         </div>
 
-    </div>
-
-    <!-- ═══════ STATUS BAR ═══════ -->
-    <div class="status-bar h-8 flex items-center px-6 gap-4 shrink-0 text-[10px] text-zinc-600">
-        <div class="flex items-center gap-2 text-green-500"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> <span>Editor online</span></div>
-        <span class="text-zinc-800">|</span>
-        <span id="blockCount">0 blocks on canvas</span>
     </div>
 
     <button type="button" id="fsPanelToggle" class="fs-float-btn {{ ($canEditTemplate ?? false) ? '' : 'hidden' }}" onclick="toggleDesignPanel()" title="Toggle design panel">
@@ -828,13 +835,37 @@
                 restore: @json(route('students.templates.restore', ['role' => $builderRole, 'version' => '__VERSION__'])),
             },
             onToast: function (msg) { if (typeof toast === 'function') toast(msg); },
+            // A teammate changed the same thing: the student decides, nothing is
+            // overwritten quietly.
+            onConflict: function (summary) {
+                return askConfirm(
+                    'A teammate changed this too',
+                    'While you were editing, a teammate saved changes to ' + summary + '. '
+                    + 'Keep your version to replace theirs, or use theirs and drop your edits to it.',
+                    'Keep my version',
+                    'Use theirs'
+                );
+            },
             onChange: function (evt) {
+                if (evt.type === 'save-error') {
+                    // Said on screen every time, toasted once per new reason so a
+                    // retry every seven seconds does not bury the page in toasts.
+                    setSaveState('error', 'Not saved \u2014 ' + evt.message);
+                    if (!evt.repeated && typeof toast === 'function') toast(evt.message);
+                }
                 if (evt.type === 'dirty') {
                     setSaveDraftUnsaved(!!evt.dirty);
                 }
+                if (evt.type === 'saving') {
+                    setSaveState('saving');
+                }
+                if (evt.type === 'written') {
+                    markAssignedTaskStarted();
+                }
                 if (evt.type === 'autosaved') {
-                    const status = document.getElementById('autoSaveStatus');
-                    if (status) status.textContent = 'Auto-saved · ' + new Date().toLocaleTimeString();
+                    // Autosave keeps the draft and nothing else - it must never
+                    // read as though the work has been handed in.
+                    setSaveState('saved', 'Draft auto-saved \u00b7 ' + new Date().toLocaleTimeString());
                 }
                 if (evt.type === 'mode') {
                     const designMode = evt.mode === 'build';
@@ -866,7 +897,7 @@
             const layout = window.hmsBuilder.state.layout || [];
             const lib = @json(\App\Support\HotelTemplateBuilder::COMPONENT_LIBRARY);
             if (!layout.length) {
-                list.innerHTML = '<p class="text-zinc-600">No sections yet. Add from the library.</p>';
+                list.innerHTML = '<p class="text-zinc-600">No sections. Add one from the library.</p>';
                 return;
             }
             list.innerHTML = layout.map(function (row, idx) {
@@ -891,15 +922,15 @@
                 const data = await window.hmsBuilder.loadVersions();
                 const versions = data.versions || [];
                 if (!versions.length) {
-                    box.innerHTML = '<p class="text-zinc-600">No versions yet.</p>';
+                    box.innerHTML = '<p class="text-zinc-600">No saved versions.</p>';
                     return;
                 }
                 box.innerHTML = versions.map(function (v) {
                     return '<div class="flex items-center gap-2 px-2 py-1.5 rounded-lg border border-zinc-800 bg-zinc-900/50">' +
                         '<div class="flex-1 min-w-0"><p class="text-zinc-200 font-semibold truncate">v' + v.version + ' · ' + (v.label || 'Snapshot') + '</p>' +
-                        '<p class="text-[10px] text-zinc-600">' + (v.created_at || '') + '</p></div>' +
+                        '<p class="text-[0.625rem] text-zinc-600">' + (v.created_at || '') + '</p></div>' +
                         (window.HMS_CAN_EDIT_TEMPLATE
-                            ? '<button type="button" class="text-[10px] text-cyan-400 hover:underline" data-hb-restore="' + v.version + '">Restore</button>'
+                            ? '<button type="button" class="text-[0.625rem] text-cyan-400 hover:underline" data-hb-restore="' + v.version + '">Restore</button>'
                             : '') +
                         '</div>';
                 }).join('');
@@ -1024,14 +1055,14 @@
                         <div class="hk-row">
                             <div class="flex items-center gap-3">
                                 <div class="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-xs">J</div>
-                                <div><p class="font-bold text-zinc-800">John Doe</p><p class="text-[10px] text-zinc-400">Room 101</p></div>
+                                <div><p class="font-bold text-zinc-800">John Doe</p><p class="text-[0.625rem] text-zinc-400">Room 101</p></div>
                             </div>
                             <div class="text-right"><span class="text-xs font-bold text-orange-600">₱4,500 Balance</span></div>
                         </div>
                         <div class="hk-row">
                              <div class="flex items-center gap-3">
                                 <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold text-xs">A</div>
-                                <div><p class="font-bold text-zinc-800">Ana Reyes</p><p class="text-[10px] text-zinc-400">Room 204</p></div>
+                                <div><p class="font-bold text-zinc-800">Ana Reyes</p><p class="text-[0.625rem] text-zinc-400">Room 204</p></div>
                             </div>
                             <div class="text-right"><span class="text-xs font-bold text-green-600">Paid</span></div>
                         </div>
@@ -1071,11 +1102,11 @@
                     <div class="grid grid-cols-2 gap-2">
                         <div class="p-3 bg-green-50 rounded-lg text-center border border-green-100">
                             <p class="text-2xl font-bold text-green-700">24</p>
-                            <p class="text-[10px] text-green-600 uppercase font-bold">Active</p>
+                            <p class="text-[0.625rem] text-green-600 uppercase font-bold">Active</p>
                         </div>
                         <div class="p-3 bg-zinc-50 rounded-lg text-center border border-zinc-100">
                             <p class="text-2xl font-bold text-zinc-700">8</p>
-                            <p class="text-[10px] text-zinc-500 uppercase font-bold">Expired</p>
+                            <p class="text-[0.625rem] text-zinc-500 uppercase font-bold">Expired</p>
                         </div>
                     </div>
                 </div>`;
@@ -1087,7 +1118,7 @@
         function removeBlock(id) { document.getElementById(id)?.remove(); updateCount(); if(dropzone.querySelectorAll('.dropped-block').length === 0) emptyState.style.display = 'flex'; toast('Block removed'); }
         function moveUp(id) { const el = document.getElementById(id); const prev = el?.previousElementSibling; if(prev && prev !== emptyState) { el.parentNode.insertBefore(el, prev); toast('Moved up'); } }
         function moveDown(id) { const el = document.getElementById(id); const next = el?.nextElementSibling; if(next) { el.parentNode.insertBefore(next, el); toast('Moved down'); } }
-        function updateCount() { const n = dropzone.querySelectorAll('.dropped-block').length; document.getElementById('blockCount').textContent = n + ' block' + (n===1?'':'s') + ' on canvas'; }
+        function updateCount() { const n = dropzone.querySelectorAll('.dropped-block').length; const el = document.getElementById('blockCount'); if (el) el.textContent = n + ' block' + (n===1?'':'s') + ' on canvas'; }
 
         function toggleDropdown() { const dd = document.getElementById('profileDropdown'); const ch = document.getElementById('chevron'); if (!dd) return; dd.classList.toggle('show'); if (ch) ch.style.transform = dd.classList.contains('show') ? 'rotate(180deg)' : ''; }
         document.addEventListener('click', function(e) { const w = document.getElementById('profileWrapper'); if (w && !w.contains(e.target)) { document.getElementById('profileDropdown')?.classList.remove('show'); const ch = document.getElementById('chevron'); if (ch) ch.style.transform = ''; } });
@@ -1205,8 +1236,7 @@
                 try {
                     await window.hmsBuilder.save(!!publish);
                     if (typeof renderHbVersions === 'function') renderHbVersions();
-                    const status = document.getElementById('autoSaveStatus');
-                    if (status) status.textContent = publish ? 'Published' : 'Draft saved';
+                    setSaveState('saved', (publish ? 'Published \u00b7 ' : 'Draft saved \u00b7 ') + new Date().toLocaleTimeString());
                     setSaveDraftUnsaved(false);
                 } catch (e) { /* toast already shown */ }
                 return;
@@ -1234,9 +1264,8 @@
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || data.message || 'Save failed');
                 if (data.version) window.templateSyncVersion = data.version;
-                toast(publish ? 'Page published — teammates will see updates' : 'Draft saved — teammates will see updates');
-                const status = document.getElementById('autoSaveStatus');
-                if (status) status.textContent = publish ? 'Published' : 'Draft saved';
+                toast(publish ? 'Page published \u2014 teammates will see updates' : 'Draft saved \u2014 teammates will see updates');
+                setSaveState('saved', (publish ? 'Published \u00b7 ' : 'Draft saved \u00b7 ') + new Date().toLocaleTimeString());
                 setSaveDraftUnsaved(false);
             } catch (err) {
                 console.error(err);
@@ -1244,39 +1273,223 @@
             }
         }
 
-        function setSaveDraftUnsaved(dirty) {
-            const btn = document.getElementById('saveDraftBtn');
-            if (!btn) return;
-            btn.classList.toggle('has-unsaved', !!dirty);
-            btn.title = dirty ? 'Unsaved changes — click to save draft' : 'Save draft';
+        /**
+         * The single place that writes the save indicator.
+         *
+         * @param {'saving'|'saved'|'submitting'|'submitted'|'dirty'|'idle'} state
+         * @param {string} [text] overrides the default wording for that state.
+         */
+        function setSaveState(state, text) {
             const status = document.getElementById('autoSaveStatus');
-            if (status && dirty) {
-                status.textContent = 'Unsaved changes — Ctrl+S to save';
+            if (!status) return;
+            const stamp = new Date().toLocaleTimeString();
+            const wording = {
+                saving: 'Saving\u2026',
+                saved: 'All changes saved \u00b7 ' + stamp,
+                submitting: 'Submitting\u2026',
+                submitted: 'Submitted for review \u00b7 ' + stamp,
+                dirty: 'Unsaved changes \u2014 Ctrl+S to save',
+                idle: 'Ready \u00b7 Ctrl+S to save',
+            };
+            status.textContent = text || wording[state] || wording.idle;
+            status.classList.remove('is-saving', 'is-saved', 'is-submitted', 'is-dirty', 'is-error');
+            if (state === 'saving' || state === 'submitting') status.classList.add('is-saving');
+            else if (state === 'saved') status.classList.add('is-saved');
+            else if (state === 'submitted') status.classList.add('is-submitted');
+            else if (state === 'dirty') status.classList.add('is-dirty');
+            else if (state === 'error') status.classList.add('is-error');
+        }
+
+        /**
+         * Ask before something that cannot be taken back quietly.
+         *
+         * window.confirm paints the deployment's hostname over the page a student
+         * is designing - "hms-9ojw.onrender.com says" above the question - which
+         * reads as the browser interrupting rather than as the app asking. This is
+         * the same question in the builder's own panel, and it falls back to the
+         * browser dialog only if the bundle failed to load: a question that never
+         * appears is worse than an ugly one.
+         */
+        async function askConfirm(title, text, confirmText, cancelText, icon) {
+            if (!window.Swal) return window.confirm(title + '\n\n' + text);
+
+            const result = await window.Swal.fire({
+                title: title,
+                text: text,
+                icon: icon || 'question',
+                iconColor: '#22d3ee',
+                background: '#18181b',
+                color: '#fafafa',
+                showCancelButton: true,
+                confirmButtonText: confirmText || 'Continue',
+                cancelButtonText: cancelText || 'Cancel',
+                confirmButtonColor: '#0891b2',
+                cancelButtonColor: '#3f3f46',
+                reverseButtons: true,
+                focusCancel: true,
+            });
+
+            return result.isConfirmed;
+        }
+
+        /**
+         * Hand this module's website work to faculty.
+         *
+         * Kept apart from saveTemplateDraft() on purpose: a draft save is a
+         * private checkpoint, while this closes the role's open tasks and
+         * notifies the faculty, so it asks first and then says plainly what
+         * happened.
+         */
+        async function submitTemplateChanges() {
+            if (!window.HMS_CAN_EDIT_TEMPLATE) {
+                toast('View only \u2014 {{ $roleLabelFull }} role required to submit');
+                return;
+            }
+
+            // Only the task picked in the left sidebar is handed in; the module's
+            // other tasks wait for their own Submit, changed or not.
+            const task = assignedTasks.find(function (t) { return t.id === activeAssignedTaskId; });
+            const hasOwnTasks = assignedTasks.some(function (t) { return !t.is_concept && t.role === @json($builderRole); });
+            if (hasOwnTasks && !task) {
+                warnNotice('Pick the task you want to submit in the left sidebar first.');
+                return;
+            }
+            // Nothing saved on it yet and nothing waiting to save: stop here rather
+            // than ask. A sent-back task cannot be judged here; the server does.
+            if (task && task.status === 'not_started' && !(window.hmsBuilder && (window.hmsBuilder.isDirty() || window.hmsBuilder.isSaving() || window.hmsBuilder._layoutEdited))) {
+                warnNotice(@json(\App\Models\Task::NO_CHANGES_MESSAGE));
+                return;
+            }
+
+            const ok = await askConfirm(
+                task ? 'Submit “' + task.title + '” for review?' : 'Submit this work for review?',
+                (task ? 'Only this task is handed in, as it looks right now. Your other tasks are not submitted. ' : '')
+                + 'You can keep editing afterwards, but faculty reviews what you submit now.',
+                'Submit for review',
+                undefined,
+                'info' // hms-swal-theme paints info blue; a question would come out orange
+            );
+            if (!ok) return;
+
+            const btn = document.getElementById('submitChangesBtn');
+            if (btn) btn.disabled = true;
+            setSaveState('submitting');
+
+            try {
+                // Save what is on screen first, so faculty sees what the student
+                // is looking at rather than the last autosave. It goes through
+                // the builder's own save, which checks for a teammate's newer
+                // work; posting the whole merged site here used to write a stale
+                // copy of teammates' shared content back over theirs.
+                if (window.hmsBuilder) await window.hmsBuilder.flush();
+                await pendingTaskStart;
+
+                const res = await fetch(@json(route('students.templates.submit', ['role' => $builderRole])), {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: window.hmsBuilder ? window.hmsBuilder._headers() : {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                    body: JSON.stringify({ task_id: task ? task.id : null }),
+                });
+                let data = {};
+                try { data = await res.json(); } catch (e) { /* not JSON: a proxy error page */ }
+                if (!res.ok) throw new Error(data.error || data.message || 'Could not submit \u2014 try again');
+
+                setSaveDraftUnsaved(false);
+                setSaveState('submitted');
+                toast(data.message || 'Submitted for faculty review');
+                if (typeof renderHbVersions === 'function') renderHbVersions();
+                syncAssignedTasks();
+            } catch (err) {
+                console.error(err);
+                setSaveState('dirty', 'Not submitted \u2014 ' + (err.message || 'try again'));
+                warnNotice(err.message || 'Could not submit your changes');
+            } finally {
+                if (btn) btn.disabled = false;
             }
         }
 
+        // A warning that stays long enough to read, in the corner rather than as
+        // a dialog. Falls back to the plain toast if SweetAlert did not load.
+        function warnNotice(message) {
+            if (!window.Swal) { toast(message); return; }
+            window.Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'warning',
+                title: message,
+                background: '#18181b',
+                color: '#fafafa',
+                showConfirmButton: false,
+                timer: 5000,
+                timerProgressBar: true,
+                width: '24rem',
+            });
+        }
+
+        function setSaveDraftUnsaved(dirty) {
+            // The Save Draft button that used to live in the toolbar is gone,
+            // but the status text it drove is still the only "unsaved" signal
+            // on the page, so it keeps working independent of the button.
+            const btn = document.getElementById('saveDraftBtn');
+            if (btn) {
+                btn.classList.toggle('has-unsaved', !!dirty);
+                btn.title = dirty ? 'Unsaved changes — click to save draft' : 'Save draft';
+            }
+            if (dirty) setSaveState('dirty');
+        }
+
         function confirmLeaveBuilder(event) {
-            const dirty = !!(window.hmsBuilder && window.hmsBuilder.isDirty && window.hmsBuilder.isDirty())
-                || !!(document.getElementById('saveDraftBtn')?.classList.contains('has-unsaved'));
-            if (!dirty) return true;
+            if (!window.hmsBuilder) return true;
 
             // The builder auto-saves continuously, so there is nothing to actually
-            // lose — flush the pending edit and leave instead of asking the student
-            // to confirm losing work the system already persists on its own.
+            // lose — wait for the pending or in-flight save and leave instead of
+            // asking. This always goes through leaveBuilder(): a plain navigation
+            // while an autosave was mid-request tripped the beforeunload guard,
+            // and the browser asked "changes may not be saved" for saved work.
             const link = event && event.currentTarget;
             const href = link && link.getAttribute('href');
             if (event) event.preventDefault();
 
-            const flush = (window.hmsBuilder && typeof window.hmsBuilder.save === 'function')
-                ? window.hmsBuilder.save(false)
-                : Promise.resolve();
-
-            Promise.resolve(flush).catch(() => {}).finally(() => {
-                if (href) window.location.href = href;
+            Promise.resolve(window.hmsBuilder.flush()).then(function () {
+                leaveBuilder(href);
+            }, async function (err) {
+                // Leaving now throws the unsaved edits away, so it is the
+                // student's call, made knowing why the save failed.
+                const leave = await askConfirm(
+                    'Your latest changes are not saved',
+                    (err && err.message ? err.message + ' ' : '') + 'If you leave now, those changes are lost.',
+                    'Leave anyway',
+                    'Stay here'
+                );
+                if (leave) leaveBuilder(href);
             });
 
             return false;
         }
+
+        let hmsLeavingOnPurpose = false;
+        function leaveBuilder(href) {
+            hmsLeavingOnPurpose = true;
+            if (href) window.location.href = href;
+        }
+
+        // Closing the tab or reloading (Ctrl+R): autosave runs moments after
+        // each edit, so at most the last edit is still unsent here, and it goes
+        // out as a keepalive save instead of the browser asking "Changes you
+        // made may not be saved". isSaving() is not checked: it is also true
+        // during the four-second team sync poll, which made the browser ask
+        // over work that was already saved. Only an edit too large to send on
+        // unload (a new photo) still gets the browser's prompt.
+        window.addEventListener('beforeunload', function (event) {
+            if (hmsLeavingOnPurpose || !window.hmsBuilder) return;
+            if (window.hmsBuilder.saveOnUnload()) return;
+            event.preventDefault();
+            event.returnValue = '';
+        });
 
         async function syncGroupPresence() {
             try {
@@ -1308,7 +1521,17 @@
             } catch (e) { /* ignore */ }
         }
 
-        async function syncTemplateFromServer() {
+        async function syncTemplateFromServer(now) {
+            /* The builder polls the same route itself, and keeps its record of
+               what the server holds in step with what it shows. Replacing the
+               page's copy here behind its back left the two disagreeing about
+               which edits were the student's. So with a builder on the page this
+               only asks it to sync now (on returning to the tab), and the
+               interval is left to the builder. */
+            if (window.hmsBuilder) {
+                if (now === true) window.hmsBuilder.sync();
+                return;
+            }
             // Never replace a student's unsaved design buffer with a polling update.
             if (window.hmsBuilder && window.hmsBuilder._dirty && window.currentEditorMode === 'design') {
                 return;
@@ -1339,8 +1562,288 @@
             } catch (e) { /* ignore */ }
         }
 
-        setInterval(syncGroupPresence, 8000);
-        setInterval(syncTemplateFromServer, 5000);
+        // ── Assigned Tasks (left sidebar) ──
+        // The team's tasks from faculty's Set Task, drawn from the seed the server
+        // rendered and refreshed by syncAssignedTasks(). Clicking one opens the
+        // page of the Default Template it is done on and brings its section into
+        // view; a task in another module this student holds jumps to that editor,
+        // where it can actually be edited.
+        const ASSIGNED_TASKS_URL = @json(route('students.tasks.assigned'));
+        const EDITOR_EDITABLE_PAGES = @json(array_values($editablePages ?? []));
+        const TASK_PAGE_LABELS = { home: 'Home', rooms: 'Rooms', restaurant: 'Restaurant', amenities: 'Amenities', experience: 'Highlights' };
+        // Four cards a screen, the rest behind Prev/Next — the sidebar itself must
+        // not grow its own scrollbar under a long list.
+        const ASSIGNED_TASKS_PAGE_SIZE = 4;
+        let assignedTasks = [];
+        let assignedTaskPage = 0;
+        let activeAssignedTaskId = null;
+        let assignedTasksSignature = '';
+
+        function readAssignedTaskSeed() {
+            try {
+                return JSON.parse(document.getElementById('assignedTaskSeed')?.textContent || '[]') || [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function assignedTaskStatusClasses(status) {
+            if (status === 'completed') return 'text-emerald-400 bg-zinc-800 border-emerald-500/50';
+            if (status === 'needs_revision') return 'assigned-task-revision';
+            if (status === 'not_started') return 'text-zinc-400 bg-zinc-800 border-zinc-700';
+            return 'text-cyan-400 bg-zinc-800 border-zinc-700';
+        }
+
+        function assignedTaskPageCount() {
+            return Math.max(1, Math.ceil(assignedTasks.length / ASSIGNED_TASKS_PAGE_SIZE));
+        }
+
+        function renderAssignedTasks(tasks) {
+            assignedTasks = Array.isArray(tasks) ? tasks : [];
+            // A poll that shrinks the list (a task completed elsewhere) must not
+            // leave the page pointed past the end.
+            assignedTaskPage = Math.min(assignedTaskPage, assignedTaskPageCount() - 1);
+            renderAssignedTaskPage();
+        }
+
+        function goToAssignedTaskPage(page) {
+            assignedTaskPage = Math.max(0, Math.min(page, assignedTaskPageCount() - 1));
+            renderAssignedTaskPage();
+        }
+
+        function renderAssignedTaskPage() {
+            const list = document.getElementById('assignedTaskList');
+            const pager = document.getElementById('assignedTaskPager');
+            if (!list) return;
+
+            list.replaceChildren();
+
+            if (assignedTasks.length === 0) {
+                const empty = document.createElement('p');
+                empty.className = 'text-[0.6875rem] text-zinc-500';
+                empty.textContent = 'No tasks assigned.';
+                list.appendChild(empty);
+                if (pager) pager.classList.add('hidden');
+                return;
+            }
+
+            const totalPages = assignedTaskPageCount();
+            const start = assignedTaskPage * ASSIGNED_TASKS_PAGE_SIZE;
+            const pageTasks = assignedTasks.slice(start, start + ASSIGNED_TASKS_PAGE_SIZE);
+
+            pageTasks.forEach(function (task) {
+                const card = document.createElement('button');
+                card.type = 'button';
+                card.dataset.taskId = task.id;
+                card.className = 'assigned-task-card w-full text-left px-3 py-2.5 rounded-lg bg-zinc-800 border transition hover:border-emerald-500/50 '
+                    + (task.id === activeAssignedTaskId ? 'border-emerald-500/50 is-active' : 'border-zinc-700');
+                card.addEventListener('click', function (event) { openAssignedTask(task, event); });
+
+                const top = document.createElement('div');
+                top.className = 'flex items-center justify-between gap-2';
+                const step = document.createElement('span');
+                step.className = 'text-[0.625rem] font-bold tracking-wider text-cyan-400';
+                step.textContent = task.step_label || 'TASK';
+                const pill = document.createElement('span');
+                pill.className = 'shrink-0 px-1.5 py-0.5 rounded border text-[0.5625rem] font-bold uppercase tracking-wide ' + assignedTaskStatusClasses(task.status);
+                pill.textContent = task.status_label;
+                top.append(step, pill);
+
+                const title = document.createElement('p');
+                title.className = 'text-[0.75rem] font-bold text-white leading-snug mt-1';
+                title.textContent = task.title;
+
+                const meta = document.createElement('p');
+                meta.className = 'text-[0.625rem] text-zinc-500 mt-0.5';
+                meta.textContent = task.role_label + (task.due ? ' · Due: ' + task.due : '');
+
+                card.append(top, title, meta);
+                list.appendChild(card);
+            });
+
+            if (!pager) return;
+            pager.classList.toggle('hidden', totalPages <= 1);
+            if (totalPages <= 1) return;
+
+            // A bordered toolbar of its own, not two quiet icons — the point is
+            // that more tasks exist, and that has to read at a glance.
+            pager.className = 'flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg bg-zinc-800/80 border border-zinc-700';
+            pager.replaceChildren();
+
+            const btnBase = 'w-7 h-7 rounded-md bg-zinc-900 border border-zinc-700 text-white flex items-center justify-center transition '
+                + 'hover:border-emerald-500/70 hover:text-emerald-400 disabled:opacity-30 disabled:hover:text-white disabled:hover:border-zinc-700';
+
+            const prev = document.createElement('button');
+            prev.type = 'button';
+            prev.title = 'Previous tasks';
+            prev.className = btnBase;
+            prev.innerHTML = '<i class="fas fa-chevron-left text-[0.6875rem]"></i>';
+            prev.disabled = assignedTaskPage === 0;
+            prev.addEventListener('click', function () { goToAssignedTaskPage(assignedTaskPage - 1); });
+
+            const label = document.createElement('span');
+            label.className = 'text-[0.6875rem] font-bold text-white tracking-wide';
+            label.textContent = 'Page ' + (assignedTaskPage + 1) + ' of ' + totalPages;
+
+            const next = document.createElement('button');
+            next.type = 'button';
+            next.title = 'Next tasks';
+            next.className = btnBase;
+            next.innerHTML = '<i class="fas fa-chevron-right text-[0.6875rem]"></i>';
+            next.disabled = assignedTaskPage >= totalPages - 1;
+            next.addEventListener('click', function () { goToAssignedTaskPage(assignedTaskPage + 1); });
+
+            pager.append(prev, label, next);
+        }
+
+        function markActiveAssignedTask(id) {
+            activeAssignedTaskId = id;
+            // The task being focused may sit on a different page of the list —
+            // jump there so the highlighted card is the one actually visible.
+            const index = assignedTasks.findIndex(function (t) { return t.id === id; });
+            if (index !== -1) {
+                const targetPage = Math.floor(index / ASSIGNED_TASKS_PAGE_SIZE);
+                if (targetPage !== assignedTaskPage) {
+                    assignedTaskPage = targetPage;
+                    renderAssignedTaskPage();
+                }
+            }
+            document.querySelectorAll('.assigned-task-card').forEach(function (card) {
+                const active = Number(card.dataset.taskId) === id;
+                card.classList.toggle('border-emerald-500/50', active);
+                card.classList.toggle('border-zinc-700', !active);
+                card.classList.toggle('is-active', active);
+            });
+        }
+
+        /* A save that changed something moves the task picked in this sidebar from
+           Not Started to In Progress. Only the picked one: a department's tasks
+           share a page, so nothing else says which task an edit belongs to. Posted
+           once per task; the server ignores a task already started. */
+        // Tasks already reported this visit, and the last report still in flight:
+        // Submit Changes waits for it, or the server could judge the task
+        // unchanged a moment before the report lands.
+        const reportedStartedTaskIds = new Set();
+        let pendingTaskStart = Promise.resolve();
+
+        function markAssignedTaskStarted() {
+            const task = assignedTasks.find(function (t) { return t.id === activeAssignedTaskId; });
+            if (!task || task.is_concept || task.status === 'in_progress' || task.status === 'completed') return;
+            if (reportedStartedTaskIds.has(task.id)) return;
+            reportedStartedTaskIds.add(task.id);
+            // A sent-back task keeps its Revision Required label; the change only
+            // counts towards resubmitting it.
+            if (task.status === 'not_started') {
+                task.status = 'in_progress';
+                task.status_label = 'In Progress';
+                renderAssignedTaskPage();
+            }
+            pendingTaskStart = fetch('/students/tasks/' + task.id + '/started', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                },
+            }).then(function () { syncAssignedTasks(); }).catch(function () {
+                reportedStartedTaskIds.delete(task.id);
+            });
+        }
+
+        // Rooms, menu items and amenities save outside the template save; the
+        // template tells this page when one lands (editor-bridge).
+        window.addEventListener('message', function (event) {
+            const data = event.data || {};
+            if (data.source === 'hms-template' && data.type === 'catalogue-saved') markAssignedTaskStarted();
+        });
+
+        function focusTaskArea(task) {
+            if (!task || !task.page || typeof postToTemplate !== 'function') return;
+            markActiveAssignedTask(task.id);
+            postToTemplate({ type: 'focus-task-area', page: task.page, section: task.section || null });
+            const pageLabel = TASK_PAGE_LABELS[task.page] || task.page;
+            const viewOnly = !EDITOR_EDITABLE_PAGES.includes(task.page);
+            toast('Opened ' + pageLabel + ' — ' + task.title + (viewOnly ? ' (view only here)' : ''));
+        }
+
+        function openAssignedTask(task, event) {
+            // The concept is written on the dashboard, not in the template.
+            // Another module this student holds: open it there so it is editable.
+            if (task.is_concept || (task.role !== @json($builderRole) && task.url)) {
+                if (!task.url) return;
+                const link = document.createElement('a');
+                link.setAttribute('href', task.url);
+                const fakeEvent = { currentTarget: link, preventDefault: function () {} };
+                if (confirmLeaveBuilder(fakeEvent)) window.location.href = task.url;
+                return;
+            }
+            focusTaskArea(task);
+        }
+
+        async function syncAssignedTasks() {
+            if (!document.getElementById('assignedTaskList')) return;
+            try {
+                const res = await fetch(ASSIGNED_TASKS_URL, {
+                    credentials: 'same-origin',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                const tasks = Array.isArray(data.tasks) ? data.tasks : [];
+                // Redraw only when something changed, so a hover or the active
+                // mark is not reset every poll for nothing.
+                const signature = JSON.stringify(tasks);
+                if (signature === assignedTasksSignature) return;
+                assignedTasksSignature = signature;
+                renderAssignedTasks(tasks);
+            } catch (e) { /* a missed poll is retried on the next one */ }
+        }
+
+        // First paint from the server's seed. Drawn now rather than on
+        // DOMContentLoaded: the sidebar is already above this script, and the
+        // ?focus handler below needs the list before the template reports ready.
+        (function () {
+            const seed = readAssignedTaskSeed();
+            assignedTasksSignature = JSON.stringify(seed);
+            renderAssignedTasks(seed);
+        })();
+
+        // ?focus=<task id> — arrived from another editor's sidebar. Focus once the
+        // template reports it is ready, since navigation before then is dropped;
+        // a timer covers a ready message that landed before this listener did.
+        (function () {
+            const focusId = Number(new URLSearchParams(window.location.search).get('focus'));
+            if (!focusId) return;
+            let done = false;
+            const run = function (delay) {
+                if (done) return;
+                const task = assignedTasks.find(function (t) { return t.id === focusId; });
+                if (!task) return;
+                done = true;
+                setTimeout(function () { focusTaskArea(task); }, delay);
+            };
+            window.addEventListener('message', function (event) {
+                const data = event.data || {};
+                if (data.source === 'hms-template' && data.type === 'editor-ready') run(300);
+            });
+            setTimeout(function () { run(0); }, 4000);
+        })();
+
+        /* These cost a database connection each time, and Supabase's pooler has a
+           fixed number to hand out across everyone on the site — see render.yaml.
+           A backgrounded tab polls nothing; returning to it syncs at once, so the
+           numbers are still right the moment anybody looks. The task list changes
+           only when faculty set work, so it polls the least often. */
+        setInterval(function () { if (!document.hidden) syncGroupPresence(); }, 20000);
+        setInterval(function () { if (!document.hidden) syncTemplateFromServer(); }, 15000);
+        setInterval(function () { if (!document.hidden) syncAssignedTasks(); }, 30000);
+        document.addEventListener('visibilitychange', function () {
+            if (document.hidden) return;
+            syncGroupPresence();
+            syncTemplateFromServer(true);
+            syncAssignedTasks();
+        });
         document.addEventListener('DOMContentLoaded', function () {
             syncGroupPresence();
             syncTemplateFromServer();
@@ -1353,5 +1856,8 @@
         let toastTimer;
         function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.remove('show'), 2000); }
     </script>
+@include('partials.logout-confirm')
+@include('partials.session-guard')
+@include('partials.nav-loader')
 </body>
 </html>

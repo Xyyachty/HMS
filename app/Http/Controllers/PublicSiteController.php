@@ -1,0 +1,535 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Group;
+use App\Models\GroupSettings;
+use App\Models\HotelAddon;
+use App\Models\HotelAmenity;
+use App\Models\HotelMenuItem;
+use App\Models\HotelRoom;
+use App\Models\StudentGroup;
+use App\Support\HotelAddonDesk;
+use App\Support\HotelBookingDesk;
+use App\Support\HotelTemplateBuilder;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+
+/**
+ * The Mini Portfolio: a team's hotel site as a guest meets it.
+ *
+ * Every other hotel route in this app answers "which hotel?" with the logged-in student's
+ * own membership. A visitor here has no login, so the slug in the URL is the entire
+ * identity of the request, and `team()` is the single place that turns it into the
+ * (group_name, faculty_id) pair the rest of the system keys off.
+ *
+ * Two rules run through all of it.
+ *
+ * NOTHING HERE WRITES ON A GET. No ensureTemplate(), no seedDefaults(), no updateOrCreate.
+ * The student routes seed a team's rooms and menu on first read, which is right when the
+ * team itself opens the page and wrong when a stranger does — a visitor must never create
+ * rows, and a team that has built nothing should show an empty hotel rather than have one
+ * conjured for it.
+ *
+ * AND THE PAYLOADS ARE NARROWER. The staff room grid ships the current occupant's name,
+ * email, ID number and folio; this ships HotelRoom::toPublicArray(), which has none of it.
+ * The booking endpoint takes no money and no add-ons. Read the guards, not the intent.
+ */
+class PublicSiteController extends Controller
+{
+    /**
+     * Resolve the slug, or 404.
+     *
+     * @return array{0: string, 1: int} [$groupName, $facultyId]
+     */
+    private function team(string $slug): array
+    {
+        $team = Group::resolveSlug($slug);
+        abort_if($team === null, 404);
+
+        return [$team['group_name'], (int) $team['faculty_id']];
+    }
+
+    /**
+     * The team, plus its settings, refusing anything that is not published.
+     *
+     * @return array{0: string, 1: int, 2: GroupSettings}
+     */
+    private function publishedTeam(string $slug): array
+    {
+        [$groupName, $facultyId] = $this->team($slug);
+
+        $settings = GroupSettings::where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
+            ->first();
+
+        // The gate. Front Desk pressing Publish in the builder is what opens the door;
+        // until then the link 404s rather than showing a half-built hotel. Deliberately
+        // the same 404 an unknown slug gets, so the URL cannot be used to discover which
+        // teams exist but have not published.
+        abort_unless($settings && $settings->is_published, 404);
+
+        return [$groupName, $facultyId, $settings];
+    }
+
+    /** The team's site, rendered from their own saved design. */
+    public function show(string $slug)
+    {
+        [$groupName, $facultyId, $settings] = $this->publishedTeam($slug);
+
+        $selected = in_array((string) $settings->selected_template, ['1', '2'], true)
+            ? (string) $settings->selected_template
+            : '1';
+
+        return view("students.template.{$selected}defaulttemplate", [
+            // The same merged design the team sees in their builder. This function takes
+            // no user and reads no session — it is the seam the whole feature hangs on.
+            'customizations'  => HotelTemplateBuilder::mergeTeamCustomizations($groupName, $facultyId),
+            // Read-only, twice over: the editor also disables itself outside the builder
+            // iframe, but a public page should not be relying on that to be safe.
+            'canEditTemplate' => false,
+            'editablePages'   => [],
+            'builderRole'     => null,
+            // Presence of this is what switches the bridge to the public API map.
+            'publicSlug'      => $slug,
+            // The approved concept's name and words, for every field the team left unset.
+            'hotelDefaults'   => HotelTemplateBuilder::hotelDefaults($groupName, $facultyId),
+        ]);
+    }
+
+    /* ── The four reads the template polls every eight seconds ─────────────── */
+
+    public function rooms(string $slug)
+    {
+        [$groupName, $facultyId] = $this->publishedTeam($slug);
+
+        // No HotelRoomDefaults::ensureFor() — see the class docblock. A visitor does not
+        // seed a hotel.
+        $rooms = HotelRoom::with('openBookings')
+            ->where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
+            ->orderBy('hotel_room_id')
+            ->get()
+            ->map(fn (HotelRoom $room) => $room->toPublicArray());
+
+        return response()->json([
+            'rooms' => $rooms,
+            // Read, not written: the team's own categories decide which tabs a visitor
+            // sees, so a room in one the team invented is not filed under Classic.
+            'categories' => \App\Support\HotelRoomDefaults::categoriesForTeam($groupName, $facultyId),
+        ]);
+    }
+
+    public function menus(string $slug)
+    {
+        [$groupName, $facultyId] = $this->publishedTeam($slug);
+
+        $items = HotelMenuItem::where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
+            ->orderBy('category')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (HotelMenuItem $item) => $item->toTemplateArray());
+
+        // can_manage is always false: it drives the staff menu-editing tools, and there is
+        // no one to grant it to here. The courses are the team's own, so a visitor sees
+        // the menu under the headings the team wrote rather than the five it started with.
+        return response()->json([
+            'items' => $items,
+            'can_manage' => false,
+            'categories' => \App\Support\HotelMenuDefaults::categoriesForTeam($groupName, $facultyId),
+        ]);
+    }
+
+    public function amenities(string $slug)
+    {
+        [$groupName, $facultyId] = $this->publishedTeam($slug);
+
+        $items = HotelAmenity::where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
+            ->orderBy('hotel_amenity_id')
+            ->get()
+            // null repair: whether the pool is shut is public, but Maintenance's working
+            // notes on the repair are not.
+            ->map(fn (HotelAmenity $amenity) => $amenity->toTemplateArray(null));
+
+        return response()->json(['items' => $items, 'can_manage' => false]);
+    }
+
+    public function addons(string $slug)
+    {
+        [$groupName, $facultyId] = $this->publishedTeam($slug);
+
+        $addons = HotelAddon::where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
+            ->orderBy('hotel_addon_id')
+            ->get();
+
+        // What is out on loan is derived from open stays. reservedFor() needs a membership
+        // row purely for tenancy; a team with no members yet simply has nothing on loan.
+        $membership = $this->anyMembership($groupName, $facultyId);
+        $reserved = $membership ? HotelAddonDesk::reservedFor($membership) : [];
+
+        return response()->json([
+            'items'      => $addons->map(fn (HotelAddon $addon) => $addon->toTemplateArray(
+                $reserved[$addon->hotel_addon_id] ?? 0
+            )),
+            'can_manage' => false,
+        ]);
+    }
+
+    /** Only the promos the site may show; see HotelPromo::siteFeed(). */
+    public function promos(string $slug)
+    {
+        [$groupName, $facultyId] = $this->publishedTeam($slug);
+
+        return response()->json(\App\Models\HotelPromo::siteFeed($groupName, $facultyId));
+    }
+
+    /* ── The one write ────────────────────────────────────────────────────── */
+
+    /**
+     * A guest asks for a room.
+     *
+     * Lands as an ordinary hotel_bookings row at 'Booked', which is exactly what Front
+     * Desk's Guest Information screen already lists and can Arrive and Check In. No new
+     * table, no new status, no new screen — the portfolio feeds the pipeline that exists.
+     *
+     * Narrower than the staff route in four ways, each deliberate:
+     *  - no payment is read, because a guest cannot take their own money;
+     *  - no add-ons, because those are Housekeeping's stock to attach;
+     *  - the room must be Available, not merely free on the dates;
+     *  - booked_by records the channel rather than a person.
+     */
+    /**
+     * Food, ordered by the guest reading the menu on the published site.
+     *
+     * Room service if they are checked in — billed to their room like an order the
+     * desk would place for them — and a counter order if they are not, cooked the
+     * same way and collected at the front desk. Either way the kitchen sees it in
+     * the queue it already works from.
+     */
+    public function orderFood(Request $request, string $slug)
+    {
+        [$groupName, $facultyId] = $this->publishedTeam($slug);
+
+        $auth = \App\Support\HotelSimulationAuth::current();
+        if (!is_array($auth) || ($auth['type'] ?? null) !== 'customer'
+            || strcasecmp((string) ($auth['group_name'] ?? ''), $groupName) !== 0) {
+            return response()->json(['message' => 'Sign in as a guest to order.'], 403);
+        }
+
+        $data = $request->validate([
+            'items'                => 'required|array|min:1|max:50',
+            'items.*.name'         => 'required|string|max:255',
+            'items.*.menu_item_id' => 'nullable|integer',
+            'items.*.price'        => 'nullable|integer|min:0',
+            'items.*.qty'          => 'required|integer|min:1|max:99',
+        ]);
+
+        $items = \App\Models\HotelFoodOrder::sanitizeItems($data['items']);
+        if (!$items) {
+            return response()->json(['message' => 'Add at least one menu item to the order.'], 422);
+        }
+
+        $membership = StudentGroup::where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
+            ->first();
+
+        $booking = \App\Support\HotelGuestStay::checkedInBooking($membership);
+
+        $order = \App\Models\HotelFoodOrder::create([
+            'group_name'       => $groupName,
+            'faculty_id'       => $facultyId,
+            'group_id'         => $membership?->group_id,
+            'order_type'       => 'room_service',
+            'hotel_booking_id' => $booking?->hotel_booking_id,
+            'room_number'      => $booking?->room?->name,
+            'guest_name'       => $booking?->guest?->full_name ?: ($auth['name'] ?? 'Guest'),
+            'items'            => $items,
+            'total'            => \App\Models\HotelFoodOrder::totalFor($items),
+            'status'           => 'Preparing',
+            // Nobody on staff placed it: the guest did, from the website.
+            'placed_by'        => $auth['name'] ?? 'Guest (website)',
+        ]);
+
+        return response()->json(['order' => $order->toTemplateArray()], 201);
+    }
+
+    /**
+     * A guest booking a facility from the published site.
+     *
+     * The staff endpoint behind this asks the front desk who the booking is for;
+     * here there is only ever one answer - the guest signed into this hotel - so
+     * it is read off the session and nothing about who is taken from the request.
+     * Everything else the desk's own booking does, this does: the same desk class,
+     * the same clash and opening-hours checks, and the same Pending status waiting
+     * for the desk to confirm it.
+     */
+    public function bookAmenity(Request $request, string $slug)
+    {
+        [$groupName, $facultyId] = $this->publishedTeam($slug);
+
+        $auth = \App\Support\HotelSimulationAuth::current();
+        if (!is_array($auth) || ($auth['type'] ?? null) !== 'customer'
+            || strcasecmp((string) ($auth['group_name'] ?? ''), $groupName) !== 0) {
+            return response()->json(['message' => 'Sign in as a guest to book a facility.'], 403);
+        }
+
+        $data = $request->validate([
+            'hotel_amenity_id'         => 'required|integer',
+            'kind'                     => ['required', Rule::in(\App\Models\HotelAmenityReservation::KINDS)],
+            'scheduled_on'             => 'required|date_format:Y-m-d',
+            'starts_at'                => 'required|date_format:H:i',
+            'ends_at'                  => 'nullable|date_format:H:i',
+            'special_requests'         => 'nullable|string|max:2000',
+            'hotel_amenity_service_id' => 'nullable|integer',
+            'guest_count'              => 'nullable|integer|min:1|max:9999',
+            'package'                  => ['nullable', Rule::in(\App\Models\HotelAmenityReservation::PACKAGES)],
+        ]);
+
+        $amenity = \App\Models\HotelAmenity::where('hotel_amenity_id', $data['hotel_amenity_id'])
+            ->where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
+            ->firstOrFail();
+
+        $stay = \App\Support\HotelGuestStay::checkedInBooking(
+            \App\Models\StudentGroup::where('group_name', $groupName)->where('faculty_id', $facultyId)->first()
+        );
+
+        $data['customer_name'] = $auth['name'] ?? 'Guest';
+        $data['email'] = $auth['email'] ?? null;
+        $data['hotel_booking_id'] = $stay?->hotel_booking_id;
+
+        try {
+            $reservation = \App\Support\HotelAmenityReservationDesk::book($amenity, $data, null);
+        } catch (\RuntimeException $e) {
+            $clash = str_contains($e->getMessage(), 'already taken');
+
+            return response()->json(['message' => $e->getMessage()], $clash ? 409 : 422);
+        }
+
+        return response()->json(['reservation' => $reservation->toTemplateArray()], 201);
+    }
+
+    /**
+     * Signing yourself into a facility that keeps a register — the pool, the gym.
+     *
+     * The register records who is inside; a guest with no stay yet is still inside
+     * it, so the visit is written with their name and no room rather than refused.
+     */
+    /**
+     * The dining tables, as much as a visitor needs to pick one: which exist, how many
+     * each seats and whether it is free. Who is sitting at a table, or due at it, stays
+     * with the staff endpoint.
+     */
+    public function tables(string $slug)
+    {
+        [$groupName, $facultyId] = $this->publishedTeam($slug);
+        \App\Support\HotelTableDesk::releaseNoShows($groupName, (int) $facultyId);
+
+        $tables = \App\Models\HotelDineInTable::where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
+            ->orderBy('name')
+            ->get()
+            ->map(fn ($table) => [
+                'id'       => $table->hotel_dine_in_table_id,
+                'name'     => $table->name,
+                'capacity' => (int) $table->capacity,
+                'status'   => $table->status,
+            ]);
+
+        return response()->json(['tables' => $tables, 'can_manage' => false, 'can_assign' => false]);
+    }
+
+    /** A signed-in guest reserving a table for themselves; see HotelTableDesk::reserveForGuest(). */
+    public function reserveTable(Request $request, string $slug)
+    {
+        [$groupName, $facultyId] = $this->publishedTeam($slug);
+
+        $auth = \App\Support\HotelSimulationAuth::current();
+        if (!is_array($auth) || ($auth['type'] ?? null) !== 'customer'
+            || strcasecmp((string) ($auth['group_name'] ?? ''), $groupName) !== 0) {
+            return response()->json(['message' => 'Sign in as a guest to reserve a table.'], 403);
+        }
+
+        $data = $request->validate([
+            'table_id'     => 'required|integer',
+            'party_size'   => 'required|integer|min:1|max:50',
+            'reserved_for' => 'required|date',
+        ]);
+
+        $table = \App\Models\HotelDineInTable::where('hotel_dine_in_table_id', $data['table_id'])
+            ->where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
+            ->firstOrFail();
+
+        try {
+            $table = \App\Support\HotelTableDesk::reserveForGuest(
+                $table, $auth, (int) $data['party_size'], (string) $data['reserved_for']
+            );
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], $e->getCode() === 409 ? 409 : 422);
+        }
+
+        return response()->json(['table' => [
+            'id'       => $table->hotel_dine_in_table_id,
+            'name'     => $table->name,
+            'capacity' => (int) $table->capacity,
+            'status'   => $table->status,
+        ]], 201);
+    }
+
+    public function enterAmenity(Request $request, string $slug)
+    {
+        [$groupName, $facultyId] = $this->publishedTeam($slug);
+
+        $auth = \App\Support\HotelSimulationAuth::current();
+        if (!is_array($auth) || ($auth['type'] ?? null) !== 'customer'
+            || strcasecmp((string) ($auth['group_name'] ?? ''), $groupName) !== 0) {
+            return response()->json(['message' => 'Sign in as a guest to use a facility.'], 403);
+        }
+
+        $data = $request->validate([
+            'hotel_amenity_id' => 'required|integer',
+            'party_size'       => 'nullable|integer|min:1|max:999',
+            'notes'            => 'nullable|string|max:500',
+        ]);
+
+        $amenity = \App\Models\HotelAmenity::where('hotel_amenity_id', $data['hotel_amenity_id'])
+            ->where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
+            ->firstOrFail();
+
+        $membership = \App\Models\StudentGroup::where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
+            ->first();
+
+        $data['guest_name'] = $auth['name'] ?? 'Guest';
+
+        try {
+            $visit = \App\Support\HotelAmenityVisitDesk::registerEntry(
+                $amenity,
+                \App\Support\HotelGuestStay::checkedInBooking($membership),
+                $data,
+                null
+            );
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['visit' => $visit->toTemplateArray()], 201);
+    }
+
+    public function book(Request $request, string $slug)
+    {
+        [$groupName, $facultyId] = $this->publishedTeam($slug);
+
+        $data = $request->validate([
+            'room_id'          => 'required|integer',
+            'guest.full_name'  => 'required|string|max:255',
+            'guest.contact_no' => 'nullable|string|max:100',
+            'guest.email'      => 'nullable|string|email|max:255',
+            'check_in'         => 'required|date',
+            'check_in_time'    => 'nullable|string|max:10',
+            'check_out'        => 'required|date|after:check_in',
+            'guest_count'      => 'nullable|integer|min:1|max:99',
+            'notes'            => 'nullable|string|max:2000',
+            // 'payment' and 'addons' are deliberately absent. Anything sent under those
+            // keys is not validated, not read, and never reaches HotelBookingDesk.
+        ]);
+
+        $room = HotelRoom::where('hotel_room_id', $data['room_id'])
+            ->where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
+            ->first();
+
+        if (!$room) {
+            return response()->json(['message' => 'That room is not part of this hotel.'], 404);
+        }
+
+        // Housekeeping's own state. A room being cleaned or repaired is not sellable, and
+        // a guest has no way to know that from the calendar alone.
+        if ($room->status !== 'Available') {
+            return response()->json([
+                'message' => 'That room is not available to book right now. Please choose another.',
+            ], 422);
+        }
+
+        // The same half-open interval test the staff booking route makes: a stay ending on
+        // the day another begins does not overlap.
+        $overlaps = $room->openBookings()
+            ->where('check_in', '<', $data['check_out'])
+            ->where('check_out', '>', $data['check_in'])
+            ->exists();
+
+        if ($overlaps) {
+            return response()->json(['message' => 'Those dates are already booked for this room.'], 409);
+        }
+
+        $membership = $this->anyMembership($groupName, $facultyId);
+        if (!$membership) {
+            return response()->json(['message' => 'This hotel is not taking bookings yet.'], 422);
+        }
+
+        $guestName = trim($data['guest']['full_name']);
+
+        try {
+            $booking = HotelBookingDesk::reserve(
+                $membership,
+                $room,
+                [
+                    'full_name'  => $guestName,
+                    'contact_no' => $data['guest']['contact_no'] ?? null,
+                    'email'      => $data['guest']['email'] ?? null,
+                    // No id_number: a guest is not asked for identification online. Front Desk
+                    // takes it on arrival.
+                    'id_number'  => null,
+                ],
+                [
+                    'check_in'      => $data['check_in'],
+                    // Front Desk can move it; a default keeps the stay-length maths honest.
+                    'check_in_time' => trim((string) ($data['check_in_time'] ?? '')) ?: '14:00',
+                    'check_out'     => $data['check_out'],
+                    'guest_count'   => $data['guest_count'] ?? null,
+                    // The channel, not a user. Front Desk can see at a glance which stays came
+                    // in from the portfolio rather than across the desk.
+                    'booked_by'     => 'Online · ' . $guestName,
+                    'notes'         => $data['notes'] ?? null,
+                ]
+                // No $payment, no $addons — the defaults are null and [].
+            );
+        } catch (\RuntimeException $e) {
+            // The party is bigger than the room sleeps.
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'message' => 'Thank you. Your booking request has been sent to the front desk.',
+            'booking' => [
+                'reference' => $booking->hotel_booking_id,
+                'roomName'  => $room->name,
+                'checkIn'   => $data['check_in'],
+                'checkOut'  => $data['check_out'],
+                'status'    => $booking->status,
+            ],
+        ], 201);
+    }
+
+    /**
+     * Any one membership row for the team.
+     *
+     * HotelBookingDesk::reserve() and HotelAddonDesk::reservedFor() both take a
+     * StudentGroup, but only ever to read group_name / faculty_id / group_id off it for
+     * tenancy — never the student behind it. So any member's row scopes the write
+     * correctly, and reusing those two untouched is worth more than a signature change
+     * rippling through the staff screens.
+     */
+    private function anyMembership(string $groupName, int $facultyId): ?StudentGroup
+    {
+        return StudentGroup::where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
+            ->orderBy('student_group_id')
+            ->first();
+    }
+}

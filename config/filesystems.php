@@ -96,6 +96,20 @@ return [
             'use_path_style_endpoint' => true,
             'visibility' => 'public',
             'throw' => true,
+            /*
+             * Bounded, because the request that carries a photo waits on this one
+             * upload: adding a dish or a room card does not answer until the bytes
+             * are stored. With the SDK's defaults an unreachable bucket is retried
+             * with backoff for long enough that the dialog just sits there saying
+             * "Saving…" with nothing to read, which is indistinguishable from the
+             * button being dead. Failing inside a few seconds lets persist() fall
+             * through to saving the row without its picture, which it now does.
+             */
+            'http' => [
+                'connect_timeout' => 5,
+                'timeout' => 15,
+            ],
+            'retries' => 1,
         ],
 
     ],
