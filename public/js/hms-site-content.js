@@ -812,24 +812,9 @@
         // "label", not "name": TemplateDiff::itemTitle() prints this field in the
         // faculty review, and an id there tells a reviewer nothing.
         label: String(item.label || item.name || '').trim().slice(0, PARTNER_NAME_MAX),
-        // Wide cards take two grid columns; normal ones leave the field out.
-        ...(item.size === 'large' ? { size: 'large' } : {}),
       })),
     });
     return true;
-  }
-
-  /* Swap a brand with its neighbour: -1 earlier, +1 later. The grid shows the
-     list in order, so this is how a card moves without being dragged over the
-     others. */
-  function movePartner(id, delta, fallbackDefaults) {
-    const list = getPartners(fallbackDefaults);
-    const from = list.findIndex((item) => item.id === id);
-    const to = from + delta;
-    if (from < 0 || to < 0 || to >= list.length) return false;
-    const moved = list.splice(from, 1)[0];
-    list.splice(to, 0, moved);
-    return setPartners(list);
   }
 
   function addPartner(name, fallbackDefaults) {
@@ -1681,7 +1666,6 @@
     addPartner,
     updatePartner,
     removePartner,
-    movePartner,
     canEditExperiences,
     canEditLogo,
     canAccess,
