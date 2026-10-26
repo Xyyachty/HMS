@@ -70,11 +70,11 @@
     .tm-toolbar .tm-search { flex: 1 1 auto; min-width: 0; }
     .tm-toolbar .tm-select { width: 11rem; flex: 0 0 auto; }
 
-    /* Four cards a row, lined up under the four stat tiles; steps down to
-       three, two, then one as the screen narrows (breakpoints below). */
+    /* Three cards a row, wide enough for a full team name; steps down to two,
+       then one as the screen narrows (breakpoints below). */
     .tm-card-grid {
         display: grid; gap: 1rem;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         align-items: stretch;
     }
     .tm-card-empty { grid-column: 1 / -1; }
@@ -101,7 +101,7 @@
         display: inline-flex; align-items: center; justify-content: center;
         background: #F3F2F1; color: #4A4643; font-size: 1.15rem;
     }
-    .tc-name { flex: 1; min-width: 0; font-size: 1rem; font-weight: 800; color: #181818; line-height: 1.25; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tc-name { flex: 1; min-width: 0; font-size: 1rem; font-weight: 800; color: #181818; line-height: 1.25; letter-spacing: -.01em; overflow-wrap: anywhere; }
     .tc-members {
         flex-shrink: 0; display: inline-flex; align-items: center; gap: .3rem;
         padding: .2rem .55rem; border-radius: 999px; border: 1px solid #E5E7EB; background: #F3F4F6;
@@ -381,7 +381,7 @@
 
     @media (max-width: 1279px) {
         .tm-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .tm-card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .tm-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .tm-toolbar { flex-wrap: wrap; }
         .tm-toolbar .tm-search { flex-basis: 100%; }
         .tm-toolbar .tm-select { flex: 1 1 10rem; width: auto; }
@@ -391,7 +391,6 @@
     @media (max-width: 1023px) {
         .setup-field-grid { grid-template-columns: minmax(0, 1fr); }
         .manage-grid { grid-template-columns: minmax(0, 1fr); }
-        .tm-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     @media (max-width: 767px) {
         .tm-stat-grid { grid-template-columns: minmax(0, 1fr); }
