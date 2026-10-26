@@ -5065,16 +5065,18 @@ function HomePage({ sitePromos, onNav, onToast, rooms, menus, canEditRooms, onAd
             const stock = DEFAULT_PARTNERS.find(d => d.id === partner.id);
             const state = !stock ? 'added' : (logo || name !== stock.label ? 'changed' : undefined);
             return (
-              /* A brand is a record: its own buttons change the logo, rename it
-                 and remove it, and Add Brand brings one back. Locked from the
-                 canvas, so the logo always fills its card and nothing can hide
-                 a brand by position where Add Brand cannot undo it. */
-              <div key={partner.id} className={'partner-card' + (logo ? ' has-logo' : '')} data-hms-partner-state={state} data-hms-no-edit="1">
+              /* A brand is a record. The card moves and resizes on the canvas,
+                 saved under the brand's own id so a change stays with its brand
+                 when others are added or removed; the logo inside is not picked
+                 on its own, so it always fills the card. Removing is the card's
+                 own X (data-hms-record), which Add Brand can undo. */
+              <div key={partner.id} className={'partner-card' + (logo ? ' has-logo' : '')} data-hms-partner-state={state}
+                data-hms-bg-target="1" data-hms-record="partner" data-hms-record-key={'partner-' + partner.id}>
                 {/* The name is the brand's record, renamed with the pencil, so
                     Design mode does not lay a second copy of it over the card. */}
                 {logo
-                  ? <><img src={logo} alt={name} loading="lazy" /><p className="partner-caption" data-hms-no-edit="1">{name}</p></>
-                  : <p className="partner-name font-display" data-hms-no-edit="1">{name}</p>}
+                  ? <><img src={logo} alt={name} loading="lazy" data-hms-select-parent="1" /><p className="partner-caption" data-hms-select-parent="1">{name}</p></>
+                  : <p className="partner-name font-display" data-hms-select-parent="1">{name}</p>}
                 {canEditPartners && (
                   <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 3, display: 'flex', gap: 6 }} data-hms-no-edit="1">
                     <button type="button" title={logo ? 'Change logo' : 'Upload logo'}
