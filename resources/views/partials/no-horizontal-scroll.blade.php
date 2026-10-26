@@ -9,6 +9,9 @@
      columns into a child row, and it needs nowrap to measure them. --}}
 <style>
     html, body { overflow-x: clip; }
+    /* A word too long for its box (a pasted link, text typed with no spaces)
+       breaks onto the next line instead of running over what sits beside it. */
+    html body { overflow-wrap: break-word; }
     html .overflow-x-auto > table:not(.dataTable) :is(th, td) { white-space: normal !important; }
     html .overflow-x-auto > table:not(.dataTable) td { overflow-wrap: break-word; }
 
