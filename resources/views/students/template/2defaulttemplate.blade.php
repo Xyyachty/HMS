@@ -1356,7 +1356,12 @@
   }
   /* auto-fit rather than auto-fill: empty tracks collapse, so however many
      brands or members a team ends up with, the row they make is full width. */
-  .partner-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; }
+  /* A wrapping row rather than fixed grid columns: a card made bigger on the
+     canvas takes the room it needs and the others move along or down to the
+     next line, where a grid column left it lying over its neighbour. Cards
+     still stretch to fill each line, from 160px, like auto-fit did. */
+  .partner-grid { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 1rem; }
+  .partner-grid > * { flex: 1 1 auto; width: 160px; box-sizing: border-box; }
   .partner-card {
     position: relative; display: flex; align-items: center; justify-content: center;
     min-height: 108px; padding: 1.35rem 1rem; text-align: center;
@@ -1368,8 +1373,9 @@
      the middle of a tile reads as a stamp rather than as the brand. The padding
      goes with it, so the image meets the card's own rounded edge. */
   .partner-card.has-logo { padding: 0; min-height: 150px; overflow: hidden; }
+  /* Always the whole card, however the card is sized. */
   .partner-card img {
-    position: absolute; inset: 0; width: 100%; height: 100%;
+    position: absolute; inset: 0; width: 100% !important; height: 100% !important; max-width: none !important; margin: 0 !important;
     object-fit: cover; display: block; transition: transform 0.4s;
   }
   .partner-card:hover img { transform: scale(1.05); }
@@ -1422,7 +1428,7 @@
   .team-role { margin: 0; color: var(--accent); font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase; }
   @media (max-width: 768px) {
     .team-grid { grid-template-columns: 1fr 1fr !important; }
-    .partner-grid { grid-template-columns: 1fr 1fr !important; }
+    .partner-grid > * { width: calc(50% - 0.5rem); }
   }
   /* Outside the builder, allow stacking a bit earlier on tablets. */
   @media (max-width: 900px) {
