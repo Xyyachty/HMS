@@ -15,6 +15,6 @@
 @else
     <span title="{{ $done }} of {{ $total }} required tasks approved by faculty"
           style="display:inline-flex;align-items:center;gap:0.25rem;padding:2px 0.5rem;border-radius:999px;font-size:0.625rem;font-weight:800;letter-spacing:.02em;white-space:nowrap;background:#F3F2F1;color:#4A4643;border:1px solid #E4E2E0;">
-        <span class="iconify" data-icon="mdi:progress-clock"></span> In Progress · {{ $done }}/{{ $total }}
+        <span class="iconify" data-icon="mdi:progress-clock"></span> In Progress @unless($hideCount ?? false)· {{ $done }}/{{ $total }}@endunless
     </span>
 @endif

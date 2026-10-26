@@ -55,21 +55,47 @@ class FacultyController extends Controller
             'housekeeping' => 'Housekeeping',
         ];
 
-        $recentActivity = $facultyId
+        // One pass over every task this faculty owns feeds both task panels, the
+        // per-team progress bars and the supporting figures on the stat cards.
+        $allTasks = $facultyId
             ? Task::with(['student.user', 'assignedTo'])
                 ->where('faculty_id', $facultyId)
+                ->whereIn('status', ['active', 'archived'])
                 ->orderByDesc('updated_at')
-                ->take(5)
                 ->get()
             : collect();
 
-        // One pass over every task this faculty owns feeds the per-team progress
-        // bars, the task list and the supporting figures on the stat cards.
-        $allTasks = $facultyId
-            ? Task::where('faculty_id', $facultyId)
-                ->whereIn('status', ['active', 'archived'])
-                ->get(['task_id', 'title', 'group_name', 'role', 'status', 'due_date'])
-            : collect();
+        // Where each task stands, in the status-badge-styles keys. Work nobody has
+        // touched is 'assigned' and waits in Task Assigned; once a student starts
+        // it, it moves to Task Overview.
+        $conceptUnderReview = [];
+        $stageOf = function (Task $task) use (&$conceptUnderReview): string {
+            if ($task->status === 'archived') {
+                return $task->awaiting_review ? 'pending' : 'completed';
+            }
+            // The concept task stays active while it is reviewed; its concepts
+            // say whether it is waiting on faculty.
+            if ($task->is_hotel_concept) {
+                $conceptUnderReview[$task->group_name] ??= \App\Support\HotelConceptDesk::isUnderReview(
+                    \App\Support\HotelConceptDesk::conceptsFor($task->group_name, (int) $task->faculty_id)
+                );
+                if ($conceptUnderReview[$task->group_name]) {
+                    return 'pending';
+                }
+            }
+            // Sent back: feedback_at is stamped even when the note is empty.
+            if ($task->needs_revision || $task->feedback_at !== null) {
+                return 'revision';
+            }
+
+            return $task->is_started ? 'in_progress' : 'assigned';
+        };
+        $allTasks->each(fn (Task $task) => $task->dashboard_stage = $stageOf($task));
+
+        $recentActivity = $allTasks
+            ->where('dashboard_stage', '!=', 'assigned')
+            ->take(5)
+            ->values();
 
         $completedTasks = $allTasks->where('status', 'archived')->count();
         $completionRate = $allTasks->count() > 0
@@ -105,7 +131,7 @@ class FacultyController extends Controller
 
         // Soonest due first; tasks with no due date still show, after the dated ones.
         $upcomingTasks = $allTasks
-            ->where('status', 'active')
+            ->where('dashboard_stage', 'assigned')
             ->sortBy(fn ($task) => [$task->due_date === null, $task->due_date])
             ->take(4)
             ->values();

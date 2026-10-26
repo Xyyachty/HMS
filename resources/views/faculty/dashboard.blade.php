@@ -92,7 +92,7 @@
 <!-- Activity / progress / deadlines -->
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
 
-    <!-- Task Overview: the tasks most recently assigned or completed -->
+    <!-- Task Overview: tasks students have started, newest activity first -->
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-2">
             <p class="text-sm font-bold text-slate-800">Task Overview</p>
@@ -104,8 +104,7 @@
                         $actorName = $actor
                             ? (trim(implode(' ', array_filter([$actor->first_name, $actor->last_name]))) ?: ($actor->name ?? 'Student'))
                             : null;
-                        $isDone = $task->status === 'archived';
-                        $isPending = $task->awaiting_review;
+                        $stage = $task->dashboard_stage;
                     @endphp
                     <div class="px-5 py-3 flex items-start gap-3">
                         <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 {{ $tint($task->role, 'bg') }} {{ $tint($task->role, 'text') }}">
@@ -124,9 +123,9 @@
                         </div>
                         <div class="text-right shrink-0">
                             <p class="text-[0.625rem] text-slate-400 font-medium whitespace-nowrap">{{ optional($task->updated_at)->diffForHumans(null, true) }}</p>
-                            <p class="text-[0.625rem] font-bold mt-1 flex items-center justify-end gap-1 {{ $isPending ? 'status-text-pending' : ($isDone ? 'status-text-completed' : 'text-slate-900') }}">
-                                <span class="w-1.5 h-1.5 rounded-full {{ $isPending ? 'status-fill-pending' : ($isDone ? 'status-fill-completed' : 'bg-slate-900') }}"></span>
-                                {{ $isPending ? 'Pending' : ($isDone ? 'Completed' : 'Assigned') }}
+                            <p class="text-[0.625rem] font-bold mt-1 flex items-center justify-end gap-1 status-text-{{ $stage }}">
+                                <span class="w-1.5 h-1.5 rounded-full status-fill-{{ $stage }}"></span>
+                                {{ ['in_progress' => 'In Progress', 'pending' => 'Pending', 'completed' => 'Approved', 'revision' => 'For Revision'][$stage] }}
                             </p>
                         </div>
                     </div>
@@ -135,8 +134,8 @@
                         <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
                             <span class="iconify text-2xl text-slate-300" data-icon="mdi:history"></span>
                         </div>
-                        <p class="text-sm font-semibold text-slate-400">No recent activity</p>
-                        <p class="text-xs text-slate-300 mt-1">Assigned and completed tasks will appear here.</p>
+                        <p class="text-sm font-semibold text-slate-400">No tasks started yet</p>
+                        <p class="text-xs text-slate-300 mt-1">Tasks move here once a student starts working on them.</p>
                     </div>
                 @endforelse
             </div>
@@ -155,21 +154,20 @@
                     <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 {{ $teamTints[$i % count($teamTints)] }}">
                         <span class="iconify text-lg" data-icon="mdi:account-group-outline"></span>
                     </div>
+                    {{-- Name and status on top; approved count and bar underneath. --}}
                     <div class="min-w-0 flex-1">
-                        <div class="flex items-center gap-2 min-w-0">
+                        <div class="flex items-center justify-between gap-2 min-w-0">
                             <p class="text-[0.8125rem] font-bold text-slate-800 truncate">{{ $team['name'] }}</p>
-                            <span class="shrink-0">@include('partials.team-completion', ['done' => $team['done'], 'total' => $team['total']])</span>
+                            <span class="shrink-0">@include('partials.team-completion', ['done' => $team['done'], 'total' => $team['total'], 'hideCount' => true])</span>
                         </div>
-                        <p class="text-[0.625rem] text-slate-400 font-bold tracking-wider mt-0.5">
-                            {{ $team['done'] }}/{{ $team['total'] }} approved ·
-                            <span class="text-emerald-600">Simulation open</span>
-                        </p>
+                        <div class="flex items-center gap-3 mt-1">
+                            <p class="text-[0.625rem] text-slate-400 font-bold tracking-wider whitespace-nowrap shrink-0">{{ $team['done'] }}/{{ $team['total'] }} approved</p>
+                            <div class="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                                {{-- Inline blue: faculty-palette.css turns bg-blue-500 maroon. --}}
+                                <div class="h-full rounded-full" style="width: {{ $team['percent'] }}%; background-color: #2563EB;"></div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="w-16 h-1.5 rounded-full bg-slate-100 overflow-hidden shrink-0">
-                        {{-- Inline blue: faculty-palette.css turns bg-blue-500 maroon. --}}
-                        <div class="h-full rounded-full" style="width: {{ $team['percent'] }}%; background-color: #2563EB;"></div>
-                    </div>
-                    <p class="text-[0.8125rem] font-extrabold text-slate-700 w-10 text-right shrink-0">{{ $team['percent'] }}%</p>
                 </div>
             @empty
                 <div class="px-5 py-12 text-center">
@@ -183,10 +181,10 @@
         </div>
     </div>
 
-    <!-- Task -->
+    <!-- Task Assigned: given out, not started yet -->
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-2">
-            <p class="text-sm font-bold text-slate-800">Task</p>
+            <p class="text-sm font-bold text-slate-800">Task Assigned</p>
         </div>
         <div class="divide-y divide-slate-100">
             @forelse(($upcomingTasks ?? collect()) as $task)
@@ -204,8 +202,8 @@
                     <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
                         <span class="iconify text-2xl text-slate-300" data-icon="mdi:clipboard-text-outline"></span>
                     </div>
-                    <p class="text-sm font-semibold text-slate-400">No active tasks</p>
-                    <p class="text-xs text-slate-300 mt-1">Tasks you assign will show up here.</p>
+                    <p class="text-sm font-semibold text-slate-400">No tasks waiting to start</p>
+                    <p class="text-xs text-slate-300 mt-1">Tasks you assign show here until a student starts them.</p>
                 </div>
             @endforelse
         </div>
