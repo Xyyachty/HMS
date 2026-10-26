@@ -789,7 +789,7 @@
                     <input name="middle_name" type="text" placeholder="e.g. Santos" pattern="\p{L}[\p{L}\s'\-]*\p{L}" title="Enter the complete middle name, not an initial." class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Email <span class="text-emerald-600 normal-case tracking-normal font-semibold">(real address — the welcome is sent here)</span></label>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Email <span class="text-emerald-600 normal-case tracking-normal font-semibold">(active email address — the welcome is sent here)</span></label>
                     <input name="email" type="email" placeholder="e.g. student@gmail.com" required class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
                     <p class="mt-1 text-[0.6875rem] text-slate-400">Their sign-in details are emailed here as soon as the account is created.</p>
                 </div>
