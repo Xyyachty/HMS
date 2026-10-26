@@ -18,7 +18,7 @@
        $pfRecords     [[label, value], ...]
        $pfRoles       optional list of role names, shown as chips
        $pfModals      true to keep Account Details and Change Password in pop-ups
-                      opened from buttons on the identity card (faculty) --}}
+                      opened from buttons on the identity card (every portal) --}}
 @php
     $pfName = trim(implode(' ', array_filter([$pfUser?->first_name, $pfUser?->last_name]))) ?: ($pfUser?->name ?? 'User');
     $pfRoles = $pfRoles ?? null;
@@ -351,10 +351,13 @@
         // In pop-up mode Save Changes lives in the details pop-up.
         document.getElementById('pfDetailsDialog')?.showModal();
     });
+    // On load, not now: the student dashboard only reveals its Profile section
+    // once the page is ready, and a pop-up opened inside a hidden section does
+    // not show.
     @if ($pfOpenDetails)
-        document.getElementById('pfDetailsDialog')?.showModal();
+        window.addEventListener('load', () => document.getElementById('pfDetailsDialog')?.showModal());
     @elseif ($pfOpenPassword)
-        document.getElementById('pfPasswordDialog')?.showModal();
+        window.addEventListener('load', () => document.getElementById('pfPasswordDialog')?.showModal());
     @endif
 
     // On a wide screen the page fills the window down to the main area's bottom

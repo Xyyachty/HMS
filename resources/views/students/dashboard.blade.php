@@ -1549,6 +1549,7 @@
                 @include('partials.profile-page', [
                     'pfUser'        => $pUser,
                     'pfRoleLabel'   => 'Student',
+                    'pfModals'      => true,
                     'pfAction'      => route('students.profile.update'),
                     'pfPhoneValue'  => old('phone_number', $pUser?->phone_number ?? $student?->phone_number),
                     'pfRecordTitle' => 'School Record',
@@ -1815,11 +1816,9 @@
             @endphp
             @if (auth()->user()?->must_change_password)
                 // Still on the temporary password: EnsurePasswordChanged keeps them
-                // on this page, so open Profile at the Change Password form.
+                // on this page, so open Profile; the profile partial opens its
+                // Change Password pop-up.
                 section = 'profile';
-                document.addEventListener('DOMContentLoaded', () => {
-                    document.getElementById('change-password')?.scrollIntoView({ block: 'start' });
-                });
             @elseif ($profileHasErrors || $errors->getBag('password')->any() || session('password_success'))
                 section = 'profile';
             @elseif ($errors->has('task') || session('task_success'))
