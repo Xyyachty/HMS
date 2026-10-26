@@ -1892,6 +1892,15 @@
             $conceptPayloadJson = $conceptPayload;
         @endphp
         let conceptState = @json($conceptPayloadJson);
+        /* The hotel description as the team's site shows it (Hotel Information,
+           which the hero edits too). Empty until the team changes it, and then
+           the approved concept's own words are shown. */
+        @php
+            $teamSiteDescription = $groupMembership
+                ? trim((string) data_get(\App\Support\HotelTemplateBuilder::mergeTeamCustomizations((string) $groupMembership->group_name, (int) $groupMembership->faculty_id), '__hotelInfo.items.0.description', ''))
+                : '';
+        @endphp
+        const TEAM_SITE_DESCRIPTION = @json($teamSiteDescription);
 
         /** The slot currently open in the dialog. */
         let editingSlot = null;
@@ -2257,7 +2266,7 @@
 
             // Descriptions run up to 5000 characters and the panel that used to hold
             // the full text is gone, so long ones clamp with a way to still read them.
-            const description = approved.description || '';
+            const description = TEAM_SITE_DESCRIPTION || approved.description || '';
             const isLong = description.length > 180;
 
             container.innerHTML =

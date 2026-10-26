@@ -1180,12 +1180,27 @@
     if (!['IMG', 'I', 'SVG'].includes(el.tagName)) {
       const text = readEditableText(el);
       if (text != null) entry.text = text;
+      syncHotelInfoField(el, text);
     }
 
     entry.page = getCurrentPage();
     customizations[id] = entry;
     rebuildFreePosSheet();
     notifyChanged();
+  }
+
+  /* The hero's tagline and description are also the team's Hotel Information,
+     which the footer and the student's Team Overview read. Editing them on the
+     canvas writes that field too, so every place says what the hero says. Left
+     alone while the text still matches, so restyling the line saves nothing. */
+  function syncHotelInfoField(el, text) {
+    if (text == null || el.getAttribute('data-hms-content-kind') !== 'hotelInfo') return;
+    const field = el.getAttribute('data-hms-content-id');
+    const site = window.HMSSiteContent;
+    if (!field || !site || typeof site.setHotelInfo !== 'function' || typeof site.getHotelInfo !== 'function') return;
+    const next = String(text).trim();
+    if (next === '' || next === String(site.getHotelInfo()[field] || '').trim()) return;
+    site.setHotelInfo({ [field]: next });
   }
 
   /* Undo what a stored entry had already painted on, without touching what the

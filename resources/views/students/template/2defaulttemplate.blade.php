@@ -4938,7 +4938,7 @@ function HomePage({ sitePromos, onNav, onToast, rooms, menus, canEditRooms, onAd
             <span style={{ display: 'block' }}>A Sanctuary of</span>
             <em style={{ display: 'block', color: 'var(--warm)' }}>Timeless Luxury</em>
           </h1>
-          <p data-hms-stock={untouched.blurb} style={{ color: 'var(--fg-muted)', fontSize: '0.95rem', fontWeight: 400, lineHeight: 1.7, marginBottom: '2rem', maxWidth: 400 }}>
+          <p data-hms-content-kind="hotelInfo" data-hms-content-id="description" data-hms-stock={untouched.blurb} style={{ color: 'var(--fg-muted)', fontSize: '0.95rem', fontWeight: 400, lineHeight: 1.7, marginBottom: '2rem', maxWidth: 400 }}>
             {blurb}
           </p>
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
