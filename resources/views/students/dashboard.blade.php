@@ -281,7 +281,10 @@
                         ? implode(' & ', array_map(fn ($r) => \App\Support\HotelTemplateBuilder::seatLabel($r), $studentRoles))
                         : 'Student';
                 @endphp
-                <p class="text-[0.625rem] text-white font-medium uppercase tracking-widest">{{ $sidebarRoleLabel }}</p>
+                {{-- Two lines at most: a one-member team holds all four roles, and the
+                     full list pushed the menu down the screen. The rest is on hover. --}}
+                <p class="text-[0.625rem] text-white font-medium uppercase tracking-widest" title="{{ $sidebarRoleLabel }}"
+                   style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ $sidebarRoleLabel }}</p>
             </div>
         </div>
 
@@ -746,8 +749,21 @@
                 {{-- Team header. The heading, eyebrow, type line and description block
                      are repainted by paintTeamHeaderConcept() once faculty approves a
                      concept, so their ids have to stay as they are. --}}
+                {{-- Name beside the figures only on a wide screen: on a laptop, or
+                     a big screen zoomed in, the four figures left the name a column
+                     one word wide and the completion badge ran over them. --}}
+                <style>
+                    .team-head { display: flex; flex-direction: column; gap: 1.5rem; }
+                    .team-head-figures { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem 1.75rem; }
+                    @media (min-width: 1536px) {
+                        .team-head { flex-direction: row; align-items: center; }
+                        .team-head-figures { flex-wrap: nowrap; flex-shrink: 0; border-left: 1px solid #F1F0EF; padding-left: 1.75rem; }
+                    }
+                    @media (max-width: 1535px) { .team-head-figures > .w-px { display: none; } }
+                    #teamHeaderConcept { overflow-wrap: anywhere; }
+                </style>
                 <div class="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 sm:px-7 py-6">
-                    <div class="flex flex-col lg:flex-row lg:items-center gap-6">
+                    <div class="team-head">
                         <div class="flex items-start gap-5 flex-1 min-w-0">
                             <div class="w-[5.5rem] h-[5.5rem] rounded-full bg-brand-soft flex items-center justify-center shrink-0">
                                 <span class="iconify text-brand text-[2.625rem]" data-icon="mdi:account-group"></span>
@@ -780,7 +796,7 @@
                         </div>
 
                         <!-- Team figures -->
-                        <div class="flex items-center gap-4 sm:gap-7 shrink-0 lg:border-l lg:border-slate-100 lg:pl-7 overflow-x-auto">
+                        <div class="team-head-figures">
                             <div class="flex items-center gap-3 shrink-0">
                                 <span class="iconify text-slate-300 text-[1.625rem]" data-icon="mdi:account-multiple-outline"></span>
                                 <div>
@@ -834,10 +850,13 @@
 
                     @if(isset($groupMembers) && $groupMembers->count() > 0)
                         <div class="overflow-x-auto">
-                            <table class="w-full min-w-[53.75rem] text-left">
+                            {{-- Every row is this team, already named in the header above, so
+                                 on a laptop the Team column gives its room to the others. --}}
+                            <style>@media (min-width: 641px) and (max-width: 1535px) { .tmem-team { display: none; } }</style>
+                            <table class="w-full text-left">
                                 <thead>
                                     <tr class="border-b border-slate-100">
-                                        <th class="px-4 py-3 text-[0.75rem] font-bold text-slate-500">Team</th>
+                                        <th class="tmem-team px-4 py-3 text-[0.75rem] font-bold text-slate-500">Team</th>
                                         <th class="px-4 py-3 text-[0.75rem] font-bold text-slate-500">Members</th>
                                         <th class="px-4 py-3 text-[0.75rem] font-bold text-slate-500">Role</th>
                                         <th class="px-4 py-3 text-[0.75rem] font-bold text-slate-500 text-center">Assigned Task</th>
@@ -864,7 +883,7 @@
                                         @endphp
                                         <tr class="border-b border-slate-100 hover:bg-slate-50/50 transition-colors" data-member-row data-member-id="{{ $memberUserId }}">
                                             <!-- Team -->
-                                            <td class="px-4 py-3.5 text-[0.8125rem] font-semibold text-slate-600 whitespace-nowrap">{{ $group->name ?? '—' }}</td>
+                                            <td class="tmem-team px-4 py-3.5 text-[0.8125rem] font-semibold text-slate-600 whitespace-nowrap">{{ $group->name ?? '—' }}</td>
 
                                             <!-- Members -->
                                             <td class="px-4 py-3.5">
@@ -876,7 +895,7 @@
                                                         'currentUser' => $isCurrentUser,
                                                     ])
                                                     <div class="min-w-0">
-                                                        <p class="text-[0.8125rem] font-bold text-slate-800 truncate">
+                                                        <p class="text-[0.8125rem] font-bold text-slate-800 leading-snug">
                                                             {{ $memberName }}
                                                             @if($isCurrentUser)
                                                                 <span class="ml-1 px-1.5 py-0.5 bg-brand-soft text-brand text-[0.5rem] font-bold rounded-md uppercase">You</span>
