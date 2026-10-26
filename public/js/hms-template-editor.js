@@ -169,9 +169,6 @@
       const hmsId = ensureStableId(el);
       return '[data-hms-id="' + hmsId + '"]';
     }
-    // A record card (a partner brand) is keyed by the record it shows, so its
-    // move and size follow that brand however the list is reordered.
-    if (el.hasAttribute('data-hms-record-key')) return recordSelector(el);
     // Template elements must use structural selectors so styles survive refresh
     // (random data-hms-id attributes are wiped when React remounts the DOM).
     return getStructuralSelector(el);
@@ -365,7 +362,6 @@
     if (isEditorChrome(el)) return false;
     if (el.id === 'hms-user-canvas' || el.id === 'hms-section-rail') return false;
     if (el.closest('[data-hms-no-edit]')) return false;
-    if (el.hasAttribute('data-hms-select-parent')) return false;
     if (isBackgroundLayer(el)) return false;
 
     const tag = el.tagName;
@@ -396,10 +392,8 @@
         el = el.parentElement;
         continue;
       }
-      // Skip locked tool chrome, but keep walking so the parent header/nav stays
-      // selectable. data-hms-select-parent hands the pick to the block it sits
-      // in: a partner logo selects its card, which is what moves and resizes.
-      if (el.hasAttribute('data-hms-no-edit') || el.hasAttribute('data-hms-select-parent')) {
+      // Skip locked tool chrome, but keep walking so the parent header/nav stays selectable.
+      if (el.hasAttribute('data-hms-no-edit')) {
         el = el.parentElement;
         continue;
       }
@@ -1488,18 +1482,6 @@
     return el;
   }
 
-  function recordSelector(el) {
-    return '[data-hms-record-key="' + cssEscape(el.getAttribute('data-hms-record-key')) + '"]';
-  }
-
-  /* A record card (a partner brand) is saved under its record key. An entry
-     keyed by position - from before that - would land on whichever record now
-     sits in that slot, so it is not applied. */
-  function isStaleRecordKey(el, id) {
-    const record = el.closest('[data-hms-record]');
-    return !!record && !(record === el && record.hasAttribute('data-hms-record-key') && recordSelector(record) === id);
-  }
-
   function applyDeleted() {
     (customizations[DELETED_KEY] || []).forEach((entry) => {
       const id = typeof entry === 'string' ? entry : (entry && entry.id);
@@ -1510,7 +1492,7 @@
       const el = findByKey(id);
       // A legacy entry for "#root > nav" would hide the whole header, and one
       // for a locked block hid a record its own buttons manage.
-      if (el && !isHeaderLocked(el) && !el.closest('[data-hms-no-edit]') && !el.closest('[data-hms-record]')) el.style.display = 'none';
+      if (el && !isHeaderLocked(el) && !el.closest('[data-hms-no-edit]')) el.style.display = 'none';
     });
   }
 
@@ -1578,10 +1560,10 @@
         return;
       }
 
-      // Inside a locked block (a partner logo, tool buttons): nothing there can
-      // be selected, so an entry for it is left over - a logo resized past its
-      // card. Nor is a position-based entry for a record card (isStaleRecordKey).
-      if (el.closest('[data-hms-no-edit]') || isStaleRecordKey(el, id)) return;
+      // Inside a locked block (a partner brand card, tool buttons): nothing
+      // there can be selected, so an entry for it is left over - a logo or card
+      // moved or resized over its neighbours, a card hidden by position.
+      if (el.closest('[data-hms-no-edit]')) return;
 
       /* A translation saved together with the coordinates it replaced. Both
          describe where the element sits and they disagree, so which one wins
@@ -2564,12 +2546,6 @@
       blockEditToast();
       return;
     }
-    // A record has its own remove button, which Add Brand can undo; hiding it
-    // here could not be undone from the page.
-    if (selectedEl.closest('[data-hms-record]')) {
-      postToParent({ type: 'toast', message: 'Use the X on the card to remove it. Add Brand puts one back.' });
-      return;
-    }
     beginHistoryStep();
     if (selectedEl.hasAttribute('data-hms-user')) {
       const id = selectedEl.getAttribute('data-hms-id');
@@ -2603,11 +2579,6 @@
     if (!canEdit || !selectedEl || isHeaderLocked(selectedEl)) return;
     if (!canEditCurrentPage()) {
       blockEditToast();
-      return;
-    }
-    // A copy of a record card would be a picture of a brand with no record.
-    if (selectedEl.closest('[data-hms-record]')) {
-      postToParent({ type: 'toast', message: 'Use Add Brand to add another one.' });
       return;
     }
     beginHistoryStep();

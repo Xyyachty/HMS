@@ -1356,12 +1356,7 @@
   }
   /* auto-fit rather than auto-fill: empty tracks collapse, so however many
      brands or members a team ends up with, the row they make is full width. */
-  /* A wrapping row rather than fixed grid columns: a card made bigger on the
-     canvas takes the room it needs and the others move along or down to the
-     next line, where a grid column left it lying over its neighbour. Cards
-     still stretch to fill each line, from 160px, like auto-fit did. */
-  .partner-grid { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 1rem; }
-  .partner-grid > * { flex: 1 1 auto; width: 160px; box-sizing: border-box; }
+  .partner-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; }
   .partner-card {
     position: relative; display: flex; align-items: center; justify-content: center;
     min-height: 108px; padding: 1.35rem 1rem; text-align: center;
@@ -1373,9 +1368,8 @@
      the middle of a tile reads as a stamp rather than as the brand. The padding
      goes with it, so the image meets the card's own rounded edge. */
   .partner-card.has-logo { padding: 0; min-height: 150px; overflow: hidden; }
-  /* Always the whole card, however the card is sized. */
   .partner-card img {
-    position: absolute; inset: 0; width: 100% !important; height: 100% !important; max-width: none !important; margin: 0 !important;
+    position: absolute; inset: 0; width: 100%; height: 100%;
     object-fit: cover; display: block; transition: transform 0.4s;
   }
   .partner-card:hover img { transform: scale(1.05); }
@@ -1428,7 +1422,7 @@
   .team-role { margin: 0; color: var(--accent); font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase; }
   @media (max-width: 768px) {
     .team-grid { grid-template-columns: 1fr 1fr !important; }
-    .partner-grid > * { width: calc(50% - 0.5rem); }
+    .partner-grid { grid-template-columns: 1fr 1fr !important; }
   }
   /* Outside the builder, allow stacking a bit earlier on tablets. */
   @media (max-width: 900px) {
@@ -5071,18 +5065,17 @@ function HomePage({ sitePromos, onNav, onToast, rooms, menus, canEditRooms, onAd
             const stock = DEFAULT_PARTNERS.find(d => d.id === partner.id);
             const state = !stock ? 'added' : (logo || name !== stock.label ? 'changed' : undefined);
             return (
-              /* A brand is a record. The card moves and resizes on the canvas,
-                 saved under the brand's own id so a change stays with its brand
-                 when others are added or removed; the logo inside is not picked
-                 on its own, so it always fills the card. Removing is the card's
-                 own X (data-hms-record), which Add Brand can undo. */
-              <div key={partner.id} className={'partner-card' + (logo ? ' has-logo' : '')} data-hms-partner-state={state}
-                data-hms-bg-target="1" data-hms-record="partner" data-hms-record-key={'partner-' + partner.id}>
+              /* A brand is a record, fixed in its place in the grid: its own
+                 buttons change the logo, take it off, rename and remove the
+                 brand, and Add Brand adds one. Locked from the canvas, so the
+                 logo always fills its card and no card can be dragged or
+                 stretched over another. */
+              <div key={partner.id} className={'partner-card' + (logo ? ' has-logo' : '')} data-hms-partner-state={state} data-hms-no-edit="1">
                 {/* The name is the brand's record, renamed with the pencil, so
                     Design mode does not lay a second copy of it over the card. */}
                 {logo
-                  ? <><img src={logo} alt={name} loading="lazy" data-hms-select-parent="1" /><p className="partner-caption" data-hms-select-parent="1">{name}</p></>
-                  : <p className="partner-name font-display" data-hms-select-parent="1">{name}</p>}
+                  ? <><img src={logo} alt={name} loading="lazy" /><p className="partner-caption">{name}</p></>
+                  : <p className="partner-name font-display">{name}</p>}
                 {canEditPartners && (
                   <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 3, display: 'flex', gap: 6 }} data-hms-no-edit="1">
                     <button type="button" title={logo ? 'Change logo' : 'Upload logo'}
