@@ -2420,7 +2420,7 @@ class FacultyController extends Controller
            work the team already holds is the guard doing its job. */
         if ($tasksCreated === 0 && $dueUpdated === [] && $alreadyHeld !== []) {
             return back()->withErrors([
-                'tasks' => $this->alreadyHeldMessage($alreadyHeld) . ' Nothing was assigned twice.',
+                'tasks' => 'No new tasks were assigned. ' . $this->alreadyHeldMessage($alreadyHeld),
             ])->withInput();
         }
 
@@ -2472,7 +2472,7 @@ class FacultyController extends Controller
         ]))->with('success', trim(
                 ($tasksCreated > 0 ? $tasksCreated . ' ' . Str::plural('task', $tasksCreated) . ' assigned to ' . $teamLabel . '. ' : '')
                 . $dueMessage
-                . ($alreadyHeld !== [] ? ' ' . $this->alreadyHeldMessage($alreadyHeld) : '')
+                . ($alreadyHeld !== [] ? ' Skipped: ' . $this->alreadyHeldMessage($alreadyHeld) : '')
             ))
           ->with('success_title', $tasksCreated === 0 ? 'Due Date Updated' : ($tasksCreated === 1 ? 'Task Assigned' : 'Tasks Assigned'))
           // Stays up until OK: the message can name tasks that were skipped.
@@ -2490,16 +2490,19 @@ class FacultyController extends Controller
      */
     private function alreadyHeldMessage(array $alreadyHeld): string
     {
-        $parts = [];
+        // Grouped by task, not team: one task ticked for seven teams reads as
+        // one sentence instead of the same title repeated seven times.
+        $teamsByTitle = [];
         foreach ($alreadyHeld as $groupName => $titles) {
-            $parts[] = collect(array_keys($titles))
-                ->map(fn ($title) => '"' . $title . '"')
-                ->join(', ', ' and ')
-                . (count($alreadyHeld) > 1 ? ' for ' . $groupName : '');
+            foreach (array_keys($titles) as $title) {
+                $teamsByTitle[$title][] = $groupName;
+            }
         }
 
-        // "Skipped "Propose Two Hotel Concepts" (already assigned)."
-        return 'Skipped ' . implode('; ', $parts) . ' (already assigned).';
+        // ""Propose Two Hotel Concepts" is already assigned to Peak Horizon and Els Resort Hotel."
+        return collect($teamsByTitle)
+            ->map(fn ($teams, $title) => '"' . $title . '" is already assigned to ' . collect($teams)->join(', ', ' and ') . '.')
+            ->join(' ');
     }
 
     /**
