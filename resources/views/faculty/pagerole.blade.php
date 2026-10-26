@@ -685,16 +685,16 @@
             $overviewTeamCount    = ($groups ?? collect())->count();
             $overviewStudentCount = ($groups ?? collect())->sum(fn ($members) => $members->count());
             $overviewTaskTotal    = 0;
-            $overviewTaskDone     = 0;
+            $overviewApproved     = 0;
+            $overviewRequired     = 0;
             foreach (($groups ?? collect()) as $overviewName => $overviewMembers) {
-                foreach (($teamActivityByGroup[$overviewName] ?? []) as $activityRow) {
-                    $overviewTaskTotal++;
-                    if (($activityRow['status'] ?? null) === 'archived') {
-                        $overviewTaskDone++;
-                    }
-                }
+                $overviewTaskTotal += count($teamActivityByGroup[$overviewName] ?? []);
+                // The same faculty approvals, hotel concept included, that each
+                // team card's Task completion bar counts, so the two agree.
+                $overviewRequired += $teamApprovalByGroup[$overviewName]['required'] ?? 0;
+                $overviewApproved += $teamApprovalByGroup[$overviewName]['approved'] ?? 0;
             }
-            $overviewRate = $overviewTaskTotal > 0 ? (int) round(($overviewTaskDone / $overviewTaskTotal) * 100) : 0;
+            $overviewRate = $overviewRequired > 0 ? (int) floor($overviewApproved / $overviewRequired * 100) : 0;
         @endphp
 
         <div class="px-4 sm:px-6 py-5">
