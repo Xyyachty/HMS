@@ -52,13 +52,6 @@
     .rp-track { height: .5rem; border-radius: 9999px; background: #E4E2E0; overflow: hidden; }
     .rp-track > span { display: block; height: 100%; border-radius: 9999px; }
 
-    /* The shared no-horizontal-scroll rule lets table cells break anywhere, so
-       a squeezed column split "10" into "1 / 0" and names mid-word. Report
-       cells break only between words, and a table too wide for a phone scrolls
-       inside its own card rather than crushing its columns. */
-    html .overflow-x-auto > table.rp-table.rp-table td { overflow-wrap: break-word; }
-    html .overflow-x-auto.rp-scroll { overflow-x: auto; }
-
     /* Side by side only where both tables have room for whole words. */
     @media (max-width: 1535px) {
         .rp-split-grid { grid-template-columns: minmax(0, 1fr); }
