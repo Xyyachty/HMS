@@ -91,7 +91,7 @@ class HotelConceptController extends Controller
             // footer, and a sentence that wraps there reads as a mistake. Optional
             // because a team may not have found its words yet.
             'tagline' => ['nullable', 'string', 'max:' . HotelConcept::LIMITS['tagline']],
-            'description' => ['required', 'string', 'max:' . HotelConcept::LIMITS['description']],
+            'description' => ['required', 'string', 'min:' . HotelConcept::DESCRIPTION_MIN, 'max:' . HotelConcept::LIMITS['description']],
             'hotel_type' => ['required', Rule::in(array_keys(HotelConcept::HOTEL_TYPES))],
         ]);
 

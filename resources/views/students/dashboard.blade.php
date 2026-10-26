@@ -1618,9 +1618,11 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Description</label>
+                        <label class="block text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                            Description <span class="text-slate-300 font-semibold normal-case tracking-normal">— {{ \App\Models\HotelConcept::DESCRIPTION_MIN }} to {{ \App\Models\HotelConcept::LIMITS['description'] }} characters</span>
+                        </label>
                         {{-- One line while it holds 50 characters or fewer; grows from the 51st. See fitHotelConceptDescription(). --}}
-                        <textarea name="description" required rows="1" maxlength="{{ \App\Models\HotelConcept::LIMITS['description'] }}"
+                        <textarea name="description" required rows="1" minlength="{{ \App\Models\HotelConcept::DESCRIPTION_MIN }}" maxlength="{{ \App\Models\HotelConcept::LIMITS['description'] }}"
                             placeholder="What the hotel is, who it serves, what makes it different."
                             style="resize: none; overflow: hidden;"
                             class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition"></textarea>
@@ -1881,15 +1883,17 @@
 
         /* "12 / 60" under Title, Tagline and Description. maxlength stops typing past
            the limit; a concept saved before the limits were lowered can still open
-           longer than that, so its counter turns red until it is cut down. */
+           longer than that, so its counter turns red until it is cut down. The
+           Description counter is also red once typed into but under its minlength. */
         function updateHotelConceptCounts(form) {
             form.querySelectorAll('[data-concept-count]').forEach((counter) => {
                 const field = form.elements[counter.dataset.conceptCount];
                 if (!field) return;
                 const length = field.value.length;
+                const outOfRange = length > field.maxLength || (length > 0 && length < field.minLength);
                 counter.textContent = length + ' / ' + field.maxLength;
-                counter.classList.toggle('text-red-500', length > field.maxLength);
-                counter.classList.toggle('text-slate-400', length <= field.maxLength);
+                counter.classList.toggle('text-red-500', outOfRange);
+                counter.classList.toggle('text-slate-400', !outOfRange);
             });
         }
         /* The Description box previews 50 characters on one line. From the 51st it

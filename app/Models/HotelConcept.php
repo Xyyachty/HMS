@@ -54,8 +54,11 @@ class HotelConcept extends Model
     public const LIMITS = [
         'title' => 25,
         'tagline' => 30,
-        'description' => 100,
+        'description' => 300,
     ];
+
+    /** Shortest description accepted: enough to say what the hotel is and who it serves. */
+    public const DESCRIPTION_MIN = 150;
 
     /** The dropdown on the student form, and the only accepted values. */
     public const HOTEL_TYPES = [
