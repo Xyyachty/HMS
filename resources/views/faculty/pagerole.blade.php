@@ -2008,6 +2008,17 @@
                             <p class="text-xs text-slate-400 mt-1">Build a team first, then come back to set its tasks.</p>
                         </div>
                     @else
+                        @php
+                            /* Every activity Set Task can hand out, by lowercased title
+                               like TEAM_HELD_TITLES. A team already holding all it can be
+                               given right now is left off the list: there is nothing new
+                               to send it. */
+                            $assignableTitles = collect($taskSteps ?? [])
+                                ->flatMap(fn ($stepData) => collect($stepData['tasks'])->pluck('title'))
+                                ->map(fn ($title) => Str::lower($title));
+                            $conceptTitles = $assignableTitles->filter(fn ($title) => \App\Support\TaskChecklist::isConceptTitle($title));
+                            $shownTeamCount = 0;
+                        @endphp
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" id="taskTeamSelector">
                             @foreach($groups as $groupName => $members)
                                 @php
@@ -2031,6 +2042,13 @@
                                     $teamConceptSubmitted = \App\Support\HotelConceptDesk::isSubmitted(
                                         ($conceptsByGroup ?? collect())->get($groupName, collect())
                                     );
+
+                                    $teamOpenTitles = ($teamConceptSubmitted ? $assignableTitles : $conceptTitles)
+                                        ->diff(($teamHeldTitles ?? collect())->get($groupName, []));
+                                    if ($teamOpenTitles->isEmpty()) {
+                                        continue;
+                                    }
+                                    $shownTeamCount++;
                                 @endphp
                                 <label data-team="{{ $groupName }}"
                                     data-concept-submitted="{{ $teamConceptSubmitted ? '1' : '0' }}"
@@ -2067,6 +2085,13 @@
                                 </label>
                             @endforeach
                         </div>
+                        @if($shownTeamCount === 0)
+                            <div class="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center">
+                                <span class="iconify text-3xl text-slate-300" data-icon="mdi:check-all"></span>
+                                <p class="text-sm font-bold text-slate-500 mt-2">Every team already has its tasks</p>
+                                <p class="text-xs text-slate-400 mt-1">Teams come back here once there is a task they have not been given, such as when Front Desk submits the hotel concept.</p>
+                            </div>
+                        @endif
                     @endif
                 </div>
 
