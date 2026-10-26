@@ -741,7 +741,13 @@
       if (entry['z-index']) decls.push('z-index:' + entry['z-index'] + ' !important');
       if (entry['white-space']) decls.push('white-space:' + entry['white-space'] + ' !important');
       if (!decls.length) return;
-      parts.push(sel + '{' + decls.join(';') + '}');
+      // Never a locked block (a partner brand card) or anything in it: those
+      // cannot be picked any more, so a rule for one is left over from before
+      // the lock and would keep a card dragged or stretched over its
+      // neighbours. Guarded in the selector, so it also holds after React
+      // re-renders the list into a different order.
+      const guard = ':not([data-hms-no-edit]):not([data-hms-no-edit] *)';
+      parts.push(':is(' + sel + ')' + guard + '{' + decls.join(';') + '}');
     });
     sheet.textContent = parts.join('\n');
   }
