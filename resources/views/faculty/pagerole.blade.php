@@ -834,10 +834,10 @@
 
                         <div class="tc-meter">
                             <div class="tc-meter-top">
-                                <span>Task approval</span>
+                                <span>Task completion</span>
                                 <b>{{ $cardPhase['percent'] }}%</b>
                             </div>
-                            <div class="tc-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ $cardPhase['percent'] }}" aria-label="Task approval">
+                            <div class="tc-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ $cardPhase['percent'] }}" aria-label="Task completion">
                                 <span style="width: {{ $cardPhase['percent'] }}%"></span>
                             </div>
                             <p class="tc-meter-sub">{{ $cardPhase['approved'] }} of {{ $cardPhase['required'] }} required task{{ $cardPhase['required'] === 1 ? '' : 's' }} approved</p>
