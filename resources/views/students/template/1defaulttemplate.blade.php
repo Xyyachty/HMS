@@ -1210,6 +1210,8 @@
      the middle of a tile reads as a stamp rather than as the brand. The padding
      goes with it, so the image meets the card's own rounded edge. */
   .partner-card.has-logo { padding: 0; min-height: 150px; overflow: hidden; }
+  /* "Make bigger" on a brand: two grid columns wide. */
+  .partner-card.is-large { grid-column: span 2; }
   .partner-card img {
     position: absolute; inset: 0; width: 100%; height: 100%;
     object-fit: cover; display: block; transition: transform 0.4s;
@@ -3695,7 +3697,7 @@ function PromoShowcase({ promos, canEdit, onToast, onBook }) {
   );
 }
 
-function HomePage({ sitePromos, onNavigate, onToast, rooms, menus, canEditRooms, canEditMenuColor, onAddRoom, onEditRoom, onEditRoomPhotos, onRemoveRoom, heroSlides, canEditHeroSlides, hotelInfo, canEditHome, cardImages, partners, canEditPartners, onAddPartner, onRenamePartner, onRemovePartner, onBookNow, brandName, experiences }) {
+function HomePage({ sitePromos, onNavigate, onToast, rooms, menus, canEditRooms, canEditMenuColor, onAddRoom, onEditRoom, onEditRoomPhotos, onRemoveRoom, heroSlides, canEditHeroSlides, hotelInfo, canEditHome, cardImages, partners, canEditPartners, onAddPartner, onRenamePartner, onRemovePartner, onArrangePartner, onBookNow, brandName, experiences }) {
   // Passed only so the promo, partner and team pictures re-render once one is replaced.
   void cardImages;
   /* The landing page says what the hotel is. Both lines come from the team's
@@ -3895,26 +3897,41 @@ function HomePage({ sitePromos, onNavigate, onToast, rooms, menus, canEditRooms,
         {/* The faculty review reads these: how many of the template's brands
             were removed, and on each card whether it is new or changed. */}
         <div className="partner-grid" data-hms-partners-removed={DEFAULT_PARTNERS.filter(d => !partnerList.some(p => p.id === d.id)).length}>
-          {partnerList.map(partner => {
+          {partnerList.map((partner, partnerIndex) => {
             const logo = resolveCardImg('partner', partner.id, '');
             const name = partnerName(partner);
             const stock = DEFAULT_PARTNERS.find(d => d.id === partner.id);
             const state = !stock ? 'added' : (logo || name !== stock.label ? 'changed' : undefined);
             return (
-              /* A brand is a record. The card moves and resizes on the canvas,
-                 saved under the brand's own id so a change stays with its brand
-                 when others are added or removed; the logo inside is not picked
-                 on its own, so it always fills the card. Removing is the card's
-                 own X (data-hms-record), which Add Brand can undo. */
-              <div key={partner.id} className={'partner-card' + (logo ? ' has-logo' : '')} data-hms-partner-state={state}
-                data-hms-bg-target="1" data-hms-record="partner" data-hms-record-key={'partner-' + partner.id}>
+              /* A brand is a record, arranged with its own buttons rather than
+                 dragged: the arrows swap it with its neighbour and the size
+                 button makes it one or two grid columns wide, so cards stay in
+                 a tidy grid and never land on top of one another. Locked from
+                 the canvas, so the logo always fills its card. */
+              <div key={partner.id} className={'partner-card' + (logo ? ' has-logo' : '') + (partner.size === 'large' ? ' is-large' : '')} data-hms-partner-state={state} data-hms-no-edit="1"
+                style={canEditPartners && !logo ? { paddingTop: 76 } : undefined}>
                 {/* The name is the brand's record, renamed with the pencil, so
                     Design mode does not lay a second copy of it over the card. */}
                 {logo
-                  ? <><img src={logo} alt={name} loading="lazy" data-hms-select-parent="1" /><p className="partner-caption" data-hms-select-parent="1">{name}</p></>
-                  : <p className="partner-name font-display" data-hms-select-parent="1">{name}</p>}
+                  ? <><img src={logo} alt={name} loading="lazy" /><p className="partner-caption">{name}</p></>
+                  : <p className="partner-name font-display">{name}</p>}
+                {/* One toolbar across the top: arrange on the left, edit on the
+                    right. On a narrow card the edit group wraps to a second row
+                    instead of sitting on top of the arrows. */}
                 {canEditPartners && (
-                  <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 3, display: 'flex', gap: 6 }} data-hms-no-edit="1">
+                  <div style={{ position: 'absolute', top: 8, left: 8, right: 8, zIndex: 3, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 6 }}>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button type="button" title="Move earlier" disabled={partnerIndex === 0}
+                      onClick={() => onArrangePartner && onArrangePartner(partner, 'earlier')}
+                      style={Object.assign({}, toolBtnStyle('image'), partnerIndex === 0 ? { opacity: 0.35, cursor: 'default' } : null)}><i className="fa-solid fa-arrow-left" style={{ fontSize: 11 }}></i></button>
+                    <button type="button" title="Move later" disabled={partnerIndex === partnerList.length - 1}
+                      onClick={() => onArrangePartner && onArrangePartner(partner, 'later')}
+                      style={Object.assign({}, toolBtnStyle('image'), partnerIndex === partnerList.length - 1 ? { opacity: 0.35, cursor: 'default' } : null)}><i className="fa-solid fa-arrow-right" style={{ fontSize: 11 }}></i></button>
+                    <button type="button" title={partner.size === 'large' ? 'Make smaller' : 'Make bigger'}
+                      onClick={() => onArrangePartner && onArrangePartner(partner, 'size')}
+                      style={toolBtnStyle('image')}><i className={'fa-solid ' + (partner.size === 'large' ? 'fa-down-left-and-up-right-to-center' : 'fa-up-right-and-down-left-from-center')} style={{ fontSize: 11 }}></i></button>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
                     <button type="button" title={logo ? 'Change logo' : 'Upload logo'}
                       onClick={() => changeCardImg('partner', partner.id, () => onToast && onToast(name + ' logo updated'))}
                       style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{ fontSize: 11 }}></i></button>
@@ -3949,6 +3966,7 @@ function HomePage({ sitePromos, onNavigate, onToast, rooms, menus, canEditRooms,
                         ? 'Remove?'
                         : <i className="fa-solid fa-xmark" style={{ fontSize: 12 }}></i>}
                     </button>
+                  </div>
                   </div>
                 )}
               </div>
@@ -9596,6 +9614,20 @@ function App() {
     showToast(name + ' removed');
   };
 
+  // The arrows and size button on a partner card.
+  const arrangePartner = (partner, action) => {
+    const content = window.HMSSiteContent;
+    if (!content || !content.movePartner || !content.updatePartner) return;
+    const done = action === 'size'
+      ? content.updatePartner(partner.id, { size: partner.size === 'large' ? '' : 'large' }, DEFAULT_PARTNERS)
+      : content.movePartner(partner.id, action === 'earlier' ? -1 : 1, DEFAULT_PARTNERS);
+    if (!done) {
+      showToast('Only the role that owns the Home page can arrange brands.');
+      return;
+    }
+    setPartnersState(content.getPartners(DEFAULT_PARTNERS));
+  };
+
   /* "May edit the Home page" - the same gate the hero slides use (see
      canEditHeroSlides in hms-site-content.js), which is exactly what the promo,
      partner and team pictures need before they offer a Change image button. */
@@ -9622,6 +9654,7 @@ function App() {
         onAddPartner={addPartner}
         onRenamePartner={renamePartner}
         onRemovePartner={removePartner}
+        onArrangePartner={arrangePartner}
         experiences={experiences}
         onBookNow={() => requireGuest(
           () => navigateTo('rooms'),
