@@ -1471,10 +1471,10 @@
                         </div>
                         <div class="rp-scroll divide-y divide-[#EFEFEF] max-h-[26.25rem] overflow-y-auto">
                             @forelse($selfCompleted as $task)
-                                {{-- One line per task: its title, then the day it was finished. --}}
+                                {{-- One line per task: its title, then the day and time it was finished. --}}
                                 <div class="px-5 py-3 flex items-center justify-between gap-4">
                                     <p class="text-sm font-bold text-slate-800 truncate min-w-0">{{ $task->title }}</p>
-                                    <p class="text-xs font-semibold text-slate-500 whitespace-nowrap shrink-0">{{ $task->updated_at?->timezone('Asia/Manila')->format('F j, Y') }}</p>
+                                    <p class="text-xs font-semibold text-slate-500 whitespace-nowrap shrink-0">{{ $task->updated_at?->timezone('Asia/Manila')->format('F j, Y · g:i A') }}</p>
                                 </div>
                             @empty
                                 <div class="px-5 py-10 text-center text-sm text-slate-400 font-semibold">No completed assignments.</div>
@@ -1523,10 +1523,10 @@
                         </div>
                         <div class="rp-scroll divide-y divide-[#EFEFEF] max-h-[26.25rem] overflow-y-auto">
                             @forelse($teamCompleted as $task)
-                                {{-- One line per task: its title, then the day it was finished. --}}
+                                {{-- One line per task: its title, then the day and time it was finished. --}}
                                 <div class="px-5 py-3 flex items-center justify-between gap-4">
                                     <p class="text-sm font-bold text-slate-800 truncate min-w-0">{{ $task->title }}</p>
-                                    <p class="text-xs font-semibold text-slate-500 whitespace-nowrap shrink-0">{{ $task->updated_at?->timezone('Asia/Manila')->format('F j, Y') }}</p>
+                                    <p class="text-xs font-semibold text-slate-500 whitespace-nowrap shrink-0">{{ $task->updated_at?->timezone('Asia/Manila')->format('F j, Y · g:i A') }}</p>
                                 </div>
                             @empty
                                 <div class="px-5 py-10 text-center text-sm text-slate-400 font-semibold">No team completed assignments.</div>
