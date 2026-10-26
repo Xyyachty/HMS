@@ -298,6 +298,10 @@ class ReportDesk
                     'user'       => $user,
                     'team'       => $task->group_name ?: ($teamByStudentId->get((int) $task->student_id)?->group_name ?? '—'),
                     'activity'   => $task->title,
+                    // "Task 01" for the Overview card; Activity Reports shows the title.
+                    'task_no'    => ($step = TaskChecklist::stepForTitle((string) $task->title)) !== null
+                        ? 'Task ' . str_pad((string) ($step + 1), 2, '0', STR_PAD_LEFT)
+                        : $task->title,
                     'role_label' => $roleLabels[$task->role] ?? $task->role,
                     'status'     => 'Completed',
                 ];
@@ -331,10 +335,11 @@ class ReportDesk
             return '';
         }
 
-        return trim(implode(' ', array_filter([
-            $user->last_name,
-            $user->first_name,
-            $user->middle_name,
-        ]))) ?: (string) ($user->name ?? '');
+        // "LAST, First Middle": the comma marks where the surname ends.
+        $given = trim(implode(' ', array_filter([$user->first_name, $user->middle_name])));
+        $last = trim((string) $user->last_name);
+
+        return ($last !== '' && $given !== '' ? $last . ', ' . $given : trim($last . ' ' . $given))
+            ?: (string) ($user->name ?? '');
     }
 }

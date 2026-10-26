@@ -69,9 +69,9 @@
     @media (max-width: 767px) {
         .rp-stat-grid { grid-template-columns: minmax(0, 1fr); }
     }
+    /* Export Report prints the tab on screen, nothing else. */
     @media print {
         .app-sidebar, .glass-header, .rp-tabs, .rp-no-print { display: none !important; }
-        .rp-panel { display: block !important; }
     }
 
     /* Utilities the frozen build never emitted. */
@@ -334,7 +334,7 @@
                                 </td>
                                 <td class="px-4 py-3 text-[0.8125rem] text-slate-500">{{ $row['team'] }}</td>
                                 <td class="px-4 py-3">
-                                    <p class="text-[0.8125rem] font-semibold text-slate-700 leading-snug">{{ $row['activity'] }}</p>
+                                    <p class="text-[0.8125rem] font-semibold text-slate-700 leading-snug whitespace-nowrap" title="{{ $row['activity'] }}">{{ $row['task_no'] }}</p>
                                     <p class="text-[0.6875rem] text-slate-400">{{ $row['role_label'] }}</p>
                                 </td>
                                 <td class="px-4 py-3">
