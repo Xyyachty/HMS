@@ -36,6 +36,11 @@
     color: var(--fg);
     line-height: 1.6;
     overflow-x: hidden;
+    /* A word too long for its box breaks onto the next line. The editor's
+       text editing (contenteditable) already wraps it that way, so without
+       this a long run with no spaces fit while typing and then ran out over
+       the buttons once saved. */
+    overflow-wrap: break-word;
   }
   .font-display { font-family: 'Cormorant Garamond', serif; }
   ::-webkit-scrollbar { width: 6px; }
