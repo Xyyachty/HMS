@@ -971,11 +971,11 @@
 
                                     <section class="ov-tile">
                                         <p class="ov-label"><span class="iconify" data-icon="mdi:storefront-outline"></span> Simulation</p>
-                                        <p class="ov-value">Open</p>
+                                        <p class="ov-value">{{ ($cardApproval['unlocked'] ?? false) ? 'Open' : 'Locked' }}</p>
                                         <p class="ov-tag {{ ($cardApproval['unlocked'] ?? false) ? 'is-good' : '' }}">
                                             {{ ($cardApproval['unlocked'] ?? false) ? 'All tasks approved' : 'Approval in progress' }}
                                         </p>
-                                        <p class="ov-text">The Hotel Simulation is open to every team at any time. Desk assignments are under Members &amp; Roles.</p>
+                                        <p class="ov-text">The Hotel Simulation opens once you approve every customization task. Desk assignments are under Members &amp; Roles.</p>
                                         <button type="button" class="ov-link" onclick="switchTeamModalTab('members')">Open Desk Assignments <span class="iconify" data-icon="mdi:arrow-right"></span></button>
                                     </section>
                                 </div>

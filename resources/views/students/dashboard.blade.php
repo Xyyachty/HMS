@@ -1057,7 +1057,7 @@
                 @endphp
                 @if(session('simulation_locked'))
                     <div class="rounded-xl border border-[#FDE68A] bg-[#FEF3C7] px-4 py-3 text-[0.8125rem] font-semibold text-[#92400E]">
-                        The Hotel Simulation is not open for your team yet.
+                        The Hotel Simulation opens once Faculty approves every customization task.
                     </div>
                 @endif
                 <div id="simulationPhaseLive">
