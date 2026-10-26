@@ -16,11 +16,18 @@
        $pfPhPhone     true for the +63 mobile input the dean and faculty forms validate
        $pfRecordTitle heading over the read-only rows
        $pfRecords     [[label, value], ...]
-       $pfRoles       optional list of role names, shown as chips --}}
+       $pfRoles       optional list of role names, shown as chips
+       $pfModals      true to keep Account Details and Change Password in pop-ups
+                      opened from buttons on the identity card (faculty) --}}
 @php
     $pfName = trim(implode(' ', array_filter([$pfUser?->first_name, $pfUser?->last_name]))) ?: ($pfUser?->name ?? 'User');
     $pfRoles = $pfRoles ?? null;
     $pfPhPhone = $pfPhPhone ?? false;
+    $pfModals = $pfModals ?? false;
+    // A pop-up that came back with errors, or a password that must be replaced
+    // before anything else, opens again on load rather than hiding the reason.
+    $pfOpenDetails = $pfModals && $errors->hasAny(['first_name', 'middle_name', 'last_name', 'email', 'phone_number', 'avatar']);
+    $pfOpenPassword = $pfModals && ($errors->getBag('password')->any() || $pfUser?->must_change_password);
     $pfLog = $pfUser
         ? \App\Models\ActivityLog::where('user_id', $pfUser->user_id)->latest('created_at')->limit(20)->get()
         : collect();
@@ -120,9 +127,24 @@
     .pf-flash { grid-column: 1 / -1; display: flex; align-items: center; gap: .6rem; padding: .7rem 1rem; border-radius: .9rem; font-size: .8125rem; font-weight: 600;
                 background: #F0FDF4; border: 1px solid #BBF7D0; color: #15803D; }
     .pf-flash.is-warn { background: #FBF3E0; border-color: #E9D3A0; color: #7A5322; }
+
+    /* Pop-up mode ($pfModals): the two forms sit in native dialogs opened from
+       the identity card; Recent Activity has the right column to itself. */
+    .pf.has-modals .pf-pill { color: #A16207; }
+    .pf-actions { display: grid; gap: .5rem; padding: 0 1.25rem 1.1rem; }
+    .pf-actions .pf-btn { justify-content: center; height: 2.5rem; }
+    .pf-actions .pf-btn.is-ghost { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+    .pf-actions .pf-btn.is-ghost:hover { background: var(--soft); }
+    dialog.pf-dialog { padding: 0; border: 0; background: transparent; width: min(46rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow: auto; }
+    dialog.pf-dialog::backdrop { background: rgba(24, 24, 24, .45); }
+    dialog.pf-dialog .pf-card { animation: none; }
+    dialog.pf-dialog .pf-head { padding-right: 3.5rem; }
+    .pf-dialog-x { position: absolute; top: .85rem; right: .85rem; width: 2.1rem; height: 2.1rem; border-radius: 9999px; display: inline-flex; align-items: center; justify-content: center;
+                   background: transparent; color: var(--muted); font-size: 1.15rem; }
+    .pf-dialog-x:hover { background: var(--soft); color: var(--ink); }
 </style>
 
-<div class="pf{{ session('success') ? ' has-flash' : '' }}">
+<div class="pf{{ session('success') ? ' has-flash' : '' }}{{ $pfModals ? ' has-modals' : '' }}">
     @if (session('success'))
         <div class="pf-flash" role="status">
             <span class="iconify" data-icon="mdi:check-circle-outline"></span>
@@ -179,6 +201,19 @@
             </div>
         @endif
 
+        @if ($pfModals)
+            <div class="pf-actions">
+                <button type="button" class="pf-btn" onclick="document.getElementById('pfDetailsDialog').showModal()">
+                    <span class="iconify" data-icon="mdi:pencil-outline"></span>
+                    Edit Details
+                </button>
+                <button type="button" class="pf-btn is-ghost" onclick="document.getElementById('pfPasswordDialog').showModal()">
+                    <span class="iconify" data-icon="mdi:lock-reset"></span>
+                    Change Password
+                </button>
+            </div>
+        @endif
+
         <div class="pf-foot">
             <span class="iconify" data-icon="mdi:shield-check-outline" style="font-size: 1rem; color: #15803D"></span>
             <span>Last sign-in <b>{{ $pfLastLogin ? $pfLastLogin->diffForHumans() : 'not recorded' }}</b></span>
@@ -187,6 +222,10 @@
 
     <div class="pf-main">
         {{-- Details --}}
+        @if ($pfModals)
+            <dialog id="pfDetailsDialog" class="pf-dialog" aria-label="Edit account details" onclick="if (event.target === this) this.close()">
+                <button type="button" class="pf-dialog-x" aria-label="Close" onclick="this.closest('dialog').close()"><span class="iconify" data-icon="mdi:close"></span></button>
+        @endif
         <form id="pfProfileForm" method="POST" action="{{ $pfAction }}" enctype="multipart/form-data" class="pf-card" style="--i: 1">
             @csrf
             @method('PUT')
@@ -213,7 +252,7 @@
                         <div class="pf-field">
                             <label for="pf_{{ $pfField }}">{{ $pfFieldLabel }} @unless($pfRequired)<small>(optional)</small>@endunless</label>
                             <div class="pf-input">
-                                <input id="pf_{{ $pfField }}" name="{{ $pfField }}" type="text" value="{{ old($pfField, $pfUser?->{$pfField}) }}" @if($pfRequired) required @endif>
+                                <input id="pf_{{ $pfField }}" name="{{ $pfField }}" type="text" value="{{ old($pfField, $pfUser?->{$pfField}) }}" @if($pfRequired) required @endif @if($pfModals && $loop->first) autofocus @endif>
                             </div>
                             @error($pfField)<p class="pf-err">{{ $message }}</p>@enderror
                         </div>
@@ -246,8 +285,15 @@
                 </div>
             </div>
         </form>
-
-        @include('partials.change-password')
+        @if ($pfModals)
+            </dialog>
+            <dialog id="pfPasswordDialog" class="pf-dialog" aria-label="Change password" onclick="if (event.target === this) this.close()">
+                <button type="button" class="pf-dialog-x" aria-label="Close" onclick="this.closest('dialog').close()"><span class="iconify" data-icon="mdi:close"></span></button>
+                @include('partials.change-password')
+            </dialog>
+        @else
+            @include('partials.change-password')
+        @endif
 
         {{-- Recent activity: this account's own trail - sign-ins, sign-outs,
              profile edits, task work - newest first. --}}
@@ -302,7 +348,14 @@
         document.getElementById('pfAvatarImg').src = URL.createObjectURL(file);
         const note = document.getElementById('pfPhotoNote');
         if (note) note.textContent = 'New photo picked. Press Save Changes to keep it.';
+        // In pop-up mode Save Changes lives in the details pop-up.
+        document.getElementById('pfDetailsDialog')?.showModal();
     });
+    @if ($pfOpenDetails)
+        document.getElementById('pfDetailsDialog')?.showModal();
+    @elseif ($pfOpenPassword)
+        document.getElementById('pfPasswordDialog')?.showModal();
+    @endif
 
     // On a wide screen the page fills the window down to the main area's bottom
     // padding, so Recent Activity takes the leftover height. Never shorter than
