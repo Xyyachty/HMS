@@ -1194,6 +1194,9 @@
      canvas writes that field too, so every place says what the hero says. Left
      alone while the text still matches, so restyling the line saves nothing. */
   function syncHotelInfoField(el, text) {
+    // Written when the edit ends, not on each pause while typing: the store
+    // update repaints the line under the caret.
+    if (textEditEl) return;
     if (text == null || el.getAttribute('data-hms-content-kind') !== 'hotelInfo') return;
     const field = el.getAttribute('data-hms-content-id');
     const site = window.HMSSiteContent;
@@ -1201,6 +1204,59 @@
     const next = String(text).trim();
     if (next === '' || next === String(site.getHotelInfo()[field] || '').trim()) return;
     site.setHotelInfo({ [field]: next });
+  }
+
+  /* The caret while typing, as a character offset inside its editing host.
+     The pause-save notifies the page, and a page that repaints the text (React
+     re-rendering a line, a store update) drops the caret to the start of the
+     line, so the next letters landed on the left. keepCaret() puts it back. */
+  function readCaret(el) {
+    const sel = window.getSelection();
+    if (!sel || !sel.focusNode || !el.contains(sel.focusNode)) return null;
+    const start = sel.focusNode.nodeType === 1 ? sel.focusNode : sel.focusNode.parentElement;
+    const host = start && start.closest('[contenteditable="true"]');
+    if (!host || !el.contains(host) && host !== el) return null;
+    const range = document.createRange();
+    range.selectNodeContents(host);
+    range.setEnd(sel.focusNode, sel.focusOffset);
+    return { host, offset: range.toString().length };
+  }
+
+  function placeCaret(host, offset) {
+    const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT);
+    let left = offset;
+    let node = walker.nextNode();
+    let last = null;
+    while (node) {
+      if (left <= node.data.length) break;
+      left -= node.data.length;
+      last = node;
+      node = walker.nextNode();
+    }
+    const range = document.createRange();
+    if (node) range.setStart(node, left);
+    else if (last) range.setStart(last, last.data.length);
+    else range.setStart(host, 0);
+    range.collapse(true);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  function keepCaret(el, caret) {
+    if (!caret) return;
+    const restore = () => {
+      if (textEditEl !== el || !caret.host.isConnected) return;
+      // Only undo a reset: a caret that moved because the student kept
+      // typing, or clicked elsewhere in the line, stays where it is.
+      const now = readCaret(el);
+      if (now && now.host === caret.host && (now.offset !== 0 || caret.offset === 0)) return;
+      placeCaret(caret.host, caret.offset);
+    };
+    // The repaint can land now, on the next frame, or after the save returns.
+    restore();
+    requestAnimationFrame(restore);
+    setTimeout(restore, 120);
   }
 
   /* Undo what a stored entry had already painted on, without touching what the
@@ -2167,7 +2223,11 @@
     let liveSaveTimer = null;
     const onInput = () => {
       clearTimeout(liveSaveTimer);
-      liveSaveTimer = setTimeout(() => saveElementState(el), 500);
+      liveSaveTimer = setTimeout(() => {
+        const caret = readCaret(el);
+        saveElementState(el);
+        keepCaret(el, caret);
+      }, 500);
     };
     // Space is a button's own activation key, and Chrome drops it instead of
     // typing it: "New Label" was saved as "NewLabel".
