@@ -1439,6 +1439,21 @@
   }
 
   /**
+   * Take an uploaded picture back off, so the card shows what it had before
+   * one was chosen (a partner brand's name). Uploading again puts one back.
+   */
+  function clearCardImage(kind, id) {
+    if (!id) return;
+    if (cardImageKey(kind, id) === cardImageKey('brand', 'logo') && !canEditLogo()) return;
+    const map = getCardImages();
+    if (!Object.prototype.hasOwnProperty.call(map, cardImageKey(kind, id))) return;
+    delete map[cardImageKey(kind, id)];
+    const next = Object.assign({}, getCustomizations());
+    next[CARD_IMAGES_KEY] = { map: map };
+    persist(next);
+  }
+
+  /**
    * Choosing a new picture for an image means it should be seen. If the image
    * was deleted in Design mode earlier, its "deleted" entry kept hiding it with
    * display:none, so every new picture landed on an element nobody could see —
@@ -1627,6 +1642,7 @@
     getCardImages,
     getCardImage,
     setCardImage,
+    clearCardImage,
     pickImageFile,
     canEditNav,
     canEditBrandName,

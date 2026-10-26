@@ -3918,6 +3918,16 @@ function HomePage({ sitePromos, onNavigate, onToast, rooms, menus, canEditRooms,
                     <button type="button" title={logo ? 'Change logo' : 'Upload logo'}
                       onClick={() => changeCardImg('partner', partner.id, () => onToast && onToast(name + ' logo updated'))}
                       style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{ fontSize: 11 }}></i></button>
+                    {logo && (
+                      <button type="button" title="Remove logo (the brand stays)"
+                        onClick={() => {
+                          if (window.HMSSiteContent && typeof window.HMSSiteContent.clearCardImage === 'function') {
+                            window.HMSSiteContent.clearCardImage('partner', partner.id);
+                          }
+                          if (onToast) onToast(name + ' logo removed');
+                        }}
+                        style={toolBtnStyle('image')}><i className="fa-solid fa-eraser" style={{ fontSize: 11 }}></i></button>
+                    )}
                     <button type="button" title="Rename brand"
                       onClick={() => onRenamePartner && onRenamePartner(partner)}
                       style={toolBtnStyle('image')}><i className="fa-solid fa-pen" style={{ fontSize: 11 }}></i></button>
