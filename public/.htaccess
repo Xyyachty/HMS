@@ -19,3 +19,11 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
+
+# Let browsers reuse static files for a day instead of re-downloading them on
+# every page. Render bills outbound bandwidth, and the logo alone is on every page.
+<IfModule mod_headers.c>
+    <FilesMatch "\.(png|jpe?g|gif|webp|svg|ico|woff2?|ttf|css|js|mp4)$">
+        Header set Cache-Control "public, max-age=86400"
+    </FilesMatch>
+</IfModule>

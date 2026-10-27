@@ -529,7 +529,7 @@
 
     <!-- ==================== LEFT: PHOTO ==================== -->
     <aside class="aside">
-      <img src="{{ asset('chtm-building.png') }}" alt="" />
+      <img src="{{ asset('chtm-building.jpg') }}" alt="" />
       <div class="aside__copy">
         <p class="eyebrow">Account Recovery</p>
         <h1 class="display">Reset your password.</h1>

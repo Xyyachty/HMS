@@ -958,7 +958,7 @@
         </div>
 
         <div class="hero__figure">
-          <img src="{{ asset('chtm-building.png') }}"
+          <img src="{{ asset('chtm-building.jpg') }}"
                alt="SPC Hotel building illuminated at dusk" fetchpriority="high" />
           <div class="hero__motto">
             <p>People.<br />Places.<br />Better Futures.</p>
@@ -1094,7 +1094,7 @@
     </div>
 
     <div class="login-drawer__photo">
-      <img src="{{ asset('SPC_GATE.png') }}" alt="SPC Hotel entrance" />
+      <img src="{{ asset('SPC_GATE.jpg') }}" alt="SPC Hotel entrance" />
     </div>
 
     <div class="login-drawer__body">
