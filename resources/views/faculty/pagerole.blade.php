@@ -70,11 +70,11 @@
     .tm-toolbar .tm-search { flex: 1 1 auto; min-width: 0; }
     .tm-toolbar .tm-select { width: 11rem; flex: 0 0 auto; }
 
-    /* Four cards a row, lined up under the four stat tiles; steps down to
-       three, two, then one as the screen narrows (breakpoints below). */
+    /* Three cards a row, wide enough for a full team name; steps down to two,
+       then one as the screen narrows (breakpoints below). */
     .tm-card-grid {
         display: grid; gap: 1rem;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         align-items: stretch;
     }
     .tm-card-empty { grid-column: 1 / -1; }
@@ -101,7 +101,7 @@
         display: inline-flex; align-items: center; justify-content: center;
         background: #F3F2F1; color: #4A4643; font-size: 1.15rem;
     }
-    .tc-name { flex: 1; min-width: 0; font-size: 1rem; font-weight: 800; color: #181818; line-height: 1.25; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tc-name { flex: 1; min-width: 0; font-size: 1rem; font-weight: 800; color: #181818; line-height: 1.25; letter-spacing: -.01em; overflow-wrap: anywhere; }
     .tc-members {
         flex-shrink: 0; display: inline-flex; align-items: center; gap: .3rem;
         padding: .2rem .55rem; border-radius: 999px; border: 1px solid #E5E7EB; background: #F3F4F6;
@@ -381,7 +381,7 @@
 
     @media (max-width: 1279px) {
         .tm-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .tm-card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .tm-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .tm-toolbar { flex-wrap: wrap; }
         .tm-toolbar .tm-search { flex-basis: 100%; }
         .tm-toolbar .tm-select { flex: 1 1 10rem; width: auto; }
@@ -391,7 +391,6 @@
     @media (max-width: 1023px) {
         .setup-field-grid { grid-template-columns: minmax(0, 1fr); }
         .manage-grid { grid-template-columns: minmax(0, 1fr); }
-        .tm-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     @media (max-width: 767px) {
         .tm-stat-grid { grid-template-columns: minmax(0, 1fr); }
@@ -686,16 +685,16 @@
             $overviewTeamCount    = ($groups ?? collect())->count();
             $overviewStudentCount = ($groups ?? collect())->sum(fn ($members) => $members->count());
             $overviewTaskTotal    = 0;
-            $overviewTaskDone     = 0;
+            $overviewApproved     = 0;
+            $overviewRequired     = 0;
             foreach (($groups ?? collect()) as $overviewName => $overviewMembers) {
-                foreach (($teamActivityByGroup[$overviewName] ?? []) as $activityRow) {
-                    $overviewTaskTotal++;
-                    if (($activityRow['status'] ?? null) === 'archived') {
-                        $overviewTaskDone++;
-                    }
-                }
+                $overviewTaskTotal += count($teamActivityByGroup[$overviewName] ?? []);
+                // The same faculty approvals, hotel concept included, that each
+                // team card's Task completion bar counts, so the two agree.
+                $overviewRequired += $teamApprovalByGroup[$overviewName]['required'] ?? 0;
+                $overviewApproved += $teamApprovalByGroup[$overviewName]['approved'] ?? 0;
             }
-            $overviewRate = $overviewTaskTotal > 0 ? (int) round(($overviewTaskDone / $overviewTaskTotal) * 100) : 0;
+            $overviewRate = $overviewRequired > 0 ? (int) floor($overviewApproved / $overviewRequired * 100) : 0;
         @endphp
 
         <div class="px-4 sm:px-6 py-5">
@@ -835,10 +834,10 @@
 
                         <div class="tc-meter">
                             <div class="tc-meter-top">
-                                <span>Task approval</span>
+                                <span>Task completion</span>
                                 <b>{{ $cardPhase['percent'] }}%</b>
                             </div>
-                            <div class="tc-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ $cardPhase['percent'] }}" aria-label="Task approval">
+                            <div class="tc-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ $cardPhase['percent'] }}" aria-label="Task completion">
                                 <span style="width: {{ $cardPhase['percent'] }}%"></span>
                             </div>
                             <p class="tc-meter-sub">{{ $cardPhase['approved'] }} of {{ $cardPhase['required'] }} required task{{ $cardPhase['required'] === 1 ? '' : 's' }} approved</p>
@@ -972,11 +971,11 @@
 
                                     <section class="ov-tile">
                                         <p class="ov-label"><span class="iconify" data-icon="mdi:storefront-outline"></span> Simulation</p>
-                                        <p class="ov-value">Open</p>
+                                        <p class="ov-value">{{ ($cardApproval['unlocked'] ?? false) ? 'Open' : 'Locked' }}</p>
                                         <p class="ov-tag {{ ($cardApproval['unlocked'] ?? false) ? 'is-good' : '' }}">
                                             {{ ($cardApproval['unlocked'] ?? false) ? 'All tasks approved' : 'Approval in progress' }}
                                         </p>
-                                        <p class="ov-text">The Hotel Simulation is open to every team at any time. Desk assignments are under Members &amp; Roles.</p>
+                                        <p class="ov-text">The Hotel Simulation opens once you approve every customization task. Desk assignments are under Members &amp; Roles.</p>
                                         <button type="button" class="ov-link" onclick="switchTeamModalTab('members')">Open Desk Assignments <span class="iconify" data-icon="mdi:arrow-right"></span></button>
                                     </section>
                                 </div>
@@ -2009,6 +2008,17 @@
                             <p class="text-xs text-slate-400 mt-1">Build a team first, then come back to set its tasks.</p>
                         </div>
                     @else
+                        @php
+                            /* Every activity Set Task can hand out, by lowercased title
+                               like TEAM_HELD_TITLES. A team already holding all it can be
+                               given right now is left off the list: there is nothing new
+                               to send it. */
+                            $assignableTitles = collect($taskSteps ?? [])
+                                ->flatMap(fn ($stepData) => collect($stepData['tasks'])->pluck('title'))
+                                ->map(fn ($title) => Str::lower($title));
+                            $conceptTitles = $assignableTitles->filter(fn ($title) => \App\Support\TaskChecklist::isConceptTitle($title));
+                            $shownTeamCount = 0;
+                        @endphp
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" id="taskTeamSelector">
                             @foreach($groups as $groupName => $members)
                                 @php
@@ -2032,6 +2042,13 @@
                                     $teamConceptSubmitted = \App\Support\HotelConceptDesk::isSubmitted(
                                         ($conceptsByGroup ?? collect())->get($groupName, collect())
                                     );
+
+                                    $teamOpenTitles = ($teamConceptSubmitted ? $assignableTitles : $conceptTitles)
+                                        ->diff(($teamHeldTitles ?? collect())->get($groupName, []));
+                                    if ($teamOpenTitles->isEmpty()) {
+                                        continue;
+                                    }
+                                    $shownTeamCount++;
                                 @endphp
                                 <label data-team="{{ $groupName }}"
                                     data-concept-submitted="{{ $teamConceptSubmitted ? '1' : '0' }}"
@@ -2068,6 +2085,13 @@
                                 </label>
                             @endforeach
                         </div>
+                        @if($shownTeamCount === 0)
+                            <div class="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center">
+                                <span class="iconify text-3xl text-slate-300" data-icon="mdi:check-all"></span>
+                                <p class="text-sm font-bold text-slate-500 mt-2">Every team already has its tasks</p>
+                                <p class="text-xs text-slate-400 mt-1">Teams come back here once there is a task they have not been given, such as when Front Desk submits the hotel concept.</p>
+                            </div>
+                        @endif
                     @endif
                 </div>
 

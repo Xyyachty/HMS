@@ -108,7 +108,7 @@
 </div>
 
 <!-- Task Overview / Newly / Recent -->
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+<div class="dash-panels">
 
     <!-- Task Overview: the tasks most recently assigned or completed -->
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">

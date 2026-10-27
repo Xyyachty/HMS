@@ -36,6 +36,11 @@
     color: var(--fg);
     line-height: 1.6;
     overflow-x: hidden;
+    /* A word too long for its box breaks onto the next line. The editor's
+       text editing (contenteditable) already wraps it that way, so without
+       this a long run with no spaces fit while typing and then ran out over
+       the buttons once saved. */
+    overflow-wrap: break-word;
   }
   .font-display { font-family: 'Cormorant Garamond', serif; }
   ::-webkit-scrollbar { width: 6px; }
@@ -4938,7 +4943,7 @@ function HomePage({ sitePromos, onNav, onToast, rooms, menus, canEditRooms, onAd
             <span style={{ display: 'block' }}>A Sanctuary of</span>
             <em style={{ display: 'block', color: 'var(--warm)' }}>Timeless Luxury</em>
           </h1>
-          <p data-hms-stock={untouched.blurb} style={{ color: 'var(--fg-muted)', fontSize: '0.95rem', fontWeight: 400, lineHeight: 1.7, marginBottom: '2rem', maxWidth: 400 }}>
+          <p data-hms-content-kind="hotelInfo" data-hms-content-id="description" data-hms-stock={untouched.blurb} style={{ color: 'var(--fg-muted)', fontSize: '0.95rem', fontWeight: 400, lineHeight: 1.7, marginBottom: '2rem', maxWidth: 400 }}>
             {blurb}
           </p>
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -5060,17 +5065,32 @@ function HomePage({ sitePromos, onNav, onToast, rooms, menus, canEditRooms, onAd
             const stock = DEFAULT_PARTNERS.find(d => d.id === partner.id);
             const state = !stock ? 'added' : (logo || name !== stock.label ? 'changed' : undefined);
             return (
-              <div key={partner.id} className={'partner-card' + (logo ? ' has-logo' : '')} data-hms-partner-state={state}>
+              /* A brand is a record, fixed in its place in the grid: its own
+                 buttons change the logo, take it off, rename and remove the
+                 brand, and Add Brand adds one. Locked from the canvas, so the
+                 logo always fills its card and no card can be dragged or
+                 stretched over another. */
+              <div key={partner.id} className={'partner-card' + (logo ? ' has-logo' : '')} data-hms-partner-state={state} data-hms-no-edit="1">
                 {/* The name is the brand's record, renamed with the pencil, so
                     Design mode does not lay a second copy of it over the card. */}
                 {logo
-                  ? <><img src={logo} alt={name} loading="lazy" /><p className="partner-caption" data-hms-no-edit="1">{name}</p></>
-                  : <p className="partner-name font-display" data-hms-no-edit="1">{name}</p>}
+                  ? <><img src={logo} alt={name} loading="lazy" /><p className="partner-caption">{name}</p></>
+                  : <p className="partner-name font-display">{name}</p>}
                 {canEditPartners && (
                   <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 3, display: 'flex', gap: 6 }} data-hms-no-edit="1">
                     <button type="button" title={logo ? 'Change logo' : 'Upload logo'}
                       onClick={() => changeCardImg('partner', partner.id, () => onToast && onToast(name + ' logo updated'))}
                       style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{ fontSize: 11 }}></i></button>
+                    {logo && (
+                      <button type="button" title="Remove logo (the brand stays)"
+                        onClick={() => {
+                          if (window.HMSSiteContent && typeof window.HMSSiteContent.clearCardImage === 'function') {
+                            window.HMSSiteContent.clearCardImage('partner', partner.id);
+                          }
+                          if (onToast) onToast(name + ' logo removed');
+                        }}
+                        style={toolBtnStyle('image')}><i className="fa-solid fa-eraser" style={{ fontSize: 11 }}></i></button>
+                    )}
                     <button type="button" title="Rename brand"
                       onClick={() => onRenamePartner && onRenamePartner(partner)}
                       style={toolBtnStyle('image')}><i className="fa-solid fa-pen" style={{ fontSize: 11 }}></i></button>

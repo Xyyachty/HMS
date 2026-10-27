@@ -52,9 +52,9 @@ class HotelConcept extends Model
      * headline, the description the template's About copy.
      */
     public const LIMITS = [
-        'title' => 25,
-        'tagline' => 30,
-        'description' => 300,
+        'title' => 100,
+        'tagline' => 150,
+        'description' => 500,
     ];
 
     /** Shortest description accepted: enough to say what the hotel is and who it serves. */

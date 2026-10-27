@@ -14,6 +14,7 @@
     'pfAction'      => route('dean.profile.update'),
     'pfPhoneValue'  => $phoneValue,
     'pfPhPhone'     => true,
+    'pfModals'      => true,
     'pfRecordTitle' => 'Account',
     'pfRecords'     => [
         ['Role', 'Dean'],

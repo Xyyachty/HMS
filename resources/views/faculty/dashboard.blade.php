@@ -90,7 +90,7 @@
 </div>
 
 <!-- Activity / progress / deadlines -->
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+<div class="dash-panels">
 
     <!-- Task Overview: tasks students have started, newest activity first -->
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
@@ -146,7 +146,7 @@
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-2">
             <p class="text-sm font-bold text-slate-800">Customization Approval Progress</p>
-            <a href="{{ route('faculty.role') }}" class="text-[0.6875rem] font-bold text-rose-600 hover:underline">View Report</a>
+            <a href="{{ route('faculty.role') }}" class="text-[0.6875rem] font-bold text-rose-600 hover:underline whitespace-nowrap shrink-0">View Report</a>
         </div>
         <div class="divide-y divide-slate-100 overflow-y-auto" style="max-height: 21.25rem">
             @forelse(($teamProgress ?? collect()) as $i => $team)
@@ -157,7 +157,7 @@
                     {{-- Name and status on top; approved count and bar underneath. --}}
                     <div class="min-w-0 flex-1">
                         <div class="flex items-center justify-between gap-2 min-w-0">
-                            <p class="text-[0.8125rem] font-bold text-slate-800 truncate">{{ $team['name'] }}</p>
+                            <p class="text-[0.8125rem] font-bold text-slate-800 leading-snug">{{ $team['name'] }}</p>
                             <span class="shrink-0">@include('partials.team-completion', ['done' => $team['done'], 'total' => $team['total'], 'hideCount' => true])</span>
                         </div>
                         <div class="flex items-center gap-3 mt-1">

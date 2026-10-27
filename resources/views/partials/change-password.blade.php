@@ -56,6 +56,8 @@
                     <div class="pf-input has-eye">
                         <input id="pw_{{ $pwField }}" name="{{ $pwField }}" type="password" autocomplete="{{ $pwAutocomplete }}"
                             @if ($pwField !== 'current_password') minlength="8" @endif
+                            {{-- In the profile pop-up, opening it lands on the first field. --}}
+                            @if (($pfModals ?? false) && $loop->first) autofocus @endif
                             required>
                         {{-- Show / hide this one field. The icons sit in wrappers because
                              Iconify swaps each span for an svg; the wrappers are what toggle. --}}

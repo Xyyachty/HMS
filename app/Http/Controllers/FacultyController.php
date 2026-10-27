@@ -97,10 +97,6 @@ class FacultyController extends Controller
             ->take(5)
             ->values();
 
-        $completedTasks = $allTasks->where('status', 'archived')->count();
-        $completionRate = $allTasks->count() > 0
-            ? (int) round(($completedTasks / $allTasks->count()) * 100)
-            : 0;
         $overdueTasks = $allTasks
             ->where('status', 'active')
             ->filter(fn ($task) => $task->due_date && $task->due_date->isPast())
@@ -128,6 +124,12 @@ class FacultyController extends Controller
                     ];
                 })
             : collect();
+
+        // Faculty approvals across every team, hotel concept included: the same
+        // count as each team's progress bar, so the figures agree.
+        $completedTasks = (int) $teamProgress->sum('done');
+        $requiredTasks = (int) $teamProgress->sum('total');
+        $completionRate = $requiredTasks > 0 ? (int) floor($completedTasks / $requiredTasks * 100) : 0;
 
         // Soonest due first; tasks with no due date still show, after the dated ones.
         $upcomingTasks = $allTasks

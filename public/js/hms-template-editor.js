@@ -741,7 +741,13 @@
       if (entry['z-index']) decls.push('z-index:' + entry['z-index'] + ' !important');
       if (entry['white-space']) decls.push('white-space:' + entry['white-space'] + ' !important');
       if (!decls.length) return;
-      parts.push(sel + '{' + decls.join(';') + '}');
+      // Never a locked block (a partner brand card) or anything in it: those
+      // cannot be picked any more, so a rule for one is left over from before
+      // the lock and would keep a card dragged or stretched over its
+      // neighbours. Guarded in the selector, so it also holds after React
+      // re-renders the list into a different order.
+      const guard = ':not([data-hms-no-edit]):not([data-hms-no-edit] *)';
+      parts.push(':is(' + sel + ')' + guard + '{' + decls.join(';') + '}');
     });
     sheet.textContent = parts.join('\n');
   }
@@ -1180,12 +1186,83 @@
     if (!['IMG', 'I', 'SVG'].includes(el.tagName)) {
       const text = readEditableText(el);
       if (text != null) entry.text = text;
+      syncHotelInfoField(el, text);
     }
 
     entry.page = getCurrentPage();
     customizations[id] = entry;
     rebuildFreePosSheet();
     notifyChanged();
+  }
+
+  /* The hero's tagline and description are also the team's Hotel Information,
+     which the footer and the student's Team Overview read. Editing them on the
+     canvas writes that field too, so every place says what the hero says. Left
+     alone while the text still matches, so restyling the line saves nothing. */
+  function syncHotelInfoField(el, text) {
+    // Written when the edit ends, not on each pause while typing: the store
+    // update repaints the line under the caret.
+    if (textEditEl) return;
+    if (text == null || el.getAttribute('data-hms-content-kind') !== 'hotelInfo') return;
+    const field = el.getAttribute('data-hms-content-id');
+    const site = window.HMSSiteContent;
+    if (!field || !site || typeof site.setHotelInfo !== 'function' || typeof site.getHotelInfo !== 'function') return;
+    const next = String(text).trim();
+    if (next === '' || next === String(site.getHotelInfo()[field] || '').trim()) return;
+    site.setHotelInfo({ [field]: next });
+  }
+
+  /* The caret while typing, as a character offset inside its editing host.
+     The pause-save notifies the page, and a page that repaints the text (React
+     re-rendering a line, a store update) drops the caret to the start of the
+     line, so the next letters landed on the left. keepCaret() puts it back. */
+  function readCaret(el) {
+    const sel = window.getSelection();
+    if (!sel || !sel.focusNode || !el.contains(sel.focusNode)) return null;
+    const start = sel.focusNode.nodeType === 1 ? sel.focusNode : sel.focusNode.parentElement;
+    const host = start && start.closest('[contenteditable="true"]');
+    if (!host || !el.contains(host) && host !== el) return null;
+    const range = document.createRange();
+    range.selectNodeContents(host);
+    range.setEnd(sel.focusNode, sel.focusOffset);
+    return { host, offset: range.toString().length };
+  }
+
+  function placeCaret(host, offset) {
+    const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT);
+    let left = offset;
+    let node = walker.nextNode();
+    let last = null;
+    while (node) {
+      if (left <= node.data.length) break;
+      left -= node.data.length;
+      last = node;
+      node = walker.nextNode();
+    }
+    const range = document.createRange();
+    if (node) range.setStart(node, left);
+    else if (last) range.setStart(last, last.data.length);
+    else range.setStart(host, 0);
+    range.collapse(true);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  function keepCaret(el, caret) {
+    if (!caret) return;
+    const restore = () => {
+      if (textEditEl !== el || !caret.host.isConnected) return;
+      // Only undo a reset: a caret that moved because the student kept
+      // typing, or clicked elsewhere in the line, stays where it is.
+      const now = readCaret(el);
+      if (now && now.host === caret.host && (now.offset !== 0 || caret.offset === 0)) return;
+      placeCaret(caret.host, caret.offset);
+    };
+    // The repaint can land now, on the next frame, or after the save returns.
+    restore();
+    requestAnimationFrame(restore);
+    setTimeout(restore, 120);
   }
 
   /* Undo what a stored entry had already painted on, without touching what the
@@ -1419,8 +1496,9 @@
       // page must not hide the second room card too.
       if (typeof entry !== 'string' && !entryBelongsToCurrentPage(entry, id)) return;
       const el = findByKey(id);
-      // A legacy entry for "#root > nav" would hide the whole header.
-      if (el && !isHeaderLocked(el)) el.style.display = 'none';
+      // A legacy entry for "#root > nav" would hide the whole header, and one
+      // for a locked block hid a record its own buttons manage.
+      if (el && !isHeaderLocked(el) && !el.closest('[data-hms-no-edit]')) el.style.display = 'none';
     });
   }
 
@@ -1487,6 +1565,11 @@
         migrated = true;
         return;
       }
+
+      // Inside a locked block (a partner brand card, tool buttons): nothing
+      // there can be selected, so an entry for it is left over - a logo or card
+      // moved or resized over its neighbours, a card hidden by position.
+      if (el.closest('[data-hms-no-edit]')) return;
 
       /* A translation saved together with the coordinates it replaced. Both
          describe where the element sits and they disagree, so which one wins
@@ -1666,6 +1749,8 @@
     const startRect = getVisualRect(el);
     dragState = {
       el: el,
+      startCss: el.style.cssText,
+      alreadyCovering: coveredContent(el),
       startX: e.clientX,
       startY: e.clientY,
       left: startRect.left,
@@ -1757,6 +1842,8 @@
       : 0;
     resizeState = {
       el: el,
+      startCss: el.style.cssText,
+      alreadyCovering: coveredContent(el),
       dir: e.currentTarget.getAttribute('data-dir'),
       startX: e.clientX,
       startY: e.clientY,
@@ -1782,11 +1869,120 @@
      edge, leaving the move handle behind. */
   const DRAG_BOUNDS_SELECTOR = '.room-card, .menu-food-card, .menu-card';
 
+  /* What a dropped element must stay inside: its card, else its section. A
+     heading dragged down into the next section, or past the page edge, read
+     as part of a block it does not belong to and sat over that block's own
+     content. */
   function getDragBoundsHost(el) {
-    const host = el && el.closest ? el.closest(DRAG_BOUNDS_SELECTOR) : null;
+    if (!el || !el.closest) return null;
+    let host = el.closest(DRAG_BOUNDS_SELECTOR);
+    if (!host || host === el) {
+      host = el.parentElement ? el.parentElement.closest('[data-hms-section]') : null;
+    }
     if (!host || host === el) return null;
     const rect = host.getBoundingClientRect();
     return rect.width && rect.height ? host : null;
+  }
+
+  /* Content a moved or resized element may not land on: text, pictures,
+     buttons, cards, and the student's own added items. Containers are left
+     out - an element always sits inside some box - and so are the section
+     backgrounds and hero slides, which are painted, not <img>. */
+  const OBSTACLE_SELECTOR = 'img, h1, h2, h3, h4, h5, h6, p, button, a, li, input, textarea, [data-hms-user], '
+    + '.partner-card, .room-card, .menu-food-card, .menu-card, .team-card, .facility-card, .cat-card';
+
+  // Text claims its glyphs, not its whole line box, so a short heading does
+  // not block the empty space beside it.
+  function contentBoxes(node) {
+    if (/^(H[1-6]|P|A|LI)$/.test(node.tagName) && node.textContent.trim()) {
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      return Array.prototype.filter.call(range.getClientRects(), (r) => r.width > 1 && r.height > 1);
+    }
+    const r = node.getBoundingClientRect();
+    return r.width > 1 && r.height > 1 ? [r] : [];
+  }
+
+  function overlapArea(a, b) {
+    const w = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+    const h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+    return w > 0 && h > 0 ? w * h : 0;
+  }
+
+  /* The first piece of content the element now covers, or null: by more than
+     a tenth of the smaller of the two, or by any amount when `strict` (placing
+     a new item, which should land clear). `already` holds what it covered when
+     the gesture began - a price badge laid over its room photo by the
+     template - so moving such an element a little is not refused. */
+  function findCoveredContent(el, rect, already, strict) {
+    const all = coveredContent(el, rect, strict);
+    for (let i = 0; i < all.length; i++) {
+      if (!already || already.indexOf(all[i]) === -1) return all[i];
+    }
+    return null;
+  }
+
+  function coveredContent(el, rect, strict) {
+    const found = [];
+    const mine = rect || el.getBoundingClientRect();
+    const myArea = Math.max(1, mine.width * mine.height);
+    const all = document.querySelectorAll(OBSTACLE_SELECTOR);
+    for (let i = 0; i < all.length; i++) {
+      const other = all[i];
+      if (other === el || el.contains(other) || other.contains(el)) continue;
+      // The editor's own panels, rails and dialogs. Locked blocks (a partner
+      // card, a highlight tile) are content and do count; only their tool
+      // buttons do not, the tile under them is checked itself.
+      if (other.closest('#hms-editor-ui, #hms-editor-file, #hms-hotel-auth-bar, #hms-section-rail')) continue;
+      if (other.matches('button, a') && other.closest('[data-hms-no-edit]')) continue;
+      const box = other.getBoundingClientRect();
+      if (!overlapArea(mine, box)) continue;
+      const covered = contentBoxes(other).some((r) => {
+        const area = overlapArea(mine, r);
+        return strict ? area > 16 : area > 0.1 * Math.min(myArea, Math.max(1, r.width * r.height));
+      });
+      if (covered) found.push(other);
+    }
+    return found;
+  }
+
+  function describeContent(node) {
+    if (node.matches('img')) return 'a picture';
+    if (node.matches('button, a')) return 'a button';
+    if (node.matches('h1, h2, h3, h4, h5, h6, p, li')) return 'some text';
+    if (node.hasAttribute('data-hms-user')) return 'an item you added';
+    return 'a card';
+  }
+
+  /* Puts a drop or resize back when it lands on other content, and says why.
+     Alt lets a student layer on purpose. Returns whether it was put back. */
+  function undoIfCovering(state, allowOverlap) {
+    const el = state.el;
+    if (allowOverlap || !el || !el.isConnected) return false;
+    const covered = findCoveredContent(el, null, state.alreadyCovering);
+    if (!covered) return false;
+    el.style.cssText = state.startCss;
+    postToParent({
+      type: 'toast',
+      message: 'That would cover ' + describeContent(covered) + ', so it went back. Drop it on an empty space, or hold Alt to place it on top.',
+    });
+    return true;
+  }
+
+  /* Width and height that would run past the element's card or section are
+     trimmed to its edge, so a resize cannot push a block over the next one. */
+  function clampSizeIntoBounds(el) {
+    const host = getDragBoundsHost(el);
+    if (!host) return;
+    const bounds = host.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    if (r.right > bounds.right + 1 && el.style.width && el.style.width.slice(-2) === 'px') {
+      setPosImportant(el, 'width', Math.max(16, Math.floor(bounds.right - r.left)) + 'px');
+    }
+    if (r.left < bounds.left - 1) {
+      const t = getElementTranslate(el);
+      setElementTranslate(el, t.x + (bounds.left - r.left), t.y);
+    }
   }
 
   /* Pulls an element back inside its card. Used on drop, and on load to repair
@@ -1811,6 +2007,8 @@
   }
 
   function onPointerMove(e) {
+    if (dragState) dragState.altKey = e.altKey;
+    if (resizeState) resizeState.altKey = e.altKey;
     if (dragState) {
       const dx = e.clientX - dragState.startX;
       const dy = e.clientY - dragState.startY;
@@ -2017,11 +2215,14 @@
           const t = getElementTranslate(el);
           setElementTranslate(el, t.x, t.y);
           clampTransformIntoBounds(el);
+          undoIfCovering(dragState, dragState.altKey);
           // Say which kind of move this was, so saveElementState records a
           // translation alone rather than one on top of stale coordinates.
           if (el && !el.hasAttribute('data-hms-user')) {
             el.setAttribute('data-hms-move-mode', 'transform');
           }
+        } else if (el && el.hasAttribute('data-hms-user') && undoIfCovering(dragState, dragState.altKey)) {
+          // Put back where it was; nothing more to commit.
         } else if (el && el.getAttribute('data-hms-keep-fixed') === '1') {
           const er = getVisualRect(el);
           setPosImportant(el, 'position', 'fixed');
@@ -2047,7 +2248,11 @@
       if (resizeState.historyStarted) {
         const el = resizeState.el;
         if (el && !el.hasAttribute('data-hms-user')) {
+          clampSizeIntoBounds(el);
+          undoIfCovering(resizeState, resizeState.altKey);
           el.setAttribute('data-hms-move-mode', 'transform');
+        } else if (el) {
+          undoIfCovering(resizeState, resizeState.altKey);
         }
         saveElementState(el);
         updateHandles();
@@ -2152,7 +2357,11 @@
     let liveSaveTimer = null;
     const onInput = () => {
       clearTimeout(liveSaveTimer);
-      liveSaveTimer = setTimeout(() => saveElementState(el), 500);
+      liveSaveTimer = setTimeout(() => {
+        const caret = readCaret(el);
+        saveElementState(el);
+        keepCaret(el, caret);
+      }, 500);
     };
     // Space is a button's own activation key, and Chrome drops it instead of
     // typing it: "New Label" was saved as "NewLabel".
@@ -2455,8 +2664,45 @@
     customizations[USER_KEY].push(item);
     renderUserElements();
     const el = document.querySelector('[data-hms-id="' + item.id + '"]');
-    if (el) selectElement(el);
+    if (el) {
+      placeInFreeSpot(el);
+      saveElementState(el);
+      selectElement(el);
+    }
     notifyChanged();
+  }
+
+  /* A new or duplicated item starts in the section in the middle of the
+     screen, at the first spot (left to right, top to bottom) where it covers
+     nothing, rather than on top of whatever sits 120px down the window or of
+     the item it was copied from. With no free spot it stays where it was put. */
+  function placeInFreeSpot(el) {
+    const probe = document.elementsFromPoint(window.innerWidth / 2, window.innerHeight / 2) || [];
+    let section = null;
+    for (let i = 0; i < probe.length && !section; i++) {
+      section = probe[i].closest && probe[i].closest('[data-hms-section]');
+    }
+    if (!section || !findCoveredContent(el, null, null, true)) return;
+    const s = section.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    // Offsets in its canvas, whatever unit the copied styles were in.
+    const left0 = el.offsetLeft;
+    const top0 = el.offsetTop;
+    const step = 24;
+    const bottom = Math.min(s.bottom, window.innerHeight) - r.height;
+    for (let y = Math.max(s.top, 0) + step; y <= bottom; y += step) {
+      for (let x = s.left + step; x + r.width <= s.right - step; x += step) {
+        // Checked with a 12px margin, so the new item does not sit against
+        // the text beside it.
+        const gap = 12;
+        const spot = { left: x - gap, top: y - gap, right: x + r.width + gap, bottom: y + r.height + gap, width: r.width + 2 * gap, height: r.height + 2 * gap };
+        if (!findCoveredContent(el, spot, null, true)) {
+          setPosImportant(el, 'left', (left0 + x - r.left) + 'px');
+          setPosImportant(el, 'top', (top0 + y - r.top) + 'px');
+          return;
+        }
+      }
+    }
   }
 
   function deleteSelected() {
@@ -2535,7 +2781,11 @@
     customizations[USER_KEY].push(item);
     renderUserElements();
     const el = document.querySelector('[data-hms-id="' + item.id + '"]');
-    if (el) selectElement(el);
+    if (el) {
+      placeInFreeSpot(el);
+      saveElementState(el);
+      selectElement(el);
+    }
     notifyChanged();
   }
 

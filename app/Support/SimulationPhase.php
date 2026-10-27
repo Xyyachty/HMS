@@ -24,9 +24,9 @@ use Illuminate\Support\Facades\Schema;
  * withdraws it, and the lock returns with it, because this is computed on every
  * read rather than stored.
  *
- * Opening the door also needs faculty to have confirmed who runs which desk
- * (simulation_roles_confirmed_at). The Simulation role is stored apart from the
- * Customization seat, so the seat a student customized under is never rewritten.
+ * Desk confirmation (simulation_roles_confirmed_at) is reported but does not
+ * hold the lock. The Simulation role is stored apart from the Customization
+ * seat, so the seat a student customized under is never rewritten.
  */
 class SimulationPhase
 {
@@ -113,10 +113,10 @@ class SimulationPhase
             'percent' => $required ? (int) floor($counts['approved'] / $required * 100) : 0,
             'unlocked' => $unlocked,
             'roles_confirmed' => $confirmed,
-            // The Simulation is open to every team at any time. 'unlocked' still
-            // says whether faculty approved every customization task - progress
-            // and the review hints read it - but it no longer gates anything.
-            'can_start' => (bool) ($groupName && $facultyId),
+            // The Simulation opens once faculty has approved every customization
+            // task. Desk confirmation is not required: seats default to the
+            // Customization roles (seatsFor).
+            'can_start' => $unlocked,
             'items' => $items,
         ];
     }
