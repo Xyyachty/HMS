@@ -226,7 +226,7 @@
       <img src="{{ asset('new_logo_in_chtm....png') }}" alt="College of Hospitality and Tourism Management logo" class="h-16 w-auto object-contain drop-shadow-sm mx-auto mb-8" />
 
       <h1 class="text-3xl font-extrabold text-white tracking-tight mb-4" style="text-shadow: 0 2px 12px rgba(76, 5, 39, 0.45);">Hotel Management System</h1>
-      <p class="text-lg text-white/80 font-light leading-relaxed mb-10" style="text-shadow: 0 1px 8px rgba(76, 5, 39, 0.4);">Interactive Hospitality Task Management — drag, drop, and manage hotel tasks across departments.</p>
+      <p class="text-lg text-white/80 font-light leading-relaxed mb-10" style="text-shadow: 0 1px 8px rgba(76, 5, 39, 0.4);">Hospitality Task Management — drag, drop, and manage hotel tasks across departments.</p>
 
       <!-- Role chips -->
       
