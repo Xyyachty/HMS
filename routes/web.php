@@ -1934,9 +1934,48 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
                 \App\Support\HotelBookingDesk::cancel($booking);
                 break;
             default:
-                $booking->fill(array_intersect_key($data, array_flip([
+                $fields = array_intersect_key($data, array_flip([
                     'check_in', 'check_in_time', 'check_out', 'notes',
-                ])))->save();
+                ]));
+                if (!isset($fields['check_in']) && !isset($fields['check_out'])) {
+                    $booking->fill($fields)->save();
+                    break;
+                }
+
+                // New dates — Extend Stay sends a later check_out. A closed stay's dates
+                // are history, and the room must not already be promised to someone else
+                // for the added nights.
+                if (!$booking->isOpen()) {
+                    return response()->json(['message' => 'That stay is already closed.'], 409);
+                }
+                $checkIn  = \Carbon\Carbon::parse($fields['check_in'] ?? $booking->check_in)->toDateString();
+                $checkOut = \Carbon\Carbon::parse($fields['check_out'] ?? $booking->check_out)->toDateString();
+                if ($checkOut <= $checkIn) {
+                    return response()->json(['message' => 'Check-out has to be after check-in.'], 422);
+                }
+
+                // Same room lock as a new booking takes, so an extension and a booking
+                // for the same nights cannot both get through.
+                $clash = \Illuminate\Support\Facades\DB::transaction(function () use ($booking, $fields, $checkIn, $checkOut) {
+                    HotelRoom::whereKey($booking->hotel_room_id)->lockForUpdate()->first();
+                    $clash = HotelBooking::open()
+                        ->where('hotel_room_id', $booking->hotel_room_id)
+                        ->whereKeyNot($booking->hotel_booking_id)
+                        ->where('check_in', '<', $checkOut)
+                        ->where('check_out', '>', $checkIn)
+                        ->orderBy('check_in')
+                        ->first();
+                    if (!$clash) {
+                        $booking->fill($fields)->save();
+                    }
+                    return $clash;
+                });
+                if ($clash) {
+                    return response()->json([
+                        'message' => ($booking->room?->name ?? 'This room') . ' is booked for another guest from '
+                            . $clash->check_in->format('M j') . '. Pick an earlier check-out date.',
+                    ], 409);
+                }
         }
 
         $booking = \App\Support\HotelBookingDesk::findBooking($membership, $id);

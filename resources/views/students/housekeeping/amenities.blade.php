@@ -314,7 +314,7 @@ const STATUS_TEXT = {
 /* What each access type means, in the words of the person who has to pick one. */
 const ACCESS_TEXT = {
   open:        { label: 'Guests walk in freely',      hint: 'Nothing for the Front Desk to record. Example: playground.', icon: 'fa-person-walking' },
-  registered:  { label: 'Front Desk signs guests in', hint: 'The desk writes down who goes in and out. Example: pool, gym.', icon: 'fa-clipboard-list' },
+  registered:  { label: 'Front Desk records who goes in', hint: 'The desk writes down who goes in and out. Example: pool, gym.', icon: 'fa-clipboard-list' },
   appointment: { label: 'Guests book a time',          hint: 'Booked ahead for a service, like a spa massage.', icon: 'fa-calendar-check' },
   event:       { label: 'Booked for events',           hint: 'Booked for a date, with a package and a bill. Example: function room.', icon: 'fa-champagne-glasses' },
 };
