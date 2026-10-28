@@ -83,6 +83,6 @@
     }
 
     // For a section that switches without leaving the page (student dashboard).
-    window.hmsNavLoader = { show: show };
+    window.hmsNavLoader = { show: show, hide: function () { loader.classList.remove('is-on'); } };
 })();
 </script>
