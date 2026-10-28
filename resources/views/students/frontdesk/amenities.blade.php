@@ -375,11 +375,11 @@ function RegisterEntryModal({ amenity, guests, onClose, onRegistered }) {
       .then(data => {
         if (data.visit) onRegistered(data.visit);
         onClose();
-        swal('success', 'Registered', data.visit.guestName + ' is now in the ' + amenity.name + '.');
+        swal('success', 'Entry recorded', data.visit.guestName + ' is now in the ' + amenity.name + '.');
       })
       .catch(err => {
-        const msg = (err && err.message) ? err.message : 'Could not register that guest.';
-        if (window.Swal) swal('error', 'Cannot register', msg); else setError(msg);
+        const msg = (err && err.message) ? err.message : 'Could not record that entry.';
+        if (window.Swal) swal('error', 'Cannot record entry', msg); else setError(msg);
       })
       .finally(() => setSaving(false));
   };
@@ -389,7 +389,7 @@ function RegisterEntryModal({ amenity, guests, onClose, onRegistered }) {
       <div className="room-modal" onClick={e => e.stopPropagation()}>
         <div style={{ padding: '1.5rem' }}>
           <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
-            Register Entry
+            Guest Entry
           </p>
           <h2 className="font-display" style={{ fontSize: '1.5rem', margin: '0 0 1.1rem', color: 'var(--fg)' }}>
             {amenity.name}
@@ -436,8 +436,8 @@ function RegisterEntryModal({ amenity, guests, onClose, onRegistered }) {
               </div>
             </div>
             <p style={{ margin: '-0.35rem 0 0', color: 'var(--fg-muted)', fontSize: '0.72rem', lineHeight: 1.5 }}>
-              One entry covers the whole party — sign them all in together, and sign them out
-              together when they leave.
+              One entry covers the whole party — record them going in together, and mark them
+              as left together when they come out.
             </p>
 
             <div>
@@ -450,7 +450,7 @@ function RegisterEntryModal({ amenity, guests, onClose, onRegistered }) {
             </div>
 
             <button type="submit" className="btn-primary" disabled={saving} style={{ justifyContent: 'center' }}>
-              {saving ? 'Registering…' : 'Register Entry'}
+              {saving ? 'Saving…' : 'Record Entry'}
             </button>
           </form>
         </div>
@@ -1001,7 +1001,7 @@ function ReservationModal({ reservation, onClose, onChanged }) {
 /* What the desk does for each kind of facility, in plain words. The kind comes
    from accessType, set by Housekeeping, never from the amenity's name. */
 const KINDS = {
-  registered:  { tab: 'signin', does: 'Sign guests in and out', icon: 'fa-right-to-bracket' },
+  registered:  { tab: 'signin', does: 'Record who goes in and out', icon: 'fa-right-to-bracket' },
   appointment: { tab: 'book',   does: 'Book an appointment',    icon: 'fa-calendar-check' },
   event:       { tab: 'book',   does: 'Book an event',          icon: 'fa-calendar-days' },
   open:        { tab: 'open',   does: 'Guests walk in freely',  icon: 'fa-door-open' },
@@ -1010,7 +1010,7 @@ const kindOf = amenity => KINDS[amenity.accessType] || KINDS.open;
 
 const TABS = [
   { key: 'all',    label: 'All facilities',  icon: 'fa-grip' },
-  { key: 'signin', label: 'Sign guests in',  icon: 'fa-right-to-bracket' },
+  { key: 'signin', label: 'Entry log',       icon: 'fa-right-to-bracket' },
   { key: 'book',   label: 'Book ahead',      icon: 'fa-calendar-check' },
   { key: 'open',   label: 'Walk in freely',  icon: 'fa-door-open' },
 ];
@@ -1033,7 +1033,7 @@ function AmenityActions({ amenity, visits, reservations, canRegister, now, onOpe
       <div className="af-action">
         <p className="af-note">
           <i className="fa-solid fa-circle-info"></i>
-          <span>No sign-in needed. Guests can use it on their own during opening hours.</span>
+          <span>No entry log needed. Guests can use it on their own during opening hours.</span>
         </p>
       </div>
     );
@@ -1047,9 +1047,9 @@ function AmenityActions({ amenity, visits, reservations, canRegister, now, onOpe
     const shut = amenity.status !== 'Available' || !amenity.isOpenNow;
     const why = !canRegister ? null
       : shut ? (amenity.status !== 'Available'
-          ? 'It is ' + String(amenity.status).toLowerCase() + ', so no one can be signed in.'
-          : 'It is closed right now, so no one can be signed in.')
-      : full ? 'It is full. Sign someone out first.'
+          ? 'It is ' + String(amenity.status).toLowerCase() + ', so no one can go in.'
+          : 'It is closed right now, so no one can go in.')
+      : full ? 'It is full. Mark a guest as left first.'
       : null;
     const pct = hasCap && amenity.capacity > 0 ? Math.min(100, Math.round((heads / amenity.capacity) * 100)) : 0;
 
@@ -1066,7 +1066,7 @@ function AmenityActions({ amenity, visits, reservations, canRegister, now, onOpe
         {why && <p className="af-why"><i className="fa-solid fa-circle-exclamation"></i><span>{why}</span></p>}
         {canRegister && (
           <button type="button" className="af-btn" disabled={shut || full} onClick={() => onOpenEntry(amenity)}>
-            <i className="fa-solid fa-right-to-bracket"></i> Sign a guest in
+            <i className="fa-solid fa-right-to-bracket"></i> Record guest entry
           </button>
         )}
 
@@ -1086,7 +1086,7 @@ function AmenityActions({ amenity, visits, reservations, canRegister, now, onOpe
                 {canRegister && (
                   <button type="button" className="af-btn-sm" disabled={exitingId === v.id} onClick={() => onExit(v)}>
                     <i className="fa-solid fa-right-from-bracket"></i>
-                    {exitingId === v.id ? 'Signing out…' : 'Sign out'}
+                    {exitingId === v.id ? 'Saving…' : 'Guest left'}
                   </button>
                 )}
               </div>
@@ -1291,9 +1291,9 @@ function App() {
       .then(r => (r.ok ? r.json() : r.json().then(err => Promise.reject(err))))
       .then(() => {
         setVisits(prev => prev.filter(v => v.id !== visit.id));
-        swal('success', 'Signed out', visit.guestName + ' has left the ' + visit.amenityName + '.');
+        swal('success', 'Guest left', visit.guestName + ' has left the ' + visit.amenityName + '.');
       })
-      .catch(err => swal('error', 'Error', (err && err.message) ? err.message : 'Could not sign that guest out.'))
+      .catch(err => swal('error', 'Error', (err && err.message) ? err.message : 'Could not record that the guest left.'))
       .finally(() => {
         setExitingId(null);
         pendingWrites.current = Math.max(0, pendingWrites.current - 1);
@@ -1311,14 +1311,14 @@ function App() {
         <p className="af-eyebrow">Front Desk</p>
         <h1 className="font-display">Amenities</h1>
         <p className="af-lead">
-          The hotel's facilities and what the desk does for each one: sign guests in and out
+          The hotel's facilities and what the desk does for each one: record who goes in and out
           of places like the pool and gym, and book the ones that need a reservation.
           Housekeeping keeps the opening hours and condition up to date.
         </p>
         {!loading && !canRegister && (
           <p className="af-readonly">
             <i className="fa-solid fa-eye"></i>
-            You can look but not change anything here. Signing guests in and booking is Front Desk work.
+            You can look but not change anything here. Recording entries and booking is Front Desk work.
           </p>
         )}
       </header>
@@ -1351,7 +1351,7 @@ function App() {
             </div>
             <p className="af-summary">
               <i className="fa-solid fa-users"></i>
-              <span><b>{insideNow}</b> {insideNow === 1 ? 'guest' : 'guests'} signed in right now</span>
+              <span><b>{insideNow}</b> {insideNow === 1 ? 'guest' : 'guests'} inside right now</span>
             </p>
           </div>
 

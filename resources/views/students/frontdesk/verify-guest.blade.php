@@ -100,6 +100,17 @@
   .bill-meta dd { margin: 0; color: var(--fg); font-size: 0.85rem; }
   @media (max-width: 520px) { .bill-meta { grid-template-columns: 1fr; } }
 
+  /* Extend Stay: a − / + stepper for the extra nights. */
+  .xs-stepper { display: flex; align-items: center; gap: 0.6rem; }
+  .xs-step {
+    width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; border: 1px solid var(--border);
+    background: transparent; color: var(--fg); cursor: pointer; transition: border-color 0.15s, color 0.15s;
+  }
+  .xs-step:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .xs-step:disabled { opacity: 0.4; cursor: not-allowed; }
+  .xs-step:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .xs-count { min-width: 6rem; text-align: center; font-size: 1.05rem; font-weight: 700; color: var(--fg); font-variant-numeric: tabular-nums; }
+
   /* Guest list. Reads the shell's tokens (--card, --border, --fg, --fg-muted,
      --accent), so it follows Template 1, Template 2 and a team's own colours.
      Every cell stays on one line. When the panel is too narrow for that
@@ -147,12 +158,17 @@
   .vg-status + .vg-sub { margin-top: 0.3rem; }
   .vg-status { border-radius: 999px; letter-spacing: 0; text-transform: none; font-size: 0.76rem; padding: 0.28rem 0.65rem; }
 
-  .vg-actions { display: flex; gap: 0.4rem; justify-content: flex-end; flex-wrap: nowrap; }
+  .vg-actions {
+    display: grid; grid-template-columns: 7.2rem 7.2rem 4.8rem; gap: 0.4rem;
+    justify-content: end; align-items: center;
+  }
   .vg-btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; white-space: nowrap; cursor: pointer;
     padding: 0.5rem 0.8rem; border-radius: 0.5rem; border: 1px solid var(--border); background: transparent; color: var(--fg);
     font: 600 0.78rem/1 var(--font-body, 'Outfit', sans-serif); text-decoration: none; transition: border-color 0.15s, color 0.15s, background 0.15s, filter 0.15s;
   }
+  .vg-actions .vg-lifecycle-btn { width: 100%; box-sizing: border-box; }
+  .vg-actions > .vg-btn:not(.vg-lifecycle-btn) { width: 100%; box-sizing: border-box; }
   .vg-btn i { font-size: 0.72rem; }
   .vg-btn:hover { border-color: var(--accent); color: var(--accent); }
   .vg-btn-main { background: var(--accent); border-color: var(--accent); color: var(--bg); }
@@ -187,7 +203,8 @@
     .vg-table tbody tr:hover td { background: none; }
     .vg-table td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 0.15rem; font-size: 0.7rem; color: var(--fg-muted); }
     .vg-table td.vg-wide { grid-column: 1 / -1; }
-    .vg-actions { justify-content: flex-start; flex-wrap: wrap; }
+    .vg-actions { display: flex; justify-content: flex-start; flex-wrap: wrap; }
+    .vg-actions-gap { display: none; }
   }
   @media (max-width: 640px) {
     .vg { padding: 1rem 1rem 2.5rem; }
@@ -779,6 +796,121 @@ function FinalBillModal({ open, bill, loading, error, onClose, onAddCharge, onRe
   );
 }
 
+/* 'YYYY-MM-DD' plus n days, built from the parts like formatBillDate() so the date
+   is not shifted by a UTC read. */
+function addDays(dateStr, days) {
+  const [y, m, d] = String(dateStr || '').split('-').map(Number);
+  if (!y || !m || !d) return '';
+  const next = new Date(y, m - 1, d + days);
+  const pad = n => String(n).padStart(2, '0');
+  return `${next.getFullYear()}-${pad(next.getMonth() + 1)}-${pad(next.getDate())}`;
+}
+
+const MAX_EXTRA_NIGHTS = 30;
+
+/*
+ * A checked-in guest staying longer. The desk picks how many more nights; the new
+ * check-out keeps the same clock time, and the extra room charge is shown before
+ * saving so the student sees what it does to the bill. Nothing is paid here — the
+ * balance is settled at check-out like the rest of the stay.
+ */
+function ExtendStayModal({ room, reservation, onClose, onSave }) {
+  const [nights, setNights] = useState(1);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape' && !busy) onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose, busy]);
+
+  const rate = Number(reservation.roomRate || (room && room.price)) || 0;
+  const newCheckOut = addDays(reservation.checkOut, nights);
+  const addedBlocks = stayBlocks(reservation.checkIn, newCheckOut, reservation.checkInTime)
+    - stayBlocks(reservation.checkIn, reservation.checkOut, reservation.checkInTime);
+  const extraCharge = addedBlocks * rate;
+  const balanceNow = Number(reservation.outstanding) || 0;
+
+  const change = (by) => {
+    setError('');
+    setNights(n => Math.min(MAX_EXTRA_NIGHTS, Math.max(1, n + by)));
+  };
+
+  const submit = (e) => {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    Promise.resolve(onSave(newCheckOut))
+      .catch(err => { setError((err && err.message) || 'Could not extend this stay.'); setBusy(false); });
+  };
+
+  return (
+    <div className="bill-overlay" onClick={() => { if (!busy) onClose(); }} role="dialog" aria-modal="true" aria-labelledby="xs-title">
+      <div className="bill-modal" style={{ maxWidth: '28rem' }} onClick={e => e.stopPropagation()}>
+        <div className="bill-head">
+          <div>
+            <p style={{ color: 'var(--accent)', fontSize: '0.65rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: '0 0 0.35rem' }}>Front Desk</p>
+            <h2 id="xs-title" className="font-display" style={{ fontSize: '1.5rem', margin: 0, color: 'var(--fg)' }}>Extend Stay</h2>
+            <p style={{ margin: '0.3rem 0 0', color: 'var(--fg-muted)', fontSize: '0.84rem' }}>
+              {reservation.fullName || 'Guest'} · {room ? room.name : 'Room'}
+            </p>
+          </div>
+          <button type="button" onClick={onClose} disabled={busy} aria-label="Close"
+            style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)', cursor: busy ? 'not-allowed' : 'pointer', flexShrink: 0 }}>
+            <i className="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <form className="bill-body" onSubmit={submit}>
+          <dl className="bill-meta">
+            <div><dt>Check-out now</dt><dd>{formatBillDateTime(reservation.checkOut, reservation.checkInTime)}</dd></div>
+            <div><dt>New check-out</dt><dd style={{ color: 'var(--accent-light)', fontWeight: 600 }}>{formatBillDateTime(newCheckOut, reservation.checkInTime)}</dd></div>
+          </dl>
+
+          <p className="bill-section-title">How many more nights?</p>
+          <div className="xs-stepper">
+            <button type="button" className="xs-step" onClick={() => change(-1)} disabled={busy || nights <= 1} aria-label="One night less">
+              <i className="fa-solid fa-minus"></i>
+            </button>
+            <span className="xs-count" aria-live="polite">{nights} {nights === 1 ? 'night' : 'nights'}</span>
+            <button type="button" className="xs-step" onClick={() => change(1)} disabled={busy || nights >= MAX_EXTRA_NIGHTS} aria-label="One night more">
+              <i className="fa-solid fa-plus"></i>
+            </button>
+          </div>
+
+          <p className="bill-section-title">What it adds to the bill</p>
+          <div className="bill-line">
+            <span>{nights} more {nights === 1 ? 'night' : 'nights'} · {addedBlocks} × {BLOCK_HOURS} hrs × {formatPeso(rate)}</span>
+            <span className="bill-amt">+ {formatPeso(extraCharge)}</span>
+          </div>
+          <div className="bill-line"><span>Balance now</span><span className="bill-amt">{formatPeso(balanceNow)}</span></div>
+          <div className="bill-line is-subtotal is-balance">
+            <span>Balance after extending</span><span className="bill-amt">{formatPeso(balanceNow + extraCharge)}</span>
+          </div>
+          <p className="bill-section-note" style={{ margin: '0.5rem 0 0' }}>
+            The guest pays this at check-out, with the rest of the bill.
+          </p>
+
+          {error && (
+            <p role="alert" style={{ margin: '0.9rem 0 0', color: 'var(--danger, #fb7185)', fontSize: '0.82rem', lineHeight: 1.5 }}>
+              <i className="fa-solid fa-circle-exclamation" style={{ marginRight: 6 }}></i>{error}
+            </p>
+          )}
+
+          <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'flex-end', marginTop: '1.3rem', flexWrap: 'wrap' }}>
+            <button type="button" className="btn-outline" onClick={onClose} disabled={busy}>Cancel</button>
+            <button type="submit" className="btn-solid" disabled={busy}>
+              <i className="fa-solid fa-calendar-plus" style={{ fontSize: '0.7rem' }}></i>
+              {busy ? 'Saving…' : 'Extend Stay'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 /*
  * Read-only view of one stay. The table now carries only what the desk scans by
  * (who, where, when, status), so everything it used to spell out in the Total and
@@ -910,7 +1042,7 @@ function fdThemeColor(name, fallback) {
   return value || fallback;
 }
 
-function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill, onAddCharge, onRemoveCharge, onSettleAndCheckOut }) {
+function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill, onAddCharge, onRemoveCharge, onSettleAndCheckOut, onExtendStay }) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [page, setPage] = useState(1);
@@ -927,6 +1059,15 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill,
   // The View action. Read-only, so it needs no fetch: the row already holds the whole
   // reservation payload the modal renders.
   const [detailsFor, setDetailsFor] = useState(null);
+
+  const [extendFor, setExtendFor] = useState(null);
+  const extendStay = (checkOut) => {
+    const { room, reservation } = extendFor;
+    return Promise.resolve(onExtendStay(reservation.bookingId, checkOut)).then(() => {
+      setExtendFor(null);
+      if (onToast) onToast(`${reservation.fullName || 'Guest'} now checks out of ${room.name} on ${formatBillDate(checkOut)}.`);
+    });
+  };
 
   /* Front Desk checks an arrived guest in here too, not only Room Management -
      the same booking action. Asked first: it starts the guest's paid stay, and
@@ -1113,8 +1254,17 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill,
                         </td>
                         <td className="vg-wide">
                           <div className="vg-actions">
-                            {status === 'Booked' && (
+                            {/* Extend sits first so the lifecycle and Details buttons line up
+                                in the same columns on every row; other rows keep the slot empty. */}
+                            {status === 'Checked In' ? (
                               <button type="button" className="vg-btn vg-btn-line"
+                                onClick={() => setExtendFor({ room, reservation })}
+                                title="The guest wants to stay more nights">
+                                <i className="fa-solid fa-calendar-plus"></i> Extend stay
+                              </button>
+                            ) : <span className="vg-actions-gap" aria-hidden="true"></span>}
+                            {status === 'Booked' && (
+                              <button type="button" className="vg-btn vg-lifecycle-btn vg-btn-line"
                                 onClick={() => onBookingAction(reservation.bookingId, 'arrive')}
                                 title="The guest is here at the desk">
                                 <i className="fa-solid fa-door-open"></i> Mark arrived
@@ -1128,7 +1278,7 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill,
                               </button>
                             )}
                             {status === 'Checked In' && (
-                              <button type="button" className="vg-btn vg-btn-main"
+                              <button type="button" className="vg-btn vg-lifecycle-btn vg-btn-main"
                                 onClick={() => openBill(room, reservation)}
                                 title="Show the final bill and check the guest out">
                                 <i className="fa-solid fa-right-from-bracket"></i> Check out
@@ -1192,6 +1342,15 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill,
           room={detailsFor.room}
           reservation={detailsFor.reservation}
           onClose={() => setDetailsFor(null)}
+        />
+      )}
+
+      {extendFor && (
+        <ExtendStayModal
+          room={extendFor.room}
+          reservation={extendFor.reservation}
+          onClose={() => setExtendFor(null)}
+          onSave={extendStay}
         />
       )}
     </div>
@@ -1288,6 +1447,16 @@ function App() {
     ));
   }, [billRequest, fetchRooms]);
 
+  // A later check-out on the same booking; the server refuses nights already
+  // promised to another guest, and the modal shows that message.
+  const extendStay = useCallback((bookingId, checkOut) => (
+    billRequest('/students/hotel/bookings/' + bookingId, 'PATCH', { check_out: checkOut })
+      .then(data => {
+        if (data && data.room) setRooms(prev => prev.map(r => (r.id === data.room.id ? data.room : r)));
+        return data;
+      })
+  ), [billRequest]);
+
   return (
     <VerifyGuestPage
       rooms={rooms}
@@ -1297,6 +1466,7 @@ function App() {
       onAddCharge={addCharge}
       onRemoveCharge={removeCharge}
       onSettleAndCheckOut={settleAndCheckOut}
+      onExtendStay={extendStay}
       onToast={(msg) => window.toast && window.toast(msg)}
     />
   );

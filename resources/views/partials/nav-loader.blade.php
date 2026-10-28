@@ -37,12 +37,28 @@
         }
     }, true);
 
+    // A link click shows the circle at once. Chromium may not paint what a
+    // beforeunload listener draws, so Proceed, Customize and Start Simulation sat
+    // on a frozen page with no sign the click had landed.
+    window.addEventListener('click', function (e) {
+        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        var link = e.target.closest && e.target.closest('a[href]');
+        if (!link || link.target === '_blank' || link.hasAttribute('download') || !/^https?:$/.test(link.protocol)) return;
+        // Same page with only a #hash: nothing loads.
+        if (link.href.split('#')[0] === location.href.split('#')[0] && link.href.indexOf('#') !== -1) return;
+        show(15000);
+    });
+
     window.addEventListener('beforeunload', function (e) {
         if (Date.now() < skipUntil) return;
         // Next tick, after every other beforeunload listener has run, whenever it
         // was registered: one that asked "Leave site?" has marked the event by then.
         setTimeout(function () {
-            if (e.defaultPrevented || (typeof e.returnValue === 'string' && e.returnValue !== '')) return;
+            if (e.defaultPrevented || (typeof e.returnValue === 'string' && e.returnValue !== '')) {
+                // The click may have put the circle up; staying on the page takes it down.
+                loader.classList.remove('is-on');
+                return;
+            }
             // ponytail: a link that turns out to be a file download never leaves the
             // page, so the circle clears itself; a page slower than this loses it early.
             show(15000);
@@ -67,6 +83,6 @@
     }
 
     // For a section that switches without leaving the page (student dashboard).
-    window.hmsNavLoader = { show: show };
+    window.hmsNavLoader = { show: show, hide: function () { loader.classList.remove('is-on'); } };
 })();
 </script>

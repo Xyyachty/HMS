@@ -1453,10 +1453,13 @@
             const link = event && event.currentTarget;
             const href = link && link.getAttribute('href');
             if (event) event.preventDefault();
+            // Up while the last save finishes too, not only once the page leaves.
+            if (window.hmsNavLoader) window.hmsNavLoader.show(15000);
 
             Promise.resolve(window.hmsBuilder.flush()).then(function () {
                 leaveBuilder(href);
             }, async function (err) {
+                if (window.hmsNavLoader) window.hmsNavLoader.hide();
                 // Leaving now throws the unsaved edits away, so it is the
                 // student's call, made knowing why the save failed.
                 const leave = await askConfirm(
