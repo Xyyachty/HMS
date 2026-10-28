@@ -1096,6 +1096,22 @@
         const movement = document.getElementById('movementControls');
         if (movement) movement.classList.add('hidden');
         setPanelSelectionState(false);
+
+        /* The editor can only put back what it recorded during this visit, so a
+           hidden block or a moved element's container could stay changed until the
+           student refreshed. Save the reset first, then redraw the frame from the
+           defaults. Marked dirty here because the frame's own change notice may not
+           have arrived yet, and a flush with nothing dirty saves nothing. */
+        if (window.hmsBuilder) {
+            window.hmsBuilder.markDirty();
+            try {
+                await window.hmsBuilder.flush();
+            } catch (e) {
+                return; // the save error is already on the status line
+            }
+        }
+        const frame = document.getElementById('templateFrame');
+        if (frame && frame.contentWindow) frame.contentWindow.location.reload();
         if (typeof toast === 'function') toast('Design reset to defaults');
     }
 

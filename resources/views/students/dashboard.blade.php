@@ -1549,7 +1549,6 @@
                 @include('partials.profile-page', [
                     'pfUser'        => $pUser,
                     'pfRoleLabel'   => 'Student',
-                    'pfModals'      => true,
                     'pfAction'      => route('students.profile.update'),
                     'pfPhoneValue'  => old('phone_number', $pUser?->phone_number ?? $student?->phone_number),
                     'pfRecordTitle' => 'School Record',

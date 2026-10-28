@@ -1,8 +1,8 @@
 {{-- My Profile, shared by the dean, faculty and student portals.
 
      One screen, no scrolling on a laptop: who you are on the left (photo, name,
-     the record the school keeps), what you can change on the right (details,
-     then password). Styled with its own pf- classes, written out in hex: the
+     the record the school keeps), Recent Activity on the right. Account Details
+     and Change Password open in pop-ups from buttons on the identity card. Styled with its own pf- classes, written out in hex: the
      faculty portal runs on the frozen Tailwind build and a palette file that
      remaps stock colours, and the student dashboard re-points several utilities
      inside #profile-section. No class here contains "text-", so .ink-all leaves
@@ -16,18 +16,15 @@
        $pfPhPhone     true for the +63 mobile input the dean and faculty forms validate
        $pfRecordTitle heading over the read-only rows
        $pfRecords     [[label, value], ...]
-       $pfRoles       optional list of role names, shown as chips
-       $pfModals      true to keep Account Details and Change Password in pop-ups
-                      opened from buttons on the identity card (every portal) --}}
+       $pfRoles       optional list of role names, shown as chips --}}
 @php
     $pfName = trim(implode(' ', array_filter([$pfUser?->first_name, $pfUser?->last_name]))) ?: ($pfUser?->name ?? 'User');
     $pfRoles = $pfRoles ?? null;
     $pfPhPhone = $pfPhPhone ?? false;
-    $pfModals = $pfModals ?? false;
     // A pop-up that came back with errors, or a password that must be replaced
     // before anything else, opens again on load rather than hiding the reason.
-    $pfOpenDetails = $pfModals && $errors->hasAny(['first_name', 'middle_name', 'last_name', 'email', 'phone_number', 'avatar']);
-    $pfOpenPassword = $pfModals && ($errors->getBag('password')->any() || $pfUser?->must_change_password);
+    $pfOpenDetails = $errors->hasAny(['first_name', 'middle_name', 'last_name', 'email', 'phone_number', 'avatar']);
+    $pfOpenPassword = $errors->getBag('password')->any() || $pfUser?->must_change_password;
     $pfLog = $pfUser
         ? \App\Models\ActivityLog::where('user_id', $pfUser->user_id)->latest('created_at')->limit(20)->get()
         : collect();
@@ -84,7 +81,7 @@
     .pf-mail { margin-top: .2rem; font-size: .75rem; color: var(--muted); word-break: break-all; }
     /* Plain label, not a chip: a filled pill read as a button. */
     .pf-pill { margin-top: .75rem; display: inline-flex; align-items: center; gap: .35rem;
-               font-size: .625rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--wine); }
+               font-size: .625rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #A16207; }
     .pf-photo-note { margin-top: .85rem; font-size: .6875rem; color: var(--muted); line-height: 1.45; }
     .pf-remove { margin-top: .35rem; display: inline-flex; align-items: center; gap: .4rem; font-size: .6875rem; font-weight: 700; color: var(--wine); cursor: pointer; }
     .pf-remove input { accent-color: var(--wine); }
@@ -115,7 +112,7 @@
     .pf-input .pf-prefix { position: absolute; left: .85rem; top: 50%; transform: translateY(-50%); font-size: .75rem; font-weight: 700; color: var(--muted); pointer-events: none; }
     .pf-input.has-prefix input { padding-left: 2.75rem; }
     .pf-input.has-eye input { padding-right: 2.6rem; }
-    .pf-eye { position: absolute; right: .35rem; top: 50%; transform: translateY(-50%); width: 2rem; height: 2rem; border-radius: .55rem; display: inline-flex; align-items: center; justify-content: center; color: #8A817A; }
+    .pf-eye { position: absolute; right: .35rem; top: 50%; transform: translateY(-50%); width: 2rem; height: 2rem; border-radius: .55rem; background: transparent; display: inline-flex; align-items: center; justify-content: center; color: #8A817A; }
     .pf-eye:hover { color: var(--ink); }
     .pf-eye [data-pw-eye] { display: flex; font-size: 1.05rem; }
     .pf-eye [data-pw-eye][hidden] { display: none; }
@@ -128,23 +125,68 @@
                 background: #F0FDF4; border: 1px solid #BBF7D0; color: #15803D; }
     .pf-flash.is-warn { background: #FBF3E0; border-color: #E9D3A0; color: #7A5322; }
 
-    /* Pop-up mode ($pfModals): the two forms sit in native dialogs opened from
-       the identity card; Recent Activity has the right column to itself. */
-    .pf.has-modals .pf-pill { color: #A16207; }
     .pf-actions { display: grid; gap: .5rem; padding: 0 1.25rem 1.1rem; }
     .pf-actions .pf-btn { justify-content: center; height: 2.5rem; }
-    .pf-actions .pf-btn.is-ghost { background: #fff; color: var(--ink); border: 1px solid var(--line); }
-    .pf-actions .pf-btn.is-ghost:hover { background: var(--soft); }
-    dialog.pf-dialog { padding: 0; border: 0; background: transparent; width: min(46rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow: auto; }
-    dialog.pf-dialog::backdrop { background: rgba(24, 24, 24, .45); }
-    dialog.pf-dialog .pf-card { animation: none; }
-    dialog.pf-dialog .pf-head { padding-right: 3.5rem; }
-    .pf-dialog-x { position: absolute; top: .85rem; right: .85rem; width: 2.1rem; height: 2.1rem; border-radius: 9999px; display: inline-flex; align-items: center; justify-content: center;
-                   background: transparent; color: var(--muted); font-size: 1.15rem; }
-    .pf-dialog-x:hover { background: var(--soft); color: var(--ink); }
+    .pf-btn.is-ghost { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+    .pf-btn.is-ghost:hover { background: var(--soft); }
+    .pf-btn.is-primary { background: var(--wine); }
+    .pf-btn.is-primary:hover { background: var(--wine-deep); }
+
+    /* Pop-ups: native dialogs, so Esc, focus trapping and the top layer come
+       from the browser. The sheet scrolls its body, never its header or the
+       buttons. */
+    dialog.pf-dialog { padding: 0; border: 0; background: transparent; color: var(--ink); overflow: visible;
+                       width: min(40rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); }
+    dialog.pf-dialog.is-narrow { width: min(30rem, calc(100vw - 2rem)); }
+    dialog.pf-dialog::backdrop { background: rgba(28, 8, 14, .55); backdrop-filter: blur(3px); }
+    .pf-sheet { display: flex; flex-direction: column; max-height: calc(100dvh - 2rem); background: #fff; border-radius: 1.25rem; overflow: hidden;
+                box-shadow: 0 30px 70px -20px rgba(74, 13, 28, .5); }
+    dialog.pf-dialog[open] .pf-sheet { animation: pf-pop .3s cubic-bezier(.16, 1, .3, 1) both; }
+    @keyframes pf-pop { from { opacity: 0; transform: translateY(14px) scale(.98); } to { opacity: 1; transform: none; } }
+    @media (prefers-reduced-motion: reduce) { dialog.pf-dialog[open] .pf-sheet { animation: none; } }
+    .pf-mhead { position: relative; flex: 0 0 auto; display: flex; align-items: center; gap: .9rem; padding: 1.25rem 3.75rem 1.25rem 1.5rem; color: #fff;
+                background: var(--wine-deep); background-image: radial-gradient(120% 160% at 100% 0%, rgba(201, 164, 92, .3), transparent 55%), linear-gradient(135deg, var(--wine), var(--wine-deep)); }
+    .pf-mhead .pf-icon { width: 2.75rem; height: 2.75rem; border-radius: .9rem; font-size: 1.35rem; background: rgba(255, 255, 255, .12); color: #E9C98A; border: 1px solid rgba(255, 255, 255, .2); }
+    .pf-mhead .pf-h { font-size: 1.05rem; }
+    .pf-mhead .pf-sub { font-size: .75rem; color: rgba(255, 255, 255, .75); }
+    .pf-dialog-x { position: absolute; top: 50%; right: 1rem; transform: translateY(-50%); width: 2.25rem; height: 2.25rem; border-radius: 9999px;
+                   display: inline-flex; align-items: center; justify-content: center; background: transparent; color: rgba(255, 255, 255, .8); font-size: 1.2rem; transition: background-color .2s; }
+    .pf-dialog-x:hover { background: rgba(255, 255, 255, .14); color: #fff; }
+    .pf-mbody { flex: 1 1 auto; overflow-y: auto; padding: 1.35rem 1.5rem 1.5rem; display: grid; gap: 1.15rem; align-content: start; }
+    .pf-mbody .pf-kicker { margin-bottom: .6rem; }
+    .pf-mbody .pf-field label { font-size: .75rem; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--ink); }
+    .pf-mbody .pf-field label small { font-size: .6875rem; }
+    .pf-mbody .pf-input input { height: 2.75rem; font-size: .875rem; }
+    .pf-mfoot { flex: 0 0 auto; display: flex; justify-content: flex-end; gap: .6rem; padding: .9rem 1.5rem; border-top: 1px solid var(--line); background: #FAFAF9; }
+    .pf-mfoot .pf-btn { height: 2.5rem; padding: 0 1.15rem; }
+    @media (max-width: 480px) { .pf-mfoot .pf-btn { flex: 1 1 0; justify-content: center; } }
+    .pf-split { height: 1px; background: var(--line); }
+
+    /* An icon at the start of a field. */
+    .pf-lead { position: absolute; left: .85rem; top: 50%; transform: translateY(-50%); display: flex; font-size: 1.05rem; color: #A39C97; pointer-events: none; transition: color .2s; }
+    .pf-input.has-lead input { padding-left: 2.5rem; }
+    .pf-input:focus-within .pf-lead { color: var(--wine); }
+
+    /* Photo row at the top of Account Details. */
+    .pf-photo { display: flex; align-items: center; gap: 1rem; padding: .85rem; border: 1px solid var(--line); border-radius: 1rem; background: var(--soft); }
+    .pf-photo img { width: 3.5rem; height: 3.5rem; flex: 0 0 auto; object-fit: cover; border-radius: .9rem; border: 2px solid #fff; background: #fff; box-shadow: 0 6px 16px -10px rgba(24, 24, 24, .5); }
+    .pf-photo-text { flex: 1 1 auto; min-width: 0; }
+    .pf-photo-text b { display: block; font-size: .8125rem; font-weight: 800; }
+    .pf-photo-text span { display: block; font-size: .6875rem; color: var(--muted); margin-top: .1rem; line-height: 1.4; }
+    .pf-photo .pf-remove { margin-top: .4rem; }
+    .pf-photo .pf-btn { flex: 0 0 auto; cursor: pointer; }
+    @media (max-width: 420px) { .pf-photo { flex-wrap: wrap; } .pf-photo .pf-btn { width: 100%; justify-content: center; } }
+
+    /* Password rules, ticked off as the student types. */
+    .pf-rules { list-style: none; margin: 0; padding: .8rem .95rem; display: grid; gap: .45rem; border-radius: .9rem; background: var(--soft); }
+    .pf-rules li { display: flex; align-items: center; gap: .55rem; font-size: .75rem; color: var(--muted); transition: color .2s; }
+    .pf-rules li::before { content: ''; width: 1rem; height: 1rem; flex: 0 0 auto; border-radius: 9999px; border: 1.5px solid #C9C3BE; background: #fff center / .7rem no-repeat; transition: background-color .2s, border-color .2s; }
+    .pf-rules li.is-ok { color: #15803D; font-weight: 600; }
+    .pf-rules li.is-ok::before { border-color: #15803D; background-color: #15803D;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7'/%3E%3C/svg%3E"); }
 </style>
 
-<div class="pf{{ session('success') ? ' has-flash' : '' }}{{ $pfModals ? ' has-modals' : '' }}">
+<div class="pf{{ session('success') ? ' has-flash' : '' }}">
     @if (session('success'))
         <div class="pf-flash" role="status">
             <span class="iconify" data-icon="mdi:check-circle-outline"></span>
@@ -168,14 +210,7 @@
             <p class="pf-name">{{ $pfName }}</p>
             <p class="pf-mail">{{ $pfUser?->email }}</p>
             <span class="pf-pill"><span class="iconify" data-icon="mdi:shield-account-outline"></span>{{ $pfRoleLabel }}</span>
-            <p class="pf-photo-note" id="pfPhotoNote">Tap the camera to change your photo. JPG, PNG, WEBP or GIF, up to 2 MB. Saved with your details.</p>
-            @if ($pfUser?->avatar)
-                <label class="pf-remove">
-                    <input type="checkbox" name="remove_avatar" value="1" form="pfProfileForm">
-                    Remove current photo
-                </label>
-            @endif
-            @error('avatar')<p class="pf-err">{{ $message }}</p>@enderror
+            <p class="pf-photo-note">Tap the camera to change your photo.</p>
         </div>
 
         @if (!empty($pfRecords) || !empty($pfRoles))
@@ -201,18 +236,16 @@
             </div>
         @endif
 
-        @if ($pfModals)
-            <div class="pf-actions">
-                <button type="button" class="pf-btn" onclick="document.getElementById('pfDetailsDialog').showModal()">
-                    <span class="iconify" data-icon="mdi:pencil-outline"></span>
-                    Edit Details
-                </button>
-                <button type="button" class="pf-btn is-ghost" onclick="document.getElementById('pfPasswordDialog').showModal()">
-                    <span class="iconify" data-icon="mdi:lock-reset"></span>
-                    Change Password
-                </button>
-            </div>
-        @endif
+        <div class="pf-actions">
+            <button type="button" class="pf-btn" onclick="document.getElementById('pfDetailsDialog').showModal()">
+                <span class="iconify" data-icon="mdi:pencil-outline"></span>
+                Edit Details
+            </button>
+            <button type="button" class="pf-btn is-ghost" onclick="document.getElementById('pfPasswordDialog').showModal()">
+                <span class="iconify" data-icon="mdi:lock-reset"></span>
+                Change Password
+            </button>
+        </div>
 
         <div class="pf-foot">
             <span class="iconify" data-icon="mdi:shield-check-outline" style="font-size: 1rem; color: #15803D"></span>
@@ -222,78 +255,101 @@
 
     <div class="pf-main">
         {{-- Details --}}
-        @if ($pfModals)
-            <dialog id="pfDetailsDialog" class="pf-dialog" aria-label="Edit account details" onclick="if (event.target === this) this.close()">
-                <button type="button" class="pf-dialog-x" aria-label="Close" onclick="this.closest('dialog').close()"><span class="iconify" data-icon="mdi:close"></span></button>
-        @endif
-        <form id="pfProfileForm" method="POST" action="{{ $pfAction }}" enctype="multipart/form-data" class="pf-card" style="--i: 1">
-            @csrf
-            @method('PUT')
-            <div class="pf-head">
-                <div class="pf-title">
+        <dialog id="pfDetailsDialog" class="pf-dialog" aria-labelledby="pfDetailsTitle" onclick="if (event.target === this) this.close()">
+            <form id="pfProfileForm" method="POST" action="{{ $pfAction }}" enctype="multipart/form-data" class="pf-sheet">
+                @csrf
+                @method('PUT')
+                <div class="pf-mhead">
                     <span class="pf-icon"><span class="iconify" data-icon="mdi:account-edit-outline"></span></span>
                     <div>
-                        <p class="pf-h">Account Details</p>
-                        <p class="pf-sub">How your name appears across the portal.</p>
+                        <p class="pf-h" id="pfDetailsTitle">Edit Details</p>
+                        <p class="pf-sub">How your name and contact details appear across the portal.</p>
                     </div>
+                    <button type="button" class="pf-dialog-x" aria-label="Close" onclick="this.closest('dialog').close()"><span class="iconify" data-icon="mdi:close"></span></button>
                 </div>
-                <button type="submit" class="pf-btn">
-                    <span class="iconify" data-icon="mdi:content-save-outline"></span>
-                    Save Changes
-                </button>
-            </div>
-            <div class="pf-body">
-                <div class="pf-grid is-3">
-                    @foreach ([
-                        ['first_name', 'First name', true],
-                        ['middle_name', 'Middle name', false],
-                        ['last_name', 'Last name', true],
-                    ] as [$pfField, $pfFieldLabel, $pfRequired])
-                        <div class="pf-field">
-                            <label for="pf_{{ $pfField }}">{{ $pfFieldLabel }} @unless($pfRequired)<small>(optional)</small>@endunless</label>
-                            <div class="pf-input">
-                                <input id="pf_{{ $pfField }}" name="{{ $pfField }}" type="text" value="{{ old($pfField, $pfUser?->{$pfField}) }}" @if($pfRequired) required @endif @if($pfModals && $loop->first) autofocus @endif>
-                            </div>
-                            @error($pfField)<p class="pf-err">{{ $message }}</p>@enderror
+                <div class="pf-mbody">
+                    <div class="pf-photo">
+                        <img data-pf-avatar src="{{ $pfUser?->avatar_url }}" alt="">
+                        <div class="pf-photo-text">
+                            <b>Profile photo</b>
+                            <span data-pf-photo-note>JPG, PNG, WEBP or GIF, up to 2 MB.</span>
+                            @if ($pfUser?->avatar)
+                                <label class="pf-remove">
+                                    <input type="checkbox" name="remove_avatar" value="1">
+                                    Remove current photo
+                                </label>
+                            @endif
+                            @error('avatar')<p class="pf-err">{{ $message }}</p>@enderror
                         </div>
-                    @endforeach
-                </div>
-                <div class="pf-grid is-2">
-                    <div class="pf-field">
-                        <label for="pf_email">Email</label>
-                        <div class="pf-input">
-                            <input id="pf_email" name="email" type="email" value="{{ old('email', $pfUser?->email) }}" autocomplete="email" required>
+                        <label for="pfAvatar" class="pf-btn is-ghost">
+                            <span class="iconify" data-icon="mdi:camera-outline"></span>
+                            Change
+                        </label>
+                    </div>
+
+                    <div>
+                        <p class="pf-kicker">Name</p>
+                        <div class="pf-grid is-3">
+                            @foreach ([
+                                ['first_name', 'First name', true],
+                                ['middle_name', 'Middle name', false],
+                                ['last_name', 'Last name', true],
+                            ] as [$pfField, $pfFieldLabel, $pfRequired])
+                                <div class="pf-field">
+                                    <label for="pf_{{ $pfField }}">{{ $pfFieldLabel }} @unless($pfRequired)<small>(optional)</small>@endunless</label>
+                                    <div class="pf-input">
+                                        <input id="pf_{{ $pfField }}" name="{{ $pfField }}" type="text" value="{{ old($pfField, $pfUser?->{$pfField}) }}" @if($pfRequired) required @endif @if($loop->first) autofocus @endif>
+                                    </div>
+                                    @error($pfField)<p class="pf-err">{{ $message }}</p>@enderror
+                                </div>
+                            @endforeach
                         </div>
-                        @error('email')<p class="pf-err">{{ $message }}</p>@enderror
                     </div>
-                    <div class="pf-field">
-                        <label for="pf_phone">Phone <small>(optional)</small></label>
-                        @if ($pfPhPhone)
-                            <div class="pf-input has-prefix">
-                                <span class="pf-prefix">+63</span>
-                                <input id="pf_phone" name="phone_number" type="text" value="{{ $pfPhoneValue }}"
-                                       inputmode="numeric" autocomplete="tel-national" pattern="9[0-9]{9}" title="10 digits after +63, starting with 9 (e.g. 9123456789)" data-ph-phone
-                                       placeholder="912 345 6789">
+
+                    <div>
+                        <p class="pf-kicker">Contact</p>
+                        <div class="pf-grid is-2">
+                            <div class="pf-field">
+                                <label for="pf_email">Email</label>
+                                <div class="pf-input has-lead">
+                                    <span class="pf-lead"><span class="iconify" data-icon="mdi:email-outline"></span></span>
+                                    <input id="pf_email" name="email" type="email" value="{{ old('email', $pfUser?->email) }}" autocomplete="email" required>
+                                </div>
+                                @error('email')<p class="pf-err">{{ $message }}</p>@enderror
                             </div>
-                        @else
-                            <div class="pf-input">
-                                <input id="pf_phone" name="phone_number" type="text" value="{{ $pfPhoneValue }}" autocomplete="tel">
+                            <div class="pf-field">
+                                <label for="pf_phone">Phone <small>(optional)</small></label>
+                                @if ($pfPhPhone)
+                                    <div class="pf-input has-prefix">
+                                        <span class="pf-prefix">+63</span>
+                                        <input id="pf_phone" name="phone_number" type="text" value="{{ $pfPhoneValue }}"
+                                               inputmode="numeric" autocomplete="tel-national" pattern="9[0-9]{9}" title="10 digits after +63, starting with 9 (e.g. 9123456789)" data-ph-phone
+                                               placeholder="912 345 6789">
+                                    </div>
+                                @else
+                                    <div class="pf-input has-lead">
+                                        <span class="pf-lead"><span class="iconify" data-icon="mdi:phone-outline"></span></span>
+                                        <input id="pf_phone" name="phone_number" type="text" value="{{ $pfPhoneValue }}" autocomplete="tel">
+                                    </div>
+                                @endif
+                                @error('phone_number')<p class="pf-err">{{ $message }}</p>@enderror
                             </div>
-                        @endif
-                        @error('phone_number')<p class="pf-err">{{ $message }}</p>@enderror
+                        </div>
                     </div>
                 </div>
-            </div>
-        </form>
-        @if ($pfModals)
-            </dialog>
-            <dialog id="pfPasswordDialog" class="pf-dialog" aria-label="Change password" onclick="if (event.target === this) this.close()">
-                <button type="button" class="pf-dialog-x" aria-label="Close" onclick="this.closest('dialog').close()"><span class="iconify" data-icon="mdi:close"></span></button>
-                @include('partials.change-password')
-            </dialog>
-        @else
+                <div class="pf-mfoot">
+                    <button type="button" class="pf-btn is-ghost" onclick="this.closest('dialog').close()">Cancel</button>
+                    <button type="submit" class="pf-btn is-primary">
+                        <span class="iconify" data-icon="mdi:content-save-outline"></span>
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </dialog>
+
+        <dialog id="pfPasswordDialog" class="pf-dialog is-narrow" aria-labelledby="pfPasswordTitle" onclick="if (event.target === this) this.close()">
             @include('partials.change-password')
-        @endif
+        </dialog>
 
         {{-- Recent activity: this account's own trail - sign-ins, sign-outs,
              profile edits, task work - newest first. --}}
@@ -341,15 +397,17 @@
 </div>
 
 <script>
-    // Show the picked photo straight away; it is uploaded with Save Changes.
+    // Show the picked photo straight away, on the card and in the pop-up; it is
+    // uploaded with Save Changes, which lives in the pop-up.
     document.getElementById('pfAvatar')?.addEventListener('change', function () {
         const file = this.files && this.files[0];
         if (!file) return;
-        document.getElementById('pfAvatarImg').src = URL.createObjectURL(file);
-        const note = document.getElementById('pfPhotoNote');
+        const url = URL.createObjectURL(file);
+        document.querySelectorAll('#pfAvatarImg, [data-pf-avatar]').forEach(img => img.src = url);
+        const note = document.querySelector('[data-pf-photo-note]');
         if (note) note.textContent = 'New photo picked. Press Save Changes to keep it.';
-        // In pop-up mode Save Changes lives in the details pop-up.
-        document.getElementById('pfDetailsDialog')?.showModal();
+        const dialog = document.getElementById('pfDetailsDialog');
+        if (dialog && !dialog.open) dialog.showModal();
     });
     // On load, not now: the student dashboard only reveals its Profile section
     // once the page is ready, and a pop-up opened inside a hidden section does

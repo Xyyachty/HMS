@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SPC Hotel | Interactive Hospitality Simulation System</title>
+  <title>SPC Hotel | Hospitality Customization and Simulation System</title>
   <link rel="icon" type="image/png" href="{{ asset('new_logo_in_chtm....png') }}" />
   <link rel="stylesheet" href="{{ asset('css/app.css') }}" />
   <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
@@ -958,7 +958,7 @@
         </div>
 
         <div class="hero__figure">
-          <img src="{{ asset('chtm-building.png') }}"
+          <img src="{{ asset('chtm-building.jpg') }}"
                alt="SPC Hotel building illuminated at dusk" fetchpriority="high" />
           <div class="hero__motto">
             <p>People.<br />Places.<br />Better Futures.</p>
@@ -1094,7 +1094,7 @@
     </div>
 
     <div class="login-drawer__photo">
-      <img src="{{ asset('SPC_GATE.png') }}" alt="SPC Hotel entrance" />
+      <img src="{{ asset('SPC_GATE.jpg') }}" alt="SPC Hotel entrance" />
     </div>
 
     <div class="login-drawer__body">
