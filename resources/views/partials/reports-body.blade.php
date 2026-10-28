@@ -62,9 +62,20 @@
     @media (max-width: 767px) {
         .rp-stat-grid { grid-template-columns: minmax(0, 1fr); }
     }
-    /* Export Report prints the tab on screen, nothing else. */
+    /* Export Report prints every tab, one after another, with each team's
+       details written out, since paper has no tabs or pop-ups to open. */
+    .rp-print-only { display: none; }
     @media print {
-        .app-sidebar, .glass-header, .rp-tabs, .rp-no-print { display: none !important; }
+        .app-sidebar, .glass-header, .rp-tabs, .rp-no-print, #teamReportModal { display: none !important; }
+        .rp-panel { display: block !important; margin-top: 1.5rem; }
+        .rp-panel::before { content: attr(data-print-title); display: block; margin-bottom: .75rem; font-size: 1.125rem; font-weight: 800; color: #181818; }
+        .rp-print-only { display: block; }
+        /* The layout scrolls inside a screen-tall box; on paper that box cut
+           the report at one screenful. */
+        .h-screen { height: auto !important; }
+        main, .rp-scroll, .overflow-hidden, .overflow-y-auto { overflow: visible !important; }
+        .line-clamp-2 { -webkit-line-clamp: unset !important; display: inline !important; overflow: visible !important; }
+        tr, .rp-team-detail { break-inside: avoid; }
     }
 
     /* Utilities the frozen build never emitted. */
@@ -141,14 +152,14 @@
         </button>
     </div>
 
-    <div class="flex items-center gap-3 rp-no-print">
-        {{-- The period the rows on screen cover, after the filters below. --}}
+    <div class="flex items-center gap-3">
+        {{-- The period the rows on screen cover, after the filters below. Printed too. --}}
         <span class="inline-flex items-center gap-2 h-11 px-4 rounded-xl border border-slate-200 bg-white text-[0.8125rem] font-semibold text-slate-600 whitespace-nowrap">
             <span class="iconify text-base text-slate-400" data-icon="mdi:calendar-range-outline"></span>
             {{ $reportFrom ? $reportFrom->format('M j, Y') : '—' }} – {{ $reportTo ? $reportTo->format('M j, Y') : '—' }}
         </span>
         <button type="button" onclick="window.print()"
-                class="inline-flex items-center gap-2 h-11 px-5 rounded-xl brand-gradient text-white text-[0.8125rem] font-bold shadow-md shadow-brand/20 hover:opacity-95 transition">
+                class="rp-no-print inline-flex items-center gap-2 h-11 px-5 rounded-xl brand-gradient text-white text-[0.8125rem] font-bold shadow-md shadow-brand/20 hover:opacity-95 transition">
             <span class="iconify text-base" data-icon="mdi:download-outline"></span>
             Export Report
         </button>
@@ -190,7 +201,7 @@
 </form>
 
 {{-- ═══════════════ OVERVIEW ═══════════════ --}}
-<div id="report-panel-overview" class="rp-panel active">
+<div id="report-panel-overview" class="rp-panel active" data-print-title="Overview">
     <div class="rp-stat-grid mb-4">
         <div class="rounded-2xl border border-slate-100 bg-white px-5 py-4 flex items-center gap-4">
             <div class="w-14 h-14 rounded-2xl bg-brand-soft flex items-center justify-center shrink-0">
@@ -348,7 +359,7 @@
 </div>
 
 {{-- ═══════════════ STUDENT REPORTS ═══════════════ --}}
-<div id="report-panel-students" class="rp-panel">
+<div id="report-panel-students" class="rp-panel" data-print-title="Student Reports">
     <div class="rounded-2xl border border-slate-100 bg-white overflow-hidden">
         <div class="px-5 pt-5 pb-3 flex items-start justify-between gap-3">
             <div class="min-w-0">
@@ -405,7 +416,7 @@
 </div>
 
 {{-- ═══════════════ TEAM REPORTS (the finalized work, as before) ═══════════════ --}}
-<div id="report-panel-teams" class="rp-panel">
+<div id="report-panel-teams" class="rp-panel" data-print-title="Team Reports">
 <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
     <div class="px-5 py-3 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between">
         <h3 class="text-sm font-bold text-slate-800">Completed Tasks by Team</h3>
@@ -419,7 +430,7 @@
                     <th class="text-left px-4 py-2.5 text-[0.625rem] font-extrabold uppercase tracking-wider text-slate-500" style="width:24%">Page Name</th>
                     <th class="text-left px-4 py-2.5 text-[0.625rem] font-extrabold uppercase tracking-wider text-slate-500" style="width:14%">Assigned Date</th>
                     <th class="text-left px-4 py-2.5 text-[0.625rem] font-extrabold uppercase tracking-wider text-slate-500" style="width:14%">Date Completed</th>
-                    <th class="text-center px-4 py-2.5 text-[0.625rem] font-extrabold uppercase tracking-wider text-slate-500" style="width:18%">Action</th>
+                    <th class="rp-no-print text-center px-4 py-2.5 text-[0.625rem] font-extrabold uppercase tracking-wider text-slate-500" style="width:18%">Action</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
@@ -434,7 +445,7 @@
                         </td>
                         <td class="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">{{ $report['assigned_date'] }}</td>
                         <td class="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">{{ $report['date_completed'] }}</td>
-                        <td class="px-4 py-3 text-center">
+                        <td class="rp-no-print px-4 py-3 text-center">
                             <button
                                 type="button"
                                 onclick="openTeamReportModal({{ $index }})"
@@ -455,10 +466,71 @@
     </div>
 </div>
 
+{{-- Print only: what each team's View pop-up shows, so the export holds it all. --}}
+<div class="rp-print-only">
+    @foreach($teamReports as $report)
+        <div class="rp-team-detail mt-4 rounded-2xl border border-slate-100 bg-white px-5 py-4">
+            <p class="text-sm font-bold text-slate-800">{{ $report['team_name'] }}</p>
+            <p class="text-[0.6875rem] text-slate-500">Pages: {{ $report['page_name'] }} &middot; Assigned {{ $report['assigned_date'] }} &middot; Completed {{ $report['date_completed'] }} &middot; {{ $report['task_count'] }} task{{ $report['task_count'] === 1 ? '' : 's' }}@if($showFaculty && $report['faculty_name']) &middot; {{ $report['faculty_name'] }}@endif</p>
+
+            <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400 mt-3 mb-1.5">Team Members</p>
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-slate-200">
+                        <th class="text-left px-3 py-2 text-[0.625rem] font-bold text-slate-500 uppercase tracking-wider w-10">#</th>
+                        <th class="text-left px-3 py-2 text-[0.625rem] font-bold text-slate-500 uppercase tracking-wider">Member</th>
+                        <th class="text-left px-3 py-2 text-[0.625rem] font-bold text-slate-500 uppercase tracking-wider">Role</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    @forelse($report['members'] as $member)
+                        <tr>
+                            <td class="px-3 py-2 text-xs text-slate-400">{{ $loop->iteration }}</td>
+                            <td class="px-3 py-2 text-sm font-semibold text-slate-700">{{ $member['name'] ?: '—' }}</td>
+                            <td class="px-3 py-2 text-xs text-slate-500">{{ implode(', ', $member['roles']) ?: '—' }}</td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="3" class="px-3 py-4 text-center text-xs text-slate-400 font-semibold">No team members found.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+
+            <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400 mt-3 mb-1.5">Completed Tasks</p>
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-slate-200">
+                        <th class="text-left px-3 py-2 text-[0.625rem] font-bold text-slate-500 uppercase tracking-wider">Task</th>
+                        <th class="text-left px-3 py-2 text-[0.625rem] font-bold text-slate-500 uppercase tracking-wider">Student</th>
+                        <th class="text-left px-3 py-2 text-[0.625rem] font-bold text-slate-500 uppercase tracking-wider">Page / Role</th>
+                        <th class="text-left px-3 py-2 text-[0.625rem] font-bold text-slate-500 uppercase tracking-wider">Due</th>
+                        <th class="text-left px-3 py-2 text-[0.625rem] font-bold text-slate-500 uppercase tracking-wider">Completed</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    @forelse($report['tasks'] as $task)
+                        <tr>
+                            <td class="px-3 py-2">
+                                <p class="text-sm font-semibold text-slate-700">{{ $task['title'] ?: '—' }}</p>
+                                @if($task['description'])<p class="text-[0.6875rem] text-slate-400 mt-0.5">{{ $task['description'] }}</p>@endif
+                            </td>
+                            <td class="px-3 py-2 text-xs font-semibold text-slate-600">{{ $task['student_name'] }}</td>
+                            <td class="px-3 py-2 text-xs text-slate-600">{{ $task['role_label'] ?: '—' }}</td>
+                            <td class="px-3 py-2 text-xs text-slate-500 whitespace-nowrap">{{ $task['due_date'] ?: '—' }}</td>
+                            <td class="px-3 py-2 text-xs text-slate-500 whitespace-nowrap">{{ $task['completed_at'] ?: '—' }}</td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="5" class="px-3 py-4 text-center text-xs text-slate-400 font-semibold">No completed tasks for this team.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    @endforeach
+</div>
+
 </div>
 
 {{-- ═══════════════ ACTIVITY REPORTS ═══════════════ --}}
-<div id="report-panel-activity" class="rp-panel">
+<div id="report-panel-activity" class="rp-panel" data-print-title="Activity Reports">
     <div class="rounded-2xl border border-slate-100 bg-white overflow-hidden">
         <div class="px-5 pt-5 pb-3 flex items-start justify-between gap-3">
             <div class="min-w-0">
