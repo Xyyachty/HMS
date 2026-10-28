@@ -374,25 +374,47 @@
                                  data-detail-role="{{ $rowRoleLabel }}"
                                  data-detail-status="{{ $rowMeta['label'] }}"
                                  data-detail-due="{{ $rowDueLabel }}">
-                                <div class="space-y-3">
-                                    @if($task->description)
-                                        {{-- pre-line: the description carries the task's four activities as numbered
-                                             lines, and they have to survive as lines. --}}
-                                        <p class="text-[0.8125rem] text-slate-500 leading-relaxed whitespace-pre-line">{{ $task->description }}</p>
+                                <div class="space-y-4">
+                                    @php
+                                        $activities = $task->activityList();
+                                        // The saved description has the steps appended after "Steps:"
+                                        // (TaskChecklist::withActivities); with the list below printing
+                                        // them, keep only the paragraph above it.
+                                        $rowSummary = $activities
+                                            ? trim(\Illuminate\Support\Str::before($task->description ?? '', 'Steps:'))
+                                            : $task->description;
+                                    @endphp
+                                    @if($rowSummary)
+                                        {{-- pre-line: a task without a step list may still carry its lines in the text. --}}
+                                        <p class="text-[0.875rem] text-slate-600 leading-relaxed whitespace-pre-line">{{ $rowSummary }}</p>
                                     @endif
-                                    @php $activities = $task->activityList(); @endphp
                                     @if($activities)
                                         {{-- The steps the task is done in, as a guide to read. Nothing to
                                              tick: saving a change in the editor is what moves the task to
                                              In Progress (Task::is_started). --}}
-                                        <div class="rounded-xl border border-[#E7E1DD] bg-white px-3 py-2.5">
-                                            <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
-                                                <span class="iconify text-xs" data-icon="mdi:format-list-numbered"></span>
-                                                Steps
+                                        <div>
+                                            <p class="text-[0.625rem] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between gap-2">
+                                                <span class="flex items-center gap-1">
+                                                    <span class="iconify text-xs" data-icon="mdi:format-list-numbered"></span>
+                                                    How to do it
+                                                </span>
+                                                <span class="normal-case tracking-normal font-semibold text-[#8A817A]">{{ count($activities) }} {{ count($activities) === 1 ? 'step' : 'steps' }}</span>
                                             </p>
-                                            <ol class="mt-2 space-y-1.5">
+                                            <ol class="mt-2.5 rounded-xl border border-[#E7E1DD] bg-white divide-y divide-[#E7E1DD]">
                                                 @foreach($activities as $i => $activity)
-                                                    <li class="text-[0.8125rem] leading-relaxed text-slate-600">{{ $i + 1 }}. {{ $activity['text'] }}</li>
+                                                    {{-- "Change the Logo: upload ..." reads as a name and what to do. --}}
+                                                    @php [$stepHead, $stepBody] = array_pad(explode(': ', $activity['text'], 2), 2, null); @endphp
+                                                    <li class="flex gap-3 px-3.5 py-3">
+                                                        <span class="w-6 h-6 rounded-full bg-[#F5F2EF] border border-[#E7E1DD] text-[0.6875rem] font-bold text-[#181818] flex items-center justify-center shrink-0">{{ $i + 1 }}</span>
+                                                        <p class="text-[0.8125rem] leading-relaxed text-slate-600 min-w-0">
+                                                            @if($stepBody !== null)
+                                                                <span class="block font-bold text-[#181818]">{{ $stepHead }}</span>
+                                                                {{ \Illuminate\Support\Str::ucfirst($stepBody) }}
+                                                            @else
+                                                                {{ $stepHead }}
+                                                            @endif
+                                                        </p>
+                                                    </li>
                                                 @endforeach
                                             </ol>
                                         </div>
