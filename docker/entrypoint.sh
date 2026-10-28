@@ -41,6 +41,10 @@ for cmd in "config:cache" "route:cache" "view:cache"; do
         php artisan "$cmd" 2>&1 | tail -5
     fi
 done
+# The caches above were written as root; hand them to Apache's user so a view
+# that has to recompile at runtime (e.g. a source newer than its cached copy)
+# can be written instead of failing with "Permission denied" and a 500.
+chown -R www-data:www-data storage/framework bootstrap/cache 2>/dev/null || true
 
 # ---------------------------------------------------------------------------
 # Migrations
