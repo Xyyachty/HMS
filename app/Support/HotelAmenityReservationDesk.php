@@ -118,6 +118,10 @@ class HotelAmenityReservationDesk
         if ($end <= $start) {
             throw new \RuntimeException('The end time has to be after the start time.');
         }
+        // The app clock is UTC but the hotel is in Manila; compare in Manila time.
+        if ($date . ' ' . $start < now('Asia/Manila')->format('Y-m-d H:i')) {
+            throw new \RuntimeException('That time has already passed. Pick a later slot.');
+        }
         if (!self::withinOpeningHours($amenity, $start, $end)) {
             $hours = $amenity->hoursLabel();
             throw new \RuntimeException(

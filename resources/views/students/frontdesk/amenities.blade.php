@@ -273,7 +273,8 @@ const RES_STATUSES = CONFIG.reservationStatuses || [];
 const PAY_METHODS = (CONFIG.payMethods || []).filter(m => m !== 'Room Account');
 
 function peso(v) { return '₱' + Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
-function todayStr() { return new Date().toISOString().slice(0, 10); }
+// Local date, not toISOString(): that is UTC and reads yesterday before 8 AM in Manila.
+function todayStr() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
 
 /* 'HH:MM' plus N minutes, so the form can show the end of an appointment the moment a
    service is picked. Mirrors HotelAmenityReservationDesk::addMinutes(). */
@@ -514,6 +515,8 @@ function BookingModal({ amenity, guests, services, packages, onClose, onBooked }
     if (!form.customerName.trim()) next.customerName = 'Who is this booking for?';
     if (!form.scheduledOn) next.scheduledOn = 'Pick a date.';
     if (!form.startsAt) next.startsAt = 'Pick a start time.';
+    else if (form.scheduledOn && form.scheduledOn < todayStr()) next.scheduledOn = 'That date has already passed.';
+    else if (form.scheduledOn === todayStr() && form.startsAt < new Date().toTimeString().slice(0, 5)) next.startsAt = 'That time has already passed.';
     if (isEvent && !form.endsAt) next.endsAt = 'Pick an end time.';
     if (isEvent && guestCount < 1) next.guestCount = 'How many guests?';
     if (!isEvent && !form.serviceId) next.serviceId = 'Choose a service.';
