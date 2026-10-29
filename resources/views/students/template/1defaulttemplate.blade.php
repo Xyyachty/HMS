@@ -3646,7 +3646,7 @@ function PromoShowcase({ promos, canEdit, onToast, onBook }) {
           <p className="promo-feature-desc" data-hms-category={featured.id + '-desc'} data-hms-stock={featured.desc}>{featured.desc}</p>
           <p className="promo-feature-terms" data-hms-category={featured.id + '-terms'} data-hms-stock={featured.terms}>{featured.terms}</p>
           <div className="promo-feature-actions">
-            <button type="button" className="btn-primary" data-hms-stock="Book This Offer" onClick={() => onBook && onBook()}>
+            <button type="button" className="btn-primary" data-hms-stock="Book This Offer" onClick={() => onBook && onBook(featured)}>
               Book This Offer <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
             </button>
           </div>
@@ -4290,7 +4290,7 @@ function addonStepBtn(disabled) {
   };
 }
 
-function RoomDetailModal({ room, addons, promos, capacity, guest, onClose, onChangeStatus, canEditStatus, canReserve, onReserve, onToast, onRequireGuest, stayFrom, stayTo }) {
+function RoomDetailModal({ room, addons, promos, chosenPromoId, capacity, guest, onClose, onChangeStatus, canEditStatus, canReserve, onReserve, onToast, onRequireGuest, stayFrom, stayTo }) {
   if (!room) return null;
   const status = normalizeRoomStatus(room.status);
   const [step, setStep] = useState('details');
@@ -4306,7 +4306,7 @@ function RoomDetailModal({ room, addons, promos, capacity, guest, onClose, onCha
     checkIn: stayFrom || '',
     checkInTime: '',
     checkOut: stayTo || '',
-    promoId: '',
+    promoId: chosenPromoId || '',
   });
 
   /* A guest who changes the dates on the page and opens another room gets the
@@ -4334,7 +4334,7 @@ function RoomDetailModal({ room, addons, promos, capacity, guest, onClose, onCha
 
   useEffect(() => {
     setStep('details');
-    setGuestForm({ fullName: '', contactNo: '', email: '', idNumber: '', guestCount: '1', checkIn: '', checkInTime: '', checkOut: '', promoId: '' });
+    setGuestForm({ fullName: '', contactNo: '', email: '', idNumber: '', guestCount: '1', checkIn: '', checkInTime: '', checkOut: '', promoId: chosenPromoId || '' });
     setPaymentForm({ type: 'full', amount: '', method: 'Cash', reference: '', payerName: '', notes: '' });
     setAddonLines([]);
     setShowAddons(false);
@@ -5461,7 +5461,7 @@ function CategoryDetailModal({ open, name, detail, roomsIn, checkIn, checkOut, o
   );
 }
 
-function RoomsPage({ onNavigate, onToast, rooms, addons, categories, canEditRooms, canManageRooms, canReserveRooms, onAddRoom, onAddCategory, onRenameCategory, onUpdateCategory, categoryDetails, onEditRoom, onRemoveRoom, onCreateBooking, onRefreshAddons, onOpenRoomManagement, onRequireGuest, guest, promos }) {
+function RoomsPage({ onNavigate, onToast, rooms, addons, categories, canEditRooms, canManageRooms, canReserveRooms, onAddRoom, onAddCategory, onRenameCategory, onUpdateCategory, categoryDetails, onEditRoom, onRemoveRoom, onCreateBooking, onRefreshAddons, onOpenRoomManagement, onRequireGuest, guest, promos, chosenPromoId }) {
   const list = rooms && rooms.length ? rooms : [];
   // Front Desk lands on "All" so every room Room Management created is visible on
   // one screen; the category tabs stay for narrowing it down.
@@ -5894,6 +5894,7 @@ function RoomsPage({ onNavigate, onToast, rooms, addons, categories, canEditRoom
         room={selectedRoom}
         addons={addons}
         promos={promos}
+        chosenPromoId={chosenPromoId}
         stayFrom={checkIn}
         stayTo={checkOut}
         onClose={() => setSelectedRoomId(null)}
@@ -8763,6 +8764,8 @@ function App() {
   const [addons, setAddons] = useState([]);
   const [amenities, setAmenities] = useState([]);
   const [sitePromos, setSitePromos] = useState(null);
+  // The promo whose Book This Offer the guest pressed, picked for them in the booking form.
+  const [chosenPromoId, setChosenPromoId] = useState('');
   // How long each amenity photograph is held. Saved per team, so it is read
   // from the customizations rather than fixed here.
   const [amenitySlideSeconds, setAmenitySlideSecondsState] = useState(readAmenitySlideSeconds);
@@ -9328,6 +9331,7 @@ function App() {
       .then(r => r.json().then(data => (r.ok ? data : Promise.reject(data))))
       .then(data => {
         if (data && data.room) setRooms(prev => prev.map(r => (r.id === data.room.id ? data.room : r)));
+        setChosenPromoId('');
         return data && data.booking;
       })
       .catch(err => {
@@ -9650,8 +9654,8 @@ function App() {
         onRenamePartner={renamePartner}
         onRemovePartner={removePartner}
         experiences={experiences}
-        onBookNow={() => requireGuest(
-          () => navigateTo('rooms'),
+        onBookNow={(promo) => requireGuest(
+          () => { setChosenPromoId(promo && promo.dbId ? String(promo.dbId) : ''); navigateTo('rooms'); },
           'Sign in to book a room. It takes a moment, and you will come straight back.'
         )}
         onAddRoom={addRoom}
@@ -9681,6 +9685,7 @@ function App() {
         onRemoveRoom={removeRoom}
         onCreateBooking={createBooking}
         promos={sitePromos || []}
+        chosenPromoId={chosenPromoId}
         onRefreshAddons={fetchAddons}
         onOpenRoomManagement={openRoomManagement}
         onRequireGuest={(action) => requireGuest(
