@@ -113,6 +113,8 @@
   .wi-input.is-bad { border-color: var(--wi-danger); }
   .wi-input[readonly] { color: var(--fg-muted); }
   input[type="date"].wi-input, input[type="time"].wi-input, select.wi-input { color-scheme: dark; }
+  /* The open list does not take the field's see-through background, only its light text. */
+  select.wi-input option { background: var(--card); color: var(--fg); }
 
   /* Bigger + / - for touch */
   .wi-stepper { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.25rem; border-radius: 0.625rem; background: var(--wi-soft); border: 1px solid var(--wi-line); }
