@@ -2891,6 +2891,93 @@ function MenuDetailModal({ item, onClose, canOrder, onAddToCart, onToast }) {
    many are coming, then one of the free tables big enough for them. The table is held
    for them exactly as when Front Desk reserves it, and the restaurant seats them when
    they arrive. Who they are comes from their account, so the form does not ask. */
+/* The signed-in guest's stays, matched to their account by email (HotelGuestStay).
+   Read-only: changes go through the front desk. Loaded each time it opens, so a
+   booking just made is already on it. */
+function MyBookingsModal({ open, onClose }) {
+  const [bookings, setBookings] = useState(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!open) return;
+    setBookings(null);
+    setError('');
+    const url = (window.__HMS_HOTEL_AUTH_ROUTES__ || {}).myBookings;
+    if (!url) { setBookings([]); return; }
+    fetch(url, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+      .then(r => (r.ok ? r.json() : Promise.reject()))
+      .then(data => setBookings(Array.isArray(data.bookings) ? data.bookings : []))
+      .catch(() => { setBookings([]); setError('Your bookings could not be loaded. Please try again.'); });
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  const muted = { color: 'var(--fg-muted)', fontSize: '0.82rem', lineHeight: 1.6, margin: 0 };
+
+  return (
+    <div className="room-modal-overlay" data-hms-no-edit="1" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="room-modal" onClick={e => e.stopPropagation()}>
+        <div style={{ padding: '1.5rem 1.5rem 1.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1.1rem' }}>
+            <div>
+              <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Your Account</p>
+              <h2 className="font-display" style={{ fontSize: '1.55rem', margin: 0 }}>My Bookings</h2>
+            </div>
+            <button type="button" onClick={onClose} aria-label="Close"
+              style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--fg)', cursor: 'pointer', flexShrink: 0 }}>
+              <i className="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+
+          {bookings === null ? (
+            <p style={muted}>Loading your bookings…</p>
+          ) : error ? (
+            <p role="alert" style={{ color: '#f08a99', fontSize: '0.82rem', margin: 0 }}>{error}</p>
+          ) : bookings.length === 0 ? (
+            <p style={muted}>
+              You have no bookings yet. Rooms you book show here. Bookings are matched to your
+              account by email, so use the same email when you book.
+            </p>
+          ) : (
+            <div style={{ display: 'grid', gap: '0.75rem' }}>
+              {bookings.map(b => (
+                <div key={b.reference} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.9rem 1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
+                    <strong style={{ color: 'var(--fg)', fontSize: '0.95rem' }}>
+                      {b.roomName || 'Room'}{b.roomCategory ? ' · ' + b.roomCategory : ''}
+                    </strong>
+                    <span style={{ flexShrink: 0, fontSize: '0.68rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--accent)', border: '1px solid var(--border)', borderRadius: 999, padding: '0.15rem 0.6rem' }}>
+                      {b.status}
+                    </span>
+                  </div>
+                  <p style={Object.assign({}, muted, { marginTop: '0.35rem' })}>
+                    {formatCheckIn(b.checkIn, b.checkInTime)} — {b.checkOut || '—'}
+                    {b.guestCount ? ` · ${b.guestCount} guest${b.guestCount === 1 ? '' : 's'}` : ''}
+                  </p>
+                  {b.promoName && (
+                    <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: 'var(--accent)' }}>{b.promoName} package</p>
+                  )}
+                  <p style={Object.assign({}, muted, { marginTop: '0.5rem', color: 'var(--fg)' })}>
+                    Total {formatPeso(b.total)} · Paid {formatPeso(b.amountPaid)} · Balance {formatPeso(b.balance)}
+                  </p>
+                  <p style={Object.assign({}, muted, { fontSize: '0.72rem', marginTop: '0.25rem' })}>Booking #{b.reference}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TableReserveModal({ open, onClose, guest, onToast }) {
   // The hotel's calendar day, not the browser's or the server's (UTC).
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
@@ -4106,7 +4193,7 @@ function MobileMenu({ open, onClose, onNav, links, cardImages, brandName }) {
    run at all in Design mode. Because the editor no longer swallows the click,
    each handler has to check isSiteInteractive() itself and decide between
    navigating (Preview) and opening a dialog (Design). */
-function NavBar({ currentPage, onNav, onToggle, mobileOpen, links, brandName, editing, canEditNav, canEditBrandName, canEditLogo, canEditSiteColors, onHeaderEdit, cardImages, guest, onGuestSignIn, onGuestSignOut, guestTexts, canEditGuestAuth }) {
+function NavBar({ currentPage, onNav, onToggle, mobileOpen, links, brandName, editing, canEditNav, canEditBrandName, canEditLogo, canEditSiteColors, onHeaderEdit, cardImages, guest, onGuestSignIn, onGuestSignOut, onMyBookings, guestTexts, canEditGuestAuth }) {
   // Passed only so the navigation re-renders when the shared logo changes.
   void cardImages;
 
@@ -4181,6 +4268,8 @@ function NavBar({ currentPage, onNav, onToggle, mobileOpen, links, brandName, ed
             <span style={{ fontSize: '0.72rem', color: 'var(--fg-muted)', whiteSpace: 'nowrap' }}>
               {(guest.name || 'Guest').split(' ')[0]}
             </span>
+            <button type="button" className="btn-outline" style={{ fontSize: '0.66rem', padding: '0.45rem 0.9rem' }}
+                    onClick={onMyBookings}>My Bookings</button>
             <button type="button" className="btn-outline" style={{ fontSize: '0.66rem', padding: '0.45rem 0.9rem' }}
                     onClick={onGuestSignOut}>Sign out</button>
           </div>
@@ -8662,6 +8751,7 @@ function App() {
   const [guestAuth, setGuestAuth] = useState(() => window.__HMS_HOTEL_AUTH__ || { authenticated: false });
   const [guestAuthModal, setGuestAuthModal] = useState(null);
   const [tableReserveOpen, setTableReserveOpen] = useState(false);
+  const [myBookingsOpen, setMyBookingsOpen] = useState(false);
   const pendingGuestAction = useRef(null);
   const [canOrderMenu, setCanOrderMenu] = useState(false);
   const [canEditExperiences, setCanEditExperiences] = useState(false);
@@ -9742,6 +9832,7 @@ function App() {
         guest={guestAuth}
         onGuestSignIn={() => setGuestAuthModal({ mode: 'signin', notice: null })}
         onGuestSignOut={guestSignOut}
+        onMyBookings={() => setMyBookingsOpen(true)}
         guestTexts={guestTexts}
         canEditGuestAuth={canEditBrandName}
       />
@@ -9766,6 +9857,7 @@ function App() {
         texts={guestTexts}
       />
       <TableReserveModal open={tableReserveOpen} onClose={() => setTableReserveOpen(false)} guest={guestAuth} onToast={showToast} />
+      <MyBookingsModal open={myBookingsOpen} onClose={() => setMyBookingsOpen(false)} />
       <SiteTheme colors={siteColors} type={typography} />
       <SiteColorsModal
         open={cardColorKind === 'site'}

@@ -140,6 +140,8 @@ Route::prefix('hotel')->name('public.hotel')->group(function () {
         ->name('.auth.login');
     Route::post('/{slug}/api/auth/logout', [\App\Http\Controllers\HotelSimulationAuthController::class, 'logout'])
         ->name('.auth.logout');
+    Route::get('/{slug}/api/auth/my-bookings', [\App\Http\Controllers\HotelSimulationAuthController::class, 'myBookings'])
+        ->name('.auth.my-bookings');
 
     // Facilities, booked by the guest reading the page. Both refuse anyone who is
     // not signed into this hotel, and both write, so both are throttled.
@@ -974,6 +976,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
     Route::post('/hotel-auth/customer/signup', [\App\Http\Controllers\HotelSimulationAuthController::class, 'customerSignup'])->name('hotel-auth.customer.signup');
     Route::post('/hotel-auth/customer/login', [\App\Http\Controllers\HotelSimulationAuthController::class, 'customerLogin'])->name('hotel-auth.customer.login');
     Route::post('/hotel-auth/logout', [\App\Http\Controllers\HotelSimulationAuthController::class, 'logout'])->name('hotel-auth.logout');
+    Route::get('/hotel-auth/my-bookings', [\App\Http\Controllers\HotelSimulationAuthController::class, 'myBookings'])->name('hotel-auth.my-bookings');
 
     // Hotel website template builder (per role, team-synced)
     Route::get('/templates/{role}', [HotelTemplateController::class, 'show'])->name('templates.show');

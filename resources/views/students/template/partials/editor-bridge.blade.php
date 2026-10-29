@@ -132,6 +132,7 @@
         customerLogin:  @json("/hotel/{$hmsPublicSlug}/api/auth/login"),
         customerSignup: @json("/hotel/{$hmsPublicSlug}/api/auth/signup"),
         logout:         @json("/hotel/{$hmsPublicSlug}/api/auth/logout"),
+        myBookings:     @json("/hotel/{$hmsPublicSlug}/api/auth/my-bookings"),
     };
 @else
     window.__HMS_PUBLIC__ = false;
@@ -147,6 +148,7 @@
         customerLogin: @json(route('students.hotel-auth.customer.login')),
         customerSignup: @json(route('students.hotel-auth.customer.signup')),
         logout: @json(route('students.hotel-auth.logout')),
+        myBookings: @json(route('students.hotel-auth.my-bookings')),
     };
 @endif
 </script>

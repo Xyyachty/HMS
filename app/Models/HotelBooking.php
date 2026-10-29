@@ -328,6 +328,28 @@ class HotelBooking extends Model
     }
 
     /**
+     * One stay as its guest sees it on My Bookings. Narrower than
+     * toReservationArray(): no ID number, no staff notes, no who-booked-it.
+     */
+    public function toGuestArray(): array
+    {
+        return [
+            'reference'   => $this->hotel_booking_id,
+            'status'      => $this->status,
+            'roomName'    => $this->room?->name ?? '',
+            'roomCategory'=> $this->room?->category ?? '',
+            'checkIn'     => optional($this->check_in)->toDateString(),
+            'checkInTime' => $this->check_in_time ?? '',
+            'checkOut'    => optional($this->check_out)->toDateString(),
+            'guestCount'  => $this->guest_count,
+            'promoName'   => $this->promo_name ?? '',
+            'total'       => $this->grandTotal(),
+            'amountPaid'  => $this->amountPaid(),
+            'balance'     => $this->outstanding(),
+        ];
+    }
+
+    /**
      * The final bill Front Desk settles at check-out: every charge on the stay, itemised,
      * with what has already been paid against it.
      *

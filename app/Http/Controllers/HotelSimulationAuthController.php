@@ -34,6 +34,23 @@ class HotelSimulationAuthController extends Controller
         return response()->json(HotelSimulationAuth::payload());
     }
 
+    /** The signed-in guest's stays at this hotel, for their My Bookings list. */
+    public function myBookings(Request $request, ?string $slug = null)
+    {
+        $context = $slug === null
+            ? HotelSimulationAuth::teamContext($request->user())
+            : $this->context($request, $slug);
+        if ($slug !== null && !$context) {
+            abort(404);
+        }
+
+        $bookings = $context
+            ? \App\Support\HotelGuestStay::bookings($context['group_name'], (int) $context['faculty_id'])
+            : collect();
+
+        return response()->json(['bookings' => $bookings->map->toGuestArray()->values()]);
+    }
+
     public function staffLogin(Request $request)
     {
         $data = $request->validate([
