@@ -74,7 +74,7 @@ class HotelAmenityAccess
     /**
      * A member may turn a hall or facility around between bookings when they cover
      * Housekeeping *in Simulation* — the member whose Simulation seat is
-     * Housekeeping, not Room & Maintenance.
+     * Room & Housekeeping, not Maintenance.
      */
     public static function canPrepare(StudentGroup $membership): bool
     {

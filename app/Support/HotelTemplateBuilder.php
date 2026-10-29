@@ -50,22 +50,34 @@ class HotelTemplateBuilder
     ];
 
     /**
-     * Simulation: four desks. Room Management runs Maintenance as one desk, and
-     * Housekeeping stands alone. Keyed by the Simulation seat, which is stored
+     * Simulation: four desks. Room Management runs Housekeeping as one desk, and
+     * Maintenance stands alone. Keyed by the Simulation seat, which is stored
      * apart from the Customization seat — see SimulationPhase::seatsFor().
      */
     public const SIMULATION_ROLES = [
         'front_desk' => ['front_desk'],
-        'room_management' => ['room_management', 'maintenance'],
-        'housekeeping' => ['housekeeping'],
+        'room_management' => ['room_management', 'housekeeping'],
+        'maintenance' => ['maintenance'],
         'restaurant_management' => ['restaurant_management'],
     ];
 
     public const SIMULATION_SEAT_LABELS = [
         'front_desk' => 'Front Desk',
-        'room_management' => 'Room & Maintenance',
-        'housekeeping' => 'Housekeeping',
+        'room_management' => 'Room & Housekeeping',
+        'maintenance' => 'Maintenance',
         'restaurant_management' => 'Restaurant Services',
+    ];
+
+    /**
+     * The Simulation desk each Customization seat moves to when faculty has not
+     * set one: Room Management takes Housekeeping on, so the Housekeeping /
+     * Maintenance seat keeps Maintenance.
+     */
+    public const SIMULATION_DESK_FOR_SEAT = [
+        'front_desk' => 'front_desk',
+        'room_management' => 'room_management',
+        'restaurant_management' => 'restaurant_management',
+        'housekeeping' => 'maintenance',
     ];
 
     /** How many version snapshots to keep per role template (reduces DB redundancy). */
@@ -400,13 +412,13 @@ class HotelTemplateBuilder
      * Each carries both doors: customize_url opens the website editor,
      * simulation_url opens the role's hotel operations.
      *
-     * @param  string[]|null  $simulationSeats  the member's Simulation seat; null reads the seats as their own
+     * @param  string[]|null  $simulationSeats  the member's Simulation seat; null takes the desks $roles move to
      * @return array<int, array{role: string, label: string, route: string, editable: bool, customize_url: string, simulation_url: ?string}>
      */
     public static function modulesForRoles(array $roles, ?array $simulationSeats = null): array
     {
         $customize = self::rolesForPhase($roles, self::PHASE_CUSTOMIZATION);
-        $simulate = self::rolesForPhase($simulationSeats ?? $roles, self::PHASE_SIMULATION);
+        $simulate = self::rolesForPhase($simulationSeats ?? self::simulationDesksForSeats($roles), self::PHASE_SIMULATION);
         $modules = [];
 
         foreach (self::ROLES as $role => $label) {
@@ -453,6 +465,21 @@ class HotelTemplateBuilder
         }
 
         return array_keys($expanded);
+    }
+
+    /**
+     * The Simulation desks a member's Customization seats move to. Keys outside
+     * the seat map (e.g. a stored "maintenance") pass through unchanged.
+     *
+     * @param  string[]  $seats
+     * @return list<string>
+     */
+    public static function simulationDesksForSeats(array $seats): array
+    {
+        return array_values(array_unique(array_map(
+            fn ($seat) => self::SIMULATION_DESK_FOR_SEAT[$seat] ?? $seat,
+            $seats
+        )));
     }
 
     /** @return list<string> */

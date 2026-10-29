@@ -9,7 +9,7 @@
     );
     // Several seats for a member of a team short of students.
     $simSeats = \App\Support\SimulationPhase::seatsFor($groupMembership);
-    // A seat can cover more than one role (Room & Maintenance), so Start
+    // A seat can cover more than one role (Room & Housekeeping), so Start
     // Simulation becomes a menu when there is more than one page to open.
     $simEntries = $simSeats
         ? collect(\App\Support\HotelTemplateBuilder::modulesForRoles([], $simSeats))->filter(fn ($m) => !empty($m['simulation_url']))->values()

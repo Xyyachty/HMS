@@ -110,7 +110,7 @@ class StudentGroupSync
         return $membership->roles->pluck('role')->filter()->values()->all();
     }
 
-    /** Roles this member covers in Simulation, read off their Simulation seat — Room & Maintenance covers both. */
+    /** Roles this member covers in Simulation, read off their Simulation seat — Room & Housekeeping covers both. */
     public static function simulationRoleKeys(StudentGroup $membership): array
     {
         return \App\Support\HotelTemplateBuilder::simulationRoleKeys($membership);
