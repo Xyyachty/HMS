@@ -488,7 +488,7 @@ function ReceiptModal({ receipt, onClose }) {
 
             <div className="rc-block">
               <p className="rc-head">Charges</p>
-              {line(`Room — ${bill.room.blocks} × ${bill.room.blockHours} hrs × ${formatPeso(bill.room.rate)}`, formatPeso(bill.room.subtotal), 'room')}
+              {line(bill.room.promo ? `Room — ${bill.room.promo} package` : `Room — ${bill.room.blocks} × ${bill.room.blockHours} hrs × ${formatPeso(bill.room.rate)}`, formatPeso(bill.room.subtotal), 'room')}
               {service.orders.map(order => order.items.map((item, i) => (
                 line(`Room service — ${item.name} × ${item.qty}`, formatPeso(item.line), 'rs' + order.orderId + '-' + i)
               )))}
@@ -639,7 +639,7 @@ function FinalBillModal({ open, bill, loading, error, onClose, onAddCharge, onRe
 
               <p className="bill-section-title">Room Charges</p>
               <div className="bill-line">
-                <span>{roomLines.blocks} × {roomLines.blockHours} hrs × {formatPeso(roomLines.rate)}</span>
+                <span>{roomLines.promo ? `${roomLines.promo} package` : `${roomLines.blocks} × ${roomLines.blockHours} hrs × ${formatPeso(roomLines.rate)}`}</span>
                 <span className="bill-amt">{formatPeso(roomLines.subtotal)}</span>
               </div>
 
@@ -976,6 +976,9 @@ function GuestDetailsModal({ room, reservation, onClose }) {
           <dl className="bill-meta">
             <div><dt>Room</dt><dd>{room ? `${room.name} · ${room.label || room.category}` : '—'}</dd></div>
             <div><dt>Rate / 12 hrs</dt><dd>{formatPeso(reservation.roomRate || (room && room.price))}</dd></div>
+            {reservation.promoName && (
+              <div><dt>Promo / package</dt><dd>{reservation.promoName} · {formatPeso(reservation.promoPrice)}</dd></div>
+            )}
             <div><dt>Check-in</dt><dd>{formatBillDateTime(reservation.checkIn, reservation.checkInTime)}</dd></div>
             <div><dt>Check-out</dt><dd>{formatBillDate(reservation.checkOut) || '—'}</dd></div>
             <div><dt>Booked</dt><dd>{formatBillStamp(reservation.reservedAt) || '—'}</dd></div>

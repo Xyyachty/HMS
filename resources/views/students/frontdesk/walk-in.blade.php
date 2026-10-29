@@ -112,7 +112,7 @@
   .wi-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--wi-tint); }
   .wi-input.is-bad { border-color: var(--wi-danger); }
   .wi-input[readonly] { color: var(--fg-muted); }
-  input[type="date"].wi-input, input[type="time"].wi-input { color-scheme: dark; }
+  input[type="date"].wi-input, input[type="time"].wi-input, select.wi-input { color-scheme: dark; }
 
   /* Bigger + / - for touch */
   .wi-stepper { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.25rem; border-radius: 0.625rem; background: var(--wi-soft); border: 1px solid var(--wi-line); }
@@ -244,7 +244,8 @@
     --danger: #c81e3a; --success: #15803d;
   }
   :root[data-ops-theme="2"] input[type="date"].wi-input,
-  :root[data-ops-theme="2"] input[type="time"].wi-input { color-scheme: light; }
+  :root[data-ops-theme="2"] input[type="time"].wi-input,
+  :root[data-ops-theme="2"] select.wi-input { color-scheme: light; }
 </style>
 @endsection
 
@@ -258,6 +259,7 @@
     backUrl: @json(route('students.dashboard', ['section' => 'tasks'])),
     roomsUrl: @json(route('students.hotel.rooms.index')),
     bookingsUrl: @json(route('students.hotel.bookings.store')),
+    promosUrl: @json(route('students.hotel.promos.index')),
     tablesUrl: @json(route('students.hotel.tables.index')),
     guestInfoUrl: @json(route('students.frontdesk.verify-guest')),
     dineInUrl: @json(route('students.frontdesk.dine-in')),
@@ -302,6 +304,12 @@ function niceTime(hhmm) {
   return new Date(2000, 0, 1, h, m).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 function plural(n, word) { return n + ' ' + word + (n === 1 ? '' : 's'); }
+
+/* Promos a stay starting on checkIn can be booked under. The server checks the
+   same rule (HotelPromo::bookable). */
+function promosOn(promos, checkIn) {
+  return promos.filter(p => p.status === 'active' && p.start_date <= checkIn && checkIn <= p.end_date);
+}
 
 /* Free for [from, to): no open booking on the room overlaps those dates. The
    server checks again under a lock; this only keeps taken rooms off the list. */
@@ -452,6 +460,8 @@ function RoomWalkIn() {
   const [checkInTime, setCheckInTime] = useState(nowClock);
   const [category, setCategory] = useState('All');
   const [roomId, setRoomId] = useState(null);
+  const [promos, setPromos] = useState([]);
+  const [promoId, setPromoId] = useState('');
   const [payType, setPayType] = useState('Full');
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('Cash');
@@ -484,8 +494,17 @@ function RoomWalkIn() {
     return () => { clearInterval(id); window.removeEventListener('focus', load); };
   }, [load]);
 
+  useEffect(() => {
+    fetch(CFG.promosUrl, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+      .then(r => (r.ok ? r.json() : Promise.reject()))
+      .then(data => setPromos(Array.isArray(data.items) ? data.items : []))
+      .catch(() => setPromos([]));
+  }, []);
+
   const checkIn = today();
   const checkOut = addDays(checkIn, nights);
+  const promoChoices = promosOn(promos, checkIn);
+  const promo = promoChoices.find(p => String(p.dbId) === promoId) || null;
 
   /* Ready now, free for the whole stay, and big enough for the party. A room
      Housekeeping has not cleared can still be sold for next week, but not handed
@@ -498,7 +517,8 @@ function RoomWalkIn() {
   const categories = useMemo(() => ['All', ...Array.from(new Set(free.map(r => r.category).filter(Boolean)))], [free]);
   const shown = category === 'All' ? free : free.filter(r => r.category === category);
   const room = free.find(r => r.dbId === roomId) || null;
-  const total = room ? room.price * nights * BLOCKS_PER_NIGHT : 0;
+  // A promo is a package price for the whole stay (HotelBooking::totalDue).
+  const total = !room ? 0 : promo ? promo.promo_price : room.price * nights * BLOCKS_PER_NIGHT;
   const paidNow = payType === 'Full' ? total : payType === 'Partial' ? Number(amount) || 0 : 0;
 
   // A picked room that stopped being free (a teammate booked it) is dropped.
@@ -512,7 +532,7 @@ function RoomWalkIn() {
 
   const reset = () => {
     setFullName(''); setContactNo(''); setEmail(''); setIdNumber('');
-    setNights(1); setGuests(1); setCheckInTime(nowClock()); setRoomId(null);
+    setNights(1); setGuests(1); setCheckInTime(nowClock()); setRoomId(null); setPromoId('');
     setPayType('Full'); setAmount(''); setMethod('Cash'); setNotes('');
     setError(''); setTried(false); setDone(null); load();
   };
@@ -548,10 +568,11 @@ function RoomWalkIn() {
         check_out: checkOut,
         guest_count: guests,
         notes: ('Walk-in guest. ' + notes.trim()).trim(),
+        promo_id: promo ? promo.dbId : null,
         payment,
         arrived: true,
       });
-      setDone({ booking: data.booking, room, total, paid: payment ? payment.amount_paid : 0 });
+      setDone({ booking: data.booking, room, promo, total, paid: payment ? payment.amount_paid : 0 });
       if (window.toast) window.toast('Booked ' + fullName.trim() + ' into ' + room.name);
     } catch (err) {
       setError(err.message);
@@ -574,6 +595,7 @@ function RoomWalkIn() {
           ['Check-in', niceDate(checkIn) + ', ' + niceTime(checkInTime)],
           ['Check-out', niceDate(checkOut)],
           ['Length of stay', plural(nights, 'night')],
+          ['Promo / package', done.promo ? done.promo.name : 'None'],
           ['Status', 'Arrived'],
           ['Paid now', peso(done.paid)],
           ['Still to pay', peso(balance)],
@@ -638,6 +660,17 @@ function RoomWalkIn() {
                   placeholder="e.g. Late check-out, extra pillow" autoComplete="off" />
               </Field>
             </div>
+            <Field id="wi-promo" label="Promo / package" optional
+              help={promo ? promo.description + ' Package price: ' + peso(promo.promo_price) + ' for the whole stay.'
+                : promoChoices.length ? '' : 'No promo is running today.'}>
+              <select id="wi-promo" className="wi-input" value={promoId} onChange={e => setPromoId(e.target.value)}
+                disabled={!promoChoices.length}>
+                <option value="">No promo, regular room rate</option>
+                {promoChoices.map(p => (
+                  <option key={p.dbId} value={String(p.dbId)}>{p.name} · {peso(p.promo_price)}</option>
+                ))}
+              </select>
+            </Field>
           </div>
         </Section>
 
@@ -687,6 +720,7 @@ function RoomWalkIn() {
           ['Room', room ? room.name : ''],
           ['Guests', plural(guests, 'guest')],
           ['Stay', plural(nights, 'night') + ', until ' + niceDate(checkOut)],
+          ['Promo', promo ? promo.name : 'None'],
           ['Pay now', room ? (payType === 'None' ? 'Nothing yet' : peso(paidNow) + ' by ' + method) : ''],
         ]}
         total={['Total cost', room ? peso(total) : peso(0)]}

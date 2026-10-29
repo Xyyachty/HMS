@@ -4290,7 +4290,7 @@ function addonStepBtn(disabled) {
   };
 }
 
-function RoomDetailModal({ room, addons, capacity, guest, onClose, onChangeStatus, canEditStatus, canReserve, onReserve, onToast, onRequireGuest, stayFrom, stayTo }) {
+function RoomDetailModal({ room, addons, promos, capacity, guest, onClose, onChangeStatus, canEditStatus, canReserve, onReserve, onToast, onRequireGuest, stayFrom, stayTo }) {
   if (!room) return null;
   const status = normalizeRoomStatus(room.status);
   const [step, setStep] = useState('details');
@@ -4306,6 +4306,7 @@ function RoomDetailModal({ room, addons, capacity, guest, onClose, onChangeStatu
     checkIn: stayFrom || '',
     checkInTime: '',
     checkOut: stayTo || '',
+    promoId: '',
   });
 
   /* A guest who changes the dates on the page and opens another room gets the
@@ -4333,7 +4334,7 @@ function RoomDetailModal({ room, addons, capacity, guest, onClose, onChangeStatu
 
   useEffect(() => {
     setStep('details');
-    setGuestForm({ fullName: '', contactNo: '', email: '', idNumber: '', guestCount: '1', checkIn: '', checkInTime: '', checkOut: '' });
+    setGuestForm({ fullName: '', contactNo: '', email: '', idNumber: '', guestCount: '1', checkIn: '', checkInTime: '', checkOut: '', promoId: '' });
     setPaymentForm({ type: 'full', amount: '', method: 'Cash', reference: '', payerName: '', notes: '' });
     setAddonLines([]);
     setShowAddons(false);
@@ -4346,7 +4347,11 @@ function RoomDetailModal({ room, addons, capacity, guest, onClose, onChangeStatu
   }, [onClose]);
 
   const blocks = stayBlocks(guestForm.checkIn, guestForm.checkOut, guestForm.checkInTime);
-  const totalDue = blocks * (Number(room.price) || 0);
+  // sitePromos are already the live ones; a stay may use those running on its check-in day.
+  const promoChoices = (promos || []).filter(p => guestForm.checkIn && p.start_date <= guestForm.checkIn && guestForm.checkIn <= p.end_date);
+  const promo = promoChoices.find(p => String(p.dbId) === guestForm.promoId) || null;
+  // A promo is a package price for the whole stay (HotelBooking::totalDue).
+  const totalDue = promo ? promo.promo_price : blocks * (Number(room.price) || 0);
   // Check-out must be a later date than check-in — a same-day stay isn't a valid
   // booking here, so the day of check-in itself is not selectable on the calendar.
   const minCheckOut = addDays(guestForm.checkIn || today, 1);
@@ -4466,7 +4471,8 @@ function RoomDetailModal({ room, addons, capacity, guest, onClose, onChangeStatu
     };
 
     if (typeof onReserve === 'function') {
-      onReserve(room, { ...guestForm }, payment, addonLines);
+      // A promo picked before the check-in date moved off its run is dropped.
+      onReserve(room, { ...guestForm, promoId: promo ? String(promo.dbId) : '' }, payment, addonLines);
     } else if (onToast) {
       onToast(`Payment received for ${room.name}.`);
     }
@@ -4659,6 +4665,26 @@ function RoomDetailModal({ room, addons, capacity, guest, onClose, onChangeStatu
                   </div>
                 </div>
 
+                {/* Front Desk's promos running on the check-in day. Picking one books the
+                    stay at its package price; the server checks the same rule. */}
+                {promoChoices.length > 0 && (
+                  <div style={{ marginTop: '0.85rem' }}>
+                    <label style={fieldLabel}>Promo / Package (optional)</label>
+                    <select className="booking-input" value={guestForm.promoId}
+                      onChange={e => updateGuest('promoId', e.target.value)}>
+                      <option value="">No promo, regular room rate</option>
+                      {promoChoices.map(p => (
+                        <option key={p.dbId} value={String(p.dbId)}>{p.name} · {formatPeso(p.promo_price)}</option>
+                      ))}
+                    </select>
+                    {promo && (
+                      <p style={{ margin: '0.4rem 0 0', fontSize: '0.75rem', color: 'var(--fg-muted)', lineHeight: 1.5 }}>
+                        {promo.description} Package price: {formatPeso(promo.promo_price)} for the whole stay.
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {/* Housekeeping's add-ons. Inline rather than a second overlay — the modal
                     already scrolls, and a nested dialog over a dialog reads badly. */}
                 <button type="button" onClick={() => setShowAddons(v => !v)}
@@ -4732,7 +4758,7 @@ function RoomDetailModal({ room, addons, capacity, guest, onClose, onChangeStatu
               <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.9rem 1rem', marginBottom: '1.15rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.35rem' }}>
                   <span style={{ color: 'var(--fg-muted)', fontSize: '0.8rem' }}>
-                    {blocks} × {BLOCK_HOURS} hrs × {formatPeso(room.price)}
+                    {promo ? `${promo.name} package` : `${blocks} × ${BLOCK_HOURS} hrs × ${formatPeso(room.price)}`}
                   </span>
                   <strong style={{ color: 'var(--accent-light)', fontFamily: 'Playfair Display, serif', fontSize: '1.15rem' }}>{formatPeso(totalDue)}</strong>
                 </div>
@@ -5435,7 +5461,7 @@ function CategoryDetailModal({ open, name, detail, roomsIn, checkIn, checkOut, o
   );
 }
 
-function RoomsPage({ onNavigate, onToast, rooms, addons, categories, canEditRooms, canManageRooms, canReserveRooms, onAddRoom, onAddCategory, onRenameCategory, onUpdateCategory, categoryDetails, onEditRoom, onRemoveRoom, onCreateBooking, onRefreshAddons, onOpenRoomManagement, onRequireGuest, guest }) {
+function RoomsPage({ onNavigate, onToast, rooms, addons, categories, canEditRooms, canManageRooms, canReserveRooms, onAddRoom, onAddCategory, onRenameCategory, onUpdateCategory, categoryDetails, onEditRoom, onRemoveRoom, onCreateBooking, onRefreshAddons, onOpenRoomManagement, onRequireGuest, guest, promos }) {
   const list = rooms && rooms.length ? rooms : [];
   // Front Desk lands on "All" so every room Room Management created is visible on
   // one screen; the category tabs stay for narrowing it down.
@@ -5867,6 +5893,7 @@ function RoomsPage({ onNavigate, onToast, rooms, addons, categories, canEditRoom
       <RoomDetailModal
         room={selectedRoom}
         addons={addons}
+        promos={promos}
         stayFrom={checkIn}
         stayTo={checkOut}
         onClose={() => setSelectedRoomId(null)}
@@ -9284,6 +9311,7 @@ function App() {
         check_in_time: guest.checkInTime || '',
         guest_count: parseInt(guest.guestCount, 10) || null,
         check_out: guest.checkOut,
+        promo_id: guest.promoId ? Number(guest.promoId) : null,
         payment: payment ? {
           type: payment.type,
           amount_paid: payment.amountPaid,
@@ -9652,6 +9680,7 @@ function App() {
         onEditRoom={editRoom}
         onRemoveRoom={removeRoom}
         onCreateBooking={createBooking}
+        promos={sitePromos || []}
         onRefreshAddons={fetchAddons}
         onOpenRoomManagement={openRoomManagement}
         onRequireGuest={(action) => requireGuest(

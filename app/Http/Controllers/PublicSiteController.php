@@ -435,6 +435,7 @@ class PublicSiteController extends Controller
             'check_out'        => 'required|date|after:check_in',
             'guest_count'      => 'nullable|integer|min:1|max:99',
             'notes'            => 'nullable|string|max:2000',
+            'promo_id'         => 'nullable|integer',
             // 'payment' and 'addons' are deliberately absent. Anything sent under those
             // keys is not validated, not read, and never reaches HotelBookingDesk.
         ]);
@@ -496,11 +497,12 @@ class PublicSiteController extends Controller
                     // in from the portfolio rather than across the desk.
                     'booked_by'     => 'Online · ' . $guestName,
                     'notes'         => $data['notes'] ?? null,
+                    'promo_id'      => $data['promo_id'] ?? null,
                 ]
                 // No $payment, no $addons — the defaults are null and [].
             );
         } catch (\RuntimeException $e) {
-            // The party is bigger than the room sleeps.
+            // The party is bigger than the room sleeps, or the promo is not running then.
             return response()->json(['message' => $e->getMessage()], 422);
         }
 

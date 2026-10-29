@@ -276,6 +276,24 @@ class HotelPromo extends Model
             ->all();
     }
 
+    /**
+     * The team's promo a stay starting on $checkIn may be booked under: switched on
+     * and running that day. Throws with a message the booking forms show as is.
+     */
+    public static function bookable(string $groupName, int $facultyId, int $promoId, string $checkIn): self
+    {
+        $promo = self::forTeam($groupName, $facultyId)->whereKey($promoId)->first();
+        $day = \Illuminate\Support\Carbon::parse($checkIn)->toDateString();
+
+        if (!$promo || !$promo->is_active
+            || $day < $promo->start_date->toDateString() || $day > $promo->end_date->toDateString()) {
+            throw new \RuntimeException('That promo is not available for a stay starting on '
+                . \Illuminate\Support\Carbon::parse($day)->format('M j, Y') . '. Please choose another.');
+        }
+
+        return $promo;
+    }
+
     public static function forTeam(string $groupName, ?int $facultyId)
     {
         return self::where('group_name', $groupName)

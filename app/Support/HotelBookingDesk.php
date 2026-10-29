@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\HotelBooking;
 use App\Models\HotelBookingPayment;
 use App\Models\HotelGuest;
+use App\Models\HotelPromo;
 use App\Models\HotelRoom;
 use App\Models\HotelRoomCategory;
 use App\Models\StudentGroup;
@@ -60,7 +61,8 @@ class HotelBookingDesk
      * Takes a booking: guest record, stay, and the payment collected up front.
      *
      * $guest keys: full_name, contact_no, email, id_number.
-     * $stay  keys: check_in, check_in_time, check_out, guest_count, booked_by, notes.
+     * $stay  keys: check_in, check_in_time, check_out, guest_count, booked_by, notes,
+     *        promo_id (optional: books the stay at that promo's price).
      * $payment (optional) keys: type, amount_paid, method, reference, payer_name, notes.
      * $addons (optional) lines: [['addon_id' => int, 'qty' => int], ...]. Attaching them
      * here rather than in a second request means a folding bed that ran out takes the
@@ -93,10 +95,17 @@ class HotelBookingDesk
             }
         }
 
-        return DB::transaction(function () use ($scope, $room, $guest, $stay, $payment, $addons, $guestCount) {
+        $promo = empty($stay['promo_id']) ? null : HotelPromo::bookable(
+            $membership->group_name,
+            (int) $membership->faculty_id,
+            (int) $stay['promo_id'],
+            (string) ($stay['check_in'] ?? '')
+        );
+
+        return DB::transaction(function () use ($scope, $room, $guest, $stay, $payment, $addons, $guestCount, $promo) {
             $guestModel = HotelGuest::findOrCreateFor($scope, $guest);
 
-            $booking = HotelBooking::create($scope + [
+            $booking = new HotelBooking($scope + [
                 'hotel_room_id'  => $room->hotel_room_id,
                 'hotel_guest_id' => $guestModel->hotel_guest_id,
                 'status'         => 'Booked',
@@ -110,6 +119,15 @@ class HotelBookingDesk
                 'booked_by'      => $stay['booked_by'] ?? null,
                 'notes'          => $stay['notes'] ?? null,
             ]);
+            if ($promo) {
+                // Snapshot, like room_rate. The package covers the stay as booked.
+                $booking->fill([
+                    'promo_name'   => $promo->name,
+                    'promo_price'  => $promo->promo_price,
+                    'promo_blocks' => $booking->stayBlocks(),
+                ]);
+            }
+            $booking->save();
 
             if ($addons) {
                 HotelAddonDesk::attachTo($booking, $addons);

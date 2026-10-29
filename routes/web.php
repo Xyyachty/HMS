@@ -1771,6 +1771,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             'addons'             => 'nullable|array',
             'addons.*.addon_id'  => 'required|integer',
             'addons.*.qty'       => 'required|integer|min:1|max:99',
+            'promo_id'           => 'nullable|integer',
             // A walk-in: the guest is standing at the desk, so the booking is
             // taken and marked Arrived in one go. Room Management still hands
             // the room over (check_in), the same as for any other arrival.
@@ -1834,6 +1835,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
                         'guest_count'   => $data['guest_count'] ?? null,
                         'booked_by'     => auth()->user()?->name,
                         'notes'         => $data['notes'] ?? null,
+                        'promo_id'      => $data['promo_id'] ?? null,
                     ],
                     $data['payment'] ?? null,
                     $data['addons'] ?? []
@@ -1848,8 +1850,9 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
         } catch (\App\Exceptions\BookingOverlapException $e) {
             return response()->json(['message' => 'Those dates are already booked for this room.'], 409);
         } catch (\RuntimeException $e) {
-            // An add-on ran out between the picker rendering and this request. The whole
-            // reservation rolled back, so there is no half-booked stay to clean up.
+            // An add-on ran out between the picker rendering and this request, or the
+            // promo is not running then. The whole reservation rolled back, so there is
+            // no half-booked stay to clean up.
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
