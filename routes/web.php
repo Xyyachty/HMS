@@ -2865,6 +2865,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
                 'guestName' => $booking->guest?->full_name ?: 'Guest',
                 'roomName'  => $booking->room?->name ?? '',
                 'contactNo' => $booking->guest?->contact_no ?? '',
+                'email'     => $booking->guest?->email ?? '',
             ])
             ->values();
 

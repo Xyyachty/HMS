@@ -590,6 +590,7 @@ function BookingModal({ amenity, guests, services, packages, onClose, onBooked }
                     bookingId: id,
                     customerName: g ? g.guestName : prev.customerName,
                     contactNo: g && g.contactNo ? g.contactNo : prev.contactNo,
+                    email: g && g.email ? g.email : prev.email,
                     chargeToRoom: id ? prev.chargeToRoom : false,
                   }));
                 }}
