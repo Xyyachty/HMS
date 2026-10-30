@@ -487,15 +487,24 @@ class PublicSiteController extends Controller
 
         $guestName = trim($data['guest']['full_name']);
 
+        // A signed-in guest's stay belongs to their account: My Bookings finds stays by
+        // the account's email, so that is the email the stay is kept under.
+        $auth = \App\Support\HotelSimulationAuth::current();
+        $accountEmail = ($auth['type'] ?? null) === 'customer'
+            && ($auth['group_name'] ?? null) === $groupName
+            && (int) ($auth['faculty_id'] ?? 0) === (int) $facultyId
+                ? ($auth['email'] ?? null)
+                : null;
+
         try {
-            $booking = \Illuminate\Support\Facades\DB::transaction(function () use ($membership, $room, $data, $guestName) {
+            $booking = \Illuminate\Support\Facades\DB::transaction(function () use ($membership, $room, $data, $guestName, $accountEmail) {
                 $booking = HotelBookingDesk::reserve(
                     $membership,
                     $room,
                     [
                         'full_name'  => $guestName,
                         'contact_no' => $data['guest']['contact_no'] ?? null,
-                        'email'      => $data['guest']['email'] ?? null,
+                        'email'      => $accountEmail ?: ($data['guest']['email'] ?? null),
                         // No id_number: a guest is not asked for identification online. Front Desk
                         // takes it on arrival.
                         'id_number'  => null,
