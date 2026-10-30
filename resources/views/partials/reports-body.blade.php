@@ -62,27 +62,24 @@
     @media (max-width: 767px) {
         .rp-stat-grid { grid-template-columns: minmax(0, 1fr); }
     }
-    /* Export Report prints every tab, one after another, with each team's
-       details written out, since paper has no tabs or pop-ups to open. */
+    /* Export Report prints the open tab only, with each team's details written
+       out on Team Reports, since paper has no pop-ups to open. */
     .rp-print-only { display: none; }
 
-    /* Noted by: a name over a signature line, one each for faculty and dean. */
-    .rp-noted { display: flex; flex-wrap: wrap; gap: 2rem 4rem; break-inside: avoid; }
+    /* Noted by, printed only: a name over a signature line, one each for
+       faculty and dean. */
+    .rp-noted { display: none; }
     .rp-noted-sign { display: flex; flex-direction: column; width: 16rem; max-width: 100%; }
-    .rp-noted-label { font-size: .75rem; font-weight: 700; color: #5A3941; margin-bottom: 2rem; }
-    .rp-noted-sign input {
-        border: 0; border-bottom: 1px solid #181818; background: transparent; padding: .25rem 0;
+    .rp-noted-label { font-size: .75rem; font-weight: 700; color: #181818; margin-bottom: 2rem; }
+    .rp-noted-name {
+        min-height: 1.75rem; border-bottom: 1px solid #181818; padding: .25rem 0;
         text-align: center; font-size: .875rem; font-weight: 800; color: #181818; text-transform: uppercase;
     }
-    .rp-noted-sign input::placeholder { text-transform: none; font-weight: 500; color: #B5AFAA; }
-    .rp-noted-sign input:focus { outline: none; border-bottom-color: #8A817A; }
-    .rp-noted-role { text-align: center; font-size: .75rem; font-weight: 600; color: #6B4A54; margin-top: .25rem; }
-    @media print {
-        .rp-noted-sign input::placeholder { color: transparent; }
-    }
+    .rp-noted-role { text-align: center; font-size: .75rem; font-weight: 600; color: #181818; margin-top: .25rem; }
     @media print {
         .app-sidebar, .glass-header, .rp-tabs, .rp-no-print, #teamReportModal { display: none !important; }
-        .rp-panel { display: block !important; margin-top: 1.5rem; }
+        .rp-noted { display: flex; flex-wrap: wrap; gap: 2rem 4rem; margin-top: 3rem; break-inside: avoid; }
+        .rp-panel.active { margin-top: 1.5rem; }
         .rp-panel::before { content: attr(data-print-title); display: block; margin-bottom: .75rem; font-size: 1.125rem; font-weight: 800; color: #181818; }
         .rp-print-only { display: block; }
         /* The layout scrolls inside a screen-tall box; on paper that box cut
@@ -633,9 +630,9 @@
 </div>
 
 {{-- ═══════════════ NOTED BY ═══════════════
-     Signature lines at the foot of the exported report. The names start filled
-     in (the faculty signed in, or the chosen team's faculty for the dean, and
-     the dean) and can be typed over before Export Report. --}}
+     Signature lines at the foot of the exported report, never on screen: the
+     faculty signed in (or, for the dean, the filtered team's faculty; blank
+     over all teams) and the dean. --}}
 @php
     $rpSignName = fn ($user) => $user ? (trim($user->first_name . ' ' . $user->last_name) ?: (string) $user->name) : '';
     $rpNotedFaculty = '';
@@ -650,7 +647,7 @@
     @foreach([['Faculty', $rpNotedFaculty], ['Dean', $rpNotedDean]] as [$rpSignRole, $rpSignValue])
         <div class="rp-noted-sign">
             <span class="rp-noted-label">Noted by:</span>
-            <input type="text" value="{{ $rpSignValue }}" placeholder="{{ $rpSignRole }} name" aria-label="Noted by {{ $rpSignRole }}">
+            <span class="rp-noted-name">{{ $rpSignValue }}</span>
             <span class="rp-noted-role">{{ $rpSignRole }}</span>
         </div>
     @endforeach
