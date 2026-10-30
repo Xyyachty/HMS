@@ -1876,9 +1876,11 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
                 /* The money taken at the desk, room by room in the order they were
                    picked: each stay is paid up to its room charge, and whatever is left
                    lands on the last one, so a single room records exactly what was
-                   handed over, as it always has. */
+                   handed over, as it always has. One transaction_ref on every share:
+                   it is one payment, and Guest Information shows it once. */
                 if (!empty($data['payment'])) {
                     $left = (float) ($data['payment']['amount_paid'] ?? 0);
+                    $data['payment']['transaction_ref'] = (string) \Illuminate\Support\Str::uuid();
                     foreach ($bookings as $i => $booking) {
                         $last = $i === count($bookings) - 1;
                         $pay = $last ? $left : min($left, $booking->totalDue());

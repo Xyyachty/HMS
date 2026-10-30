@@ -157,32 +157,56 @@ class HotelBookingDesk
      * Records money against a booking. total_due and balance are computed from the
      * booking rather than trusted from the caller, and balance counts every earlier
      * payment so a second partial settles correctly.
+     *
+     * $payment['transaction_ref'] ties together the rows one payment was split into
+     * across several rooms; left out, the payment is its own transaction.
      */
     public static function addPayment(HotelBooking $booking, array $payment): HotelBookingPayment
     {
-        $totalDue = $booking->totalDue();
-        $amount   = round(max(0, (float) ($payment['amount_paid'] ?? 0)), 2);
-        $alreadyPaid = $booking->payments()->sum('amount_paid');
+        return DB::transaction(function () use ($booking, $payment) {
+            // Locked so two copies of the same request cannot both pass the check below.
+            HotelBooking::whereKey($booking->hotel_booking_id)->lockForUpdate()->first();
 
-        $record = HotelBookingPayment::create([
-            'group_name'       => $booking->group_name,
-            'faculty_id'       => $booking->faculty_id,
-            'group_id'         => $booking->group_id,
-            'hotel_booking_id' => $booking->hotel_booking_id,
-            'type'             => HotelBookingPayment::normalizeType($payment['type'] ?? null),
-            'amount_paid'      => $amount,
-            'total_due'        => $totalDue,
-            'balance'          => round(max(0, $totalDue - ($alreadyPaid + $amount)), 2),
-            'method'           => trim((string) ($payment['method'] ?? '')) ?: 'Cash',
-            'reference'        => self::clean($payment['reference'] ?? null),
-            'payer_name'       => self::clean($payment['payer_name'] ?? null),
-            'notes'            => self::clean($payment['notes'] ?? null),
-            'paid_at'          => now(),
-        ]);
+            $totalDue = $booking->totalDue();
+            $amount   = round(max(0, (float) ($payment['amount_paid'] ?? 0)), 2);
+            $method   = trim((string) ($payment['method'] ?? '')) ?: 'Cash';
+            $reference = self::clean($payment['reference'] ?? null);
 
-        $booking->load('payments');
+            // A double-clicked Pay, or a retried request, sends the same payment twice a
+            // moment apart. The second is the first one again, not more money.
+            $repeat = $booking->payments()
+                ->where('amount_paid', $amount)
+                ->where('method', $method)
+                ->where('reference', $reference)
+                ->where('paid_at', '>=', now()->subSeconds(15))
+                ->first();
+            if ($repeat) {
+                return $repeat;
+            }
 
-        return $record;
+            $alreadyPaid = $booking->payments()->sum('amount_paid');
+
+            $record = HotelBookingPayment::create([
+                'group_name'       => $booking->group_name,
+                'faculty_id'       => $booking->faculty_id,
+                'group_id'         => $booking->group_id,
+                'hotel_booking_id' => $booking->hotel_booking_id,
+                'transaction_ref'  => $payment['transaction_ref'] ?? (string) \Illuminate\Support\Str::uuid(),
+                'type'             => HotelBookingPayment::normalizeType($payment['type'] ?? null),
+                'amount_paid'      => $amount,
+                'total_due'        => $totalDue,
+                'balance'          => round(max(0, $totalDue - ($alreadyPaid + $amount)), 2),
+                'method'           => $method,
+                'reference'        => $reference,
+                'payer_name'       => self::clean($payment['payer_name'] ?? null),
+                'notes'            => self::clean($payment['notes'] ?? null),
+                'paid_at'          => now(),
+            ]);
+
+            $booking->load('payments');
+
+            return $record;
+        });
     }
 
     /** Front Desk confirmed the guest at the desk. The room does not move yet. */

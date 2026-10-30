@@ -209,6 +209,8 @@
     .vg-table tbody tr:hover td { background: none; }
     .vg-table td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 0.15rem; font-size: 0.7rem; color: var(--fg-muted); }
     .vg-table td.vg-wide { grid-column: 1 / -1; }
+    /* The same guest's other rooms, tucked in under the card that names them. */
+    .vg-table tr.vg-more { margin-left: 1.25rem; }
     .vg-actions { display: flex; justify-content: flex-start; flex-wrap: wrap; }
     .vg-actions-gap { display: none; }
   }
@@ -1098,31 +1100,33 @@ function ChangeRoomModal({ room, reservation, rooms, onClose, onSave }) {
 }
 
 /*
- * Read-only view of one stay. The table now carries only what the desk scans by
- * (who, where, when, status), so everything it used to spell out in the Total and
- * Payment columns lives here instead, in full rather than abbreviated.
+ * Read-only view of one guest: who they are once, then every room they hold. The table
+ * carries only what the desk scans by (who, where, when, status), so everything it used
+ * to spell out in the Total and Payment columns lives here instead, in full.
  */
-function GuestDetailsModal({ room, reservation, onClose }) {
+function GuestDetailsModal({ stays, onClose }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  if (!reservation) return null;
+  if (!stays || stays.length === 0) return null;
 
-  const roomTotal = Number(reservation.totalDue) || 0;
-  const foodTotal = Number(reservation.roomServiceTotal) || 0;
-  const foodCount = Number(reservation.roomServiceCount) || 0;
-  const extras = Number(reservation.otherCharges) || 0;
-  const addonsTotal = Number(reservation.addonsTotal) || 0;
-  const addonsCount = Number(reservation.addonsCount) || 0;
-  const grandTotal = Number(reservation.grandTotal) || (roomTotal + foodTotal + addonsTotal + extras);
-  const paid = Number(reservation.amountPaid) || 0;
-  const outstanding = reservation.outstanding != null
-    ? Number(reservation.outstanding)
-    : Math.max(0, grandTotal - paid);
-  const payments = reservation.payments || [];
+  const guest = stays[0].reservation;
+  const many = stays.length > 1;
+
+  // One payment split over several rooms carries one transactionRef on every share:
+  // each room still lists its own share, with a note naming the whole payment.
+  const transactions = {};
+  stays.forEach(({ room, reservation }) => (reservation.payments || []).forEach(p => {
+    if (!p.transactionRef) return;
+    const t = transactions[p.transactionRef] || (transactions[p.transactionRef] = { total: 0, rooms: [] });
+    t.total += Number(p.amountPaid) || 0;
+    t.rooms.push(room ? room.name : 'a room');
+  }));
+
+  const sum = (key) => stays.reduce((n, { reservation }) => n + (Number(reservation[key]) || 0), 0);
 
   return (
     <div className="bill-overlay" onClick={onClose} role="dialog" aria-modal="true">
@@ -1130,14 +1134,16 @@ function GuestDetailsModal({ room, reservation, onClose }) {
         <div className="bill-head">
           <div>
             <p style={{ margin: 0, color: 'var(--accent)', fontSize: '0.62rem', letterSpacing: '0.14em', textTransform: 'uppercase' }}>
-              Reservation
+              {many ? `${stays.length} reservations` : 'Reservation'}
             </p>
             <h2 className="font-display" style={{ margin: '0.25rem 0 0.4rem', fontSize: '1.35rem', color: 'var(--fg)' }}>
-              {reservation.fullName || 'Guest'}
+              {guest.fullName || 'Guest'}
             </h2>
-            <span className={`room-status-badge ${bookingStatusClass(reservation.status)}`} style={{ position: 'static' }}>
-              {reservation.status}
-            </span>
+            {!many && (
+              <span className={`room-status-badge ${bookingStatusClass(guest.status)}`} style={{ position: 'static' }}>
+                {guest.status}
+              </span>
+            )}
           </div>
           <button
             type="button"
@@ -1152,77 +1158,131 @@ function GuestDetailsModal({ room, reservation, onClose }) {
         <div className="bill-body">
           <p className="bill-section-title" style={{ marginTop: 0 }}>Guest</p>
           <dl className="bill-meta">
-            <div><dt>Full name</dt><dd>{reservation.fullName || '—'}</dd></div>
-            <div><dt>Contact no.</dt><dd>{reservation.contactNo || '—'}</dd></div>
-            <div><dt>Email</dt><dd style={{ overflowWrap: 'anywhere' }}>{reservation.email || '—'}</dd></div>
-            <div><dt>ID number</dt><dd>{reservation.idNumber || '—'}</dd></div>
+            <div><dt>Full name</dt><dd>{guest.fullName || '—'}</dd></div>
+            <div><dt>Contact no.</dt><dd>{guest.contactNo || '—'}</dd></div>
+            <div><dt>Email</dt><dd style={{ overflowWrap: 'anywhere' }}>{guest.email || '—'}</dd></div>
+            <div><dt>ID number</dt><dd>{guest.idNumber || '—'}</dd></div>
           </dl>
 
-          <p className="bill-section-title">Stay</p>
-          <dl className="bill-meta">
-            <div><dt>Room</dt><dd>{room ? `${room.name} · ${room.label || room.category}` : '—'}</dd></div>
-            <div><dt>Rate / 12 hrs</dt><dd>{formatPeso(reservation.roomRate || (room && room.price))}</dd></div>
-            {reservation.promoName && (
-              <div><dt>Promo / package</dt><dd>{reservation.promoName} · {formatPeso(reservation.promoPrice)}</dd></div>
-            )}
-            <div><dt>Check-in</dt><dd>{formatBillDateTime(reservation.checkIn, reservation.checkInTime)}</dd></div>
-            <div><dt>Check-out</dt><dd>{formatBillDate(reservation.checkOut) || '—'}</dd></div>
-            <div><dt>Booked</dt><dd>{formatBillStamp(reservation.reservedAt) || '—'}</dd></div>
-            <div><dt>Arrived</dt><dd>{formatBillStamp(reservation.arrivedAt) || '—'}</dd></div>
-            <div><dt>Checked in</dt><dd>{formatBillStamp(reservation.checkedInAt) || '—'}</dd></div>
-            <div><dt>Checked out</dt><dd>{formatBillStamp(reservation.checkedOutAt) || '—'}</dd></div>
-            <div><dt>Booked by</dt><dd>{reservation.bookedBy || '—'}</dd></div>
-          </dl>
+          {stays.map(({ room, reservation }) => (
+            <StayDetails key={reservation.bookingId} room={room} reservation={reservation} many={many} transactions={transactions} />
+          ))}
 
-          {reservation.notes && (
+          {many && (
             <>
-              <p className="bill-section-title">Notes</p>
-              <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.84rem', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                {reservation.notes}
-              </p>
-            </>
-          )}
-
-          <p className="bill-section-title">Charges</p>
-          <div className="bill-line"><span>Room charge</span><span className="bill-amt">{formatPeso(roomTotal)}</span></div>
-          <div className="bill-line">
-            <span>Room service{foodCount > 0 ? ` (${foodCount} order${foodCount === 1 ? '' : 's'})` : ''}</span>
-            <span className="bill-amt">{formatPeso(foodTotal)}</span>
-          </div>
-          {addonsCount > 0 && (
-            <div className="bill-line">
-              <span>Add-ons ({addonsCount} item{addonsCount === 1 ? '' : 's'})</span>
-              <span className="bill-amt">{formatPeso(addonsTotal)}</span>
-            </div>
-          )}
-          <div className="bill-line"><span>Other charges</span><span className="bill-amt">{formatPeso(extras)}</span></div>
-          <div className="bill-line is-total"><span>Total</span><span className="bill-amt">{formatPeso(grandTotal)}</span></div>
-          <div className="bill-line is-subtotal"><span>Paid</span><span className="bill-amt">{formatPeso(paid)}</span></div>
-          <div className={`bill-line${outstanding > 0 ? ' is-balance' : ''}`}>
-            <span>Balance</span><span className="bill-amt">{formatPeso(outstanding)}</span>
-          </div>
-
-          <p className="bill-section-title">Payments</p>
-          {payments.length === 0 ? (
-            <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.82rem' }}>Nothing has been paid on this stay.</p>
-          ) : (
-            payments.map(p => (
-              <div key={p.id} style={{ padding: '0.5rem 0', borderBottom: '1px solid rgba(42,38,33,0.5)' }}>
-                <div className="bill-line" style={{ padding: 0 }}>
-                  <span style={{ color: 'var(--fg)' }}>{p.type} · {p.method}</span>
-                  <span className="bill-amt">{formatPeso(p.amountPaid)}</span>
-                </div>
-                <p style={{ margin: '0.2rem 0 0', fontSize: '0.72rem', color: 'var(--fg-muted)' }}>
-                  {formatBillStamp(p.paidAt) || '—'}
-                  {p.reference ? ` · Ref ${p.reference}` : ''}
-                  {p.payerName ? ` · ${p.payerName}` : ''}
-                </p>
+              <p className="bill-section-title">All rooms</p>
+              <div className="bill-line is-total"><span>Total</span><span className="bill-amt">{formatPeso(sum('grandTotal'))}</span></div>
+              <div className="bill-line is-subtotal"><span>Paid</span><span className="bill-amt">{formatPeso(sum('amountPaid'))}</span></div>
+              <div className={`bill-line${sum('outstanding') > 0 ? ' is-balance' : ''}`}>
+                <span>Balance</span><span className="bill-amt">{formatPeso(sum('outstanding'))}</span>
               </div>
-            ))
+            </>
           )}
         </div>
       </div>
     </div>
+  );
+}
+
+/* One booking inside GuestDetailsModal: its room, dates, charges and payments. */
+function StayDetails({ room, reservation, many, transactions }) {
+  const roomTotal = Number(reservation.totalDue) || 0;
+  const foodTotal = Number(reservation.roomServiceTotal) || 0;
+  const foodCount = Number(reservation.roomServiceCount) || 0;
+  const extras = Number(reservation.otherCharges) || 0;
+  const addonsTotal = Number(reservation.addonsTotal) || 0;
+  const addonsCount = Number(reservation.addonsCount) || 0;
+  const grandTotal = Number(reservation.grandTotal) || (roomTotal + foodTotal + addonsTotal + extras);
+  const paid = Number(reservation.amountPaid) || 0;
+  const outstanding = reservation.outstanding != null
+    ? Number(reservation.outstanding)
+    : Math.max(0, grandTotal - paid);
+  const payments = reservation.payments || [];
+
+  return (
+    <>
+      {many && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', margin: '1.4rem 0 0', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
+          <h3 className="font-display" style={{ margin: 0, fontSize: '1.05rem', color: 'var(--fg)' }}>
+            {room ? room.name : 'Room'}
+          </h3>
+          <span className={`room-status-badge ${bookingStatusClass(reservation.status)}`} style={{ position: 'static' }}>
+            {reservation.status}
+          </span>
+        </div>
+      )}
+
+      <p className="bill-section-title">Stay</p>
+      <dl className="bill-meta">
+        <div><dt>Room</dt><dd>{room ? `${room.name} · ${room.label || room.category}` : '—'}</dd></div>
+        <div><dt>Rate / 12 hrs</dt><dd>{formatPeso(reservation.roomRate || (room && room.price))}</dd></div>
+        {reservation.promoName && (
+          <div><dt>Promo / package</dt><dd>{reservation.promoName} · {formatPeso(reservation.promoPrice)}</dd></div>
+        )}
+        <div><dt>Check-in</dt><dd>{formatBillDateTime(reservation.checkIn, reservation.checkInTime)}</dd></div>
+        <div><dt>Check-out</dt><dd>{formatBillDate(reservation.checkOut) || '—'}</dd></div>
+        <div><dt>Booked</dt><dd>{formatBillStamp(reservation.reservedAt) || '—'}</dd></div>
+        <div><dt>Arrived</dt><dd>{formatBillStamp(reservation.arrivedAt) || '—'}</dd></div>
+        <div><dt>Checked in</dt><dd>{formatBillStamp(reservation.checkedInAt) || '—'}</dd></div>
+        <div><dt>Checked out</dt><dd>{formatBillStamp(reservation.checkedOutAt) || '—'}</dd></div>
+        <div><dt>Booked by</dt><dd>{reservation.bookedBy || '—'}</dd></div>
+      </dl>
+
+      {reservation.notes && (
+        <>
+          <p className="bill-section-title">Notes</p>
+          <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.84rem', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+            {reservation.notes}
+          </p>
+        </>
+      )}
+
+      <p className="bill-section-title">Charges</p>
+      <div className="bill-line"><span>Room charge</span><span className="bill-amt">{formatPeso(roomTotal)}</span></div>
+      <div className="bill-line">
+        <span>Room service{foodCount > 0 ? ` (${foodCount} order${foodCount === 1 ? '' : 's'})` : ''}</span>
+        <span className="bill-amt">{formatPeso(foodTotal)}</span>
+      </div>
+      {addonsCount > 0 && (
+        <div className="bill-line">
+          <span>Add-ons ({addonsCount} item{addonsCount === 1 ? '' : 's'})</span>
+          <span className="bill-amt">{formatPeso(addonsTotal)}</span>
+        </div>
+      )}
+      <div className="bill-line"><span>Other charges</span><span className="bill-amt">{formatPeso(extras)}</span></div>
+      <div className="bill-line is-total"><span>Total</span><span className="bill-amt">{formatPeso(grandTotal)}</span></div>
+      <div className="bill-line is-subtotal"><span>Paid</span><span className="bill-amt">{formatPeso(paid)}</span></div>
+      <div className={`bill-line${outstanding > 0 ? ' is-balance' : ''}`}>
+        <span>Balance</span><span className="bill-amt">{formatPeso(outstanding)}</span>
+      </div>
+
+      <p className="bill-section-title">Payments</p>
+      {payments.length === 0 ? (
+        <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.82rem' }}>Nothing has been paid on this stay.</p>
+      ) : (
+        payments.map(p => {
+          const shared = p.transactionRef && transactions[p.transactionRef];
+          return (
+            <div key={p.id} style={{ padding: '0.5rem 0', borderBottom: '1px solid rgba(42,38,33,0.5)' }}>
+              <div className="bill-line" style={{ padding: 0 }}>
+                <span style={{ color: 'var(--fg)' }}>{p.type} · {p.method}</span>
+                <span className="bill-amt">{formatPeso(p.amountPaid)}</span>
+              </div>
+              <p style={{ margin: '0.2rem 0 0', fontSize: '0.72rem', color: 'var(--fg-muted)' }}>
+                {formatBillStamp(p.paidAt) || '—'}
+                {p.reference ? ` · Ref ${p.reference}` : ''}
+                {p.payerName ? ` · ${p.payerName}` : ''}
+              </p>
+              {shared && shared.rooms.length > 1 && (
+                <p style={{ margin: '0.2rem 0 0', fontSize: '0.72rem', color: 'var(--accent)' }}>
+                  Share of one {formatPeso(shared.total)} payment for {shared.rooms.join(', ')}
+                </p>
+              )}
+            </div>
+          );
+        })
+      )}
+    </>
   );
 }
 
@@ -1245,8 +1305,8 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
   const [billLoading, setBillLoading] = useState(false);
   const [billError, setBillError] = useState('');
 
-  // The View action. Read-only, so it needs no fetch: the row already holds the whole
-  // reservation payload the modal renders.
+  // The View action: the key of the guest whose rooms it shows. Read-only, so it needs
+  // no fetch: the rooms already hold the whole reservation payload the modal renders.
   const [detailsFor, setDetailsFor] = useState(null);
 
   const [extendFor, setExtendFor] = useState(null);
@@ -1332,24 +1392,42 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
     return acc;
   }, []);
 
+  // One entry per guest, holding every room they have: a family in three rooms is one
+  // person at the desk, listed once, with each room still its own booking.
+  const byGuest = (stays) => {
+    const groups = [];
+    const index = {};
+    stays.forEach(stay => {
+      const r = stay.reservation;
+      const key = r.guestId != null ? 'g' + r.guestId : 'b' + r.bookingId;
+      if (!index[key]) groups.push(index[key] = { key, stays: [] });
+      index[key].stays.push(stay);
+    });
+    return groups;
+  };
+
   const q = search.trim().toLowerCase();
-  const filtered = allReservations.filter(({ room, reservation }) =>
+  const filtered = byGuest(allReservations.filter(({ room, reservation }) =>
     (statusFilter === 'All' || reservation.status === statusFilter) && (!q ||
       (reservation.fullName || '').toLowerCase().includes(q) ||
       (room.name || '').toLowerCase().includes(q) ||
       (reservation.email || '').toLowerCase().includes(q) ||
       (reservation.contactNo || '').toLowerCase().includes(q) ||
       (reservation.idNumber || '').toLowerCase().includes(q))
-  );
+  ));
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const safePage = Math.min(page, totalPages);
-  const pageRows = filtered.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
+  const pageGuests = filtered.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
+
+  // Details reads the guest live from the rooms, so a booking moved on another screen
+  // shows in the open window on the next poll.
+  const detailsStays = detailsFor ? (byGuest(allReservations).find(g => g.key === detailsFor) || {}).stays : null;
 
   const statusTabs = [['All', 'All'], ['Booked', 'Booked'], ['Arrived', 'Arrived'], ['Checked In', 'Checked in']];
-  const countFor = (key) => (key === 'All'
-    ? allReservations.length
-    : allReservations.filter(({ reservation }) => reservation.status === key).length);
+  const countFor = (key) => byGuest(key === 'All'
+    ? allReservations
+    : allReservations.filter(({ reservation }) => reservation.status === key)).length;
   const clearFilters = () => { setSearch(''); setStatusFilter('All'); setPage(1); };
 
   return (
@@ -1421,15 +1499,18 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
                   </tr>
                 </thead>
                 <tbody>
-                  {pageRows.map(({ room, reservation }) => {
+                  {pageGuests.map(({ key, stays }) => stays.map(({ room, reservation }, i) => {
                     const status = reservation.status;
                     const remaining = remainingStay(reservation, now);
                     return (
-                      <tr key={room.id}>
-                        <td className="vg-wide vg-guest">
-                          <span className="vg-main">{reservation.fullName || '—'}</span>
-                          {reservation.contactNo && <span className="vg-sub">{reservation.contactNo}</span>}
-                        </td>
+                      <tr key={room.id} className={i > 0 ? 'vg-more' : undefined}>
+                        {i === 0 && (
+                          <td className="vg-wide vg-guest" rowSpan={stays.length}>
+                            <span className="vg-main">{reservation.fullName || '—'}</span>
+                            {reservation.contactNo && <span className="vg-sub">{reservation.contactNo}</span>}
+                            {stays.length > 1 && <span className="vg-sub">{stays.length} rooms</span>}
+                          </td>
+                        )}
                         <td data-label="Room">
                           <span className="vg-main">{room.name}</span>
                           <span className="vg-sub">{room.label || room.category} · {formatPeso(room.price)} / 12 hrs</span>
@@ -1495,15 +1576,15 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
                               </button>
                             )}
                             <button type="button" className="vg-btn"
-                              onClick={() => setDetailsFor({ room, reservation })}
-                              title="See everything recorded for this stay">
+                              onClick={() => setDetailsFor(key)}
+                              title="See everything recorded for this guest and each of their rooms">
                               <i className="fa-solid fa-eye"></i> Details
                             </button>
                           </div>
                         </td>
                       </tr>
                     );
-                  })}
+                  }))}
                 </tbody>
               </table>
             </div>
@@ -1551,10 +1632,9 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
 
       <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />
 
-      {detailsFor && (
+      {detailsStays && (
         <GuestDetailsModal
-          room={detailsFor.room}
-          reservation={detailsFor.reservation}
+          stays={detailsStays}
           onClose={() => setDetailsFor(null)}
         />
       )}
