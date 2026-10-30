@@ -340,7 +340,7 @@ class HotelAmenityAccess
                 'location'    => 'Rooftop, 8th Floor',
                 'opens_at'    => '06:00',
                 'closes_at'   => '20:00',
-                'image'       => 'https://picsum.photos/seed/swimmingpool/800/600.jpg',
+                'image'       => 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=800&h=600&q=80',
             ],
             [
                 'name'        => 'Function Room',
@@ -350,7 +350,7 @@ class HotelAmenityAccess
                 'location'    => '2nd Floor, East Wing',
                 'opens_at'    => '08:00',
                 'closes_at'   => '22:00',
-                'image'       => 'https://picsum.photos/seed/functionroom/800/600.jpg',
+                'image'       => 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=800&h=600&q=80',
             ],
             [
                 'name'        => 'Gym',
@@ -359,7 +359,7 @@ class HotelAmenityAccess
                 'location'    => 'Ground Floor, Annex',
                 'opens_at'    => '05:00',
                 'closes_at'   => '22:00',
-                'image'       => 'https://picsum.photos/seed/hotelgym/800/600.jpg',
+                'image'       => 'https://images.unsplash.com/photo-1571902943202-507ec2618e8f?auto=format&fit=crop&w=800&h=600&q=80',
             ],
             [
                 'name'        => 'Playground',
@@ -368,7 +368,7 @@ class HotelAmenityAccess
                 'location'    => 'Garden Court',
                 'opens_at'    => '07:00',
                 'closes_at'   => '18:00',
-                'image'       => 'https://picsum.photos/seed/hotelplayground/800/600.jpg',
+                'image'       => 'https://images.unsplash.com/photo-1575783970733-1aaedde1db74?auto=format&fit=crop&w=800&h=600&q=80',
             ],
             [
                 'name'        => 'Spa',
@@ -377,7 +377,7 @@ class HotelAmenityAccess
                 'location'    => '3rd Floor',
                 'opens_at'    => '10:00',
                 'closes_at'   => '21:00',
-                'image'       => 'https://picsum.photos/seed/hotelspa/800/600.jpg',
+                'image'       => 'https://images.unsplash.com/photo-1600334089648-b0d9d3028eb2?auto=format&fit=crop&w=800&h=600&q=80',
             ],
         ];
     }

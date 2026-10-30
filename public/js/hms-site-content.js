@@ -101,18 +101,18 @@
   const RETIRED_NAV_LABELS = { experience: ['Experience'] };
 
   const DEFAULT_MENUS = [
-    { id: 'menu-1', name: 'Hokkaido Scallop Tartare', sub: 'yuzu, sea urchin, micro herbs', price: '\u20B11,800', category: 'Appetizers', img: 'https://picsum.photos/seed/scalloptartare/800/600.jpg' },
-    { id: 'menu-2', name: 'Wagyu A5 Carpaccio', sub: 'truffle jus, parmesan crisp, rocket', price: '\u20B12,700', category: 'Appetizers', img: 'https://picsum.photos/seed/wagyucarpaccio/800/600.jpg' },
-    { id: 'menu-3', name: 'Roasted Tomato Bisque', sub: 'basil oil, grilled sourdough croutons', price: '\u20B1680', category: 'Soups', img: 'https://picsum.photos/seed/tomatobisque/800/600.jpg' },
-    { id: 'menu-4', name: 'Seafood Chowder', sub: 'prawns, mussels, cream, chives', price: '\u20B1950', category: 'Soups', img: 'https://picsum.photos/seed/seafoodchowder/800/600.jpg' },
-    { id: 'menu-5', name: 'Pan-Seared Dover Sole', sub: 'brown butter, capers, lemon beurre blanc', price: '\u20B13,000', category: 'Main Dishes', img: 'https://picsum.photos/seed/doversole/800/600.jpg' },
-    { id: 'menu-6', name: 'Grilled Angus Ribeye', sub: 'garlic butter, roasted vegetables, jus', price: '\u20B13,800', category: 'Main Dishes', img: 'https://picsum.photos/seed/angusribeye/800/600.jpg' },
-    { id: 'menu-7', name: 'Herb-Crusted Lamb Rack', sub: 'mint reduction, potato puree', price: '\u20B14,200', category: 'Main Dishes', img: 'https://picsum.photos/seed/lambrack/800/600.jpg' },
-    { id: 'menu-8', name: 'Roasted Rhubarb Souffle', sub: 'vanilla bean creme anglaise, pistachio', price: '\u20B11,200', category: 'Desserts', img: 'https://picsum.photos/seed/rhubarbsouffle/800/600.jpg' },
-    { id: 'menu-9', name: 'Dark Chocolate Fondant', sub: 'salted caramel ice cream', price: '\u20B11,100', category: 'Desserts', img: 'https://picsum.photos/seed/chocfondant/800/600.jpg' },
-    { id: 'menu-10', name: 'The SPC Old Fashioned', sub: '25yr bourbon, demerara, aromatic bitters', price: '\u20B11,450', category: 'Beverages', img: 'https://picsum.photos/seed/oldfashioned/800/600.jpg' },
-    { id: 'menu-11', name: 'Gold Leaf Negroni', sub: 'gin, Campari, sweet vermouth, 24k gold leaf', price: '\u20B11,550', category: 'Beverages', img: 'https://picsum.photos/seed/goldnegroni/800/600.jpg' },
-    { id: 'menu-12', name: 'Fresh Calamansi Iced Tea', sub: 'house-brewed, lightly sweetened', price: '\u20B1280', category: 'Beverages', img: 'https://picsum.photos/seed/calamansitea/800/600.jpg' },
+    { id: 'menu-1', name: 'Hokkaido Scallop Tartare', sub: 'yuzu, sea urchin, micro herbs', price: '\u20B11,800', category: 'Appetizers', img: 'https://images.unsplash.com/photo-1625944525533-473f1a3d54e7?auto=format&fit=crop&w=800&h=600&q=80' },
+    { id: 'menu-2', name: 'Wagyu A5 Carpaccio', sub: 'truffle jus, parmesan crisp, rocket', price: '\u20B12,700', category: 'Appetizers', img: 'https://images.unsplash.com/photo-1608877907149-a206d75ba011?auto=format&fit=crop&w=800&h=600&q=80' },
+    { id: 'menu-3', name: 'Roasted Tomato Bisque', sub: 'basil oil, grilled sourdough croutons', price: '\u20B1680', category: 'Soups', img: 'https://images.unsplash.com/photo-1476718406336-bb5a9690ee2a?auto=format&fit=crop&w=800&h=600&q=80' },
+    { id: 'menu-4', name: 'Seafood Chowder', sub: 'prawns, mussels, cream, chives', price: '\u20B1950', category: 'Soups', img: 'https://images.unsplash.com/photo-1594756202469-9ff9799b2e4e?auto=format&fit=crop&w=800&h=600&q=80' },
+    { id: 'menu-5', name: 'Pan-Seared Dover Sole', sub: 'brown butter, capers, lemon beurre blanc', price: '\u20B13,000', category: 'Main Dishes', img: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=800&h=600&q=80' },
+    { id: 'menu-6', name: 'Grilled Angus Ribeye', sub: 'garlic butter, roasted vegetables, jus', price: '\u20B13,800', category: 'Main Dishes', img: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&w=800&h=600&q=80' },
+    { id: 'menu-7', name: 'Herb-Crusted Lamb Rack', sub: 'mint reduction, potato puree', price: '\u20B14,200', category: 'Main Dishes', img: 'https://images.unsplash.com/photo-1615937657715-bc7b4b7962c1?auto=format&fit=crop&w=800&h=600&q=80' },
+    { id: 'menu-8', name: 'Roasted Rhubarb Souffle', sub: 'vanilla bean creme anglaise, pistachio', price: '\u20B11,200', category: 'Desserts', img: 'https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=800&h=600&q=80' },
+    { id: 'menu-9', name: 'Dark Chocolate Fondant', sub: 'salted caramel ice cream', price: '\u20B11,100', category: 'Desserts', img: 'https://images.unsplash.com/photo-1624353365286-3f8d62daad51?auto=format&fit=crop&w=800&h=600&q=80' },
+    { id: 'menu-10', name: 'The SPC Old Fashioned', sub: '25yr bourbon, demerara, aromatic bitters', price: '\u20B11,450', category: 'Beverages', img: 'https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=800&h=600&q=80' },
+    { id: 'menu-11', name: 'Gold Leaf Negroni', sub: 'gin, Campari, sweet vermouth, 24k gold leaf', price: '\u20B11,550', category: 'Beverages', img: 'https://images.unsplash.com/photo-1551751299-1b51cab2694c?auto=format&fit=crop&w=800&h=600&q=80' },
+    { id: 'menu-12', name: 'Fresh Calamansi Iced Tea', sub: 'house-brewed, lightly sweetened', price: '\u20B1280', category: 'Beverages', img: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=800&h=600&q=80' },
   ];
 
   const listeners = [];
@@ -1049,7 +1049,7 @@
       category: 'Classic',
       status: 'Available',
       price: 200,
-      img: 'https://picsum.photos/seed/newroom' + n + '/800/600.jpg',
+      img: 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=800&h=600&q=80',
       desc: 'Add a short description for this room.',
       amenities: [
         { icon: 'fa-bed', text: 'Bed' },
@@ -1387,7 +1387,7 @@
       sub: 'Add a short description',
       price: '\u20B11,350',
       category: 'Main Dishes',
-      img: 'https://picsum.photos/seed/menuitem' + Date.now() + '/800/600.jpg',
+      img: 'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=800&h=600&q=80',
     }, partial || {});
     list.push(item);
     setMenus(list);

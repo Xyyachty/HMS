@@ -299,8 +299,7 @@ function hmsCsrfToken() {
 
 function amenityImg(amenity) {
   if (amenity && amenity.img) return amenity.img;
-  const seed = encodeURIComponent((amenity && (amenity.id || amenity.name)) || 'amenity');
-  return 'https://picsum.photos/seed/amenity-' + seed + '/800/600.jpg';
+  return 'https://images.unsplash.com/photo-1621293954908-907159247fc8?auto=format&fit=crop&w=800&h=600&q=80';
 }
 
 /* A ticking clock, so the "in the pool for 34m" figures move without a refetch.

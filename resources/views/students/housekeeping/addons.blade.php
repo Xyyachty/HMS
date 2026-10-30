@@ -226,12 +226,11 @@ function plural(n, one, many) {
   return n + ' ' + (n === 1 ? one : many);
 }
 
-/* No stored image means a stable stand-in rather than an empty box — the same
-   deterministic seed the rooms and menu screens use. */
+/* No stored image means a stable stand-in rather than an empty box — a stock
+   photograph that reads as a hotel extra. */
 function addonImg(addon) {
   if (addon && addon.img) return addon.img;
-  const seed = encodeURIComponent((addon && (addon.id || addon.name)) || 'addon');
-  return 'https://picsum.photos/seed/addon-' + seed + '/800/600.jpg';
+  return 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&h=600&q=80';
 }
 
 function compressImageDataUrl(dataUrl, done) {

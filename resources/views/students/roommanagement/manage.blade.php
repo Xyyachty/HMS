@@ -803,12 +803,11 @@ function nextRoomNameFor(rooms, category) {
 /* requireName is false when adding: the name is derived from the category there, so
    there is no field for anyone to leave blank. The edit form still takes one. */
 /* A room with no photo of its own — every seeded room starts that way — would render
-   <img src=""> and leave a blank box in the table. Same stand-in the hotel site uses,
-   seeded by the room so it keeps the same photo between renders. */
+   <img src=""> and leave a blank box in the table. Same stock
+   hotel-room photograph the hotel site falls back to. */
 function roomCardImg(room) {
   if (room && room.img) return room.img;
-  const seed = encodeURIComponent((room && (room.id || room.name)) || 'room');
-  return 'https://picsum.photos/seed/room-' + seed + '/800/600.jpg';
+  return 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=800&h=600&q=80';
 }
 
 /* How many photographs one room keeps. Mirrors HotelRoom::GALLERY_MAX — the

@@ -78,7 +78,7 @@ class HotelCateringAccess
                 'inclusions'     => "Rice · 2 main dishes · 1 vegetable · Soup · Dessert · Iced tea",
                 'price_per_head' => 450,
                 'min_guests'     => 30,
-                'image'          => 'https://picsum.photos/seed/cateringstandard/800/600.jpg',
+                'image'          => 'https://images.unsplash.com/photo-1555244162-803834f70033?auto=format&fit=crop&w=800&h=600&q=80',
             ],
             [
                 'name'           => 'Premium Buffet',
@@ -86,7 +86,7 @@ class HotelCateringAccess
                 'inclusions'     => "Rice · 3 main dishes · Carving station · Salad bar · Soup · 2 desserts · Drinks",
                 'price_per_head' => 750,
                 'min_guests'     => 50,
-                'image'          => 'https://picsum.photos/seed/cateringpremium/800/600.jpg',
+                'image'          => 'https://images.unsplash.com/photo-1530062845289-9109b2c9c868?auto=format&fit=crop&w=800&h=600&q=80',
             ],
             [
                 'name'           => 'Plated Set Menu',
@@ -94,7 +94,7 @@ class HotelCateringAccess
                 'inclusions'     => "Appetizer · Soup · Main course · Dessert · Wine service",
                 'price_per_head' => 950,
                 'min_guests'     => 20,
-                'image'          => 'https://picsum.photos/seed/cateringplated/800/600.jpg',
+                'image'          => 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?auto=format&fit=crop&w=800&h=600&q=80',
             ],
         ];
     }

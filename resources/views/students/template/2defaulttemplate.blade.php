@@ -1474,32 +1474,32 @@ const { useState, useCallback, useRef, useMemo, useEffect } = React;
 /* â•â•â•â•â•â•â•â•â•â•â• DATA â•â•â•â•â•â•â•â•â•â•â• */
 const ROOMS = [
   { id: 'presidential', category: 'Luxe', name: 'The Presidential Suite', price: 890,
-    img: 'https://picsum.photos/seed/hotelroom3/800/600.jpg',
+    img: 'https://images.unsplash.com/photo-1590381105924-c72589b9ef3f?auto=format&fit=crop&w=800&h=600&q=80',
     desc: '120m\u00B2 of uncompromising luxury with a private terrace, dining room, butler service, and grand piano.',
     amenities: [{ i: 'fa-bed', t: 'Emperor Bed' },{ i: 'fa-umbrella-beach', t: 'Terrace' },{ i: 'fa-bell-concierge', t: 'Butler' },{ i: 'fa-music', t: 'Piano' }]
   },
   { id: 'penthouse', category: 'Luxe', name: 'Penthouse Loft', price: 750,
-    img: 'https://picsum.photos/seed/penthouse1/800/600.jpg',
+    img: 'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=800&h=600&q=80',
     desc: 'A two-story loft penthouse with double-height ceilings, a private rooftop jacuzzi, and panoramic city views.',
     amenities: [{ i: 'fa-bed', t: 'King Bed' },{ i: 'fa-hot-tub-person', t: 'Jacuzzi' },{ i: 'fa-city', t: '360\u00B0 View' },{ i: 'fa-stairs', t: 'Two-Story' }]
   },
   { id: 'premium', category: 'Suites', name: 'Premium Suite', price: 450,
-    img: 'https://picsum.photos/seed/hotelroom2/800/600.jpg',
+    img: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=800&h=600&q=80',
     desc: '68m\u00B2 suite with separate living area, walk-in closet, soaking tub, and panoramic floor-to-ceiling windows.',
     amenities: [{ i: 'fa-bed', t: 'King Bed' },{ i: 'fa-couch', t: 'Living Area' },{ i: 'fa-bath', t: 'Soaking Tub' },{ i: 'fa-city', t: 'City View' }]
   },
   { id: 'junior', category: 'Suites', name: 'Junior Suite', price: 360,
-    img: 'https://picsum.photos/seed/juniorsuite/800/600.jpg',
+    img: 'https://images.unsplash.com/photo-1560185007-cde436f6a4d0?auto=format&fit=crop&w=800&h=600&q=80',
     desc: '55m\u00B2 suite with a cozy sitting area, premium bedding, and a marble bathroom with dual vanities.',
     amenities: [{ i: 'fa-bed', t: 'King Bed' },{ i: 'fa-couch', t: 'Sitting Area' },{ i: 'fa-bath', t: 'Marble Bath' },{ i: 'fa-wifi', t: 'WiFi' }]
   },
   { id: 'deluxe', category: 'Classic', name: 'Deluxe King Room', price: 280,
-    img: 'https://picsum.photos/seed/hotelroom1/800/600.jpg',
+    img: 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=800&h=600&q=80',
     desc: 'Spacious 42m\u00B2 room with king bed, city views, and a marble-appointed bathroom with rain shower.',
     amenities: [{ i: 'fa-bed', t: 'King Bed' },{ i: 'fa-wifi', t: 'WiFi' },{ i: 'fa-bath', t: 'Rain Shower' },{ i: 'fa-mug-saucer', t: 'Minibar' }]
   },
   { id: 'superior', category: 'Classic', name: 'Superior Twin Room', price: 240,
-    img: 'https://picsum.photos/seed/twinroom/800/600.jpg',
+    img: 'https://images.unsplash.com/photo-1595576508898-0ad5c879a061?auto=format&fit=crop&w=800&h=600&q=80',
     desc: '38m\u00B2 room with two single beds, a work desk, and views of the courtyard garden.',
     amenities: [{ i: 'fa-bed', t: 'Twin Beds' },{ i: 'fa-laptop', t: 'Work Desk' },{ i: 'fa-tree', t: 'Garden View' },{ i: 'fa-wifi', t: 'WiFi' }]
   }
@@ -1531,7 +1531,7 @@ const DEFAULT_PROMOS = [
     desc: 'Two nights in a Deluxe Room with breakfast for two and a late checkout at 2 PM.',
     offer: 'Save 20%',
     terms: 'Friday to Sunday stays',
-    img: 'https://picsum.photos/seed/hotelweekend/800/600.jpg',
+    img: 'https://images.unsplash.com/photo-1424847651672-bf20a4b0982b?auto=format&fit=crop&w=800&h=600&q=80',
   },
   {
     id: 'promo-2',
@@ -1539,7 +1539,7 @@ const DEFAULT_PROMOS = [
     desc: 'Any suite booked for three nights comes with a chef-curated dinner for two at the restaurant.',
     offer: 'Free dinner',
     terms: 'Three nights or longer',
-    img: 'https://picsum.photos/seed/hoteldinner/800/600.jpg',
+    img: 'https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?auto=format&fit=crop&w=800&h=600&q=80',
   },
   {
     id: 'promo-3',
@@ -1547,7 +1547,7 @@ const DEFAULT_PROMOS = [
     desc: 'Reserve at least thirty days ahead and keep the low season rate whichever month you arrive.',
     offer: '15% off',
     terms: 'Booked 30 days ahead',
-    img: 'https://picsum.photos/seed/hotelearlybird/800/600.jpg',
+    img: 'https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=800&h=600&q=80',
   },
   {
     id: 'promo-4',
@@ -1555,7 +1555,7 @@ const DEFAULT_PROMOS = [
     desc: 'A suite, a spa afternoon for two and dinner at the restaurant, booked as one stay.',
     offer: 'Food + Spa + Stay',
     terms: 'Two nights or longer',
-    img: 'https://picsum.photos/seed/hotelluxurypackage/800/600.jpg',
+    img: 'https://images.unsplash.com/photo-1582610116397-edb318620f90?auto=format&fit=crop&w=800&h=600&q=80',
   },
 ];
 
@@ -1578,10 +1578,10 @@ function partnerName(partner) {
 }
 
 const DEFAULT_TEAM = [
-  { id: 'team-1', name: 'Elena Marchetti', role: 'General Manager', img: 'https://picsum.photos/seed/hotelteam1/400/400.jpg' },
-  { id: 'team-2', name: 'Diego Salvador', role: 'Front Desk Supervisor', img: 'https://picsum.photos/seed/hotelteam2/400/400.jpg' },
-  { id: 'team-3', name: 'Priya Raman', role: 'Executive Chef', img: 'https://picsum.photos/seed/hotelteam3/400/400.jpg' },
-  { id: 'team-4', name: 'Noah Fitzgerald', role: 'Guest Experience Lead', img: 'https://picsum.photos/seed/hotelteam4/400/400.jpg' },
+  { id: 'team-1', name: 'Elena Marchetti', role: 'General Manager', img: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&crop=faces&w=400&h=400&q=80' },
+  { id: 'team-2', name: 'Diego Salvador', role: 'Front Desk Supervisor', img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&crop=faces&w=400&h=400&q=80' },
+  { id: 'team-3', name: 'Priya Raman', role: 'Executive Chef', img: 'https://images.unsplash.com/photo-1595257841889-eca2678454e2?auto=format&fit=crop&crop=faces&w=400&h=400&q=80' },
+  { id: 'team-4', name: 'Noah Fitzgerald', role: 'Guest Experience Lead', img: 'https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&crop=faces&w=400&h=400&q=80' },
 ];
 
 /* Falls back to the team's first category, not to a literal "Classic" — that name is
@@ -1658,8 +1658,7 @@ function menuFoodImg(item) {
 }
 function roomCardImg(room) {
   if (room && room.img) return room.img;
-  const seed = encodeURIComponent((room && (room.id || room.name)) || 'room');
-  return 'https://picsum.photos/seed/room-' + seed + '/800/600.jpg';
+  return 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=800&h=600&q=80';
 }
 
 /* Every photograph of a room, primary first. A room saved before galleries - or
@@ -1752,18 +1751,18 @@ function roomCategoryLabel(room) {
    the whole list is written. Each carries an id, because the photograph uploaded
    for a tile is keyed by that id: renaming a tile keeps its picture. */
 const DEFAULT_EXPERIENCES = [
-  { id: 'exp-pool', icon: 'fa-person-swimming', title: 'Infinity Pool', desc: 'Take a refreshing dip in our infinity pool with a view over the water. A quiet spot to swim, unwind and watch the sun go down.', img: 'https://picsum.photos/seed/exp-pool/800/600.jpg' },
-  { id: 'exp-spa', icon: 'fa-spa', title: 'Spa & Wellness', desc: 'Full-service spa with thermal pools, a Hammam and treatment rituals booked around your stay.', img: 'https://picsum.photos/seed/exp-spa/800/600.jpg' },
-  { id: 'exp-gym', icon: 'fa-dumbbell', title: 'Fitness Center', desc: 'Machines, free weights and a trainer on call, open from before breakfast until late.', img: 'https://picsum.photos/seed/exp-gym/800/600.jpg' },
-  { id: 'exp-dining', icon: 'fa-utensils', title: 'Fine Dining', desc: 'A tasting menu plated to order, and a table held for you at the hour you choose.', img: 'https://picsum.photos/seed/exp-dining/800/600.jpg' },
-  { id: 'exp-beach', icon: 'fa-umbrella-beach', title: 'Private Beach', desc: 'Loungers, shade and a stretch of sand kept for guests, with drinks brought down to you.', img: 'https://picsum.photos/seed/exp-beach/800/600.jpg' },
-  { id: 'exp-transport', icon: 'fa-car', title: 'Concierge & Transport', desc: 'Airport transfers, a car with a driver, and a concierge who knows the city.', img: 'https://picsum.photos/seed/exp-transport/800/600.jpg' },
-  { id: 'exp-lounge', icon: 'fa-champagne-glasses', title: 'Rooftop Lounge', desc: 'Cocktails above the skyline, live sets on weekends and the best seat for the sunset.', img: 'https://picsum.photos/seed/exp-lounge/800/600.jpg' },
-  { id: 'exp-events', icon: 'fa-users', title: 'Events & Meetings', desc: 'Rooms that seat ten or a hundred, with catering and the equipment already in place.', img: 'https://picsum.photos/seed/exp-events/800/600.jpg' },
-  { id: 'exp-tours', icon: 'fa-compass', title: 'Island Tours', desc: 'Day trips to the islands and coves nearby, booked at the desk the evening before.', img: 'https://picsum.photos/seed/exp-tours/800/600.jpg' },
-  { id: 'exp-yoga', icon: 'fa-person-praying', title: 'Yoga Sessions', desc: 'Sunrise and sunset classes on the deck, for every level, mats provided.', img: 'https://picsum.photos/seed/exp-yoga/800/600.jpg' },
-  { id: 'exp-kids', icon: 'fa-child-reaching', title: 'Kids Zone', desc: 'A supervised playroom and pool hours set aside for families travelling with children.', img: 'https://picsum.photos/seed/exp-kids/800/600.jpg' },
-  { id: 'exp-garden', icon: 'fa-leaf', title: 'Garden Walk', desc: 'Lit paths through the grounds, planted with what grows on this coast.', img: 'https://picsum.photos/seed/exp-garden/800/600.jpg' },
+  { id: 'exp-pool', icon: 'fa-person-swimming', title: 'Infinity Pool', desc: 'Take a refreshing dip in our infinity pool with a view over the water. A quiet spot to swim, unwind and watch the sun go down.', img: 'https://images.unsplash.com/photo-1584132967334-10e028bd69f7?auto=format&fit=crop&w=800&h=600&q=80' },
+  { id: 'exp-spa', icon: 'fa-spa', title: 'Spa & Wellness', desc: 'Full-service spa with thermal pools, a Hammam and treatment rituals booked around your stay.', img: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=800&h=600&q=80' },
+  { id: 'exp-gym', icon: 'fa-dumbbell', title: 'Fitness Center', desc: 'Machines, free weights and a trainer on call, open from before breakfast until late.', img: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=800&h=600&q=80' },
+  { id: 'exp-dining', icon: 'fa-utensils', title: 'Fine Dining', desc: 'A tasting menu plated to order, and a table held for you at the hour you choose.', img: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&h=600&q=80' },
+  { id: 'exp-beach', icon: 'fa-umbrella-beach', title: 'Private Beach', desc: 'Loungers, shade and a stretch of sand kept for guests, with drinks brought down to you.', img: 'https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=800&h=600&q=80' },
+  { id: 'exp-transport', icon: 'fa-car', title: 'Concierge & Transport', desc: 'Airport transfers, a car with a driver, and a concierge who knows the city.', img: 'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=800&h=600&q=80' },
+  { id: 'exp-lounge', icon: 'fa-champagne-glasses', title: 'Rooftop Lounge', desc: 'Cocktails above the skyline, live sets on weekends and the best seat for the sunset.', img: 'https://images.unsplash.com/photo-1572116469696-31de0f17cc34?auto=format&fit=crop&w=800&h=600&q=80' },
+  { id: 'exp-events', icon: 'fa-users', title: 'Events & Meetings', desc: 'Rooms that seat ten or a hundred, with catering and the equipment already in place.', img: 'https://images.unsplash.com/photo-1431540015161-0bf868a2d407?auto=format&fit=crop&w=800&h=600&q=80' },
+  { id: 'exp-tours', icon: 'fa-compass', title: 'Island Tours', desc: 'Day trips to the islands and coves nearby, booked at the desk the evening before.', img: 'https://images.unsplash.com/photo-1506929562872-bb421503ef21?auto=format&fit=crop&w=800&h=600&q=80' },
+  { id: 'exp-yoga', icon: 'fa-person-praying', title: 'Yoga Sessions', desc: 'Sunrise and sunset classes on the deck, for every level, mats provided.', img: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=800&h=600&q=80' },
+  { id: 'exp-kids', icon: 'fa-child-reaching', title: 'Kids Zone', desc: 'A supervised playroom and pool hours set aside for families travelling with children.', img: 'https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?auto=format&fit=crop&w=800&h=600&q=80' },
+  { id: 'exp-garden', icon: 'fa-leaf', title: 'Garden Walk', desc: 'Lit paths through the grounds, planted with what grows on this coast.', img: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=800&h=600&q=80' },
 ];
 
 /* A tile whose photograph was uploaded before the gallery was keyed by id still
@@ -5032,7 +5031,7 @@ function HomePage({ sitePromos, onNav, onToast, rooms, menus, canEditRooms, onAd
       status: 'Available',
       price: 250,
       desc: 'Add a short description for this room.',
-      img: 'https://picsum.photos/seed/room' + Date.now() + '/800/600.jpg',
+      img: 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=800&h=600&q=80',
       amenities: [{ i: 'fa-bed', t: 'Bed' }, { i: 'fa-wifi', t: 'WiFi' }],
     })).then((room) => {
       if (!onToast) return;
@@ -5978,7 +5977,7 @@ function RoomsPage({ onNav, onToast, rooms, addons, categories, canEditRooms, ca
       status: 'Available',
       price: 250,
       desc: 'Add a short description for this room.',
-      img: 'https://picsum.photos/seed/room' + Date.now() + '/800/600.jpg',
+      img: 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=800&h=600&q=80',
       amenities: [
         { icon: 'fa-bed', text: 'Bed' },
         { icon: 'fa-wifi', text: 'WiFi' },
@@ -7695,14 +7694,13 @@ function FacilityCardSlides({ shots, name, offset, seconds, changed }) {
 /* Every photograph of a facility, primary first.
 
    The server sends the list ready-made (HotelAmenity::imageUrls); the single img
-   is the fallback for a row saved before galleries existed, and the seeded
-   stand-in the last resort, so a card is never an empty frame. */
+   is the fallback for a row saved before galleries existed, and a stock
+   photograph the last resort, so a card is never an empty frame. */
 function amenityShots(item) {
   const list = (item && Array.isArray(item.images) ? item.images : []).filter(Boolean);
   if (list.length) return list;
   if (item && item.img) return [item.img];
-  const seed = encodeURIComponent((item && (item.id || item.name)) || 'amenity');
-  return ['https://picsum.photos/seed/amenity-' + seed + '/900/600.jpg'];
+  return ['https://images.unsplash.com/photo-1621293954908-907159247fc8?auto=format&fit=crop&w=900&h=600&q=80'];
 }
 
 function facilityStatusClass(status) {
