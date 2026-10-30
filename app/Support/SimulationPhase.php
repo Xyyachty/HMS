@@ -116,8 +116,7 @@ class SimulationPhase
             // The Simulation opens once faculty has approved every customization
             // task. Desk confirmation is not required: seats default to the
             // Customization roles (seatsFor).
-            // TEMP: gate open for a simulation run-through; restore `$unlocked` to re-lock.
-            'can_start' => true,
+            'can_start' => $unlocked,
             'items' => $items,
         ];
     }
