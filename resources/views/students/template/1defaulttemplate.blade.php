@@ -6128,10 +6128,14 @@ function MyBookingsModal({ open, onClose }) {
                   {openRef === b.reference && (
                     <div style={{ marginTop: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '0.5rem' }}>
                       {(b.charges || []).map((c, i) => (
-                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.8rem', padding: '0.2rem 0' }}>
-                          <span style={{ color: 'var(--fg-muted)' }}>
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', fontSize: '0.8rem', padding: '0.35rem 0', borderBottom: '1px solid var(--border)' }}>
+                          <span style={{ display: 'flex', gap: '0.45rem', minWidth: 0 }}>
                             <i className={'fa-solid ' + ({ room: 'fa-bed', food: 'fa-utensils', addon: 'fa-bell-concierge' }[c.kind] || 'fa-receipt')}
-                              style={{ width: 16, color: 'var(--accent)', fontSize: '0.7rem' }}></i> {c.label}
+                              style={{ width: 16, color: 'var(--accent)', fontSize: '0.7rem', marginTop: '0.25rem', flexShrink: 0 }}></i>
+                            <span style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', minWidth: 0 }}>
+                              <span style={{ color: 'var(--fg)' }}>{c.label}</span>
+                              {c.detail && <span style={{ color: 'var(--fg-muted)', fontSize: '0.72rem' }}>{c.detail}</span>}
+                            </span>
                           </span>
                           <span style={{ color: 'var(--fg)', whiteSpace: 'nowrap' }}>{formatPeso(c.amount)}</span>
                         </div>

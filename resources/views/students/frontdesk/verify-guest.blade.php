@@ -92,6 +92,12 @@
   .bill-line.is-balance .bill-amt { color: var(--danger, #fb7185); font-weight: 700; }
   .bill-section-note { font-size: 0.7rem; color: var(--fg-muted); margin: -0.25rem 0 0.6rem; }
   .bill-subnote { font-size: 0.7rem; color: var(--fg-muted); margin: -0.05rem 0 0.4rem; }
+  /* A bill line with its unit price under the name: "3 × ₱1,300". */
+  .bill-item { align-items: flex-start; }
+  .bill-item .bill-item-text { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+  .bill-item .bill-item-name { color: var(--fg); }
+  .bill-item .bill-unit { font-size: 0.72rem; color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+  .rc-unit { display: block; font-size: 0.72rem; color: var(--fg-muted); }
   .bill-meta { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.55rem 1rem; }
   .bill-meta dt {
     font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase;
@@ -448,9 +454,9 @@ function ReceiptModal({ receipt, onClose }) {
   const addons = bill.addons || { items: [], subtotal: 0 };
   const extras = bill.otherCharges || { items: [], subtotal: 0 };
   const balance = Number(bill.balance) || 0;
-  const line = (label, amount, key, cls) => (
+  const line = (label, amount, key, cls, unit) => (
     <div className={'rc-line' + (cls ? ' ' + cls : '')} key={key}>
-      <span>{label}</span><span className="rc-amt">{amount}</span>
+      <span>{label}{unit && <span className="rc-unit">{unit}</span>}</span><span className="rc-amt">{amount}</span>
     </div>
   );
 
@@ -488,11 +494,11 @@ function ReceiptModal({ receipt, onClose }) {
 
             <div className="rc-block">
               <p className="rc-head">Charges</p>
-              {line(bill.room.promo ? `Room — ${bill.room.promo} package` : `Room — ${bill.room.blocks} × ${bill.room.blockHours} hrs × ${formatPeso(bill.room.rate)}`, formatPeso(bill.room.subtotal), 'room')}
+              {line('Room ' + (bill.roomName || ''), formatPeso(bill.room.subtotal), 'room', '', roomUnit(bill.room))}
               {service.orders.map(order => order.items.map((item, i) => (
-                line(`Room service — ${item.name} × ${item.qty}`, formatPeso(item.line), 'rs' + order.orderId + '-' + i)
+                line(`Room service — ${item.name}`, formatPeso(item.line), 'rs' + order.orderId + '-' + i, '', `${item.qty} × ${formatPeso(item.price)}`)
               )))}
-              {addons.items.map(a => line(`Add-on — ${a.name} × ${a.qty}`, formatPeso(a.line), 'ad' + a.id))}
+              {addons.items.map(a => line(`Add-on — ${a.name}`, formatPeso(a.line), 'ad' + a.id, '', addonUnit(a)))}
               {extras.items.map(c => line(c.description, formatPeso(c.amount), 'ex' + c.id))}
               {line('Total', formatPeso(bill.total), 'total', 'rc-strong')}
             </div>
@@ -668,20 +674,15 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
               </dl>
 
               <p className="bill-section-title">Room Charges</p>
-              <div className="bill-line">
-                <span>{roomLines.promo ? `${roomLines.promo} package` : `${roomLines.blocks} × ${roomLines.blockHours} hrs × ${formatPeso(roomLines.rate)}`}</span>
-                <span className="bill-amt">{formatPeso(roomLines.subtotal)}</span>
-              </div>
+              <BillItem name={'Room ' + (bill.roomName || '')} detail={roomUnit(roomLines)} amount={formatPeso(roomLines.subtotal)} />
 
               {service.orders.length > 0 && (
                 <>
                   <p className="bill-section-title">Room Service</p>
                   {service.orders.map(order => (
                     order.items.map((item, i) => (
-                      <div className="bill-line" key={order.orderId + '-' + i}>
-                        <span>{item.name} × {item.qty}</span>
-                        <span className="bill-amt">{formatPeso(item.line)}</span>
-                      </div>
+                      <BillItem key={order.orderId + '-' + i} name={item.name}
+                        detail={`${item.qty} × ${formatPeso(item.price)} · ${order.status}`} amount={formatPeso(item.line)} />
                     ))
                   ))}
                   <div className="bill-line is-subtotal">
@@ -697,10 +698,7 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
                 <>
                   <p className="bill-section-title">Add-ons</p>
                   {addons.items.map(addon => (
-                    <div className="bill-line" key={addon.id}>
-                      <span>{addon.name} × {addon.qty}{addon.perNight ? ` × ${addon.nights} night${addon.nights === 1 ? '' : 's'}` : ''}</span>
-                      <span className="bill-amt">{formatPeso(addon.line)}</span>
-                    </div>
+                    <BillItem key={addon.id} name={addon.name} detail={addonUnit(addon)} amount={formatPeso(addon.line)} />
                   ))}
                   <div className="bill-line is-subtotal">
                     <span>Add-ons Subtotal</span>
@@ -858,6 +856,27 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
       </div>
     </div>
   );
+}
+
+/* One bill line: the name, its unit price under it, the amount on the right. */
+function BillItem({ name, detail, amount, children }) {
+  return (
+    <div className="bill-line bill-item">
+      <span className="bill-item-text">
+        <span className="bill-item-name">{name}{children}</span>
+        {detail && <span className="bill-unit">{detail}</span>}
+      </span>
+      <span className="bill-amt">{amount}</span>
+    </div>
+  );
+}
+
+// "3 × ₱1,300", "2 × ₱500 × 3 nights": what each bill line is made of.
+function roomUnit(room) {
+  return room.promo ? room.promo + ' package' : `${room.blocks} × ${formatPeso(room.rate)} per ${room.blockHours} hrs`;
+}
+function addonUnit(a) {
+  return `${a.qty} × ${formatPeso(a.unitPrice)}` + (a.perNight ? ` × ${a.nights} night${a.nights === 1 ? '' : 's'}` : '');
 }
 
 /* 'YYYY-MM-DD' plus n days, built from the parts like formatBillDate() so the date

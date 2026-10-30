@@ -367,34 +367,47 @@ class HotelBooking extends Model
      * room, every dish ordered to the room, the add-ons and the charges Front Desk added.
      * Read off toBillArray() so the guest sees the same figures the desk settles.
      *
-     * @return list<array{kind: string, label: string, amount: float}>
+     * Each line carries its unit price in `detail` ("3 × ₱1,300"), so the guest can
+     * check the sum.
+     *
+     * @return list<array{kind: string, label: string, detail: string, amount: float}>
      */
     private function guestChargeLines(): array
     {
         $bill = $this->toBillArray();
         $room = $bill['room'];
+        $peso = fn ($n) => '₱' . number_format((float) $n, 0);
 
         $lines = [[
             'kind'   => 'room',
-            'label'  => $room['promo']
+            'label'  => 'Room ' . ($bill['roomName'] ?: ''),
+            'detail' => $room['promo']
                 ? $room['promo'] . ' package'
-                : 'Room ' . ($bill['roomName'] ?: '') . ' · ' . $this->nights() . ' night' . ($this->nights() === 1 ? '' : 's'),
+                : $room['blocks'] . ' × ' . $peso($room['rate']) . ' per ' . $room['blockHours'] . ' hrs'
+                    . ' · ' . $this->nights() . ' night' . ($this->nights() === 1 ? '' : 's'),
             'amount' => (float) $room['subtotal'],
         ]];
         foreach ($bill['roomService']['orders'] as $order) {
             foreach ($order['items'] as $item) {
-                $lines[] = ['kind' => 'food', 'label' => $item['name'] . ' × ' . $item['qty'] . ' · ' . $order['status'], 'amount' => (float) $item['line']];
+                $lines[] = [
+                    'kind'   => 'food',
+                    'label'  => $item['name'],
+                    'detail' => $item['qty'] . ' × ' . $peso($item['price']) . ' · ' . $order['status'],
+                    'amount' => (float) $item['line'],
+                ];
             }
         }
         foreach ($bill['addons']['items'] as $addon) {
             $lines[] = [
                 'kind'   => 'addon',
-                'label'  => $addon['name'] . ' × ' . $addon['qty'] . ($addon['perNight'] ? ' × ' . $addon['nights'] . ' nights' : ''),
+                'label'  => $addon['name'],
+                'detail' => $addon['qty'] . ' × ' . $peso($addon['unitPrice'])
+                    . ($addon['perNight'] ? ' × ' . $addon['nights'] . ' night' . ($addon['nights'] === 1 ? '' : 's') : ''),
                 'amount' => (float) $addon['line'],
             ];
         }
         foreach ($bill['otherCharges']['items'] as $charge) {
-            $lines[] = ['kind' => 'charge', 'label' => $charge['description'], 'amount' => (float) $charge['amount']];
+            $lines[] = ['kind' => 'charge', 'label' => $charge['description'], 'detail' => '', 'amount' => (float) $charge['amount']];
         }
 
         return $lines;
