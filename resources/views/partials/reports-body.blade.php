@@ -65,6 +65,21 @@
     /* Export Report prints every tab, one after another, with each team's
        details written out, since paper has no tabs or pop-ups to open. */
     .rp-print-only { display: none; }
+
+    /* Noted by: a name over a signature line, one each for faculty and dean. */
+    .rp-noted { display: flex; flex-wrap: wrap; gap: 2rem 4rem; break-inside: avoid; }
+    .rp-noted-sign { display: flex; flex-direction: column; width: 16rem; max-width: 100%; }
+    .rp-noted-label { font-size: .75rem; font-weight: 700; color: #5A3941; margin-bottom: 2rem; }
+    .rp-noted-sign input {
+        border: 0; border-bottom: 1px solid #181818; background: transparent; padding: .25rem 0;
+        text-align: center; font-size: .875rem; font-weight: 800; color: #181818; text-transform: uppercase;
+    }
+    .rp-noted-sign input::placeholder { text-transform: none; font-weight: 500; color: #B5AFAA; }
+    .rp-noted-sign input:focus { outline: none; border-bottom-color: #8A817A; }
+    .rp-noted-role { text-align: center; font-size: .75rem; font-weight: 600; color: #6B4A54; margin-top: .25rem; }
+    @media print {
+        .rp-noted-sign input::placeholder { color: transparent; }
+    }
     @media print {
         .app-sidebar, .glass-header, .rp-tabs, .rp-no-print, #teamReportModal { display: none !important; }
         .rp-panel { display: block !important; margin-top: 1.5rem; }
@@ -615,6 +630,30 @@
             </table>
         </div>
     </div>
+</div>
+
+{{-- ═══════════════ NOTED BY ═══════════════
+     Signature lines at the foot of the exported report. The names start filled
+     in (the faculty signed in, or the chosen team's faculty for the dean, and
+     the dean) and can be typed over before Export Report. --}}
+@php
+    $rpSignName = fn ($user) => $user ? (trim($user->first_name . ' ' . $user->last_name) ?: (string) $user->name) : '';
+    $rpNotedFaculty = '';
+    if (!$showFaculty) {
+        $rpNotedFaculty = $rpSignName(auth()->user());
+    } elseif ($filters['team']) {
+        $rpNotedFaculty = $rpSignName(\App\Models\Faculty::with('user')->find((int) explode('|', $filters['team'])[0])?->user);
+    }
+    $rpNotedDean = $rpSignName(\App\Models\User::where('role', 'dean')->orderBy('user_id')->first());
+@endphp
+<div class="rp-noted mt-8">
+    @foreach([['Faculty', $rpNotedFaculty], ['Dean', $rpNotedDean]] as [$rpSignRole, $rpSignValue])
+        <div class="rp-noted-sign">
+            <span class="rp-noted-label">Noted by:</span>
+            <input type="text" value="{{ $rpSignValue }}" placeholder="{{ $rpSignRole }} name" aria-label="Noted by {{ $rpSignRole }}">
+            <span class="rp-noted-role">{{ $rpSignRole }}</span>
+        </div>
+    @endforeach
 </div>
 
 <!-- Team Report Modal -->
