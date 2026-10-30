@@ -187,6 +187,15 @@
     <span class="inline-flex items-center gap-1.5 text-[0.75rem] font-bold text-slate-500">
         <span class="iconify text-base" data-icon="mdi:filter-variant"></span> Filter by
     </span>
+    {{-- Ended terms only appear once the dean has archived a batch. --}}
+    @if(!empty($termOptions))
+        <select name="term" class="rp-filter {{ $filters['term'] ? 'is-set' : '' }}" onchange="this.form.submit()" aria-label="Filter by term">
+            <option value="">Current batch</option>
+            @foreach($termOptions as $value => $label)
+                <option value="{{ $value }}" @selected($filters['term'] === (int) $value)>{{ $label }} (archived)</option>
+            @endforeach
+        </select>
+    @endif
     <select name="team" class="rp-filter {{ $filters['team'] ? 'is-set' : '' }}" onchange="this.form.submit()" aria-label="Filter by team">
         <option value="">All Teams</option>
         @foreach($teamOptions as $value => $label)

@@ -58,10 +58,14 @@ class EnforceSessionRules
         ],
     ];
 
-    /** Faculty and student accounts set Inactive can no longer sign in or stay signed in. */
+    /**
+     * Faculty and student accounts set Inactive, and students archived at the end of
+     * their term, can no longer sign in or stay signed in.
+     */
     public static function isDeactivated($user): bool
     {
-        return in_array($user->role, ['faculty', 'student'], true) && $user->status === 'inactive';
+        return in_array($user->role, ['faculty', 'student'], true)
+            && in_array($user->status, ['inactive', 'archived'], true);
     }
 
     public function handle(Request $request, Closure $next): Response

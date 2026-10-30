@@ -118,7 +118,7 @@ class DeanController extends Controller
             'teamProgress',
             'customizationPercent',
             'completedTeams'
-        ));
+        ) + ['currentTerm' => \App\Models\AcademicTerm::current()]);
     }
 
     /**
@@ -196,7 +196,13 @@ class DeanController extends Controller
     {
         Faculty::closeBlockGaps();
 
-        $users =User::with(['faculty.classes', 'student.facultyClass.faculty'])->latest()->get();
+        // Archived students too, for the Archived tab: lift the scope that hides them.
+        $users = User::with([
+            'faculty.classes',
+            'student' => fn ($query) => $query->withoutGlobalScope(Student::CURRENT_SCOPE),
+            'student.facultyClass.faculty',
+            'student.term',
+        ])->latest()->get();
         $availableBlocks = Faculty::availableBlocks();
         $systemBlocks = Faculty::existingClassLetters();
         $handOverBlocks = Faculty::handOverBlocks();
@@ -375,7 +381,10 @@ class DeanController extends Controller
             'roleLabels',
             'availableBlocks',
             'conceptsByFacultyGroup'
-        ));
+        ) + [
+            'currentTerm' => \App\Models\AcademicTerm::current(),
+            'lastEndedTerm' => \App\Models\AcademicTerm::whereNotNull('ended_at')->latest('ended_at')->first(),
+        ]);
     }
 
     /**
@@ -813,7 +822,7 @@ class DeanController extends Controller
     {
         ActivityLog::recordFor(ActivityLog::REPORT_GENERATED, 'Generated the dean performance report.');
 
-        return view('dean.reports', \App\Support\ReportDesk::build(null, $request->only(['team', 'task', 'role'])));
+        return view('dean.reports', \App\Support\ReportDesk::build(null, $request->only(['team', 'task', 'role', 'term'])));
     }
 
     public function bulkUpload(Request $request)
@@ -958,6 +967,79 @@ class DeanController extends Controller
         $byFaculty = $tasks->groupBy('faculty_id');
 
         return view('dean.activitylogs', compact('tasks', 'byFaculty'));
+    }
+
+    /** Names the term now running. Only one runs at a time. */
+    public function startTerm(Request $request)
+    {
+        $data = $request->validate([
+            'name'    => ['required', 'string', 'max:60'],
+            'ends_on' => ['nullable', 'date'],
+        ]);
+
+        try {
+            $term = \App\Support\AcademicTermDesk::start($data['name'], $data['ends_on'] ?? null);
+        } catch (\RuntimeException $e) {
+            return redirect()->route('dean.faculties')->withErrors(['term' => $e->getMessage()]);
+        }
+
+        ActivityLog::recordFor(ActivityLog::ACCOUNT_UPDATED, 'Started the term ' . $term->name . '.');
+
+        return redirect()->route('dean.faculties')->with('success', 'Term ' . $term->name . ' started.');
+    }
+
+    /** Renames the running term or moves its end date. */
+    public function updateTerm(Request $request)
+    {
+        $term = \App\Models\AcademicTerm::current();
+        if (!$term) {
+            return redirect()->route('dean.faculties')->withErrors(['term' => 'No term is running.']);
+        }
+
+        $term->update($request->validate([
+            'name'    => ['required', 'string', 'max:60'],
+            'ends_on' => ['nullable', 'date'],
+        ]));
+
+        return redirect()->route('dean.faculties')->with('success', 'Term updated.');
+    }
+
+    /** Ends the running term and archives every current student with it. */
+    public function endTerm()
+    {
+        $term = \App\Models\AcademicTerm::current();
+        if (!$term) {
+            return redirect()->route('dean.faculties')->withErrors(['term' => 'No term is running.']);
+        }
+
+        try {
+            $count = \App\Support\AcademicTermDesk::end($term, auth()->user());
+        } catch (\RuntimeException $e) {
+            return redirect()->route('dean.faculties')->withErrors(['term' => $e->getMessage()]);
+        }
+
+        return redirect()->route('dean.faculties')->with(
+            'success',
+            'Term ' . $term->name . ' ended. ' . $count . ' student' . ($count === 1 ? ' was' : 's were')
+                . ' archived. Start the next term when the new batch is ready.'
+        );
+    }
+
+    /** Brings one archived student back into the current batch. */
+    public function restoreStudent(User $user)
+    {
+        $student = Student::withoutGlobalScope(Student::CURRENT_SCOPE)->where('user_id', $user->user_id)->first();
+        if (!$student) {
+            return redirect()->route('dean.users', ['tab' => 'archived'])->withErrors(['status' => 'That account is not a student.']);
+        }
+
+        try {
+            \App\Support\AcademicTermDesk::restore($student, auth()->user());
+        } catch (\RuntimeException $e) {
+            return redirect()->route('dean.users', ['tab' => 'archived'])->withErrors(['status' => $e->getMessage()]);
+        }
+
+        return redirect()->route('dean.users', ['tab' => 'archived'])->with('success', ($user->name ?: $user->email) . ' is back in the current batch and can sign in again.');
     }
 
     public function approveUser(User $user)

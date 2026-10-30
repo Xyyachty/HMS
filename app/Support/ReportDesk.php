@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\AcademicTerm;
 use App\Models\Student;
 use App\Models\StudentGroup;
 use App\Models\Task;
@@ -26,8 +27,9 @@ class ReportDesk
 
     /**
      * @param int|null $facultyId One faculty's teams, or null for every team.
-     * @param array{team?: ?string, task?: ?string, role?: ?string} $filters
-     *        team is a "facultyId|team name" key, task a task title, role a role key.
+     * @param array{team?: ?string, task?: ?string, role?: ?string, term?: ?string} $filters
+     *        team is a "facultyId|team name" key, task a task title, role a role key,
+     *        term an ended term's id (its archived batch) — none means the current batch.
      * @return array<string, mixed> The variables the reports partial reads.
      */
     public static function build(?int $facultyId, array $filters = []): array
@@ -36,11 +38,44 @@ class ReportDesk
         $scope = fn ($query) => $facultyId ? $query->where('faculty_id', $facultyId) : $query;
         $teamKey = fn ($facultyIdOfRow, $name) => (int) $facultyIdOfRow . '|' . $name;
 
-        $fullRoster = $scope(StudentGroup::with(['roles', 'student.user', 'faculty.user']))->get();
+        // A batch archived by AcademicTermDesk::end() is read only when its term is picked;
+        // otherwise the current batch, as before any term ended.
+        $termOptions = AcademicTerm::whereNotNull('ended_at')->orderByDesc('academic_term_id')
+            ->pluck('name', 'academic_term_id')->all();
+        $termId = isset($termOptions[(int) ($filters['term'] ?? 0)]) ? (int) $filters['term'] : null;
+        $withArchived = fn ($query) => $query->withoutGlobalScope(Student::CURRENT_SCOPE);
 
-        $fullTasks = $scope(Task::with(['student.user', 'assignedTo']))
+        $fullRoster = $scope($termId
+            ? StudentGroup::withoutGlobalScope(StudentGroup::CURRENT_SCOPE)
+                ->whereNotNull('archived_at')
+                ->whereHas('student', fn ($q) => $withArchived($q)->where('academic_term_id', $termId))
+                ->with(['roles', 'student' => $withArchived, 'student.user', 'faculty.user'])
+            : StudentGroup::with(['roles', 'student.user', 'faculty.user']))->get();
+
+        $fullTasks = $scope(Task::with(['student' => $withArchived, 'student.user', 'assignedTo']))
             ->orderByDesc('updated_at')
             ->get();
+
+        // A task belongs to a batch through its team, or through its student when it names
+        // no team. Team names are never reused across terms, so the name is enough.
+        $teamKeyOf = fn ($facultyIdOfRow, $name) => (int) $facultyIdOfRow . '|' . mb_strtolower((string) $name);
+        $belongsTo = function ($rows) use ($teamKeyOf) {
+            $teams = $rows->mapWithKeys(fn ($m) => [$teamKeyOf($m->faculty_id, $m->group_name) => true])->all();
+            $students = $rows->mapWithKeys(fn ($m) => [(int) $m->student_id => true])->all();
+
+            return fn (Task $task) => filled($task->group_name)
+                ? isset($teams[$teamKeyOf($task->faculty_id, $task->group_name)])
+                : isset($students[(int) $task->student_id]);
+        };
+        if ($termId) {
+            $fullTasks = $fullTasks->filter($belongsTo($fullRoster))->values();
+        } else {
+            $archivedRows = $scope(StudentGroup::withoutGlobalScope(StudentGroup::CURRENT_SCOPE)->whereNotNull('archived_at'))
+                ->get(['faculty_id', 'group_name', 'student_id']);
+            if ($archivedRows->isNotEmpty()) {
+                $fullTasks = $fullTasks->reject($belongsTo($archivedRows))->values();
+            }
+        }
 
         // Done means approved: handed in and signed off, not just handed in.
         $isApproved = fn (Task $task) => $task->status === 'archived' && $task->feedback_at !== null;
@@ -70,6 +105,7 @@ class ReportDesk
             'team' => array_key_exists((string) ($filters['team'] ?? ''), $teamOptions) ? (string) $filters['team'] : null,
             'task' => in_array((string) ($filters['task'] ?? ''), $taskOptions, true) ? (string) $filters['task'] : null,
             'role' => array_key_exists((string) ($filters['role'] ?? ''), $roleOptions) ? (string) $filters['role'] : null,
+            'term' => $termId,
         ];
         $isFiltered = array_filter($filters) !== [];
 
@@ -322,6 +358,7 @@ class ReportDesk
             'recentActivities',
             'filters',
             'isFiltered',
+            'termOptions',
             'teamOptions',
             'taskOptions',
             'roleOptions'

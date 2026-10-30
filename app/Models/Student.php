@@ -21,6 +21,13 @@ class Student extends UserInformation
     /** A student ID is the school number: digits only, at most 10. */
     public const NUMBER_PATTERN = '/^\d{1,10}$/';
 
+    /**
+     * Global scope that leaves out students archived at the end of a term. Every working
+     * screen (rosters, team building, counts) reads the current batch only; the archive
+     * screens and Restore lift it with withoutGlobalScope(Student::CURRENT_SCOPE).
+     */
+    public const CURRENT_SCOPE = 'current';
+
     protected static function booted(): void
     {
         static::addGlobalScope('student', function (Builder $query) {
@@ -30,6 +37,10 @@ class Student extends UserInformation
                 $query->getModel()->getTable() . '.user_type',
                 UserInformation::TYPE_STUDENT
             );
+        });
+
+        static::addGlobalScope(self::CURRENT_SCOPE, function (Builder $query) {
+            $query->whereNull($query->getModel()->getTable() . '.academic_term_id');
         });
 
         static::creating(function (Student $student) {
@@ -45,6 +56,12 @@ class Student extends UserInformation
     public function facultyClass()
     {
         return $this->belongsTo(FacultyClass::class, 'faculty_class_id', 'faculty_class_id');
+    }
+
+    /** The term this student was archived with; null while they are in the current batch. */
+    public function term()
+    {
+        return $this->belongsTo(AcademicTerm::class, 'academic_term_id', 'academic_term_id');
     }
 
     public function tasks()

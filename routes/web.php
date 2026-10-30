@@ -184,6 +184,11 @@ Route::prefix('dean')->middleware(['auth', 'role:dean'])->name('dean.')->group(f
     Route::post('/users/bulk-upload', [DeanController::class, 'bulkUpload'])->name('users.bulk-upload');
     Route::put('/users/{user}', [DeanController::class, 'updateUser'])->name('users.update');
     Route::post('/users/{user}/approve', [DeanController::class, 'approveUser'])->name('users.approve');
+    Route::post('/users/{user}/restore', [DeanController::class, 'restoreStudent'])->name('users.restore');
+    // School terms: ending one archives that batch of students (AcademicTermDesk).
+    Route::post('/terms', [DeanController::class, 'startTerm'])->name('terms.start');
+    Route::put('/terms/current', [DeanController::class, 'updateTerm'])->name('terms.update');
+    Route::post('/terms/current/end', [DeanController::class, 'endTerm'])->name('terms.end');
     Route::get('/faculties', [DeanController::class, 'faculties'])->name('faculties');
     Route::post('/faculties', [DeanController::class, 'storeFaculty'])->name('faculties.store');
     Route::get('/reports', [DeanController::class, 'reports'])->name('reports');

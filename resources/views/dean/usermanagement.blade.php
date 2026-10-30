@@ -202,6 +202,10 @@
                 class="tab-btn inline-flex items-center gap-1.5 px-4 py-2.5 rounded-t-xl text-sm font-bold border border-b-0 border-transparent bg-slate-50 text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition">
                 <span class="iconify" data-icon="mdi:account-group-outline"></span> Students
             </button>
+            <button type="button" onclick="switchTab('archived')" id="tab-archived"
+                class="tab-btn inline-flex items-center gap-1.5 px-4 py-2.5 rounded-t-xl text-sm font-bold border border-b-0 border-transparent bg-slate-50 text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition">
+                <span class="iconify" data-icon="mdi:archive-outline"></span> Archived
+            </button>
         </div>
 
         <div class="flex items-center gap-2 pb-3 shrink-0 ml-auto">
@@ -242,6 +246,7 @@
         $blockTabs = collect($systemBlocks)->merge($studentBlocks)->unique()->sort()->values();
         $hasUnassignedStudents = $users
             ->where('role', 'student')
+            ->where('status', '!=', 'archived')
             ->contains(fn ($u) => ! $u->student?->facultyClass?->block_letter);
     @endphp
 
@@ -303,8 +308,12 @@
                             'active'  => ['class' => 'is-active', 'label' => 'Active'],
                             'pending' => ['class' => 'is-pending', 'label' => 'Pending'],
                             'pending_activation' => ['class' => 'is-pending', 'label' => 'Pending Activation'],
+                            'archived' => ['class' => 'is-inactive', 'label' => 'Archived'],
                             default   => ['class' => 'is-inactive', 'label' => 'Inactive'],
                         };
+                        // Archived at the end of a term: their own tab, with the term and
+                        // the block they sat in, and Restore instead of Update.
+                        $isArchived = $user->role === 'student' && $status === 'archived';
                         $username = $user->email ? explode('@', $user->email, 2)[0] : '';
                         $emailDomain = $user->email && str_contains($user->email, '@')
                             ? explode('@', $user->email, 2)[1]
@@ -320,8 +329,12 @@
                         $blockLabel = $user->role === 'faculty' && $user->faculty
                             ? $user->faculty->handledBlocksLabel()
                             : \App\Models\Faculty::blockLabel($block);
+                        if ($isArchived) {
+                            $block = 'archived';
+                            $blockLabel = trim(($user->student?->archived_block ?? '') . ' · ' . ($user->student?->term?->name ?? ''), ' ·');
+                        }
                     @endphp
-                    <tr data-user-id="{{ $user->user_id }}" data-role="{{ $user->role }}" data-block="{{ strtoupper((string) $block) }}">
+                    <tr data-user-id="{{ $user->user_id }}" data-role="{{ $isArchived ? 'archived' : $user->role }}" data-block="{{ strtoupper((string) $block) }}">
                         <td>
                             <div class="flex items-center gap-3 min-w-0">
                                 @include('partials.user-avatar', [
@@ -362,7 +375,17 @@
                         </td>
                         <td class="text-center" style="text-align: center !important;">
                             <div class="flex justify-center w-full">
-                                @if ($user->role === 'student' && $status === 'pending')
+                                @if ($isArchived)
+                                    <form method="POST" action="{{ route('dean.users.restore', $user) }}"
+                                        data-name="{{ $displayName }}"
+                                        onsubmit="return confirm('Restore ' + this.dataset.name + ' to the current batch? They can sign in again and get a seat in the open block of their faculty.')">
+                                        @csrf
+                                        <button type="submit" class="st-update" aria-label="Restore student">
+                                            <span class="iconify text-sm" data-icon="mdi:backup-restore"></span>
+                                            Restore
+                                        </button>
+                                    </form>
+                                @elseif ($user->role === 'student' && $status === 'pending')
                                     <form method="POST" action="{{ route('dean.users.approve', $user) }}">
                                         @csrf
                                         <button type="submit" class="st-approve" aria-label="Approve student">
@@ -661,7 +684,8 @@
 
         syncSeenUserIds();
         // ?tab=student opens the Students tab (the dashboard's Total Students card links here).
-        switchTab(new URLSearchParams(location.search).get('tab') === 'student' ? 'student' : 'faculty');
+        const startTab = new URLSearchParams(location.search).get('tab');
+        switchTab(['student', 'archived'].includes(startTab) ? startTab : 'faculty');
     });
 
     function filterUsersTable(query) {
@@ -788,7 +812,8 @@
         const chip = status === 'active'
             ? ['is-active', 'Active']
             : status === 'pending' ? ['is-pending', 'Pending']
-            : status === 'pending_activation' ? ['is-pending', 'Pending Activation'] : ['is-inactive', 'Inactive'];
+            : status === 'pending_activation' ? ['is-pending', 'Pending Activation']
+            : status === 'archived' ? ['is-inactive', 'Archived'] : ['is-inactive', 'Inactive'];
         return `<span class="st-status ${chip[0]}"><span class="dot"></span> ${chip[1]}</span>`;
     }
 

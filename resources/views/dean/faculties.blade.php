@@ -33,6 +33,71 @@
         </div>
     @endif
 
+    <!-- School term: ending it archives this batch of students (AcademicTermDesk::end) -->
+    <div id="termCard" class="mx-6 mt-4 rounded-xl border border-slate-200 px-4 py-4">
+        @if ($currentTerm)
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div class="min-w-0">
+                    <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Current term</p>
+                    <p class="text-base font-bold text-slate-800 mt-0.5">{{ $currentTerm->name }}</p>
+                    <p class="text-sm text-slate-500">
+                        {{ $currentTerm->ends_on ? 'Ends ' . $currentTerm->ends_on->format('M j, Y') : 'No end date set' }}
+                    </p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" onclick="document.getElementById('termEditForm').classList.toggle('hidden')"
+                        class="h-10 px-4 rounded-xl text-sm font-bold border border-slate-200 text-slate-700 hover:bg-slate-50 transition inline-flex items-center gap-2">
+                        <span class="iconify" data-icon="mdi:pencil-outline"></span> Edit
+                    </button>
+                    <form method="POST" action="{{ route('dean.terms.end') }}" onsubmit="return confirmEndTerm(event, this)">
+                        @csrf
+                        <button type="submit"
+                            class="h-10 px-4 rounded-xl text-sm font-bold bg-rose-600 text-white hover:bg-rose-700 transition inline-flex items-center gap-2">
+                            <span class="iconify" data-icon="mdi:archive-arrow-down-outline"></span> End term
+                        </button>
+                    </form>
+                </div>
+            </div>
+            @if ($currentTerm->isDueToEnd())
+                <p class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                    {{ $currentTerm->ends_on->isPast() ? 'This term ended on' : 'This term ends on' }} {{ $currentTerm->ends_on->format('M j, Y') }}.
+                    When grades are in, press End term to archive this batch before the next one starts.
+                </p>
+            @endif
+            <form id="termEditForm" method="POST" action="{{ route('dean.terms.update') }}" class="hidden mt-3 flex flex-col sm:flex-row gap-2 sm:items-end">
+                @csrf
+                @method('PUT')
+                <label class="flex-1 text-sm font-semibold text-slate-700">Term name
+                    <input type="text" name="name" maxlength="60" required value="{{ $currentTerm->name }}"
+                        class="mt-1 w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                </label>
+                <label class="text-sm font-semibold text-slate-700">End date <span class="font-normal text-slate-400">(optional)</span>
+                    <input type="date" name="ends_on" value="{{ optional($currentTerm->ends_on)->toDateString() }}"
+                        class="mt-1 w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                </label>
+                <button type="submit" class="h-10 px-4 rounded-xl text-sm font-bold bg-brand text-white transition">Save</button>
+            </form>
+        @else
+            <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">School term</p>
+            <p class="text-sm text-slate-500 mt-0.5">
+                {{ $lastEndedTerm ? 'The term ' . $lastEndedTerm->name . ' has ended and its students are archived.' : 'No term set yet.' }}
+                Name the term now running. When it ends, End term archives that batch of students.
+            </p>
+            <form method="POST" action="{{ route('dean.terms.start') }}" class="mt-3 flex flex-col sm:flex-row gap-2 sm:items-end">
+                @csrf
+                <label class="flex-1 text-sm font-semibold text-slate-700">Term name
+                    <input type="text" name="name" maxlength="60" required placeholder="1st Sem 2026-2027"
+                        class="mt-1 w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                </label>
+                <label class="text-sm font-semibold text-slate-700">End date <span class="font-normal text-slate-400">(optional)</span>
+                    <input type="date" name="ends_on"
+                        class="mt-1 w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                </label>
+                <button type="submit" class="h-10 px-4 rounded-xl text-sm font-bold bg-brand text-white transition">Start term</button>
+            </form>
+        @endif
+    </div>
+
     <!-- Tab Bar -->
     <div class="px-6 pt-4 flex gap-2 border-b border-slate-100">
         <button onclick="switchFacultyTab('teams')" id="ftab-teams"
@@ -585,6 +650,31 @@
 @push('scripts')
 @include('partials.team-completion-live')
 <script>
+    // Ending a term signs out the whole batch, so it is asked twice: here, and by name.
+    function confirmEndTerm(event, form) {
+        event.preventDefault();
+        const name = @json($currentTerm?->name ?? '');
+        Swal.fire({
+            title: 'End ' + name + '?',
+            html: 'Every current student is archived: they can no longer sign in, and their blocks open for the next batch. '
+                + 'Their tasks, teams and reports are kept, and you can restore a student from Manage Users.',
+            icon: 'warning',
+            input: 'text',
+            inputPlaceholder: 'Type the term name to confirm',
+            showCancelButton: true,
+            confirmButtonText: 'End term',
+            confirmButtonColor: '#e11d48',
+            preConfirm: (typed) => {
+                if ((typed || '').trim() !== name) {
+                    Swal.showValidationMessage('Type ' + name + ' exactly.');
+                    return false;
+                }
+                return true;
+            },
+        }).then(r => { if (r.isConfirmed) form.submit(); });
+        return false;
+    }
+
     let teamModalActivityLogs = [];
     // The department tab open in Team Task Activity ("role|student"); null picks one.
     let teamModalActivityTab = null;

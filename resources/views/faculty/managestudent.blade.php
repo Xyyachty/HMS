@@ -291,6 +291,17 @@
                     Blocks hold up to {{ $classCapacity ?? 40 }} students.
                 </p>
             @endforelse
+            {{-- Students from terms the dean has ended. Read-only: the dean restores. --}}
+            @if ($hasArchived ?? false)
+                <a href="{{ route('faculty.students', ['view' => 'archived']) }}"
+                   class="inline-flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-sm font-bold border border-b-0 transition
+                   {{ ($archivedView ?? false)
+                        ? 'bg-white ms-ink border-slate-200 -mb-px relative z-10'
+                        : 'bg-slate-50 ms-ink border-transparent hover:bg-slate-100' }}">
+                    <span class="iconify" data-icon="mdi:archive-outline"></span>
+                    <span class="ms-wine">Archived</span>
+                </a>
+            @endif
         </div>
 
         <div class="flex items-center gap-2 pb-1 sm:pb-3 shrink-0 ml-auto">
@@ -392,6 +403,7 @@
                         $statusChip = match ($status) {
                             'active'  => ['class' => 'is-active', 'label' => 'Active'],
                             'pending' => ['class' => 'is-pending', 'label' => 'Pending'],
+                            'archived' => ['class' => 'is-inactive', 'label' => 'Archived'],
                             default   => ['class' => 'is-inactive', 'label' => 'Inactive'],
                         };
                     @endphp
@@ -445,6 +457,12 @@
                         </td>
 
                         <td>
+                            @if ($archivedView ?? false)
+                                {{-- Where they were when the term ended. --}}
+                                <span class="st-muted cell-truncate" title="{{ trim(($student->archived_block ?? '') . ' · ' . ($student->term?->name ?? ''), ' ·') }}">
+                                    {{ trim(($student->archived_block ?? '') . ' · ' . ($student->term?->name ?? ''), ' ·') }}
+                                </span>
+                            @else
                             <div class="flex justify-center">
                                 <button
                                     type="button"
@@ -463,6 +481,7 @@
                                     Update
                                 </button>
                             </div>
+                            @endif
                         </td>
                     </tr>
                 @empty
@@ -472,7 +491,9 @@
                                 <div class="w-14 h-14 rounded-2xl bg-brand-soft flex items-center justify-center">
                                     <span class="iconify text-3xl text-brand" data-icon="mdi:account-group-outline"></span>
                                 </div>
-                                @if(($search ?? '') !== '')
+                                @if(($archivedView ?? false) && ($search ?? '') !== '')
+                                    <p class="font-semibold ms-ink">No archived students match "{{ $search }}"</p>
+                                @elseif(($search ?? '') !== '')
                                     <p class="font-semibold ms-ink">
                                         No students in {{ $activeClass->name ?? 'this block' }} match "{{ $search }}"
                                     </p>
