@@ -36,7 +36,7 @@ class HotelNavBadges
 
         return match ($role) {
             'front_desk' => [
-                'verify-guest' => self::awaitingCheckIn($membership),
+                'verify-guest' => self::awaitingCheckIn($membership) + self::inspectionReportsToReview($membership),
                 'complaints'   => self::complaints($membership, null, 'Resolved'),
                 'amenities'    => self::guestsInsideAmenities($membership),
             ],
@@ -69,6 +69,15 @@ class HotelNavBadges
         return HotelBooking::where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
             ->awaitingCheckIn()
+            ->count();
+    }
+
+    /** Check-outs Housekeeping has inspected, waiting on Front Desk to finish the bill. */
+    private static function inspectionReportsToReview(StudentGroup $membership): int
+    {
+        return HotelRoomInspection::where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->where('status', 'Reported')
             ->count();
     }
 
@@ -127,7 +136,7 @@ class HotelNavBadges
     {
         return HotelRoomInspection::where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
-            ->whereIn('status', ['Pending', 'Awaiting Re-inspection'])
+            ->whereIn('status', ['Pending', 'Ready to Clean', 'Awaiting Re-inspection'])
             ->count();
     }
 

@@ -5,8 +5,10 @@ namespace App\Support;
 use App\Exceptions\BookingOverlapException;
 use App\Models\HotelAddon;
 use App\Models\HotelBooking;
+use App\Models\HotelBookingCharge;
 use App\Models\HotelBookingPayment;
 use App\Models\HotelGuest;
+use App\Models\HotelInspectionDamage;
 use App\Models\HotelPromo;
 use App\Models\HotelRoom;
 use App\Models\HotelRoomCategory;
@@ -242,6 +244,63 @@ class HotelBookingDesk
     }
 
     /**
+     * Front Desk starts the guest's check-out. The stay stays open: Housekeeping
+     * inspects the room first, so damage can still go on the final bill.
+     */
+    public static function requestInspection(HotelBooking $booking): HotelBooking
+    {
+        return DB::transaction(function () use ($booking) {
+            $booking->status = 'Pending Room Inspection';
+            $booking->save();
+
+            HotelHousekeepingDesk::openForCheckout($booking);
+
+            return $booking;
+        });
+    }
+
+    /**
+     * Front Desk's decision on one damaged or missing item. Charged adds it to the bill
+     * at $amount; Waived adds nothing. An item already decided is refused, so a double
+     * click or a second desk cannot bill it twice.
+     *
+     * @throws \RuntimeException when the item was already reviewed or the stay is closed
+     */
+    public static function reviewDamage(HotelInspectionDamage $damage, bool $charge, ?float $amount, ?string $by): HotelInspectionDamage
+    {
+        return DB::transaction(function () use ($damage, $charge, $amount, $by) {
+            $damage = HotelInspectionDamage::whereKey($damage->getKey())->lockForUpdate()->first();
+            if ($damage->status !== 'Pending Review') {
+                throw new \RuntimeException('This item was already reviewed (' . $damage->status . ').');
+            }
+            if ($damage->booking?->status !== 'Pending Room Inspection') {
+                throw new \RuntimeException('This guest is not being checked out any more.');
+            }
+
+            if ($charge) {
+                $line = HotelBookingCharge::create([
+                    'group_name'       => $damage->group_name,
+                    'faculty_id'       => $damage->faculty_id,
+                    'group_id'         => $damage->group_id,
+                    'hotel_booking_id' => $damage->hotel_booking_id,
+                    'description'      => 'Damage: ' . $damage->item,
+                    'amount'           => round((float) $amount, 2),
+                    'added_by'         => $by,
+                ]);
+                $damage->hotel_booking_charge_id = $line->hotel_booking_charge_id;
+                $damage->amount = round((float) $amount, 2);
+            }
+
+            $damage->status = $charge ? 'Charged' : 'Waived';
+            $damage->reviewed_by = $by;
+            $damage->reviewed_at = now();
+            $damage->save();
+
+            return $damage;
+        });
+    }
+
+    /**
      * Ends the stay. This is what the old JSON blob could never do: the booking becomes
      * history instead of lingering on the room, so a checked-out guest stops showing up
      * as orderable in room service.
@@ -255,10 +314,17 @@ class HotelBookingDesk
 
             self::setRoomStatus($booking->room, $roomStatus ?? self::ROOM_STATUS_ON['check_out']);
 
-            // Housekeeping's pass starts the moment the stay ends, in the same
-            // transaction, so a freed room can never exist without a queue entry for
-            // it. openInspection() no-ops if one is already open for this room.
-            HotelHousekeepingDesk::openInspection($booking);
+            // The room was inspected before the bill was settled: that same pass now
+            // turns into cleaning. A stay closed without one (a guest who never took the
+            // key, released from the room status picker) gets the old after-checkout
+            // pass, in the same transaction, so a freed room always has a queue entry.
+            // openInspection() no-ops if one is already open for this room.
+            $inspection = $booking->inspection()->first();
+            if ($inspection && $inspection->status === 'Reported') {
+                HotelHousekeepingDesk::readyToClean($inspection, $booking);
+            } else {
+                HotelHousekeepingDesk::openInspection($booking);
+            }
 
             return $booking;
         });
@@ -345,6 +411,15 @@ class HotelBookingDesk
         $booking = $room->activeBooking()->with(['guest', 'payments'])->first();
 
         if ($booking && in_array($status, ['Available', 'Cleaning', 'Maintenance'], true)) {
+            // A guest who has the key leaves through Front Desk's check-out, so the room
+            // is inspected and the damage billed before the stay closes.
+            if (in_array($booking->status, ['Checked In', 'Pending Room Inspection'], true)) {
+                throw new \RuntimeException(
+                    ($booking->guest?->full_name ?? 'A guest') . ' is still in ' . $room->name
+                    . '. Front Desk checks them out after Housekeeping inspects the room.'
+                );
+            }
+
             // Nobody ever arrived: the booking was called off, not completed.
             if ($booking->arrivalStatus() === 'Booked') {
                 self::cancel($booking);

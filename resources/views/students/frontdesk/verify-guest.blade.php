@@ -181,6 +181,7 @@
   .vg-btn-main:hover { filter: brightness(1.08); color: var(--bg); }
   .vg-btn-line { border-color: var(--accent); color: var(--accent); }
   .vg-btn-line:hover { background: var(--vg-tint); }
+  .vg-btn:disabled { opacity: 0.6; cursor: default; background: transparent; color: var(--fg-muted); border-color: var(--border); }
   .vg-btn:focus-visible, .vg-filter:focus-visible, .vg-page:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
   .vg-empty { border: 1.5px dashed var(--border); border-radius: 0.875rem; padding: 2rem 1rem; text-align: center; color: var(--fg-muted); font-size: 0.86rem; line-height: 1.5; }
@@ -292,7 +293,7 @@ function roomStatusClass(status) {
 function bookingStatusClass(status) {
   const s = String(status || '').trim();
   if (s === 'Checked In') return 'status-occupied';
-  if (s === 'Arrived') return 'status-cleaning';
+  if (s === 'Arrived' || s === 'Pending Room Inspection') return 'status-cleaning';
   return 'status-reserved';
 }
 
@@ -376,7 +377,7 @@ function stayEndsAt(reservation) {
    Only a guest Room Management has actually checked in gets a running clock — a
    reservation nobody has moved into yet has no stay to count down. */
 function remainingStay(reservation, now) {
-  if ((reservation && reservation.status) !== 'Checked In') {
+  if (!reservation || (reservation.status !== 'Checked In' && reservation.status !== 'Pending Room Inspection')) {
     return { text: 'Not checked in', tone: 'idle' };
   }
   const endsAt = stayEndsAt(reservation);
@@ -396,6 +397,26 @@ function remainingStay(reservation, now) {
 
 /* One line under each status badge, so the desk knows what that status means. */
 const STATUS_HINTS = { 'Booked': 'Not here yet', 'Arrived': 'Needs a key', 'Checked In': 'In the room' };
+
+/* Where a check-out stands. Housekeeping inspects the room first ('waiting'); any
+   damage it reports is Front Desk's to charge or waive ('review'); then the final
+   bill can close the stay ('ready'). Null for a stay not being checked out. */
+function checkoutStage(reservation) {
+  if (!reservation || reservation.status !== 'Pending Room Inspection') return null;
+  const inspection = reservation.inspection;
+  if (!inspection || inspection.status !== 'Reported') return 'waiting';
+  return (inspection.damages || []).some(d => d.status === 'Pending Review') ? 'review' : 'ready';
+}
+
+function statusHint(reservation) {
+  const stage = checkoutStage(reservation);
+  if (!stage) return STATUS_HINTS[reservation.status];
+  if (stage === 'waiting') return 'Housekeeping is checking the room';
+  const damages = reservation.inspection.damages || [];
+  const left = damages.filter(d => d.status === 'Pending Review').length;
+  if (stage === 'review') return `${left} damage item${left === 1 ? '' : 's'} to review`;
+  return damages.length ? 'Damage reviewed, ready to bill' : 'No damage, ready to bill';
+}
 
 /* 'Oct 23' from 'YYYY-MM-DD', and 'Oct 23, 12:48 AM' with a clock time: the list's short form. */
 function formatShortDate(dateStr) {
@@ -1237,6 +1258,19 @@ function StayDetails({ room, reservation, many, transactions }) {
         </>
       )}
 
+      {reservation.inspection && (
+        <>
+          <p className="bill-section-title">Room inspection</p>
+          <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.82rem', lineHeight: 1.6 }}>
+            {reservation.inspection.status !== 'Reported'
+              ? 'Housekeeping is checking the room.'
+              : (reservation.inspection.damages || []).length === 0
+                ? `No damage found${reservation.inspection.inspectedBy ? ` · ${reservation.inspection.inspectedBy}` : ''}.`
+                : (reservation.inspection.damages || []).map(d => `${d.item}: ${d.status === 'Charged' ? formatPeso(d.amount) : d.status === 'Waived' ? 'no charge' : 'to review'}`).join(' · ')}
+          </p>
+        </>
+      )}
+
       <p className="bill-section-title">Charges</p>
       <div className="bill-line"><span>Room charge</span><span className="bill-amt">{formatPeso(roomTotal)}</span></div>
       <div className="bill-line">
@@ -1286,12 +1320,130 @@ function StayDetails({ room, reservation, many, transactions }) {
   );
 }
 
+/*
+ * Front Desk's review of what Housekeeping found before check-out. Each item is
+ * charged at the amount the desk types, or waived; nothing reaches the bill without
+ * this. Reads the stay live, so an item reviewed on another screen updates here.
+ */
+function DamageReviewModal({ room, reservation, onReview, onClose }) {
+  const [amounts, setAmounts] = useState({});
+  const [busy, setBusy] = useState(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const inspection = reservation.inspection || {};
+  const damages = inspection.damages || [];
+  const left = damages.filter(d => d.status === 'Pending Review').length;
+
+  const decide = (damage, decision) => {
+    const amount = Number(amounts[damage.id]);
+    if (decision === 'charge' && !(amount > 0)) { setError(`Enter what to charge for ${damage.item}.`); return; }
+    setError('');
+    setBusy(damage.id);
+    Promise.resolve(onReview(damage.id, decision, decision === 'charge' ? amount : null))
+      .catch(err => setError((err && err.message) || 'Could not save this review.'))
+      .finally(() => setBusy(null));
+  };
+
+  return (
+    <div className="bill-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label="Review damage">
+      <div className="bill-modal" onClick={e => e.stopPropagation()}>
+        <div className="bill-head">
+          <div>
+            <p style={{ margin: 0, color: 'var(--accent)', fontSize: '0.62rem', letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+              Room inspection
+            </p>
+            <h2 className="font-display" style={{ margin: '0.25rem 0 0.2rem', fontSize: '1.35rem', color: 'var(--fg)' }}>
+              {room ? room.name : 'Room'}
+            </h2>
+            <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--fg-muted)' }}>
+              {reservation.fullName || 'Guest'}{inspection.inspectedBy ? ` · checked by ${inspection.inspectedBy}` : ''}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--fg-muted)', cursor: 'pointer', flexShrink: 0 }}
+          >
+            <i className="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <div className="bill-body">
+          {inspection.notes && (
+            <p style={{ margin: '0 0 0.5rem', color: 'var(--fg-muted)', fontSize: '0.84rem', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+              {inspection.notes}
+            </p>
+          )}
+
+          {damages.map(d => (
+            <div key={d.id} style={{ padding: '0.75rem 0', borderBottom: '1px solid var(--border)' }}>
+              <div className="bill-line" style={{ padding: 0 }}>
+                <span style={{ color: 'var(--fg)', fontWeight: 600 }}>{d.item}</span>
+                <span className="bill-amt" style={{ fontSize: '0.76rem' }}>
+                  {d.status === 'Charged' ? formatPeso(d.amount) : d.status === 'Waived' ? 'No charge' : 'To review'}
+                </span>
+              </div>
+              {d.description && (
+                <p style={{ margin: '0.25rem 0 0', color: 'var(--fg-muted)', fontSize: '0.8rem', lineHeight: 1.5 }}>{d.description}</p>
+              )}
+              {d.evidence && (
+                <a href={d.evidence} target="_blank" rel="noopener noreferrer">
+                  <img src={d.evidence} alt={`Photo of ${d.item}`} style={{ display: 'block', maxWidth: '100%', maxHeight: 180, borderRadius: 8, marginTop: '0.5rem' }} />
+                </a>
+              )}
+              {d.status === 'Pending Review' ? (
+                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.6rem' }}>
+                  <input
+                    type="number"
+                    min="1"
+                    step="0.01"
+                    className="booking-input"
+                    placeholder="Charge (PHP)"
+                    aria-label={`Charge for ${d.item}`}
+                    style={{ width: '9rem' }}
+                    value={amounts[d.id] || ''}
+                    onChange={e => setAmounts(prev => ({ ...prev, [d.id]: e.target.value }))}
+                  />
+                  <button type="button" className="vg-btn vg-btn-main" disabled={busy === d.id} onClick={() => decide(d, 'charge')}>
+                    <i className="fa-solid fa-receipt"></i> Add to bill
+                  </button>
+                  <button type="button" className="vg-btn" disabled={busy === d.id} onClick={() => decide(d, 'waive')}>
+                    No charge
+                  </button>
+                </div>
+              ) : (
+                <p style={{ margin: '0.3rem 0 0', fontSize: '0.72rem', color: 'var(--fg-muted)' }}>
+                  {d.status === 'Charged' ? 'Added to the bill' : 'Not charged'}{d.reviewedBy ? ` · ${d.reviewedBy}` : ''}
+                </p>
+              )}
+            </div>
+          ))}
+
+          {error && <p role="alert" style={{ margin: '0.75rem 0 0', color: 'var(--danger, #fb7185)', fontSize: '0.82rem' }}>{error}</p>}
+          <p style={{ margin: '0.9rem 0 0', color: 'var(--fg-muted)', fontSize: '0.8rem' }}>
+            {left
+              ? `${left} item${left === 1 ? '' : 's'} still to review. The final bill opens when every item is done.`
+              : 'Every item is reviewed. Close this and press Check out to finish the final bill.'}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function fdThemeColor(name, fallback) {
   const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   return value || fallback;
 }
 
-function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast, onFetchBill, onAddCharge, onRemoveCharge, onAddAddon, onPay, onSettleAndCheckOut, onExtendStay, onChangeRoom }) {
+function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast, onFetchBill, onAddCharge, onRemoveCharge, onAddAddon, onPay, onSettleAndCheckOut, onExtendStay, onChangeRoom, onRequestInspection, onReviewDamage }) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [page, setPage] = useState(1);
@@ -1311,6 +1463,31 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
 
   const [extendFor, setExtendFor] = useState(null);
   const [changeFor, setChangeFor] = useState(null);
+  // Review damage: the booking id, read live from the rooms like Details.
+  const [reviewFor, setReviewFor] = useState(null);
+
+  /* Check-out starts with Housekeeping, not the bill: they inspect the room so any
+     damage can still be charged before the guest leaves. */
+  const startCheckOut = (room, reservation) => {
+    const name = reservation.fullName || 'this guest';
+    const go = () => Promise.resolve(onRequestInspection(reservation.bookingId))
+      .then(() => { if (onToast) onToast(`Housekeeping has been asked to inspect ${room.name}.`); })
+      .catch(err => { if (onToast) onToast((err && err.message) || 'Could not start the check-out.'); });
+    if (!window.Swal) { if (window.confirm(`Start check-out for ${name}?`)) go(); return; }
+    window.Swal.fire({
+      title: `Start check-out for ${name}?`,
+      text: `Housekeeping inspects ${room.name} for damage first. You finish the final bill when their report is in.`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, ask Housekeeping',
+      cancelButtonText: 'Not yet',
+      background: fdThemeColor('--card', '#181714'),
+      color: fdThemeColor('--fg', '#f5f0e8'),
+      confirmButtonColor: fdThemeColor('--accent', '#c9a84c'),
+      cancelButtonColor: '#71717a',
+      heightAuto: false,
+    }).then(r => { if (r.isConfirmed) go(); });
+  };
   const changeRoom = (newRoom) => {
     const { room, reservation } = changeFor;
     return Promise.resolve(onChangeRoom(reservation.bookingId, newRoom.dbId)).then(() => {
@@ -1422,9 +1599,10 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
 
   // Details reads the guest live from the rooms, so a booking moved on another screen
   // shows in the open window on the next poll.
+  const reviewStay = reviewFor ? allReservations.find(({ reservation }) => reservation.bookingId === reviewFor) : null;
   const detailsStays = detailsFor ? (byGuest(allReservations).find(g => g.key === detailsFor) || {}).stays : null;
 
-  const statusTabs = [['All', 'All'], ['Booked', 'Booked'], ['Arrived', 'Arrived'], ['Checked In', 'Checked in']];
+  const statusTabs = [['All', 'All'], ['Booked', 'Booked'], ['Arrived', 'Arrived'], ['Checked In', 'Checked in'], ['Pending Room Inspection', 'Checking out']];
   const countFor = (key) => byGuest(key === 'All'
     ? allReservations
     : allReservations.filter(({ reservation }) => reservation.status === key)).length;
@@ -1528,7 +1706,7 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
                         </td>
                         <td data-label="Status">
                           <span className={`room-status-badge vg-status ${bookingStatusClass(status)}`}>{status}</span>
-                          {STATUS_HINTS[status] && <span className="vg-sub">{STATUS_HINTS[status]}</span>}
+                          {statusHint(reservation) && <span className="vg-sub">{statusHint(reservation)}</span>}
                         </td>
                         <td className="vg-wide">
                           <div className="vg-actions">
@@ -1540,6 +1718,25 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
                                 title="The guest wants to stay more nights">
                                 <i className="fa-solid fa-calendar-plus"></i> Extend stay
                               </button>
+                            ) : status === 'Pending Room Inspection' ? (
+                              checkoutStage(reservation) === 'waiting' ? (
+                                <button type="button" className="vg-btn vg-btn-line" disabled
+                                  title="Housekeeping is inspecting the room. Their report shows up here.">
+                                  <i className="fa-solid fa-hourglass-half"></i> Inspecting
+                                </button>
+                              ) : checkoutStage(reservation) === 'review' ? (
+                                <button type="button" className="vg-btn vg-btn-main"
+                                  onClick={() => setReviewFor(reservation.bookingId)}
+                                  title="Charge or waive each item Housekeeping found">
+                                  <i className="fa-solid fa-triangle-exclamation"></i> Review damage
+                                </button>
+                              ) : (
+                                <button type="button" className="vg-btn vg-btn-main"
+                                  onClick={() => openBill(room, reservation)}
+                                  title="Show the final bill and check the guest out">
+                                  <i className="fa-solid fa-right-from-bracket"></i> Check out
+                                </button>
+                              )
                             ) : (
                               <button type="button" className="vg-btn vg-btn-line"
                                 onClick={() => setChangeFor({ room, reservation })}
@@ -1563,8 +1760,8 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
                             )}
                             {status === 'Checked In' && (
                               <button type="button" className="vg-btn vg-lifecycle-btn vg-btn-main"
-                                onClick={() => openBill(room, reservation)}
-                                title="Show the final bill and check the guest out">
+                                onClick={() => startCheckOut(room, reservation)}
+                                title="Housekeeping inspects the room, then you finish the final bill">
                                 <i className="fa-solid fa-right-from-bracket"></i> Check out
                               </button>
                             )}
@@ -1622,7 +1819,7 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
         onClose={closeBill}
         onAddCharge={(description, amount) => refreshBill(onAddCharge(billFor.reservation.bookingId, description, amount))}
         onRemoveCharge={(chargeId) => refreshBill(onRemoveCharge(billFor.reservation.bookingId, chargeId))}
-        canCheckOut={!!billFor && billFor.reservation.status === 'Checked In'}
+        canCheckOut={!!billFor && checkoutStage(billFor.reservation) === 'ready'}
         addonCatalog={addonCatalog}
         onAddAddon={(addonId, qty) => refreshBill(onAddAddon(billFor.reservation.bookingId, addonId, qty))}
         onPay={(payment) => refreshBill(onPay(billFor.reservation.bookingId, payment))}
@@ -1636,6 +1833,15 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
         <GuestDetailsModal
           stays={detailsStays}
           onClose={() => setDetailsFor(null)}
+        />
+      )}
+
+      {reviewStay && (
+        <DamageReviewModal
+          room={reviewStay.room}
+          reservation={reviewStay.reservation}
+          onReview={onReviewDamage}
+          onClose={() => setReviewFor(null)}
         />
       )}
 
@@ -1782,6 +1988,21 @@ function App() {
     ));
   }, [billRequest, fetchRooms]);
 
+  const putRoom = (data) => {
+    if (data && data.room) setRooms(prev => prev.map(r => (r.id === data.room.id ? data.room : r)));
+    return data;
+  };
+
+  // Starts a check-out: the stay goes Pending Room Inspection and Housekeeping is told.
+  const requestInspection = useCallback((bookingId) => (
+    billRequest('/students/hotel/bookings/' + bookingId, 'PATCH', { action: 'request_inspection' }).then(putRoom)
+  ), [billRequest]);
+
+  // Front Desk charges or waives one item Housekeeping reported.
+  const reviewDamage = useCallback((damageId, decision, amount) => (
+    billRequest('/students/hotel/inspection-damages/' + damageId, 'PATCH', { decision, amount }).then(putRoom)
+  ), [billRequest]);
+
   // A later check-out on the same booking; the server refuses nights already
   // promised to another guest, and the modal shows that message.
   const extendStay = useCallback((bookingId, checkOut) => (
@@ -1806,6 +2027,8 @@ function App() {
       onSettleAndCheckOut={settleAndCheckOut}
       onExtendStay={extendStay}
       onChangeRoom={changeRoom}
+      onRequestInspection={requestInspection}
+      onReviewDamage={reviewDamage}
       onToast={(msg) => window.toast && window.toast(msg)}
     />
   );

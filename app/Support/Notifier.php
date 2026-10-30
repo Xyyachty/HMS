@@ -718,6 +718,64 @@ class Notifier
     }
 
     /**
+     * Front Desk started a guest's check-out. Housekeeping inspects the room before the
+     * final bill, so any damage can still be charged to the stay.
+     */
+    public static function roomCheckoutInspection(HotelRoomInspection $inspection): void
+    {
+        static::push(
+            static::teamRoleUserIds($inspection->group_name, (int) $inspection->faculty_id, ['housekeeping']),
+            UserNotification::ROOM_INSPECTION,
+            'Inspect before check-out · ' . $inspection->room_name,
+            ($inspection->guest_name ?: 'A guest') . ' is checking out. Check the room for damage or missing '
+                . 'items and send your report to the Front Desk.',
+            route('students.housekeeping.inspections'),
+            null
+        );
+    }
+
+    /** Housekeeping sent its pre-checkout report. Front Desk finishes the bill from it. */
+    public static function inspectionReported(?User $actor, HotelRoomInspection $inspection, int $damageCount): void
+    {
+        static::push(
+            static::teamRoleUserIds($inspection->group_name, (int) $inspection->faculty_id, ['front_desk']),
+            UserNotification::ROOM_INSPECTION,
+            ($damageCount ? 'Damage reported · ' : 'No damage · ') . $inspection->room_name,
+            $damageCount
+                ? 'Housekeeping found ' . $damageCount . ' damaged or missing item' . ($damageCount === 1 ? '' : 's')
+                    . '. Review the charges before the final bill.'
+                : 'Housekeeping found nothing wrong. You can finish the final bill and check '
+                    . ($inspection->guest_name ?: 'the guest') . ' out.',
+            route('students.frontdesk.verify-guest'),
+            $actor
+        );
+    }
+
+    /**
+     * The guest checked out after the inspection. Housekeeping cleans the room; Room
+     * Management hears that it is off sale until then.
+     */
+    public static function roomReadyForCleaning(HotelRoomInspection $inspection): void
+    {
+        static::push(
+            static::teamRoleUserIds($inspection->group_name, (int) $inspection->faculty_id, ['housekeeping']),
+            UserNotification::ROOM_INSPECTION,
+            'Ready for cleaning · ' . $inspection->room_name,
+            ($inspection->guest_name ?: 'The guest') . ' checked out. Clean the room, then mark it ready.',
+            route('students.housekeeping.inspections'),
+            null
+        );
+        static::push(
+            static::teamRoleUserIds($inspection->group_name, (int) $inspection->faculty_id, ['room_management']),
+            UserNotification::ROOM_INSPECTION,
+            'Guest checked out · ' . $inspection->room_name,
+            'The room is with Housekeeping for cleaning and goes back on sale when they mark it ready.',
+            route('students.roommanagement.manage'),
+            null
+        );
+    }
+
+    /**
      * Maintenance closed every issue this inspection raised. Housekeeping does the
      * final look before the room goes back on sale — PROCEDURES.md's "conduct a final
      * inspection after repair".

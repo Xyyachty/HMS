@@ -504,7 +504,13 @@ const IMAGE_MAX_BYTES = 600 * 1024;
    colours (purple/blue) for a different meaning now that hotel_rooms.status no
    longer tracks occupancy. */
 function bookingStatusClass(status) {
-  return String(status || '').trim() === 'Checked In' ? 'status-occupied' : 'status-reserved';
+  return isInRoom(status) ? 'status-occupied' : 'status-reserved';
+}
+/* Checked in, or checking out while Housekeeping inspects the room: either way the
+   guest still has the key. */
+function isInRoom(status) {
+  const s = String(status || '').trim();
+  return s === 'Checked In' || s === 'Pending Room Inspection';
 }
 /* Falls back to the team's first category, not to a literal "Classic" — the Rooms tab
    bar can rename that one, so it stops being an answer once somebody does. */
@@ -668,7 +674,7 @@ function stayEndsAt(reservation) {
    Only a guest Room Management has actually checked in gets a running clock — a
    reservation nobody has moved into yet has no stay to count down. */
 function remainingStay(reservation, now) {
-  if ((reservation && reservation.status) !== 'Checked In') {
+  if (!isInRoom(reservation && reservation.status)) {
     return { text: 'Not checked in', tone: 'idle' };
   }
   const endsAt = stayEndsAt(reservation);
@@ -971,7 +977,7 @@ function mrPlural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
    Housekeeping's and is still not read here — see the note at the top. */
 function roomNow(room) {
   const r = room && room.reservation;
-  if (r && r.status === 'Checked In') return { key: 'guest', label: 'Guest staying', icon: 'fa-user', tone: 'tone-brand' };
+  if (r && isInRoom(r.status)) return { key: 'guest', label: 'Guest staying', icon: 'fa-user', tone: 'tone-brand' };
   if (r) return { key: 'booked', label: 'Booked', icon: 'fa-calendar-check', tone: 'tone-warn' };
   return { key: 'free', label: 'Free now', icon: 'fa-circle-check', tone: 'tone-ok' };
 }
@@ -1808,6 +1814,7 @@ function formatEndsAt(reservation) {
 function guestState(reservation) {
   const status = String((reservation && reservation.status) || '').trim();
   if (status === 'Checked In') return { key: 'in', label: 'Staying now', icon: 'fa-bed', tone: 'tone-ok' };
+  if (status === 'Pending Room Inspection') return { key: 'in', label: 'Checking out, room being inspected', icon: 'fa-magnifying-glass', tone: 'tone-warn' };
   if (status === 'Arrived') return { key: 'arrived', label: 'At the hotel, not checked in', icon: 'fa-person-walking-luggage', tone: 'tone-warn' };
   return { key: 'booked', label: 'Booked, not here yet', icon: 'fa-calendar-check', tone: 'tone-brand' };
 }
@@ -1985,8 +1992,8 @@ function GuestCard({ room, now, onView, onCheckIn }) {
 
 const GUEST_TABS = [
   { key: 'all',     label: 'All guests',          icon: 'fa-users',          match: () => true },
-  { key: 'waiting', label: 'Waiting to check in', icon: 'fa-calendar-check', match: r => r.reservation.status !== 'Checked In' },
-  { key: 'in',      label: 'Staying now',         icon: 'fa-bed',            match: r => r.reservation.status === 'Checked In' },
+  { key: 'waiting', label: 'Waiting to check in', icon: 'fa-calendar-check', match: r => !isInRoom(r.reservation.status) },
+  { key: 'in',      label: 'Staying now',         icon: 'fa-bed',            match: r => isInRoom(r.reservation.status) },
 ];
 
 function GuestDetailsPanel({ rooms, onBookingAction, onToast }) {
@@ -2009,7 +2016,7 @@ function GuestDetailsPanel({ rooms, onBookingAction, onToast }) {
     .filter(current.match)
     .filter(r => !q || [r.name, r.reservation.fullName, r.reservation.contactNo].some(v => String(v || '').toLowerCase().includes(q)));
 
-  const staying = occupied.filter(r => r.reservation.status === 'Checked In');
+  const staying = occupied.filter(r => isInRoom(r.reservation.status));
   const waiting = occupied.length - staying.length;
   const endingSoon = staying.filter(r => { const t = remainingStay(r.reservation, now).tone; return t === 'soon' || t === 'over'; }).length;
 

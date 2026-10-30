@@ -189,6 +189,8 @@
   .hk-step { padding-top: 0.9rem; border-top: 1px dashed var(--hk-line); display: grid; gap: 0.75rem; }
   .hk-step-title { margin: 0; font-size: 0.92rem; font-weight: 700; color: var(--fg); }
   .hk-step-hint { margin: -0.45rem 0 0; font-size: 0.8rem; color: var(--fg-muted); line-height: 1.45; }
+  .hk-damage { display: grid; gap: 0.5rem; padding: 0.75rem; border-radius: 0.625rem; border: 1px solid var(--hk-line); background: var(--card); }
+  .hk-damage img { max-width: 10rem; max-height: 8rem; border-radius: 0.5rem; object-fit: cover; }
   .hk-label { display: block; font-size: 0.82rem; font-weight: 600; color: var(--fg); margin-bottom: 0.4rem; }
   .hk-label em { font-style: normal; font-weight: 400; color: var(--fg-muted); }
   .hk-error { margin: 0.4rem 0 0; color: var(--hk-bad); font-size: 0.8rem; }
@@ -262,20 +264,23 @@ const { useState, useEffect, useCallback, useMemo, useRef, useId } = React;
 
 const CFG = window.HMS_INSPECTIONS;
 const FINDINGS = CFG.findings;
-const OPEN_STATUSES = ['Pending', 'Inspecting', 'Awaiting Repair', 'Awaiting Re-inspection'];
+const OPEN_STATUSES = ['Pending', 'Inspecting', 'Reported', 'Ready to Clean', 'Awaiting Repair', 'Awaiting Re-inspection'];
 
 // Mirrors App\Models\HotelRoomInspection::STATUSES, each named for what the
 // housekeeper sees and does rather than for the stored status.
 const STAGES = {
   'Pending':                { label: 'Waiting to be checked',  icon: 'fa-hourglass-half', tone: 'tone-clean' },
   'Inspecting':             { label: 'Being checked',          icon: 'fa-magnifying-glass', tone: 'tone-guest' },
+  'Reported':               { label: 'Sent to Front Desk',     icon: 'fa-paper-plane', tone: 'tone-guest' },
+  'Ready to Clean':         { label: 'Guest left, clean it',   icon: 'fa-broom', tone: 'tone-clean' },
   'Awaiting Repair':        { label: 'With Maintenance',       icon: 'fa-screwdriver-wrench', tone: 'tone-fix' },
   'Awaiting Re-inspection': { label: 'Fixed, check it again',  icon: 'fa-rotate', tone: 'tone-clean' },
   'Completed':              { label: 'Ready for next guest',   icon: 'fa-circle-check', tone: 'tone-done' },
 };
 
 const TABS = [
-  { key: 'todo',     label: 'To do',            icon: 'fa-list-check', match: i => i.status === 'Pending' || i.status === 'Inspecting' || i.status === 'Awaiting Re-inspection' },
+  { key: 'todo',     label: 'To do',            icon: 'fa-list-check', match: i => i.status === 'Pending' || i.status === 'Inspecting' || i.status === 'Ready to Clean' || i.status === 'Awaiting Re-inspection' },
+  { key: 'desk',     label: 'With Front Desk',  icon: 'fa-paper-plane', match: i => i.status === 'Reported' },
   { key: 'repair',   label: 'With Maintenance', icon: 'fa-screwdriver-wrench', match: i => i.status === 'Awaiting Repair' },
   { key: 'done',     label: 'Done',             icon: 'fa-circle-check', match: i => i.status === 'Completed' },
   { key: 'all',      label: 'All rooms',        icon: 'fa-layer-group', match: () => true },
@@ -287,6 +292,13 @@ const FINDING_TEXT = {
   'Damaged Equipment': { title: 'Something is broken',            hint: 'TV, aircon, lamp, appliance.', icon: 'fa-plug-circle-xmark', tone: 'tone-fix' },
   'Needs Repair':      { title: 'Something needs fixing',         hint: 'Furniture, door, faucet, wall.', icon: 'fa-hammer', tone: 'tone-fix' },
   'Missing Items':     { title: 'Something is missing',           hint: 'A hotel item is gone from the room.', icon: 'fa-box-open', tone: 'tone-clean' },
+};
+
+// What Front Desk did with each item reported before check-out.
+const DAMAGE_STATUS = {
+  'Pending Review': { label: 'Front Desk reviewing', tone: 'tone-clean' },
+  'Charged':        { label: 'Charged to the guest', tone: 'tone-done' },
+  'Waived':         { label: 'Not charged',          tone: 'tone-muted' },
 };
 
 // What a complaint's stored status means to the housekeeper waiting on it.
@@ -310,7 +322,7 @@ const ROOM_STATE = {
 function roomState(room) {
   if (room.status === 'Maintenance') return 'fix';
   if (room.status === 'Cleaning') return 'clean';
-  if (room.reservation && room.reservation.status === 'Checked In') return 'guest';
+  if (room.reservation && (room.reservation.status === 'Checked In' || room.reservation.status === 'Pending Room Inspection')) return 'guest';
   return 'ready';
 }
 
@@ -429,7 +441,7 @@ function Track({ inspection }) {
   const status = inspection.status;
   const hadRepairs = inspection.issues.length > 0;
   const steps = [
-    { key: 'wait',  label: 'Guest left' },
+    { key: 'wait',  label: inspection.beforeCheckout ? 'Guest checking out' : 'Guest left' },
     { key: 'check', label: 'Check room' },
     { key: 'fix',   label: 'Repairs' },
     { key: 'ready', label: 'Ready' },
@@ -437,6 +449,8 @@ function Track({ inspection }) {
   const nowIndex = {
     'Pending': 1,
     'Inspecting': 1,
+    'Reported': 1,
+    'Ready to Clean': 1,
     'Awaiting Repair': 2,
     'Awaiting Re-inspection': 3,
     'Completed': 4,
@@ -584,7 +598,99 @@ function CheckingStep({ inspection, busy, onRecord, onFinishClean, onReport }) {
   );
 }
 
-function RoomCard({ inspection, canInspect, busy, onAction, onReportIssue }) {
+// The inspection before check-out: what is damaged or missing goes to the Front Desk,
+// which decides what the guest pays. Nothing is sent to Maintenance yet; the guest is
+// still in the room.
+function ReportStep({ inspection, busy, onSubmit }) {
+  const blank = { item: '', description: '', photo: '' };
+  const [choice, setChoice] = useState(inspection.finding || '');
+  const [notes, setNotes] = useState(inspection.notes || '');
+  const [items, setItems] = useState([blank]);
+  const [error, setError] = useState('');
+
+  const isProblem = choice && FINDINGS[choice] !== null;
+  const setItem = (i, patch) => setItems(prev => prev.map((it, n) => (n === i ? { ...it, ...patch } : it)));
+
+  const pickPhoto = (i, file) => {
+    if (!file) { setItem(i, { photo: '' }); return; }
+    if (file.size > 5 * 1024 * 1024) { setError('That photo is too big. Pick one under 5 MB.'); return; }
+    const reader = new FileReader();
+    reader.onload = () => setItem(i, { photo: String(reader.result || '') });
+    reader.readAsDataURL(file);
+  };
+
+  const submit = () => {
+    if (!choice) { setError('Pick what you found first.'); return; }
+    const damages = isProblem
+      ? items.filter(it => it.item.trim()).map(it => ({ item: it.item.trim(), description: it.description.trim(), photo: it.photo || null }))
+      : [];
+    if (isProblem && damages.length === 0) { setError('Write the name of the damaged or missing item.'); return; }
+    setError('');
+    onSubmit({ finding: choice, notes, damages });
+  };
+
+  return (
+    <div className="hk-step">
+      <p className="hk-step-title">Is anything damaged or missing?</p>
+      <div className="hk-choices" role="radiogroup" aria-label="What did you find?">
+        {Object.keys(FINDINGS).map(key => {
+          const f = FINDING_TEXT[key] || { title: key, hint: '', icon: 'fa-circle', tone: 'tone-muted' };
+          const title = key === 'Cleaning Only' ? 'Nothing damaged or missing' : f.title;
+          return (
+            <label key={key} className={`hk-choice ${choice === key ? 'is-on' : ''}`}>
+              <input type="radio" name={`report-${inspection.id}`} value={key} checked={choice === key} onChange={() => { setChoice(key); setError(''); }} />
+              <i className={`fa-solid ${f.icon} ${f.tone}`}></i>
+              <div><b>{title}</b><span>{f.hint}</span></div>
+            </label>
+          );
+        })}
+      </div>
+
+      {isProblem ? items.map((it, i) => (
+        <div key={i} className="hk-damage">
+          <div>
+            <label className="hk-label" htmlFor={`hk-item-${inspection.id}-${i}`}>Item {items.length > 1 ? i + 1 : ''}</label>
+            <input id={`hk-item-${inspection.id}-${i}`} type="text" className="hk-input" maxLength={120} placeholder="Example: TV remote" value={it.item} onChange={e => setItem(i, { item: e.target.value })} />
+          </div>
+          <div>
+            <label className="hk-label" htmlFor={`hk-desc-${inspection.id}-${i}`}>What is wrong? <em>(optional)</em></label>
+            <textarea id={`hk-desc-${inspection.id}-${i}`} className="hk-input" rows={2} placeholder="Example: Missing from the bedside table." value={it.description} onChange={e => setItem(i, { description: e.target.value })} />
+          </div>
+          <div>
+            <label className="hk-label" htmlFor={`hk-photo-${inspection.id}-${i}`}>Photo <em>(optional)</em></label>
+            <input id={`hk-photo-${inspection.id}-${i}`} type="file" accept="image/*" capture="environment" onChange={e => pickPhoto(i, e.target.files && e.target.files[0])} />
+            {it.photo ? <img src={it.photo} alt={`Photo of ${it.item || 'the item'}`} style={{ marginTop: '0.4rem' }} /> : null}
+          </div>
+          {items.length > 1 ? (
+            <button type="button" className="hk-link" onClick={() => setItems(prev => prev.filter((_, n) => n !== i))}>
+              <i className="fa-solid fa-xmark"></i> Remove this item
+            </button>
+          ) : null}
+        </div>
+      )) : null}
+      {isProblem ? (
+        <button type="button" className="hk-link" onClick={() => setItems(prev => [...prev, blank])}>
+          <i className="fa-solid fa-plus"></i> Add another item
+        </button>
+      ) : null}
+
+      <div>
+        <label className="hk-label" htmlFor={`hk-report-notes-${inspection.id}`}>Notes <em>(optional)</em></label>
+        <textarea id={`hk-report-notes-${inspection.id}`} className="hk-input" rows={2} placeholder="Anything the Front Desk should know." value={notes} onChange={e => setNotes(e.target.value)} />
+      </div>
+      {error ? <p className="hk-error">{error}</p> : null}
+
+      <div className="hk-actions">
+        <button type="button" className="hk-btn is-solid" disabled={busy} onClick={submit}>
+          <i className="fa-solid fa-paper-plane"></i>
+          {busy ? 'Sending…' : isProblem ? 'Send damage report to Front Desk' : 'Send report to Front Desk'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function RoomCard({ inspection, canInspect, busy, onAction, onReportIssue, onSendReport }) {
   const [reportingAgain, setReportingAgain] = useState(false);
   const status = inspection.status;
   const stage = STAGES[status] || { label: status, icon: 'fa-circle', tone: 'tone-muted' };
@@ -596,13 +702,19 @@ function RoomCard({ inspection, canInspect, busy, onAction, onReportIssue }) {
     onAction(inspection.id, { action: 'record', finding: choice, notes }).then(ok => (ok && next ? next() : ok));
 
   return (
-    <article className={`hk-card ${canInspect && (status === 'Pending' || status === 'Inspecting' || status === 'Awaiting Re-inspection') ? 'is-mine' : ''}`}>
+    <article className={`hk-card ${canInspect && (status === 'Pending' || status === 'Inspecting' || status === 'Ready to Clean' || status === 'Awaiting Re-inspection') ? 'is-mine' : ''}`}>
       <div className="hk-card-top">
         <div style={{ minWidth: 0 }}>
           <span className="hk-room">Room {inspection.roomName}</span>
           <span className="hk-sub">
-            {inspection.guestName ? <>Guest who left: {inspection.guestName}<br /></> : null}
-            Checked out {formatWhen(inspection.checkedOutAt)}
+            {inspection.beforeCheckout ? (
+              <>Guest checking out: {inspection.guestName || 'Guest'}</>
+            ) : (
+              <>
+                {inspection.guestName ? <>Guest who left: {inspection.guestName}<br /></> : null}
+                Checked out {formatWhen(inspection.checkedOutAt)}
+              </>
+            )}
           </span>
         </div>
         <Pill tone={stage.tone} icon={stage.icon}>{stage.label}</Pill>
@@ -615,6 +727,23 @@ function RoomCard({ inspection, canInspect, busy, onAction, onReportIssue }) {
           <small>What was found</small>
           {finding.title}{inspection.notes ? `: ${inspection.notes}` : ''}
         </p>
+      ) : null}
+
+      {(inspection.damages || []).length > 0 ? (
+        <ul className="hk-issues" aria-label="Damaged or missing items sent to the Front Desk">
+          {inspection.damages.map(d => {
+            const s = DAMAGE_STATUS[d.status] || { label: d.status, tone: 'tone-muted' };
+            return (
+              <li key={d.id} className="hk-issue">
+                <div className="hk-issue-top">
+                  <b>{d.item}</b>
+                  <Pill tone={s.tone}>{s.label}</Pill>
+                </div>
+                {d.description ? <p>{d.description}</p> : null}
+              </li>
+            );
+          })}
+        </ul>
       ) : null}
 
       {inspection.issues.length > 0 ? (
@@ -637,12 +766,46 @@ function RoomCard({ inspection, canInspect, busy, onAction, onReportIssue }) {
 
       {!canInspect ? null : status === 'Pending' ? (
         <div className="hk-step">
-          <p className="hk-step-title">This room is waiting for you</p>
-          <p className="hk-step-hint">Press the button when you go into the room to look it over.</p>
+          <p className="hk-step-title">{inspection.beforeCheckout ? 'The guest is checking out' : 'This room is waiting for you'}</p>
+          <p className="hk-step-hint">
+            {inspection.beforeCheckout
+              ? 'Check the room for anything damaged or missing before the Front Desk finishes the bill.'
+              : 'Press the button when you go into the room to look it over.'}
+          </p>
           <button type="button" className="hk-btn is-solid is-wide" disabled={busy} onClick={() => onAction(inspection.id, { action: 'start' })}>
             <i className="fa-solid fa-door-open"></i> Start checking this room
           </button>
         </div>
+      ) : status === 'Inspecting' && inspection.beforeCheckout ? (
+        <ReportStep inspection={inspection} busy={busy} onSubmit={payload => onSendReport(inspection.id, payload)} />
+      ) : status === 'Reported' ? (
+        <p className="hk-note tone-guest">
+          <i className="fa-solid fa-paper-plane"></i>
+          <span>Report sent to the Front Desk. They finish the guest's bill. When the guest has left, the room comes back to your To do list for cleaning.</span>
+        </p>
+      ) : status === 'Ready to Clean' ? (
+        reportingAgain ? (
+          <IssueForm
+            title="What needs fixing?"
+            suggested={inspection.finding ? FINDINGS[inspection.finding] : null}
+            busy={busy}
+            onCancel={() => setReportingAgain(false)}
+            onSubmit={payload => onReportIssue(inspection.id, payload).then(ok => { if (ok) setReportingAgain(false); })}
+          />
+        ) : (
+          <div className="hk-step">
+            <p className="hk-step-title">The guest has left</p>
+            <p className="hk-step-hint">Clean the room. If something needs fixing first, send it to Maintenance.</p>
+            <div className="hk-actions">
+              <button type="button" className="hk-btn is-quiet" disabled={busy} onClick={() => setReportingAgain(true)}>
+                <i className="fa-solid fa-screwdriver-wrench"></i> Something needs fixing
+              </button>
+              <button type="button" className="hk-btn is-solid" disabled={busy} onClick={() => onAction(inspection.id, { action: 'complete' })}>
+                <i className="fa-solid fa-circle-check"></i> Room is clean, mark it ready
+              </button>
+            </div>
+          </div>
+        )
       ) : status === 'Inspecting' ? (
         <CheckingStep
           inspection={inspection}
@@ -773,6 +936,10 @@ function App() {
     `${CFG.indexUrl}/${id}/issues`, 'POST', payload, 'Could not send this problem.', 'Problem sent. The team has been told.'
   );
 
+  const sendReport = (id, payload) => send(
+    `${CFG.indexUrl}/${id}/report`, 'POST', payload, 'Could not send the report.', 'Report sent to the Front Desk.'
+  );
+
   const current = TABS.find(t => t.key === tab) || TABS[0];
 
   const visible = useMemo(() => {
@@ -796,12 +963,15 @@ function App() {
     emptyIcon = 'fa-magnifying-glass';
   } else if (inspections.length === 0) {
     emptyTitle = 'No guest has checked out';
-    emptyText = 'When the Front Desk checks a guest out, their room appears here so you can clean and check it.';
+    emptyText = "When the Front Desk starts a guest's check-out, their room appears here so you can check it.";
     emptyIcon = 'fa-broom';
   } else if (tab === 'todo') {
     emptyTitle = 'All caught up';
-    emptyText = 'No room is waiting for you. New rooms show up here on their own when a guest checks out.';
+    emptyText = 'No room is waiting for you. New rooms show up here on their own when a guest starts checking out.';
     emptyIcon = 'fa-mug-hot';
+  } else if (tab === 'desk') {
+    emptyTitle = 'No report waiting at the Front Desk';
+    emptyText = "Rooms you have reported on wait here while the Front Desk finishes the guest's bill.";
   } else if (tab === 'repair') {
     emptyTitle = 'No room is with Maintenance';
     emptyText = 'If you find something broken or missing while checking a room, it will wait here until Maintenance fixes it.';
@@ -817,18 +987,19 @@ function App() {
           <p className="hk-eyebrow">Housekeeping</p>
           <h1 className="font-display">Room Inspections</h1>
           <p className="hk-lead">
-            When a guest checks out, their room shows up here. Go to the room, look it over,
-            and tell the system what you found. If everything is fine, mark it ready for the
-            next guest. If something is broken or missing, send it to Maintenance.
+            When the Front Desk starts a guest's check-out, their room shows up here. Check the
+            room and send the Front Desk your report: nothing wrong, or what is damaged or
+            missing. After the guest leaves, clean the room and mark it ready, or send a
+            repair to Maintenance first.
           </p>
         </div>
       </header>
 
       <ol className="hk-how" aria-label="How it works">
         <li><span className="hk-how-num">1</span><div><b>Guest checks out</b><span>The room appears in your To do list.</span></div></li>
-        <li><span className="hk-how-num">2</span><div><b>Check the room</b><span>Press Start, then look around the room.</span></div></li>
-        <li><span className="hk-how-num">3</span><div><b>Say what you found</b><span>All good, or send a problem to Maintenance.</span></div></li>
-        <li><span className="hk-how-num">4</span><div><b>Mark it ready</b><span>The room is free for the next guest.</span></div></li>
+        <li><span className="hk-how-num">2</span><div><b>Check the room</b><span>Press Start, then look for damage or missing items.</span></div></li>
+        <li><span className="hk-how-num">3</span><div><b>Report to Front Desk</b><span>They decide what the guest pays.</span></div></li>
+        <li><span className="hk-how-num">4</span><div><b>Clean, mark it ready</b><span>After the guest leaves. Send repairs to Maintenance.</span></div></li>
       </ol>
 
       {loaded && !canInspect && !failed ? (
@@ -892,6 +1063,7 @@ function App() {
                 busy={busy}
                 onAction={runAction}
                 onReportIssue={reportIssue}
+                onSendReport={sendReport}
               />
             ))}
           </div>

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
 /**
@@ -19,7 +20,10 @@ use Illuminate\Support\Carbon;
  *   Booked      Front Desk / the public site took the booking and the payment
  *   Arrived     Front Desk confirmed the guest at the desk (Verify Guest)
  *   Checked In  Room Management handed the room over; the room goes Occupied
- *   Checked Out the stay ended; the room is released back to Available
+ *   Pending Room Inspection
+ *               Front Desk started the check-out; Housekeeping inspects the room, and
+ *               Front Desk reviews any damage, before the final bill can close it
+ *   Checked Out the stay ended; the room goes to Housekeeping for cleaning
  *   Cancelled   the booking was called off before anyone arrived
  */
 class HotelBooking extends Model
@@ -28,12 +32,13 @@ class HotelBooking extends Model
         'Booked',
         'Arrived',
         'Checked In',
+        'Pending Room Inspection',
         'Checked Out',
         'Cancelled',
     ];
 
     /** Statuses that still hold the room. Anything else is history. */
-    public const OPEN_STATUSES = ['Booked', 'Arrived', 'Checked In'];
+    public const OPEN_STATUSES = ['Booked', 'Arrived', 'Checked In', 'Pending Room Inspection'];
 
     /** Registered but not handed a room yet — what the Guest Details badge counts. */
     public const AWAITING_CHECK_IN_STATUSES = ['Booked', 'Arrived'];
@@ -94,6 +99,13 @@ class HotelBooking extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(HotelBookingPayment::class, 'hotel_booking_id', 'hotel_booking_id');
+    }
+
+    /** The room inspection Front Desk asked for when it started this guest's check-out. */
+    public function inspection(): HasOne
+    {
+        return $this->hasOne(HotelRoomInspection::class, 'hotel_booking_id', 'hotel_booking_id')
+            ->latestOfMany('hotel_room_inspection_id');
     }
 
     /** Room-service orders charged to this stay — cancelled ones are not billed. */
@@ -182,7 +194,7 @@ class HotelBooking extends Model
             return true;
         }
 
-        $flow = ['Booked', 'Arrived', 'Checked In', 'Checked Out'];
+        $flow = ['Booked', 'Arrived', 'Checked In', 'Pending Room Inspection', 'Checked Out'];
         $fromIndex = array_search($from, $flow, true);
         $toIndex = array_search($to, $flow, true);
 
@@ -195,7 +207,7 @@ class HotelBooking extends Model
      */
     public function arrivalStatus(): string
     {
-        return $this->arrived_at || in_array($this->status, ['Arrived', 'Checked In', 'Checked Out'], true)
+        return $this->arrived_at || in_array($this->status, ['Arrived', 'Checked In', 'Pending Room Inspection', 'Checked Out'], true)
             ? 'Arrived'
             : 'Booked';
     }
@@ -330,7 +342,34 @@ class HotelBooking extends Model
             'notes'         => $this->notes ?? '',
             'payment'       => $payment?->toTemplateArray(),
             'payments'      => $this->payments->map->toTemplateArray()->values()->all(),
+            // Only a stay being checked out has one to show; asked for no other, so the
+            // room list costs no extra query per room.
+            'inspection'    => $this->status === 'Pending Room Inspection'
+                ? $this->inspection?->load('damages')->toTemplateArray()
+                : null,
         ];
+    }
+
+    /**
+     * Why Front Desk cannot finish this check-out yet, or null when it can. The bill
+     * being settled is checked separately, by the check-out route.
+     */
+    public function checkOutBlocker(): ?string
+    {
+        if ($this->status !== 'Pending Room Inspection') {
+            return 'Start the check-out first, so Housekeeping can inspect the room.';
+        }
+
+        $inspection = $this->inspection;
+        if (!$inspection || $inspection->status !== 'Reported') {
+            return 'Housekeeping has not finished inspecting the room yet.';
+        }
+
+        if ($inspection->damages()->where('status', 'Pending Review')->exists()) {
+            return 'Review the damage Housekeeping reported before the final bill.';
+        }
+
+        return null;
     }
 
     /**
