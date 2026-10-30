@@ -4990,7 +4990,7 @@ function PromoShowcase({ promos, canEdit, onToast, onBook }) {
   );
 }
 
-function HomePage({ sitePromos, onNav, onToast, rooms, menus, canEditRooms, onAddRoom, onEditRoom, onEditRoomPhotos, onRemoveRoom, heroSlides, canEditHeroSlides, hotelInfo, onBookNow, brandName, experiences, partners, canEditPartners, onAddPartner, onRenamePartner, onRemovePartner }) {
+function HomePage({ sitePromos, onNav, onToast, rooms, menus, canEditRooms, canEditMenuColor, onAddRoom, onEditRoom, onEditRoomPhotos, onRemoveRoom, heroSlides, canEditHeroSlides, hotelInfo, onBookNow, brandName, experiences, partners, canEditPartners, onAddPartner, onRenamePartner, onRemovePartner }) {
   const roomList = rooms && rooms.length ? rooms : [];
   const partnerList = partners && partners.length ? partners : DEFAULT_PARTNERS;
   // Which brand's × has been pressed once. The second press is the confirmation.
@@ -5139,7 +5139,12 @@ function HomePage({ sitePromos, onNav, onToast, rooms, menus, canEditRooms, onAd
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.85rem' }}>
           {bestSellerList(menuList).map(item => (
-            <div key={item.id || item.name} className="menu-item" data-hms-menu-card="1" style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center' }}>
+            <div key={item.id || item.name} className="menu-item" data-hms-menu-card="1" style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center' }}>
+              {canEditMenuColor && (
+                <div style={{ position: 'absolute', top: 6, right: 6, zIndex: 3 }} data-hms-no-edit="1">
+                  <CardColorButton kind="menu" label="Card colour (all menu cards)" />
+                </div>
+              )}
               <img src={menuFoodImg(item)} alt={item.name} loading="lazy" style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{item.name}</span>
@@ -6981,7 +6986,10 @@ function RestaurantPage({ onNav, onToast, menus, canManageMenus, canEditMenuColo
     if (!onEditMenu || !editing) return;
     setMenuSaving(true);
     onEditMenu(editing.dbId, values)
-      .then(() => { setEditing(null); onToast('Menu item updated'); })
+      .then((item) => {
+        setEditing(null);
+        if (onToast) onToast((item && item._imageWarning) || 'Menu item updated');
+      })
       .catch(() => setMenuError('Could not save that. Please try again.'))
       .finally(() => setMenuSaving(false));
   };
@@ -6989,7 +6997,9 @@ function RestaurantPage({ onNav, onToast, menus, canManageMenus, canEditMenuColo
   const handleMenuImage = (item) => {
     pickImageFile((url) => {
       if (!url || !onEditMenu) return;
-      onEditMenu(item.dbId, { image: url }).then(() => onToast('Menu image updated'));
+      onEditMenu(item.dbId, { image: url }).then((saved) => {
+        if (onToast) onToast((saved && saved._imageWarning) || 'Menu image updated');
+      });
     });
   };
 
@@ -7015,7 +7025,10 @@ function RestaurantPage({ onNav, onToast, menus, canManageMenus, canEditMenuColo
        reads as sold out the moment it appears - the kitchen counts it down from
        here, and Manage Menu is where it is restocked. */
     onAddMenu(Object.assign({ stock: 10 }, values))
-      .then(() => { setAdding(false); onToast('Menu item added'); })
+      .then((item) => {
+        setAdding(false);
+        if (onToast) onToast((item && item._imageWarning) || 'Menu item added');
+      })
       .catch(() => setMenuError('Could not add that. Please try again.'))
       .finally(() => setMenuSaving(false));
   };
@@ -7054,13 +7067,17 @@ function RestaurantPage({ onNav, onToast, menus, canManageMenus, canEditMenuColo
   const renderMenuCard = (item) => (
     <div key={item.id || item.name} className="menu-food-card" data-hms-menu-card="1" data-hms-menu-state={item.reviewState || undefined} style={{ position: 'relative', cursor: 'pointer' }}
       onClick={() => setSelectedMenuId(item.id)}>
-      {canManageMenus && (
+      {(canEditMenuColor || canManageMenus) && (
         <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 3, display: 'flex', gap: 6 }}
           data-hms-no-edit="1" onClick={e => e.stopPropagation()}>
-          <CardColorButton kind="menu" label="Card colour (all menu cards)" />
-          <button type="button" title="Change image" onClick={() => handleMenuImage(item)} style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{fontSize:11}}></i></button>
-          <button type="button" title="Edit item" onClick={() => handleEdit(item)} style={toolBtnStyle('edit')}><i className="fa-solid fa-pen" style={{fontSize:10}}></i></button>
-          <button type="button" title="Remove item" onClick={() => handleRemove(item)} style={toolBtnStyle('danger')}><i className="fa-solid fa-xmark" style={{fontSize:12}}></i></button>
+          {canEditMenuColor && <CardColorButton kind="menu" label="Card colour (all menu cards)" />}
+          {canManageMenus && (
+            <>
+              <button type="button" title="Change image" onClick={() => handleMenuImage(item)} style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{fontSize:11}}></i></button>
+              <button type="button" title="Edit item" onClick={() => handleEdit(item)} style={toolBtnStyle('edit')}><i className="fa-solid fa-pen" style={{fontSize:10}}></i></button>
+              <button type="button" title="Remove item" onClick={() => handleRemove(item)} style={toolBtnStyle('danger')}><i className="fa-solid fa-xmark" style={{fontSize:12}}></i></button>
+            </>
+          )}
         </div>
       )}
       <div className="menu-food-img">
@@ -7117,7 +7134,12 @@ function RestaurantPage({ onNav, onToast, menus, canManageMenus, canEditMenuColo
           ) : null}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.85rem' }}>
             {bestSellerList(menuList).map(item => (
-              <div key={item.id || item.name} className="menu-item" data-hms-best-picked={item.bestSeller ? '1' : undefined} data-hms-menu-card="1" data-hms-menu-state={item.reviewState || undefined} onClick={() => setSelectedMenuId(item.id)} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', cursor: 'pointer', alignItems: 'center' }}>
+              <div key={item.id || item.name} className="menu-item" data-hms-best-picked={item.bestSeller ? '1' : undefined} data-hms-menu-card="1" data-hms-menu-state={item.reviewState || undefined} onClick={() => setSelectedMenuId(item.id)} style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', gap: '1rem', cursor: 'pointer', alignItems: 'center' }}>
+                {canEditMenuColor && (
+                  <div style={{ position: 'absolute', top: 6, right: 6, zIndex: 3 }} data-hms-no-edit="1" onClick={e => e.stopPropagation()}>
+                    <CardColorButton kind="menu" label="Card colour (all menu cards)" />
+                  </div>
+                )}
                 <img src={menuFoodImg(item)} alt={item.name} loading="lazy" style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{item.name}</span>
@@ -9369,7 +9391,15 @@ function App() {
   // is followed by a re-fetch so every open tab sees the same menu.
   const addMenu = useCallback((payload) => (
     menuRequest('/students/hotel/menus', 'POST', payload)
-      .then(data => { fetchMenus(); return data && data.item; })
+      .then(data => {
+        fetchMenus();
+        // The dish still saved even when its picture did not - the caller decides
+        // the one toast to show, so a generic "added" message never overwrites
+        // this the instant it appears.
+        const item = data && data.item;
+        if (item && data.image_warning) item._imageWarning = data.image_warning;
+        return item;
+      })
       .catch(err => {
         showToast((err && err.message) || 'Could not add that menu item.');
         return Promise.reject(err);
@@ -9378,7 +9408,12 @@ function App() {
 
   const editMenu = useCallback((id, payload) => (
     menuRequest('/students/hotel/menus/' + String(id).replace(/^db-/, ''), 'PATCH', payload)
-      .then(data => { fetchMenus(); return data && data.item; })
+      .then(data => {
+        fetchMenus();
+        const item = data && data.item;
+        if (item && data.image_warning) item._imageWarning = data.image_warning;
+        return item;
+      })
       .catch(err => {
         showToast((err && err.message) || 'Could not update that menu item.');
         return Promise.reject(err);
@@ -9598,6 +9633,7 @@ function App() {
   const pages = {
     home: (
       <HomePage
+        canEditMenuColor={canEditMenuColor && isDesignMode}
         onNav={navigateTo}
         // The editor customizes the starting cards; Front Desk's promos show everywhere else.
         sitePromos={isDesignMode ? null : sitePromos}
