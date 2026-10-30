@@ -2037,6 +2037,9 @@ function BrandLogo({ size }) {
   );
 }
 
+// Length of one charged stay block, in hours — HotelBooking::BLOCK_HOURS.
+const BLOCK_HOURS = 12;
+
 function stayBlocks(checkIn, checkOut, checkInTime) {
   if (!checkIn || !checkOut) return 1;
   const clock = /^\d{1,2}:\d{2}/.test(String(checkInTime || '')) ? checkInTime : '00:00';
