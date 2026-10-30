@@ -262,6 +262,7 @@
     roomsUrl: @json(route('students.hotel.rooms.index')),
     bookingsUrl: @json(route('students.hotel.bookings.store')),
     promosUrl: @json(route('students.hotel.promos.index')),
+    addonsUrl: @json(route('students.hotel.addons.index')),
     tablesUrl: @json(route('students.hotel.tables.index')),
     guestInfoUrl: @json(route('students.frontdesk.verify-guest')),
     dineInUrl: @json(route('students.frontdesk.dine-in')),
@@ -464,6 +465,9 @@ function RoomWalkIn() {
   const [roomId, setRoomId] = useState(null);
   const [promos, setPromos] = useState([]);
   const [promoId, setPromoId] = useState('');
+  const [addons, setAddons] = useState([]);
+  // Housekeeping add-on id to how many the guest takes.
+  const [addonQty, setAddonQty] = useState({});
   const [payType, setPayType] = useState('Full');
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('Cash');
@@ -503,6 +507,15 @@ function RoomWalkIn() {
       .catch(() => setPromos([]));
   }, []);
 
+  // Re-read after every booking: what is left in stock moves with each stay.
+  const loadAddons = useCallback(() => {
+    fetch(CFG.addonsUrl, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+      .then(r => (r.ok ? r.json() : Promise.reject()))
+      .then(data => setAddons(Array.isArray(data.items) ? data.items : []))
+      .catch(() => setAddons([]));
+  }, []);
+  useEffect(() => { loadAddons(); }, [loadAddons]);
+
   const checkIn = today();
   const checkOut = addDays(checkIn, nights);
   const promoChoices = promosOn(promos, checkIn);
@@ -522,6 +535,13 @@ function RoomWalkIn() {
   // A promo is a package price for the whole stay (HotelBooking::totalDue).
   const total = !room ? 0 : promo ? promo.promo_price : room.price * nights * BLOCKS_PER_NIGHT;
   const paidNow = payType === 'Full' ? total : payType === 'Partial' ? Number(amount) || 0 : 0;
+  /* Housekeeping's add-ons go on the stay's bill and are settled at check-out, the
+     same as when a room is booked from the hotel site (HotelBookingDesk::reserve). */
+  const addonPicks = addons.filter(a => addonQty[a.dbId] > 0).map(a => Object.assign({}, a, { qty: addonQty[a.dbId] }));
+  const addonsTotal = addonPicks.reduce((sum, a) => sum + a.price * a.qty, 0);
+  const extrasText = addonPicks.length
+    ? addonPicks.map(a => a.qty + '× ' + a.name).join(', ') + (addonsTotal ? ' (' + peso(addonsTotal) + ' at check-out)' : '')
+    : 'None';
 
   // A picked room that stopped being free (a teammate booked it) is dropped.
   useEffect(() => { if (roomId && !room) setRoomId(null); }, [roomId, room]);
@@ -534,9 +554,9 @@ function RoomWalkIn() {
 
   const reset = () => {
     setFullName(''); setContactNo(''); setEmail(''); setIdNumber('');
-    setNights(1); setGuests(1); setCheckInTime(nowClock()); setRoomId(null); setPromoId('');
+    setNights(1); setGuests(1); setCheckInTime(nowClock()); setRoomId(null); setPromoId(''); setAddonQty({});
     setPayType('Full'); setAmount(''); setMethod('Cash'); setNotes('');
-    setError(''); setTried(false); setDone(null); load();
+    setError(''); setTried(false); setDone(null); load(); loadAddons();
   };
 
   const submit = async (e) => {
@@ -571,16 +591,18 @@ function RoomWalkIn() {
         guest_count: guests,
         notes: ('Walk-in guest. ' + notes.trim()).trim(),
         promo_id: promo ? promo.dbId : null,
+        addons: addonPicks.map(a => ({ addon_id: a.dbId, qty: a.qty })),
         payment,
         arrived: true,
       });
-      setDone({ booking: data.booking, room, promo, total, paid: payment ? payment.amount_paid : 0 });
+      setDone({ booking: data.booking, room, promo, extrasText, total: total + addonsTotal, paid: payment ? payment.amount_paid : 0 });
       if (window.toast) window.toast('Booked ' + fullName.trim() + ' into ' + room.name);
     } catch (err) {
       setError(err.message);
-      // The room may have gone to someone else: refresh the list either way.
+      // The room or an add-on may have gone to someone else: refresh either way.
       writing.current = false;
       load();
+      loadAddons();
     } finally {
       writing.current = false;
       setBusy(false);
@@ -598,6 +620,7 @@ function RoomWalkIn() {
           ['Check-out', niceDate(checkOut)],
           ['Length of stay', plural(nights, 'night')],
           ['Promo / package', done.promo ? done.promo.name : 'None'],
+          ['Extras', done.extrasText],
           ['Status', 'Arrived'],
           ['Paid now', peso(done.paid)],
           ['Still to pay', peso(balance)],
@@ -713,6 +736,32 @@ function RoomWalkIn() {
             </div>
           )}
         </Section>
+
+        <Section n={4} title="Extras" className="wi-wide"
+          hint="Pillows, towels, an extra bed… from Housekeeping. Added to the bill and paid at check-out."
+          done={addonPicks.length > 0}>
+          {addons.length === 0 ? (
+            <div className="wi-empty">
+              <i className="fa-solid fa-bell-concierge"></i>
+              Housekeeping has not added any extras yet.
+            </div>
+          ) : (
+            <div className="wi-fields">
+              {addons.map(a => (
+                <div key={a.dbId} style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap', padding: '0.35rem 0', borderBottom: '1px solid var(--wi-line)' }}>
+                  <div style={{ flex: '1 1 10rem', minWidth: 0 }}>
+                    <b style={{ display: 'block', color: 'var(--fg)', fontSize: '0.92rem' }}>{a.name}</b>
+                    <small style={{ color: 'var(--fg-muted)' }}>
+                      {a.price ? peso(a.price) + ' each' : 'Free'} · {a.available > 0 ? a.available + ' left' : 'None left'}
+                    </small>
+                  </div>
+                  <Stepper value={addonQty[a.dbId] || 0} min={0} max={a.available} unit="pc"
+                    onChange={n => setAddonQty(prev => Object.assign({}, prev, { [a.dbId]: n }))} />
+                </div>
+              ))}
+            </div>
+          )}
+        </Section>
       </div>
 
       <Summary
@@ -723,6 +772,7 @@ function RoomWalkIn() {
           ['Guests', plural(guests, 'guest')],
           ['Stay', plural(nights, 'night') + ', until ' + niceDate(checkOut)],
           ['Promo', promo ? promo.name : 'None'],
+          ['Extras', extrasText],
           ['Pay now', room ? (payType === 'None' ? 'Nothing yet' : peso(paidNow) + ' by ' + method) : ''],
         ]}
         total={['Total cost', room ? peso(total) : peso(0)]}
@@ -736,7 +786,7 @@ function RoomWalkIn() {
         busy={busy}
         button={['Book room & mark arrived', 'fa-key']}
         note="The guest is marked as arrived right away. Room Management then gives them the key.">
-        <Section n={4} title="Payment" hint="How much does the guest pay now?" className="wi-section-bare" done={!!room && payOk}>
+        <Section n={5} title="Payment" hint="How much does the guest pay now?" className="wi-section-bare" done={!!room && payOk}>
           <div className="wi-fields">
             <Chips label="Payment now" value={payType} onChange={setPayType} cols={3} stack options={[
               ['Full', 'Pay in full', 'fa-check-double'],
