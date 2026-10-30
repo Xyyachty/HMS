@@ -436,8 +436,16 @@ class PublicSiteController extends Controller
             'guest_count'      => 'nullable|integer|min:1|max:99',
             'notes'            => 'nullable|string|max:2000',
             'promo_id'         => 'nullable|integer',
-            // 'payment' and 'addons' are deliberately absent. Anything sent under those
-            // keys is not validated, not read, and never reaches HotelBookingDesk.
+            // The guest's online payment, full or a deposit. In the Simulation nothing is
+            // charged: it is recorded against the stay like a payment at the desk, never
+            // for more than the room costs. 'addons' stay absent: anything sent under
+            // that key is not read and never reaches HotelBookingDesk.
+            'payment'             => 'nullable|array',
+            'payment.type'        => 'nullable|string|max:20',
+            'payment.amount_paid' => 'nullable|numeric|min:0',
+            'payment.method'      => 'nullable|string|max:50',
+            'payment.reference'   => 'nullable|string|max:255',
+            'payment.payer_name'  => 'nullable|string|max:255',
         ]);
 
         $room = HotelRoom::where('hotel_room_id', $data['room_id'])
@@ -476,31 +484,45 @@ class PublicSiteController extends Controller
         $guestName = trim($data['guest']['full_name']);
 
         try {
-            $booking = HotelBookingDesk::reserve(
-                $membership,
-                $room,
-                [
-                    'full_name'  => $guestName,
-                    'contact_no' => $data['guest']['contact_no'] ?? null,
-                    'email'      => $data['guest']['email'] ?? null,
-                    // No id_number: a guest is not asked for identification online. Front Desk
-                    // takes it on arrival.
-                    'id_number'  => null,
-                ],
-                [
-                    'check_in'      => $data['check_in'],
-                    // Front Desk can move it; a default keeps the stay-length maths honest.
-                    'check_in_time' => trim((string) ($data['check_in_time'] ?? '')) ?: '14:00',
-                    'check_out'     => $data['check_out'],
-                    'guest_count'   => $data['guest_count'] ?? null,
-                    // The channel, not a user. Front Desk can see at a glance which stays came
-                    // in from the portfolio rather than across the desk.
-                    'booked_by'     => 'Online · ' . $guestName,
-                    'notes'         => $data['notes'] ?? null,
-                    'promo_id'      => $data['promo_id'] ?? null,
-                ]
-                // No $payment, no $addons — the defaults are null and [].
-            );
+            $booking = \Illuminate\Support\Facades\DB::transaction(function () use ($membership, $room, $data, $guestName) {
+                $booking = HotelBookingDesk::reserve(
+                    $membership,
+                    $room,
+                    [
+                        'full_name'  => $guestName,
+                        'contact_no' => $data['guest']['contact_no'] ?? null,
+                        'email'      => $data['guest']['email'] ?? null,
+                        // No id_number: a guest is not asked for identification online. Front Desk
+                        // takes it on arrival.
+                        'id_number'  => null,
+                    ],
+                    [
+                        'check_in'      => $data['check_in'],
+                        // Front Desk can move it; a default keeps the stay-length maths honest.
+                        'check_in_time' => trim((string) ($data['check_in_time'] ?? '')) ?: '14:00',
+                        'check_out'     => $data['check_out'],
+                        'guest_count'   => $data['guest_count'] ?? null,
+                        // The channel, not a user. Front Desk can see at a glance which stays came
+                        // in from the portfolio rather than across the desk.
+                        'booked_by'     => 'Online · ' . $guestName,
+                        'notes'         => $data['notes'] ?? null,
+                        'promo_id'      => $data['promo_id'] ?? null,
+                    ]
+                    // No $addons — the default is [].
+                );
+
+                // Priced off the stay just written, so a guest can never record more than it costs.
+                $amount = min((float) ($data['payment']['amount_paid'] ?? 0), $booking->totalDue());
+                if ($amount > 0) {
+                    HotelBookingDesk::addPayment($booking, [
+                        'amount_paid' => $amount,
+                        'type'        => $amount < $booking->totalDue() ? 'Partial' : 'Full',
+                        'payer_name'  => $guestName,
+                    ] + array_intersect_key($data['payment'], array_flip(['method', 'reference'])));
+                }
+
+                return $booking;
+            });
         } catch (\RuntimeException $e) {
             // The party is bigger than the room sleeps, or the promo is not running then.
             return response()->json(['message' => $e->getMessage()], 422);

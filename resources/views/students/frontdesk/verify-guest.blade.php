@@ -535,13 +535,16 @@ function ReceiptModal({ receipt, onClose }) {
  * the database will record. Adding an extra charge re-fetches the whole bill for the
  * same reason — the new subtotal comes back priced, it is not patched in locally.
  */
-function FinalBillModal({ open, bill, loading, error, onClose, onAddCharge, onRemoveCharge, onSettle, onToast }) {
+function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog, onClose, onAddCharge, onRemoveCharge, onAddAddon, onPay, onSettle, onToast }) {
   const [method, setMethod] = useState('Cash');
   const [amount, setAmount] = useState('');
   const [reference, setReference] = useState('');
   const [chargeDesc, setChargeDesc] = useState('');
   const [chargeAmount, setChargeAmount] = useState('');
   const [showChargeForm, setShowChargeForm] = useState(false);
+  const [addonId, setAddonId] = useState('');
+  const [addonQty, setAddonQty] = useState('1');
+  const [showAddonForm, setShowAddonForm] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const balance = bill ? Number(bill.balance) || 0 : 0;
@@ -555,11 +558,15 @@ function FinalBillModal({ open, bill, loading, error, onClose, onAddCharge, onRe
     setChargeDesc('');
     setChargeAmount('');
     setShowChargeForm(false);
+    setAddonId('');
+    setAddonQty('1');
+    setShowAddonForm(false);
   }, [open]);
 
+  // Re-filled whenever the balance moves (a charge added, a payment taken).
   useEffect(() => {
     if (open && bill) setAmount(balance > 0 ? String(balance) : '0');
-  }, [open, bill && bill.bookingId]);
+  }, [open, bill && bill.bookingId, balance]);
 
   useEffect(() => {
     if (!open) return;
@@ -585,8 +592,31 @@ function FinalBillModal({ open, bill, loading, error, onClose, onAddCharge, onRe
       .finally(() => setBusy(false));
   };
 
+  const submitAddon = (e) => {
+    e.preventDefault();
+    const qty = parseInt(addonQty, 10);
+    if (!addonId) { if (onToast) onToast('Pick an extra first.'); return; }
+    if (!(qty > 0)) { if (onToast) onToast('Enter how many.'); return; }
+    setBusy(true);
+    Promise.resolve(onAddAddon(Number(addonId), qty))
+      .then(() => { setAddonId(''); setAddonQty('1'); setShowAddonForm(false); })
+      .catch(err => { if (onToast) onToast((err && err.message) || 'Could not add that extra.'); })
+      .finally(() => setBusy(false));
+  };
+
+  // A payment during the stay (a deposit, an upgrade difference) without checking out.
+  const payOnly = () => {
+    if (!(paid > 0)) { if (onToast) onToast('Enter the amount received.'); return; }
+    setBusy(true);
+    Promise.resolve(onPay({ amount: paid, method, reference: reference.trim(), full: remainingAfter <= 0 }))
+      .then(() => { setReference(''); if (onToast) onToast(formatPeso(paid) + ' received by ' + method + '.'); })
+      .catch(err => { if (onToast) onToast((err && err.message) || 'Could not record that payment.'); })
+      .finally(() => setBusy(false));
+  };
+
   const settle = (e) => {
     e.preventDefault();
+    if (!canCheckOut) { payOnly(); return; }
     // A short payment is allowed — a written-off or disputed stay still has to close —
     // but the desk is told what is being left behind before it does.
     if (remainingAfter > 0 && !window.confirm(
@@ -609,7 +639,7 @@ function FinalBillModal({ open, bill, loading, error, onClose, onAddCharge, onRe
         <div className="bill-head">
           <div>
             <p style={{ color: 'var(--accent)', fontSize: '0.65rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: '0 0 0.35rem' }}>Front Desk</p>
-            <h2 className="font-display" style={{ fontSize: '1.5rem', margin: 0, color: 'var(--fg)' }}>Final Bill</h2>
+            <h2 className="font-display" style={{ fontSize: '1.5rem', margin: 0, color: 'var(--fg)' }}>{canCheckOut ? 'Final Bill' : 'Bill'}</h2>
           </div>
           <button type="button" onClick={onClose} disabled={busy} aria-label="Close"
             style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)', cursor: busy ? 'not-allowed' : 'pointer', flexShrink: 0 }}>
@@ -668,7 +698,7 @@ function FinalBillModal({ open, bill, loading, error, onClose, onAddCharge, onRe
                   <p className="bill-section-title">Add-ons</p>
                   {addons.items.map(addon => (
                     <div className="bill-line" key={addon.id}>
-                      <span>{addon.name} × {addon.qty}</span>
+                      <span>{addon.name} × {addon.qty}{addon.perNight ? ` × ${addon.nights} night${addon.nights === 1 ? '' : 's'}` : ''}</span>
                       <span className="bill-amt">{formatPeso(addon.line)}</span>
                     </div>
                   ))}
@@ -713,11 +743,36 @@ function FinalBillModal({ open, bill, loading, error, onClose, onAddCharge, onRe
                   <button type="button" className="btn-outline" disabled={busy} onClick={() => setShowChargeForm(false)}
                     style={{ padding: '0.5rem 0.9rem', fontSize: '0.68rem' }}>Cancel</button>
                 </form>
+              ) : showAddonForm ? (
+                <form onSubmit={submitAddon} style={{ display: 'flex', gap: '0.4rem', marginTop: '0.6rem', flexWrap: 'wrap' }}>
+                  <select className="booking-input" value={addonId} onChange={e => setAddonId(e.target.value)} style={{ flex: '2 1 160px', width: 'auto' }}>
+                    <option value="">Pick an extra…</option>
+                    {(addonCatalog || []).map(a => (
+                      <option key={a.dbId} value={String(a.dbId)} disabled={a.available <= 0}>
+                        {a.name} · {a.price ? formatPeso(a.price) + (a.extraBed ? ' / night' : '') : 'Free'} · {a.available} left
+                      </option>
+                    ))}
+                  </select>
+                  <input type="number" className="booking-input" min="1" max="99" value={addonQty}
+                    onChange={e => setAddonQty(e.target.value)} style={{ flex: '0 1 70px', width: 'auto' }} aria-label="How many" />
+                  <button type="submit" className="btn-solid" disabled={busy} style={{ padding: '0.5rem 0.9rem' }}>Add</button>
+                  <button type="button" className="btn-outline" disabled={busy} onClick={() => setShowAddonForm(false)}
+                    style={{ padding: '0.5rem 0.9rem', fontSize: '0.68rem' }}>Cancel</button>
+                </form>
               ) : (
-                <button type="button" onClick={() => setShowChargeForm(true)} disabled={busy}
-                  style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: busy ? 'not-allowed' : 'pointer', fontSize: '0.75rem', padding: '0.5rem 0 0', fontFamily: 'var(--font-body, Outfit, sans-serif)' }}>
-                  <i className="fa-solid fa-plus" style={{ fontSize: '0.65rem', marginRight: 5 }}></i> Add charge
-                </button>
+                <div style={{ display: 'flex', gap: '1.1rem', flexWrap: 'wrap' }}>
+                  <button type="button" onClick={() => setShowChargeForm(true)} disabled={busy}
+                    style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: busy ? 'not-allowed' : 'pointer', fontSize: '0.75rem', padding: '0.5rem 0 0', fontFamily: 'var(--font-body, Outfit, sans-serif)' }}>
+                    <i className="fa-solid fa-plus" style={{ fontSize: '0.65rem', marginRight: 5 }}></i> Add charge
+                  </button>
+                  {onAddAddon && (
+                    <button type="button" onClick={() => setShowAddonForm(true)} disabled={busy}
+                      title="Pillows, towels, an extra bed from Housekeeping"
+                      style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: busy ? 'not-allowed' : 'pointer', fontSize: '0.75rem', padding: '0.5rem 0 0', fontFamily: 'var(--font-body, Outfit, sans-serif)' }}>
+                      <i className="fa-solid fa-bell-concierge" style={{ fontSize: '0.65rem', marginRight: 5 }}></i> Add extras
+                    </button>
+                  )}
+                </div>
               )}
 
               {/* What the guest settled before today, itemised: the amount reads in
@@ -783,10 +838,19 @@ function FinalBillModal({ open, bill, loading, error, onClose, onAddCharge, onRe
                     ? `${formatPeso(remainingAfter)} will still be unpaid.`
                     : 'This pays the bill in full.'}
                 </p>
-                <button type="submit" className="btn-solid" disabled={busy} style={{ width: '100%', marginTop: '1rem' }}>
-                  <i className="fa-solid fa-right-from-bracket" style={{ fontSize: '0.7rem' }}></i>
-                  {busy ? 'Working…' : 'Take Payment & Check Out'}
-                </button>
+                <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+                  <button type="button" className={canCheckOut ? 'btn-outline' : 'btn-solid'} disabled={busy || paid <= 0} onClick={payOnly}
+                    style={{ flex: '1 1 10rem' }} title="Record the money without checking the guest out">
+                    <i className="fa-solid fa-money-bill-wave" style={{ fontSize: '0.7rem' }}></i>
+                    {busy ? 'Working…' : 'Take Payment'}
+                  </button>
+                  {canCheckOut && (
+                    <button type="submit" className="btn-solid" disabled={busy} style={{ flex: '1 1 12rem' }}>
+                      <i className="fa-solid fa-right-from-bracket" style={{ fontSize: '0.7rem' }}></i>
+                      {busy ? 'Working…' : 'Take Payment & Check Out'}
+                    </button>
+                  )}
+                </div>
               </form>
             </>
           )}
@@ -903,6 +967,109 @@ function ExtendStayModal({ room, reservation, onClose, onSave }) {
             <button type="submit" className="btn-solid" disabled={busy}>
               <i className="fa-solid fa-calendar-plus" style={{ fontSize: '0.7rem' }}></i>
               {busy ? 'Saving…' : 'Extend Stay'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/*
+ * Moving a guest who has no key yet, an upgrade at the desk say. Lists the rooms free
+ * for the whole stay; the server checks again, reprices the stay at the new room's
+ * rate and leaves the payments as they are, so the difference shows as owing.
+ */
+function ChangeRoomModal({ room, reservation, rooms, onClose, onSave }) {
+  const [pickedId, setPickedId] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape' && !busy) onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose, busy]);
+
+  const blocks = stayBlocks(reservation.checkIn, reservation.checkOut, reservation.checkInTime);
+  const arrived = reservation.status === 'Arrived';
+  // Free for the whole stay; a guest at the desk needs one ready now.
+  const options = (rooms || []).filter(r => r.id !== room.id
+    && normalizeRoomStatus(r.status) !== 'Maintenance'
+    && (!arrived || normalizeRoomStatus(r.status) === 'Available')
+    && !(r.bookedRanges || []).some(b => b.from < reservation.checkOut && b.to > reservation.checkIn));
+  const picked = options.find(r => r.dbId === pickedId) || null;
+  const current = Number(reservation.totalDue) || 0;
+  const newCharge = picked ? blocks * (Number(picked.price) || 0) : 0;
+  const difference = newCharge - current;
+
+  const submit = (e) => {
+    e.preventDefault();
+    if (!picked) { setError('Pick the room to move the guest to.'); return; }
+    setBusy(true);
+    setError('');
+    Promise.resolve(onSave(picked))
+      .catch(err => { setError((err && err.message) || 'Could not move this guest.'); setBusy(false); });
+  };
+
+  return (
+    <div className="bill-overlay" onClick={() => { if (!busy) onClose(); }} role="dialog" aria-modal="true" aria-labelledby="cr-title">
+      <div className="bill-modal" style={{ maxWidth: '32rem' }} onClick={e => e.stopPropagation()}>
+        <div className="bill-head">
+          <div>
+            <p style={{ color: 'var(--accent)', fontSize: '0.65rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: '0 0 0.35rem' }}>Front Desk</p>
+            <h2 id="cr-title" className="font-display" style={{ fontSize: '1.5rem', margin: 0, color: 'var(--fg)' }}>Change Room</h2>
+            <p style={{ margin: '0.3rem 0 0', color: 'var(--fg-muted)', fontSize: '0.84rem' }}>
+              {reservation.fullName || 'Guest'} · now in {room.name}
+            </p>
+          </div>
+          <button type="button" onClick={onClose} disabled={busy} aria-label="Close"
+            style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)', cursor: busy ? 'not-allowed' : 'pointer', flexShrink: 0 }}>
+            <i className="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <form className="bill-body" onSubmit={submit}>
+          <p className="bill-section-title" style={{ marginTop: 0 }}>Rooms free for this stay</p>
+          {options.length === 0 ? (
+            <p style={{ color: 'var(--fg-muted)', fontSize: '0.84rem', margin: 0 }}>
+              No other room is free from {formatBillDate(reservation.checkIn)} to {formatBillDate(reservation.checkOut)}.
+            </p>
+          ) : (
+            <select className="booking-input" value={pickedId || ''} onChange={e => { setPickedId(Number(e.target.value) || null); setError(''); }}>
+              <option value="">Pick a room…</option>
+              {options.map(r => (
+                <option key={r.id} value={r.dbId}>{r.name} · {r.label || r.category} · {formatPeso(r.price)} / 12 hrs</option>
+              ))}
+            </select>
+          )}
+
+          {picked && (
+            <>
+              <p className="bill-section-title">What it does to the bill</p>
+              <div className="bill-line"><span>Room charge now ({room.name})</span><span className="bill-amt">{formatPeso(current)}</span></div>
+              <div className="bill-line"><span>{picked.name} · {blocks} × {BLOCK_HOURS} hrs × {formatPeso(picked.price)}</span><span className="bill-amt">{formatPeso(newCharge)}</span></div>
+              <div className="bill-line is-subtotal is-balance">
+                <span>{difference >= 0 ? 'Difference to pay' : 'Cheaper by'}</span><span className="bill-amt">{formatPeso(Math.abs(difference))}</span>
+              </div>
+              {reservation.promoName && (
+                <p className="bill-section-note" style={{ margin: '0.5rem 0 0' }}>The {reservation.promoName} promo comes off: it was for {room.name}.</p>
+              )}
+              <p className="bill-section-note" style={{ margin: '0.5rem 0 0' }}>Take the difference from the guest with Bill → Take Payment.</p>
+            </>
+          )}
+
+          {error && (
+            <p role="alert" style={{ margin: '0.9rem 0 0', color: 'var(--danger, #fb7185)', fontSize: '0.82rem', lineHeight: 1.5 }}>
+              <i className="fa-solid fa-circle-exclamation" style={{ marginRight: 6 }}></i>{error}
+            </p>
+          )}
+
+          <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'flex-end', marginTop: '1.3rem', flexWrap: 'wrap' }}>
+            <button type="button" className="btn-outline" onClick={onClose} disabled={busy}>Cancel</button>
+            <button type="submit" className="btn-solid" disabled={busy || !picked}>
+              <i className="fa-solid fa-right-left" style={{ fontSize: '0.7rem' }}></i>
+              {busy ? 'Moving…' : 'Move guest'}
             </button>
           </div>
         </form>
@@ -1045,7 +1212,7 @@ function fdThemeColor(name, fallback) {
   return value || fallback;
 }
 
-function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill, onAddCharge, onRemoveCharge, onSettleAndCheckOut, onExtendStay }) {
+function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast, onFetchBill, onAddCharge, onRemoveCharge, onAddAddon, onPay, onSettleAndCheckOut, onExtendStay, onChangeRoom }) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [page, setPage] = useState(1);
@@ -1064,6 +1231,14 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill,
   const [detailsFor, setDetailsFor] = useState(null);
 
   const [extendFor, setExtendFor] = useState(null);
+  const [changeFor, setChangeFor] = useState(null);
+  const changeRoom = (newRoom) => {
+    const { room, reservation } = changeFor;
+    return Promise.resolve(onChangeRoom(reservation.bookingId, newRoom.dbId)).then(() => {
+      setChangeFor(null);
+      if (onToast) onToast(`${reservation.fullName || 'Guest'} moved from ${room.name} to ${newRoom.name}.`);
+    });
+  };
   const extendStay = (checkOut) => {
     const { room, reservation } = extendFor;
     return Promise.resolve(onExtendStay(reservation.bookingId, checkOut)).then(() => {
@@ -1265,7 +1440,13 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill,
                                 title="The guest wants to stay more nights">
                                 <i className="fa-solid fa-calendar-plus"></i> Extend stay
                               </button>
-                            ) : <span className="vg-actions-gap" aria-hidden="true"></span>}
+                            ) : (
+                              <button type="button" className="vg-btn vg-btn-line"
+                                onClick={() => setChangeFor({ room, reservation })}
+                                title="Move the guest to another room, an upgrade say">
+                                <i className="fa-solid fa-right-left"></i> Change room
+                              </button>
+                            )}
                             {status === 'Booked' && (
                               <button type="button" className="vg-btn vg-lifecycle-btn vg-btn-line"
                                 onClick={() => onBookingAction(reservation.bookingId, 'arrive')}
@@ -1285,6 +1466,13 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill,
                                 onClick={() => openBill(room, reservation)}
                                 title="Show the final bill and check the guest out">
                                 <i className="fa-solid fa-right-from-bracket"></i> Check out
+                              </button>
+                            )}
+                            {status !== 'Checked In' && (
+                              <button type="button" className="vg-btn"
+                                onClick={() => openBill(room, reservation)}
+                                title="Charges, extras and payments so far: a deposit, an upgrade difference">
+                                <i className="fa-solid fa-receipt"></i> Bill
                               </button>
                             )}
                             <button type="button" className="vg-btn"
@@ -1334,6 +1522,10 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill,
         onClose={closeBill}
         onAddCharge={(description, amount) => refreshBill(onAddCharge(billFor.reservation.bookingId, description, amount))}
         onRemoveCharge={(chargeId) => refreshBill(onRemoveCharge(billFor.reservation.bookingId, chargeId))}
+        canCheckOut={!!billFor && billFor.reservation.status === 'Checked In'}
+        addonCatalog={addonCatalog}
+        onAddAddon={(addonId, qty) => refreshBill(onAddAddon(billFor.reservation.bookingId, addonId, qty))}
+        onPay={(payment) => refreshBill(onPay(billFor.reservation.bookingId, payment))}
         onSettle={settleAndCheckOut}
         onToast={onToast}
       />
@@ -1345,6 +1537,16 @@ function VerifyGuestPage({ rooms, onBack, onBookingAction, onToast, onFetchBill,
           room={detailsFor.room}
           reservation={detailsFor.reservation}
           onClose={() => setDetailsFor(null)}
+        />
+      )}
+
+      {changeFor && (
+        <ChangeRoomModal
+          room={changeFor.room}
+          reservation={changeFor.reservation}
+          rooms={rooms}
+          onClose={() => setChangeFor(null)}
+          onSave={changeRoom}
         />
       )}
 
@@ -1418,6 +1620,37 @@ function App() {
     billRequest('/students/hotel/bookings/' + bookingId + '/charges', 'POST', { description, amount }).then(d => d.bill)
   ), [billRequest]);
 
+  // Housekeeping's catalogue, for Add extras. Re-read after each add: stock moves.
+  const [addonCatalog, setAddonCatalog] = useState([]);
+  const fetchAddons = useCallback(() => {
+    fetch('/students/hotel/addons', { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data.items)) setAddonCatalog(data.items); })
+      .catch(() => {});
+  }, []);
+  useEffect(() => { fetchAddons(); }, [fetchAddons]);
+
+  const addAddon = useCallback((bookingId, addonId, qty) => (
+    billRequest('/students/hotel/bookings/' + bookingId + '/addons', 'POST', { addons: [{ addon_id: addonId, qty }] })
+      .then(d => { fetchAddons(); return d.bill; })
+  ), [billRequest, fetchAddons]);
+
+  // Money taken during the stay, without checking out.
+  const pay = useCallback((bookingId, payment) => (
+    billRequest('/students/hotel/bookings/' + bookingId + '/payments', 'POST', {
+      type: payment.full ? 'Full' : 'Partial',
+      amount_paid: payment.amount,
+      method: payment.method,
+      reference: payment.reference,
+    }).then(d => { fetchRooms(); return d.bill; })
+  ), [billRequest, fetchRooms]);
+
+  // Both rooms change: the guest leaves one and lands in the other, so read them all again.
+  const changeRoom = useCallback((bookingId, roomId) => (
+    billRequest('/students/hotel/bookings/' + bookingId, 'PATCH', { room_id: roomId })
+      .then(data => { fetchRooms(); return data; })
+  ), [billRequest, fetchRooms]);
+
   const removeCharge = useCallback((bookingId, chargeId) => (
     billRequest('/students/hotel/bookings/' + bookingId + '/charges/' + chargeId, 'DELETE').then(d => d.bill)
   ), [billRequest]);
@@ -1468,8 +1701,12 @@ function App() {
       onFetchBill={fetchBill}
       onAddCharge={addCharge}
       onRemoveCharge={removeCharge}
+      addonCatalog={addonCatalog}
+      onAddAddon={addAddon}
+      onPay={pay}
       onSettleAndCheckOut={settleAndCheckOut}
       onExtendStay={extendStay}
+      onChangeRoom={changeRoom}
       onToast={(msg) => window.toast && window.toast(msg)}
     />
   );

@@ -1941,9 +1941,45 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             'check_in_time' => 'sometimes|string|max:10',
             'check_out'     => 'sometimes|date',
             'notes'         => 'sometimes|nullable|string|max:2000',
+            // Change Room: move a stay not yet checked in, an upgrade at the desk.
+            'room_id'       => 'sometimes|integer',
         ]);
 
         $action = $data['action'] ?? null;
+
+        if (isset($data['room_id'])) {
+            if (!\App\Support\HotelTableAccess::canAssign($membership)) {
+                return response()->json(['message' => 'Only Front Desk staff can move a guest to another room.'], 403);
+            }
+            $room = HotelRoom::where('hotel_room_id', $data['room_id'])
+                ->where('group_name', $membership->group_name)
+                ->where('faculty_id', $membership->faculty_id)
+                ->first();
+            if (!$room) {
+                return response()->json(['message' => 'That room is not on your team\'s floor.'], 404);
+            }
+            $from = $booking->room?->name;
+            try {
+                \App\Support\HotelBookingDesk::changeRoom($booking, $room);
+            } catch (\App\Exceptions\BookingOverlapException $e) {
+                return response()->json(['message' => $e->getMessage()], 409);
+            } catch (\RuntimeException $e) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+            ActivityLog::record(
+                auth()->user(),
+                ActivityLog::GUEST_BOOKED,
+                'Moved ' . ($booking->guest?->full_name ?? 'a guest') . ' from ' . $from . ' to ' . $room->name . '.'
+            );
+
+            $booking = \App\Support\HotelBookingDesk::findBooking($membership, $id);
+
+            return response()->json([
+                'booking' => $booking->toReservationArray(),
+                'room'    => $booking->room?->fresh()->toTemplateArray(),
+                'bill'    => $booking->toBillArray(),
+            ]);
+        }
 
         if ($action !== null && !$booking->isOpen()) {
             return response()->json(['message' => 'That booking is already closed.'], 409);
@@ -2037,6 +2073,45 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             'room'    => $booking->room?->fresh()->toTemplateArray(),
         ]);
     })->name('hotel.bookings.update');
+
+    /** Housekeeping extras lent to a stay already booked: an extra bed asked for on arrival. */
+    Route::post('/hotel/bookings/{id}/addons', function (Request $request, $id) {
+        $membership = \App\Support\HotelBookingDesk::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Group not found'], 404);
+        }
+        if (!\App\Support\HotelTableAccess::canAssign($membership) && !\App\Support\HotelAddonAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Front Desk or Housekeeping staff can add extras to a stay.'], 403);
+        }
+
+        $booking = \App\Support\HotelBookingDesk::findBooking($membership, $id);
+        if (!$booking) {
+            return response()->json(['message' => 'Booking not found.'], 404);
+        }
+        if (!$booking->isOpen()) {
+            return response()->json(['message' => 'That stay is already closed.'], 409);
+        }
+
+        $data = $request->validate([
+            'addons'            => 'required|array|min:1',
+            'addons.*.addon_id' => 'required|integer',
+            'addons.*.qty'      => 'required|integer|min:1|max:99',
+        ]);
+
+        try {
+            \Illuminate\Support\Facades\DB::transaction(fn () => \App\Support\HotelAddonDesk::attachTo($booking, $data['addons']));
+        } catch (\RuntimeException $e) {
+            // Out of stock: nothing was attached.
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        $fresh = \App\Support\HotelBookingDesk::findBooking($membership, $id);
+
+        return response()->json([
+            'booking' => $fresh->toReservationArray(),
+            'bill'    => $fresh->toBillArray(),
+        ], 201);
+    })->name('hotel.bookings.addons.store');
 
     /** A later payment against an existing stay — settling a partial, say. */
     Route::post('/hotel/bookings/{id}/payments', function (Request $request, $id) {

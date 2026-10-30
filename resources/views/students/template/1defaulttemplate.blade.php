@@ -4417,7 +4417,10 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, capacity: roomCa
       return rest.concat([{ dbId: addon.dbId, name: addon.name, price: addon.price, qty: next }]);
     });
   };
-  const addonsTotal = addonLines.reduce((sum, line) => sum + (Number(line.price) || 0) * line.qty, 0);
+  // An extra bed is charged per night of the stay (HotelBookingAddon::lineTotal).
+  const stayNights = Math.max(1, Math.ceil(blocks / 2));
+  const addonsTotal = addonLines.reduce((sum, line) => sum + (Number(line.price) || 0) * line.qty
+    * (addonList.some(a => a.dbId === line.dbId && a.extraBed) ? stayNights : 1), 0);
 
   const handleRegisterSubmit = (e) => {
     e.preventDefault();
@@ -4712,7 +4715,7 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, capacity: roomCa
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--fg)' }}>{addon.name}</p>
                           <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--fg-muted)' }}>
-                            {formatPeso(addon.price)} · {addon.available} available
+                            {formatPeso(addon.price)}{addon.extraBed ? ' / night' : ''} · {addon.available} available
                           </p>
                         </div>
                         {addon.available > 0 ? (

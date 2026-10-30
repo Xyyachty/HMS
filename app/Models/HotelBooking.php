@@ -223,6 +223,12 @@ class HotelBooking extends Model
         return $hours <= 0 ? 1 : max(1, (int) ceil($hours / self::BLOCK_HOURS));
     }
 
+    /** Nights in the stay: two 12-hour blocks each, at least one. Extra beds are billed by it. */
+    public function nights(): int
+    {
+        return max(1, (int) ceil($this->stayBlocks() / 2));
+    }
+
     /**
      * The room charge alone. Deliberately excludes room service: the payments taken at
      * booking time recorded their balance against this figure, and moving it would
@@ -261,7 +267,7 @@ class HotelBooking extends Model
     /** Housekeeping add-ons on this stay, at the price they were lent for. */
     public function addonsTotal(): float
     {
-        return (float) $this->addons->sum(fn (HotelBookingAddon $addon) => $addon->lineTotal());
+        return (float) $this->addons->sum(fn (HotelBookingAddon $addon) => $addon->lineTotal($this->nights()));
     }
 
     /** Room + room service + add-ons + extras — the figure the guest actually settles. */
@@ -408,7 +414,7 @@ class HotelBooking extends Model
 
             // What Housekeeping lent the guest, priced as it was on the day it went out.
             'addons' => [
-                'items'    => $this->addons->map->toTemplateArray()->values()->all(),
+                'items'    => $this->addons->map(fn (HotelBookingAddon $addon) => $addon->toTemplateArray($this->nights()))->values()->all(),
                 'subtotal' => $this->addonsTotal(),
             ],
 
