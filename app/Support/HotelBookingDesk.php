@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\HotelAddon;
 use App\Models\HotelBooking;
 use App\Models\HotelBookingPayment;
 use App\Models\HotelGuest;
@@ -79,18 +80,21 @@ class HotelBookingDesk
         $scope = self::scope($membership);
         $guestCount = isset($stay['guest_count']) ? max(1, (int) $stay['guest_count']) : null;
 
-        // The room's own limit, else its category's "Sleeps N". Neither set takes any
-        // party, the same as before the fields existed.
+        // The room's own limit, else its category's "Sleeps N", plus one per extra bed
+        // taken with the stay. Neither set takes any party, the same as before the
+        // fields existed.
         if ($guestCount !== null) {
             $capacity = (int) ($room->capacity ?: HotelRoomCategory::where('group_name', $room->group_name)
                 ->where('faculty_id', $room->faculty_id)
                 ->where('name', $room->category)
                 ->value('capacity'));
+            $beds = $capacity ? HotelAddon::extraBedsIn($addons) : 0;
 
-            if ($capacity && $guestCount > $capacity) {
+            if ($capacity && $guestCount > $capacity + $beds) {
                 throw new \RuntimeException(
                     $room->name . ' sleeps ' . $capacity . ' guest' . ($capacity === 1 ? '' : 's')
-                    . ' — that party is too large for it.'
+                    . ($beds ? ' and ' . $beds . ' on extra beds' : '')
+                    . ' — that party is too large for it. Add an extra bed or another room.'
                 );
             }
         }

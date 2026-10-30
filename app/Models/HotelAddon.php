@@ -37,6 +37,34 @@ class HotelAddon extends Model
     }
 
     /**
+     * Whether one of these sleeps one more guest in the room: an extra or folding bed,
+     * a cot, a crib. Bedding (sheets, linen, covers) does not.
+     *
+     * ponytail: read off the name, so a bed called something else is missed. Add a
+     * "sleeps" column on hotel_addons if teams name beds in ways this does not catch.
+     */
+    public function isExtraBed(): bool
+    {
+        return (bool) preg_match('/\b(beds?|cots?|cribs?)\b/i', (string) $this->name)
+            && !preg_match('/sheet|linen|cover|spread/i', (string) $this->name);
+    }
+
+    /**
+     * How many extra guests these add-on lines sleep. $lines: [['addon_id' => int, 'qty' => int], ...].
+     */
+    public static function extraBedsIn(array $lines): int
+    {
+        $qty = collect($lines)->groupBy('addon_id')->map(fn ($l) => $l->sum('qty'));
+        if ($qty->isEmpty()) {
+            return 0;
+        }
+
+        return (int) self::whereIn('hotel_addon_id', $qty->keys())->get()
+            ->filter->isExtraBed()
+            ->sum(fn (self $addon) => $qty[$addon->hotel_addon_id]);
+    }
+
+    /**
      * Shape sent to the hotel template front-end.
      *
      * $reserved — how many are out on open stays — is passed in rather than queried here.
@@ -59,6 +87,7 @@ class HotelAddon extends Model
             // Derived, never stored: a status column and a quantity column that can
             // disagree with each other is a bug waiting to be filed.
             'status'    => $available > 0 ? 'Available' : 'Out of Stock',
+            'extraBed'  => $this->isExtraBed(),
             'img'       => \App\Support\HotelImageStore::url($this->image),
         ];
     }

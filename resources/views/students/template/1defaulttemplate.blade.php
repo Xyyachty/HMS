@@ -4290,7 +4290,7 @@ function addonStepBtn(disabled) {
   };
 }
 
-function RoomDetailModal({ room, addons, promos, chosenPromoId, capacity, guest, onClose, onChangeStatus, canEditStatus, canReserve, onReserve, onToast, onRequireGuest, stayFrom, stayTo }) {
+function RoomDetailModal({ room, addons, promos, chosenPromoId, capacity: roomCapacity, guest, onClose, onChangeStatus, canEditStatus, canReserve, onReserve, onToast, onRequireGuest, stayFrom, stayTo }) {
   if (!room) return null;
   const status = normalizeRoomStatus(room.status);
   const [step, setStep] = useState('details');
@@ -4397,6 +4397,12 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, capacity, guest,
   };
 
   const addonList = Array.isArray(addons) ? addons : [];
+  /* Each extra bed taken with the stay sleeps one more guest (HotelAddon::isExtraBed).
+     Staff booking only: the published site's booking does not take add-ons
+     (PublicSiteController::book), so a bed picked there cannot raise the limit. */
+  const hasBedAddon = !window.__HMS_PUBLIC__ && addonList.some(a => a.extraBed);
+  const extraBeds = !hasBedAddon ? 0 : addonLines.reduce((n, l) => n + (addonList.some(a => a.dbId === l.dbId && a.extraBed) ? l.qty : 0), 0);
+  const capacity = roomCapacity ? roomCapacity + extraBeds : roomCapacity;
   const addonQty = (dbId) => {
     const line = addonLines.find(l => l.dbId === dbId);
     return line ? line.qty : 0;
@@ -4632,7 +4638,7 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, capacity, guest,
                     {/* Said at the field, as soon as the number goes over, not only on Proceed. */}
                     {capacity && Number(guestForm.guestCount) > capacity ? (
                       <p role="alert" style={{ color: '#f08a99', fontSize: '0.78rem', margin: '0.4rem 0 0' }}>
-                        This room sleeps up to {capacity} guest{capacity === 1 ? '' : 's'}. Please enter {capacity} or fewer.
+                        This room sleeps up to {capacity} guest{capacity === 1 ? '' : 's'}. Please enter {capacity} or fewer{hasBedAddon ? ', or add an extra bed under Add-ons' : ''}.
                       </p>
                     ) : null}
                   </div>
