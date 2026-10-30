@@ -162,9 +162,9 @@ class SimulationPhase
     }
 
     /**
-     * The Simulation seats this member holds: what faculty set, or else the keys
-     * of their Customization seats — the Housekeeping & Maintenance seat defaults
-     * to Housekeeping, Room Management to Room & Maintenance.
+     * The Simulation seats this member holds: what faculty set, or else the desks
+     * their Customization seats move to — Room Management to Room & Housekeeping,
+     * the Housekeeping / Maintenance seat to Maintenance.
      *
      * One seat on a full team. A member of a team short of students can run
      * several desks, stored comma-separated in simulation_role.
@@ -189,7 +189,9 @@ class SimulationPhase
 
         // Unfiltered: a team built before seats can hold e.g. "maintenance", and
         // rolesForPhase passes such keys through so those teams keep working.
-        return $membership->roles->sortBy('student_group_role_id')->pluck('role')->filter()->unique()->values()->all();
+        return HotelTemplateBuilder::simulationDesksForSeats(
+            $membership->roles->sortBy('student_group_role_id')->pluck('role')->filter()->values()->all()
+        );
     }
 
     public static function rolesConfirmed(?string $groupName, ?int $facultyId): bool

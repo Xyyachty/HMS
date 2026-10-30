@@ -37,28 +37,28 @@ class HotelPromo extends Model
         [
             'name'           => 'Weekend Escape',
             'description'    => 'Two nights in a Deluxe Room with breakfast for two and a late checkout at 2 PM.',
-            'image'          => 'https://picsum.photos/seed/hotelweekend/800/600.jpg',
+            'image'          => 'https://images.unsplash.com/photo-1424847651672-bf20a4b0982b?auto=format&fit=crop&w=800&h=600&q=80',
             'original_price' => 14000,
             'promo_price'    => 11200,
         ],
         [
             'name'           => 'Dine and Stay',
             'description'    => 'Any suite booked for three nights comes with a chef-curated dinner for two at the restaurant.',
-            'image'          => 'https://picsum.photos/seed/hoteldinner/800/600.jpg',
+            'image'          => 'https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?auto=format&fit=crop&w=800&h=600&q=80',
             'original_price' => 32500,
             'promo_price'    => 30000,
         ],
         [
             'name'           => 'Early Bird Rate',
             'description'    => 'Reserve at least thirty days ahead and keep the low season rate whichever month you arrive.',
-            'image'          => 'https://picsum.photos/seed/hotelearlybird/800/600.jpg',
+            'image'          => 'https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=800&h=600&q=80',
             'original_price' => 5000,
             'promo_price'    => 4250,
         ],
         [
             'name'           => 'Luxury Package',
             'description'    => 'A suite, a spa afternoon for two and dinner at the restaurant, booked as one stay.',
-            'image'          => 'https://picsum.photos/seed/hotelluxurypackage/800/600.jpg',
+            'image'          => 'https://images.unsplash.com/photo-1582610116397-edb318620f90?auto=format&fit=crop&w=800&h=600&q=80',
             'original_price' => 26000,
             'promo_price'    => 22000,
         ],
@@ -274,6 +274,24 @@ class HotelPromo extends Model
             ->pluck('text_content', 'element_key')
             ->map(fn ($text) => (string) $text)
             ->all();
+    }
+
+    /**
+     * The team's promo a stay starting on $checkIn may be booked under: switched on
+     * and running that day. Throws with a message the booking forms show as is.
+     */
+    public static function bookable(string $groupName, int $facultyId, int $promoId, string $checkIn): self
+    {
+        $promo = self::forTeam($groupName, $facultyId)->whereKey($promoId)->first();
+        $day = \Illuminate\Support\Carbon::parse($checkIn)->toDateString();
+
+        if (!$promo || !$promo->is_active
+            || $day < $promo->start_date->toDateString() || $day > $promo->end_date->toDateString()) {
+            throw new \RuntimeException('That promo is not available for a stay starting on '
+                . \Illuminate\Support\Carbon::parse($day)->format('M j, Y') . '. Please choose another.');
+        }
+
+        return $promo;
     }
 
     public static function forTeam(string $groupName, ?int $facultyId)

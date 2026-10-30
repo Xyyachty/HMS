@@ -353,6 +353,14 @@
     return !!(root && root !== el && root.hasAttribute && root.hasAttribute('data-hms-no-move'));
   }
 
+  /* A dish card's words and picture are the menu row's, written by Edit Menu Item
+     and Change Image. A canvas edit there (a colour, a font) used to save the
+     dish's name with it, and that copy was written back over every later rename.
+     Styling still saves; the content is left to the card. */
+  function isMenuContent(el) {
+    return !!(el && el.closest && el.closest('[data-hms-menu-card]'));
+  }
+
   function isBackgroundLayer(el) {
     return !!(el && el.nodeType === 1 && el.hasAttribute && el.hasAttribute('data-hms-bg-layer'));
   }
@@ -1172,7 +1180,7 @@
     // their src there so one change updates every place that renders it.
     // Styling and moving them still records normally.
     if (el.tagName === 'IMG' && el.getAttribute('src') && !el.hasAttribute('data-hms-dynamic-src')) {
-      entry.src = el.getAttribute('src');
+      if (!isMenuContent(el)) entry.src = el.getAttribute('src');
     } else if (cs.backgroundImage && cs.backgroundImage !== 'none') {
       entry['background-image'] = cs.backgroundImage;
     }
@@ -1183,7 +1191,7 @@
 
     // Multi-child elements (headings with styled spans, brand marks) must record
     // text too, or the edit is never sent and teammates keep the original.
-    if (!['IMG', 'I', 'SVG'].includes(el.tagName)) {
+    if (!['IMG', 'I', 'SVG'].includes(el.tagName) && !isMenuContent(el)) {
       const text = readEditableText(el);
       if (text != null) entry.text = text;
       syncHotelInfoField(el, text);
@@ -1323,7 +1331,7 @@
       el.removeAttribute('data-hms-free-position');
       el.removeAttribute('data-hms-move-mode');
     }
-    if (entry.src && el.tagName === 'IMG' && !el.hasAttribute('data-hms-dynamic-src')) {
+    if (entry.src && el.tagName === 'IMG' && !el.hasAttribute('data-hms-dynamic-src') && !isMenuContent(el)) {
       el.setAttribute('src', entry.src);
     }
     if (entry.iconClass && el.tagName === 'I') {
@@ -1336,7 +1344,7 @@
        caret threw it to the start of the line - and the saved copy can be a
        keystroke behind. The edit saves itself when it ends. */
     const typing = textEditEl && (el === textEditEl || el.contains(textEditEl) || textEditEl.contains(el));
-    if (entry.text != null && !typing && !['IMG', 'I', 'SVG', 'INPUT', 'TEXTAREA'].includes(el.tagName)) {
+    if (entry.text != null && !typing && !isMenuContent(el) && !['IMG', 'I', 'SVG', 'INPUT', 'TEXTAREA'].includes(el.tagName)) {
       writeEditableText(el, entry.text);
     }
   }
@@ -1351,7 +1359,7 @@
     const nodes = Array.from(document.querySelectorAll(tags.join(',').toLowerCase()));
     for (let i = 0; i < nodes.length; i++) {
       const el = nodes[i];
-      if (isEditorChrome(el) || el.hasAttribute('data-hms-user')) continue;
+      if (isEditorChrome(el) || el.hasAttribute('data-hms-user') || isMenuContent(el)) continue;
       // Match the same slot readEditableText would have recorded from.
       if (String(readEditableText(el) || '').trim() === needle) return el;
     }
@@ -2323,6 +2331,12 @@
       return;
     }
     if (!el || ['IMG', 'I', 'SVG', 'INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) return;
+    if (isMenuContent(el)) {
+      e.preventDefault();
+      e.stopPropagation();
+      blockEditToast('Change a dish\'s name and details from its Edit Menu Item button.');
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
     selectElement(el);
@@ -2587,14 +2601,14 @@
         selectedEl.style.setProperty(prop, data.style[prop]);
       });
     }
-    if (data.text != null && !['IMG', 'I', 'SVG'].includes(selectedEl.tagName)) {
+    if (data.text != null && !['IMG', 'I', 'SVG'].includes(selectedEl.tagName) && !isMenuContent(selectedEl)) {
       if (selectedEl.tagName === 'INPUT' || selectedEl.tagName === 'TEXTAREA') {
         selectedEl.placeholder = data.text;
       } else {
         writeEditableText(selectedEl, data.text);
       }
     }
-    if (data.src) applyImageToSelected(data.src, false);
+    if (data.src && !isMenuContent(selectedEl)) applyImageToSelected(data.src, false);
     if (data.iconClass) {
       const icon = selectedEl.tagName === 'I' ? selectedEl : selectedEl.querySelector('i');
       if (icon) {

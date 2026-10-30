@@ -72,8 +72,8 @@ class HotelAddonAccess
     private static function defaultAddons(): array
     {
         return [
-            ['name' => 'Folding Bed', 'price' => 350, 'quantity' => 10, 'image' => 'https://picsum.photos/seed/foldingbed/800/600.jpg'],
-            ['name' => 'Extra Towel', 'price' => 80,  'quantity' => 40, 'image' => 'https://picsum.photos/seed/extratowel/800/600.jpg'],
+            ['name' => 'Folding Bed', 'price' => 350, 'quantity' => 10, 'image' => 'https://images.unsplash.com/photo-1595576508898-0ad5c879a061?auto=format&fit=crop&w=800&h=600&q=80'],
+            ['name' => 'Extra Towel', 'price' => 80,  'quantity' => 40, 'image' => 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&h=600&q=80'],
         ];
     }
 }

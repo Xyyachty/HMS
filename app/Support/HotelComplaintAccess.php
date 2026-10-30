@@ -35,7 +35,7 @@ class HotelComplaintAccess
     }
 
     /**
-     * The Simulation-phase roles this member covers — the Room & Maintenance seat
+     * The Simulation-phase roles this member covers — the Room & Housekeeping seat
      * runs both — plus whatever role they are signed into the hotel site as.
      */
     public static function roles(StudentGroup $membership): array

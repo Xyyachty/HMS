@@ -47,28 +47,56 @@ class HotelGuestStay
             ->where('faculty_id', $membership->faculty_id)
             ->first();
 
-        if (!$customer || blank($customer->email)) {
+        if (!$customer) {
             return null;
         }
 
-        // Every guest row this account could be: a repeat visitor has one row, but a
-        // desk that mistyped a name once has two, and either may hold the stay.
-        $guestIds = HotelGuest::where('group_name', $membership->group_name)
-            ->where('faculty_id', $membership->faculty_id)
+        return self::bookingsQuery($customer)
+            ->with('room')
+            ->where('status', 'Checked In')
+            ->first();
+    }
+
+    /**
+     * Every stay of the guest signed into this hotel, newest first, for their
+     * My Bookings list. Empty for anyone else.
+     *
+     * @return \Illuminate\Support\Collection<int, HotelBooking>
+     */
+    public static function bookings(string $groupName, int $facultyId)
+    {
+        $auth = HotelSimulationAuth::current();
+        if (!is_array($auth) || ($auth['type'] ?? null) !== 'customer') {
+            return collect();
+        }
+
+        $customer = HotelCustomer::where('hotel_customer_id', $auth['customer_id'] ?? 0)
+            ->where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
+            ->first();
+
+        return $customer
+            ? self::bookingsQuery($customer)->with(['room', 'payments', 'foodOrders', 'charges', 'addons'])->get()
+            : collect();
+    }
+
+    /**
+     * The account's stays on its own hotel, newest first, matched on email. Every
+     * guest row with that email counts: a repeat visitor has one row, but a desk
+     * that mistyped a name once has two, and either may hold the stay.
+     */
+    private static function bookingsQuery(HotelCustomer $customer)
+    {
+        $team = fn ($query) => $query->where('group_name', $customer->group_name)
+            ->where('faculty_id', $customer->faculty_id);
+
+        $guestIds = blank($customer->email) ? [] : $team(HotelGuest::query())
             ->whereRaw('LOWER(email) = LOWER(?)', [$customer->email])
             ->pluck('hotel_guest_id');
 
-        if ($guestIds->isEmpty()) {
-            return null;
-        }
-
-        return HotelBooking::with('room')
-            ->where('group_name', $membership->group_name)
-            ->where('faculty_id', $membership->faculty_id)
+        return $team(HotelBooking::query())
             ->whereIn('hotel_guest_id', $guestIds)
-            ->where('status', 'Checked In')
-            ->orderByDesc('hotel_booking_id')
-            ->first();
+            ->orderByDesc('hotel_booking_id');
     }
 
     /** Whether the signed-in guest may book a facility right now. */

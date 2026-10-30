@@ -1552,13 +1552,11 @@ function cssUrl(src) {
 }
 
 /* A room with no photo of its own — every seeded room starts that way — would render
-   <img src=""> and leave a blank hole where its neighbours show a picture. Same
-   stand-in the menu uses, seeded by the room so each one keeps the same photo
-   between renders instead of reshuffling. */
+   <img src=""> and leave a blank hole where its neighbours show a picture. A stock
+   hotel-room photograph stands in, the same one every render. */
 function roomCardImg(room) {
   if (room && room.img) return room.img;
-  const seed = encodeURIComponent((room && (room.id || room.name)) || 'room');
-  return 'https://picsum.photos/seed/room-' + seed + '/800/600.jpg';
+  return 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=800&h=600&q=80';
 }
 
 /* Every photograph of a room, primary first. A room saved before galleries — or
@@ -1649,7 +1647,7 @@ function roomCategoryLabel(room) {
 const ROOMS = [
   {
     id: 'classic', label: 'Classic', category: 'Classic', status: 'Available', name: 'Classic Queen Room', price: 180,
-    img: 'https://picsum.photos/seed/hotelroom3/800/600.jpg',
+    img: 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&w=800&h=600&q=80',
     desc: 'Cozy 28m\u00B2 room with a queen bed, soft lighting, and thoughtful amenities for a restful stay.',
     badgeStyle: {},
     amenities: [
@@ -1661,7 +1659,7 @@ const ROOMS = [
   },
   {
     id: 'superior', label: 'Superior', category: 'Superior', status: 'Available', name: 'Superior Twin Room', price: 240,
-    img: 'https://picsum.photos/seed/twinroom/800/600.jpg',
+    img: 'https://images.unsplash.com/photo-1595576508898-0ad5c879a061?auto=format&fit=crop&w=800&h=600&q=80',
     desc: '38m\u00B2 room with two single beds, a work desk, and views of the courtyard garden.',
     badgeStyle: {},
     amenities: [
@@ -1673,7 +1671,7 @@ const ROOMS = [
   },
   {
     id: 'premium', label: 'Premium', category: 'Premium', status: 'Cleaning', name: 'Premium Suite', price: 450,
-    img: 'https://picsum.photos/seed/hotelroom2/800/600.jpg',
+    img: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=800&h=600&q=80',
     desc: '68m\u00B2 suite with separate living area, walk-in closet, soaking tub, and panoramic floor-to-ceiling windows.',
     badgeStyle: { background: 'rgba(201,168,76,0.15)', borderColor: 'var(--accent)' },
     amenities: [
@@ -1685,7 +1683,7 @@ const ROOMS = [
   },
   {
     id: 'deluxe', label: 'Deluxe', category: 'Deluxe', status: 'Available', name: 'Deluxe King Room', price: 280,
-    img: 'https://picsum.photos/seed/hotelroom1/800/600.jpg',
+    img: 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=800&h=600&q=80',
     desc: 'Spacious 42m\u00B2 room with king bed, city views, and a marble-appointed bathroom with rain shower.',
     badgeStyle: {},
     amenities: [
@@ -1697,7 +1695,7 @@ const ROOMS = [
   },
   {
     id: 'family', label: 'Family', category: 'Family', status: 'Maintenance', name: 'Family Suite', price: 520,
-    img: 'https://picsum.photos/seed/juniorsuite/800/600.jpg',
+    img: 'https://images.unsplash.com/photo-1560185007-cde436f6a4d0?auto=format&fit=crop&w=800&h=600&q=80',
     desc: '85m\u00B2 connecting suite with two bedrooms, a living lounge, and space for the whole family.',
     badgeStyle: { background: 'rgba(201,168,76,0.2)', borderColor: 'var(--accent-light)', color: 'var(--accent-light)' },
     amenities: [
@@ -1713,18 +1711,18 @@ const ROOMS = [
    the whole list is written. Each carries an id, because the photograph uploaded
    for a tile is keyed by that id: renaming a tile keeps its picture. */
 const DEFAULT_EXPERIENCES = [
-  { id: 'exp-pool', icon: 'fa-person-swimming', title: 'Infinity Pool', desc: 'Take a refreshing dip in our infinity pool with a view over the water. A quiet spot to swim, unwind and watch the sun go down.', img: 'https://picsum.photos/seed/exp-pool/800/600.jpg' },
-  { id: 'exp-spa', icon: 'fa-spa', title: 'Spa & Wellness', desc: 'Full-service spa with thermal pools, a Hammam and treatment rituals booked around your stay.', img: 'https://picsum.photos/seed/exp-spa/800/600.jpg' },
-  { id: 'exp-gym', icon: 'fa-dumbbell', title: 'Fitness Center', desc: 'Machines, free weights and a trainer on call, open from before breakfast until late.', img: 'https://picsum.photos/seed/exp-gym/800/600.jpg' },
-  { id: 'exp-dining', icon: 'fa-utensils', title: 'Fine Dining', desc: 'A tasting menu plated to order, and a table held for you at the hour you choose.', img: 'https://picsum.photos/seed/exp-dining/800/600.jpg' },
-  { id: 'exp-beach', icon: 'fa-umbrella-beach', title: 'Private Beach', desc: 'Loungers, shade and a stretch of sand kept for guests, with drinks brought down to you.', img: 'https://picsum.photos/seed/exp-beach/800/600.jpg' },
-  { id: 'exp-transport', icon: 'fa-car', title: 'Concierge & Transport', desc: 'Airport transfers, a car with a driver, and a concierge who knows the city.', img: 'https://picsum.photos/seed/exp-transport/800/600.jpg' },
-  { id: 'exp-lounge', icon: 'fa-champagne-glasses', title: 'Rooftop Lounge', desc: 'Cocktails above the skyline, live sets on weekends and the best seat for the sunset.', img: 'https://picsum.photos/seed/exp-lounge/800/600.jpg' },
-  { id: 'exp-events', icon: 'fa-users', title: 'Events & Meetings', desc: 'Rooms that seat ten or a hundred, with catering and the equipment already in place.', img: 'https://picsum.photos/seed/exp-events/800/600.jpg' },
-  { id: 'exp-tours', icon: 'fa-compass', title: 'Island Tours', desc: 'Day trips to the islands and coves nearby, booked at the desk the evening before.', img: 'https://picsum.photos/seed/exp-tours/800/600.jpg' },
-  { id: 'exp-yoga', icon: 'fa-person-praying', title: 'Yoga Sessions', desc: 'Sunrise and sunset classes on the deck, for every level, mats provided.', img: 'https://picsum.photos/seed/exp-yoga/800/600.jpg' },
-  { id: 'exp-kids', icon: 'fa-child-reaching', title: 'Kids Zone', desc: 'A supervised playroom and pool hours set aside for families travelling with children.', img: 'https://picsum.photos/seed/exp-kids/800/600.jpg' },
-  { id: 'exp-garden', icon: 'fa-leaf', title: 'Garden Walk', desc: 'Lit paths through the grounds, planted with what grows on this coast.', img: 'https://picsum.photos/seed/exp-garden/800/600.jpg' },
+  { id: 'exp-pool', icon: 'fa-person-swimming', title: 'Infinity Pool', desc: 'Take a refreshing dip in our infinity pool with a view over the water. A quiet spot to swim, unwind and watch the sun go down.', img: 'https://images.unsplash.com/photo-1584132967334-10e028bd69f7?auto=format&fit=crop&w=800&h=600&q=80' },
+  { id: 'exp-spa', icon: 'fa-spa', title: 'Spa & Wellness', desc: 'Full-service spa with thermal pools, a Hammam and treatment rituals booked around your stay.', img: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=800&h=600&q=80' },
+  { id: 'exp-gym', icon: 'fa-dumbbell', title: 'Fitness Center', desc: 'Machines, free weights and a trainer on call, open from before breakfast until late.', img: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=800&h=600&q=80' },
+  { id: 'exp-dining', icon: 'fa-utensils', title: 'Fine Dining', desc: 'A tasting menu plated to order, and a table held for you at the hour you choose.', img: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&h=600&q=80' },
+  { id: 'exp-beach', icon: 'fa-umbrella-beach', title: 'Private Beach', desc: 'Loungers, shade and a stretch of sand kept for guests, with drinks brought down to you.', img: 'https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=800&h=600&q=80' },
+  { id: 'exp-transport', icon: 'fa-car', title: 'Concierge & Transport', desc: 'Airport transfers, a car with a driver, and a concierge who knows the city.', img: 'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=800&h=600&q=80' },
+  { id: 'exp-lounge', icon: 'fa-champagne-glasses', title: 'Rooftop Lounge', desc: 'Cocktails above the skyline, live sets on weekends and the best seat for the sunset.', img: 'https://images.unsplash.com/photo-1572116469696-31de0f17cc34?auto=format&fit=crop&w=800&h=600&q=80' },
+  { id: 'exp-events', icon: 'fa-users', title: 'Events & Meetings', desc: 'Rooms that seat ten or a hundred, with catering and the equipment already in place.', img: 'https://images.unsplash.com/photo-1431540015161-0bf868a2d407?auto=format&fit=crop&w=800&h=600&q=80' },
+  { id: 'exp-tours', icon: 'fa-compass', title: 'Island Tours', desc: 'Day trips to the islands and coves nearby, booked at the desk the evening before.', img: 'https://images.unsplash.com/photo-1506929562872-bb421503ef21?auto=format&fit=crop&w=800&h=600&q=80' },
+  { id: 'exp-yoga', icon: 'fa-person-praying', title: 'Yoga Sessions', desc: 'Sunrise and sunset classes on the deck, for every level, mats provided.', img: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=800&h=600&q=80' },
+  { id: 'exp-kids', icon: 'fa-child-reaching', title: 'Kids Zone', desc: 'A supervised playroom and pool hours set aside for families travelling with children.', img: 'https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?auto=format&fit=crop&w=800&h=600&q=80' },
+  { id: 'exp-garden', icon: 'fa-leaf', title: 'Garden Walk', desc: 'Lit paths through the grounds, planted with what grows on this coast.', img: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=800&h=600&q=80' },
 ];
 
 /* A tile whose photograph was uploaded before the gallery was keyed by id still
@@ -2852,7 +2850,7 @@ function MobileMenu({ open, onClose, onNavigate, links, cardImages, page, brandN
    run at all in Design mode. Because the editor no longer swallows the click,
    each handler has to check isSiteInteractive() itself and decide between
    navigating (Preview) and opening a dialog (Design). */
-function NavBar({ currentPage, onNavigate, onToggleMobile, mobileOpen, links, brandName, editing, canEditNav, canEditBrandName, canEditLogo, canEditSiteColors, onHeaderEdit, cardImages, guest, onGuestSignIn, onGuestSignOut, guestTexts, canEditGuestAuth }) {
+function NavBar({ currentPage, onNavigate, onToggleMobile, mobileOpen, links, brandName, editing, canEditNav, canEditBrandName, canEditLogo, canEditSiteColors, onHeaderEdit, cardImages, guest, onGuestSignIn, onGuestSignOut, onMyBookings, guestTexts, canEditGuestAuth }) {
   // Passed only so the navigation re-renders when the shared logo changes.
   void cardImages;
 
@@ -2930,6 +2928,8 @@ function NavBar({ currentPage, onNavigate, onToggleMobile, mobileOpen, links, br
               {(guest.name || 'Guest').split(' ')[0]}
             </span>
             <button type="button" className="btn-outline" style={{ fontSize: '0.66rem', padding: '0.45rem 0.9rem' }}
+                    onClick={onMyBookings}>My Bookings</button>
+            <button type="button" className="btn-outline" style={{ fontSize: '0.66rem', padding: '0.45rem 0.9rem' }}
                     onClick={onGuestSignOut}>Sign out</button>
           </div>
         ) : (
@@ -2964,7 +2964,7 @@ const DEFAULT_PROMOS = [
     desc: 'Two nights in a Deluxe Room with breakfast for two and a late checkout at 2 PM.',
     offer: 'Save 20%',
     terms: 'Friday to Sunday stays',
-    img: 'https://picsum.photos/seed/hotelweekend/800/600.jpg',
+    img: 'https://images.unsplash.com/photo-1424847651672-bf20a4b0982b?auto=format&fit=crop&w=800&h=600&q=80',
   },
   {
     id: 'promo-2',
@@ -2972,7 +2972,7 @@ const DEFAULT_PROMOS = [
     desc: 'Any suite booked for three nights comes with a chef-curated dinner for two at the restaurant.',
     offer: 'Free dinner',
     terms: 'Three nights or longer',
-    img: 'https://picsum.photos/seed/hoteldinner/800/600.jpg',
+    img: 'https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?auto=format&fit=crop&w=800&h=600&q=80',
   },
   {
     id: 'promo-3',
@@ -2980,7 +2980,7 @@ const DEFAULT_PROMOS = [
     desc: 'Reserve at least thirty days ahead and keep the low season rate whichever month you arrive.',
     offer: '15% off',
     terms: 'Booked 30 days ahead',
-    img: 'https://picsum.photos/seed/hotelearlybird/800/600.jpg',
+    img: 'https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=800&h=600&q=80',
   },
   {
     id: 'promo-4',
@@ -2988,7 +2988,7 @@ const DEFAULT_PROMOS = [
     desc: 'A suite, a spa afternoon for two and dinner at the restaurant, booked as one stay.',
     offer: 'Food + Spa + Stay',
     terms: 'Two nights or longer',
-    img: 'https://picsum.photos/seed/hotelluxurypackage/800/600.jpg',
+    img: 'https://images.unsplash.com/photo-1582610116397-edb318620f90?auto=format&fit=crop&w=800&h=600&q=80',
   },
 ];
 
@@ -3011,18 +3011,18 @@ function partnerName(partner) {
 }
 
 const DEFAULT_TEAM = [
-  { id: 'team-1', name: 'Elena Marchetti', role: 'General Manager', img: 'https://picsum.photos/seed/hotelteam1/400/400.jpg' },
-  { id: 'team-2', name: 'Diego Salvador', role: 'Front Desk Supervisor', img: 'https://picsum.photos/seed/hotelteam2/400/400.jpg' },
-  { id: 'team-3', name: 'Priya Raman', role: 'Executive Chef', img: 'https://picsum.photos/seed/hotelteam3/400/400.jpg' },
-  { id: 'team-4', name: 'Noah Fitzgerald', role: 'Guest Experience Lead', img: 'https://picsum.photos/seed/hotelteam4/400/400.jpg' },
+  { id: 'team-1', name: 'Elena Marchetti', role: 'General Manager', img: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&crop=faces&w=400&h=400&q=80' },
+  { id: 'team-2', name: 'Diego Salvador', role: 'Front Desk Supervisor', img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&crop=faces&w=400&h=400&q=80' },
+  { id: 'team-3', name: 'Priya Raman', role: 'Executive Chef', img: 'https://images.unsplash.com/photo-1595257841889-eca2678454e2?auto=format&fit=crop&crop=faces&w=400&h=400&q=80' },
+  { id: 'team-4', name: 'Noah Fitzgerald', role: 'Guest Experience Lead', img: 'https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&crop=faces&w=400&h=400&q=80' },
 ];
 
 const DEFAULT_HERO_SLIDES = [
-  { id: 'hero-slide-1', img: 'https://picsum.photos/seed/luxuryhotel/1920/1080.jpg' },
-  { id: 'hero-slide-2', img: 'https://picsum.photos/seed/hotellobby/1920/1080.jpg' },
-  { id: 'hero-slide-3', img: 'https://picsum.photos/seed/hotelpool/1920/1080.jpg' },
-  { id: 'hero-slide-4', img: 'https://picsum.photos/seed/luxurysuite/1920/1080.jpg' },
-  { id: 'hero-slide-5', img: 'https://picsum.photos/seed/hoteldining/1920/1080.jpg' },
+  { id: 'hero-slide-1', img: 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=1920&h=1080&q=80' },
+  { id: 'hero-slide-2', img: 'https://images.unsplash.com/photo-1625244724120-1fd1d34d00f6?auto=format&fit=crop&w=1920&h=1080&q=80' },
+  { id: 'hero-slide-3', img: 'https://images.unsplash.com/photo-1563911302283-d2bc129e7570?auto=format&fit=crop&w=1920&h=1080&q=80' },
+  { id: 'hero-slide-4', img: 'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=1920&h=1080&q=80' },
+  { id: 'hero-slide-5', img: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1920&h=1080&q=80' },
 ];
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• HOME PAGE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
@@ -3646,7 +3646,7 @@ function PromoShowcase({ promos, canEdit, onToast, onBook }) {
           <p className="promo-feature-desc" data-hms-category={featured.id + '-desc'} data-hms-stock={featured.desc}>{featured.desc}</p>
           <p className="promo-feature-terms" data-hms-category={featured.id + '-terms'} data-hms-stock={featured.terms}>{featured.terms}</p>
           <div className="promo-feature-actions">
-            <button type="button" className="btn-primary" data-hms-stock="Book This Offer" onClick={() => onBook && onBook()}>
+            <button type="button" className="btn-primary" data-hms-stock="Book This Offer" onClick={() => onBook && onBook(featured)}>
               Book This Offer <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
             </button>
           </div>
@@ -3740,7 +3740,7 @@ function HomePage({ sitePromos, onNavigate, onToast, rooms, menus, canEditRooms,
       category,
       price: 250,
       desc: 'Add a short description for this room.',
-      img: 'https://picsum.photos/seed/room' + Date.now() + '/800/600.jpg',
+      img: 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=800&h=600&q=80',
       amenities: [
         { icon: 'fa-bed', text: 'Bed' },
         { icon: 'fa-wifi', text: 'WiFi' },
@@ -3853,7 +3853,7 @@ function HomePage({ sitePromos, onNavigate, onToast, rooms, menus, canEditRooms,
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.85rem' }}>
           {bestSellerList(menuList).map(item => (
-            <div key={item.id || item.name} className="menu-card" style={{ position: 'relative', display: 'flex', gap: '0.85rem', padding: '0.85rem 1rem', border: '1px solid var(--border)', borderRadius: 12, background: 'var(--card)', alignItems: 'center' }}>
+            <div key={item.id || item.name} className="menu-card" data-hms-menu-card="1" style={{ position: 'relative', display: 'flex', gap: '0.85rem', padding: '0.85rem 1rem', border: '1px solid var(--border)', borderRadius: 12, background: 'var(--card)', alignItems: 'center' }}>
               {canEditMenuColor && (
                 <div style={{ position: 'absolute', top: 6, right: 6, zIndex: 3 }} data-hms-no-edit="1">
                   <CardColorButton kind="menu" label="Card colour (all menu cards)" />
@@ -4290,7 +4290,7 @@ function addonStepBtn(disabled) {
   };
 }
 
-function RoomDetailModal({ room, addons, capacity, guest, onClose, onChangeStatus, canEditStatus, canReserve, onReserve, onToast, onRequireGuest, stayFrom, stayTo }) {
+function RoomDetailModal({ room, addons, promos, chosenPromoId, capacity, guest, onClose, onChangeStatus, canEditStatus, canReserve, onReserve, onToast, onRequireGuest, stayFrom, stayTo }) {
   if (!room) return null;
   const status = normalizeRoomStatus(room.status);
   const [step, setStep] = useState('details');
@@ -4306,6 +4306,7 @@ function RoomDetailModal({ room, addons, capacity, guest, onClose, onChangeStatu
     checkIn: stayFrom || '',
     checkInTime: '',
     checkOut: stayTo || '',
+    promoId: chosenPromoId || '',
   });
 
   /* A guest who changes the dates on the page and opens another room gets the
@@ -4333,7 +4334,7 @@ function RoomDetailModal({ room, addons, capacity, guest, onClose, onChangeStatu
 
   useEffect(() => {
     setStep('details');
-    setGuestForm({ fullName: '', contactNo: '', email: '', idNumber: '', guestCount: '1', checkIn: '', checkInTime: '', checkOut: '' });
+    setGuestForm({ fullName: '', contactNo: '', email: '', idNumber: '', guestCount: '1', checkIn: '', checkInTime: '', checkOut: '', promoId: chosenPromoId || '' });
     setPaymentForm({ type: 'full', amount: '', method: 'Cash', reference: '', payerName: '', notes: '' });
     setAddonLines([]);
     setShowAddons(false);
@@ -4346,7 +4347,11 @@ function RoomDetailModal({ room, addons, capacity, guest, onClose, onChangeStatu
   }, [onClose]);
 
   const blocks = stayBlocks(guestForm.checkIn, guestForm.checkOut, guestForm.checkInTime);
-  const totalDue = blocks * (Number(room.price) || 0);
+  // sitePromos are already the live ones; a stay may use those running on its check-in day.
+  const promoChoices = (promos || []).filter(p => guestForm.checkIn && p.start_date <= guestForm.checkIn && guestForm.checkIn <= p.end_date);
+  const promo = promoChoices.find(p => String(p.dbId) === guestForm.promoId) || null;
+  // A promo is a package price for the whole stay (HotelBooking::totalDue).
+  const totalDue = promo ? promo.promo_price : blocks * (Number(room.price) || 0);
   // Check-out must be a later date than check-in — a same-day stay isn't a valid
   // booking here, so the day of check-in itself is not selectable on the calendar.
   const minCheckOut = addDays(guestForm.checkIn || today, 1);
@@ -4466,7 +4471,8 @@ function RoomDetailModal({ room, addons, capacity, guest, onClose, onChangeStatu
     };
 
     if (typeof onReserve === 'function') {
-      onReserve(room, { ...guestForm }, payment, addonLines);
+      // A promo picked before the check-in date moved off its run is dropped.
+      onReserve(room, { ...guestForm, promoId: promo ? String(promo.dbId) : '' }, payment, addonLines);
     } else if (onToast) {
       onToast(`Payment received for ${room.name}.`);
     }
@@ -4659,6 +4665,26 @@ function RoomDetailModal({ room, addons, capacity, guest, onClose, onChangeStatu
                   </div>
                 </div>
 
+                {/* Front Desk's promos running on the check-in day. Picking one books the
+                    stay at its package price; the server checks the same rule. */}
+                {promoChoices.length > 0 && (
+                  <div style={{ marginTop: '0.85rem' }}>
+                    <label style={fieldLabel}>Promo / Package (optional)</label>
+                    <select className="booking-input" value={guestForm.promoId}
+                      onChange={e => updateGuest('promoId', e.target.value)}>
+                      <option value="">No promo, regular room rate</option>
+                      {promoChoices.map(p => (
+                        <option key={p.dbId} value={String(p.dbId)}>{p.name} · {formatPeso(p.promo_price)}</option>
+                      ))}
+                    </select>
+                    {promo && (
+                      <p style={{ margin: '0.4rem 0 0', fontSize: '0.75rem', color: 'var(--fg-muted)', lineHeight: 1.5 }}>
+                        {promo.description} Package price: {formatPeso(promo.promo_price)} for the whole stay.
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {/* Housekeeping's add-ons. Inline rather than a second overlay — the modal
                     already scrolls, and a nested dialog over a dialog reads badly. */}
                 <button type="button" onClick={() => setShowAddons(v => !v)}
@@ -4732,7 +4758,7 @@ function RoomDetailModal({ room, addons, capacity, guest, onClose, onChangeStatu
               <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.9rem 1rem', marginBottom: '1.15rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.35rem' }}>
                   <span style={{ color: 'var(--fg-muted)', fontSize: '0.8rem' }}>
-                    {blocks} × {BLOCK_HOURS} hrs × {formatPeso(room.price)}
+                    {promo ? `${promo.name} package` : `${blocks} × ${BLOCK_HOURS} hrs × ${formatPeso(room.price)}`}
                   </span>
                   <strong style={{ color: 'var(--accent-light)', fontFamily: 'Playfair Display, serif', fontSize: '1.15rem' }}>{formatPeso(totalDue)}</strong>
                 </div>
@@ -5435,7 +5461,7 @@ function CategoryDetailModal({ open, name, detail, roomsIn, checkIn, checkOut, o
   );
 }
 
-function RoomsPage({ onNavigate, onToast, rooms, addons, categories, canEditRooms, canManageRooms, canReserveRooms, onAddRoom, onAddCategory, onRenameCategory, onUpdateCategory, categoryDetails, onEditRoom, onRemoveRoom, onCreateBooking, onRefreshAddons, onOpenRoomManagement, onRequireGuest, guest }) {
+function RoomsPage({ onNavigate, onToast, rooms, addons, categories, canEditRooms, canManageRooms, canReserveRooms, onAddRoom, onAddCategory, onRenameCategory, onUpdateCategory, categoryDetails, onEditRoom, onRemoveRoom, onCreateBooking, onRefreshAddons, onOpenRoomManagement, onRequireGuest, guest, promos, chosenPromoId }) {
   const list = rooms && rooms.length ? rooms : [];
   // Front Desk lands on "All" so every room Room Management created is visible on
   // one screen; the category tabs stay for narrowing it down.
@@ -5517,7 +5543,7 @@ function RoomsPage({ onNavigate, onToast, rooms, addons, categories, canEditRoom
       status: 'Available',
       price: 250,
       desc: 'Add a short description for this room.',
-      img: 'https://picsum.photos/seed/room' + Date.now() + '/800/600.jpg',
+      img: 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=800&h=600&q=80',
       amenities: [
         { icon: 'fa-bed', text: 'Bed' },
         { icon: 'fa-wifi', text: 'WiFi' },
@@ -5867,6 +5893,8 @@ function RoomsPage({ onNavigate, onToast, rooms, addons, categories, canEditRoom
       <RoomDetailModal
         room={selectedRoom}
         addons={addons}
+        promos={promos}
+        chosenPromoId={chosenPromoId}
         stayFrom={checkIn}
         stayTo={checkOut}
         onClose={() => setSelectedRoomId(null)}
@@ -6004,6 +6032,93 @@ function MenuDetailModal({ item, onClose, canOrder, onAddToCart, onToast }) {
    many are coming, then one of the free tables big enough for them. The table is held
    for them exactly as when Front Desk reserves it, and the restaurant seats them when
    they arrive. Who they are comes from their account, so the form does not ask. */
+/* The signed-in guest's stays, matched to their account by email (HotelGuestStay).
+   Read-only: changes go through the front desk. Loaded each time it opens, so a
+   booking just made is already on it. */
+function MyBookingsModal({ open, onClose }) {
+  const [bookings, setBookings] = useState(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!open) return;
+    setBookings(null);
+    setError('');
+    const url = (window.__HMS_HOTEL_AUTH_ROUTES__ || {}).myBookings;
+    if (!url) { setBookings([]); return; }
+    fetch(url, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+      .then(r => (r.ok ? r.json() : Promise.reject()))
+      .then(data => setBookings(Array.isArray(data.bookings) ? data.bookings : []))
+      .catch(() => { setBookings([]); setError('Your bookings could not be loaded. Please try again.'); });
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  const muted = { color: 'var(--fg-muted)', fontSize: '0.82rem', lineHeight: 1.6, margin: 0 };
+
+  return (
+    <div className="room-modal-overlay" data-hms-no-edit="1" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="room-modal" onClick={e => e.stopPropagation()}>
+        <div style={{ padding: '1.5rem 1.5rem 1.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1.1rem' }}>
+            <div>
+              <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Your Account</p>
+              <h2 className="font-display" style={{ fontSize: '1.55rem', margin: 0 }}>My Bookings</h2>
+            </div>
+            <button type="button" onClick={onClose} aria-label="Close"
+              style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--fg)', cursor: 'pointer', flexShrink: 0 }}>
+              <i className="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+
+          {bookings === null ? (
+            <p style={muted}>Loading your bookings…</p>
+          ) : error ? (
+            <p role="alert" style={{ color: '#f08a99', fontSize: '0.82rem', margin: 0 }}>{error}</p>
+          ) : bookings.length === 0 ? (
+            <p style={muted}>
+              You have no bookings yet. Rooms you book show here. Bookings are matched to your
+              account by email, so use the same email when you book.
+            </p>
+          ) : (
+            <div style={{ display: 'grid', gap: '0.75rem' }}>
+              {bookings.map(b => (
+                <div key={b.reference} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.9rem 1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
+                    <strong style={{ color: 'var(--fg)', fontSize: '0.95rem' }}>
+                      {b.roomName || 'Room'}{b.roomCategory ? ' · ' + b.roomCategory : ''}
+                    </strong>
+                    <span style={{ flexShrink: 0, fontSize: '0.68rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--accent)', border: '1px solid var(--border)', borderRadius: 999, padding: '0.15rem 0.6rem' }}>
+                      {b.status}
+                    </span>
+                  </div>
+                  <p style={Object.assign({}, muted, { marginTop: '0.35rem' })}>
+                    {formatCheckIn(b.checkIn, b.checkInTime)} — {b.checkOut || '—'}
+                    {b.guestCount ? ` · ${b.guestCount} guest${b.guestCount === 1 ? '' : 's'}` : ''}
+                  </p>
+                  {b.promoName && (
+                    <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: 'var(--accent)' }}>{b.promoName} package</p>
+                  )}
+                  <p style={Object.assign({}, muted, { marginTop: '0.5rem', color: 'var(--fg)' })}>
+                    Total {formatPeso(b.total)} · Paid {formatPeso(b.amountPaid)} · Balance {formatPeso(b.balance)}
+                  </p>
+                  <p style={Object.assign({}, muted, { fontSize: '0.72rem', marginTop: '0.25rem' })}>Booking #{b.reference}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TableReserveModal({ open, onClose, guest, onToast }) {
   // The hotel's calendar day, not the browser's or the server's (UTC).
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
@@ -7665,14 +7780,13 @@ function FacilityCardSlides({ shots, name, offset, seconds, changed }) {
 /* Every photograph of a facility, primary first.
 
    The server sends the list ready-made (HotelAmenity::imageUrls); the single img
-   is the fallback for a row saved before galleries existed, and the seeded
-   stand-in the last resort, so a card is never an empty frame. */
+   is the fallback for a row saved before galleries existed, and a stock
+   photograph the last resort, so a card is never an empty frame. */
 function amenityShots(item) {
   const list = (item && Array.isArray(item.images) ? item.images : []).filter(Boolean);
   if (list.length) return list;
   if (item && item.img) return [item.img];
-  const seed = encodeURIComponent((item && (item.id || item.name)) || 'amenity');
-  return ['https://picsum.photos/seed/amenity-' + seed + '/900/600.jpg'];
+  return ['https://images.unsplash.com/photo-1621293954908-907159247fc8?auto=format&fit=crop&w=900&h=600&q=80'];
 }
 
 /* The three slots as an editor works them: a fixed-length list, so slot 2 stays
@@ -8731,11 +8845,14 @@ function App() {
   const [guestAuth, setGuestAuth] = useState(() => window.__HMS_HOTEL_AUTH__ || { authenticated: false });
   const [guestAuthModal, setGuestAuthModal] = useState(null);
   const [tableReserveOpen, setTableReserveOpen] = useState(false);
+  const [myBookingsOpen, setMyBookingsOpen] = useState(false);
   const pendingGuestAction = useRef(null);
   const [canOrderMenu, setCanOrderMenu] = useState(false);
   const [addons, setAddons] = useState([]);
   const [amenities, setAmenities] = useState([]);
   const [sitePromos, setSitePromos] = useState(null);
+  // The promo whose Book This Offer the guest pressed, picked for them in the booking form.
+  const [chosenPromoId, setChosenPromoId] = useState('');
   // How long each amenity photograph is held. Saved per team, so it is read
   // from the customizations rather than fixed here.
   const [amenitySlideSeconds, setAmenitySlideSecondsState] = useState(readAmenitySlideSeconds);
@@ -9284,6 +9401,7 @@ function App() {
         check_in_time: guest.checkInTime || '',
         guest_count: parseInt(guest.guestCount, 10) || null,
         check_out: guest.checkOut,
+        promo_id: guest.promoId ? Number(guest.promoId) : null,
         payment: payment ? {
           type: payment.type,
           amount_paid: payment.amountPaid,
@@ -9300,6 +9418,7 @@ function App() {
       .then(r => r.json().then(data => (r.ok ? data : Promise.reject(data))))
       .then(data => {
         if (data && data.room) setRooms(prev => prev.map(r => (r.id === data.room.id ? data.room : r)));
+        setChosenPromoId('');
         return data && data.booking;
       })
       .catch(err => {
@@ -9622,8 +9741,8 @@ function App() {
         onRenamePartner={renamePartner}
         onRemovePartner={removePartner}
         experiences={experiences}
-        onBookNow={() => requireGuest(
-          () => navigateTo('rooms'),
+        onBookNow={(promo) => requireGuest(
+          () => { setChosenPromoId(promo && promo.dbId ? String(promo.dbId) : ''); navigateTo('rooms'); },
           'Sign in to book a room. It takes a moment, and you will come straight back.'
         )}
         onAddRoom={addRoom}
@@ -9652,6 +9771,8 @@ function App() {
         onEditRoom={editRoom}
         onRemoveRoom={removeRoom}
         onCreateBooking={createBooking}
+        promos={sitePromos || []}
+        chosenPromoId={chosenPromoId}
         onRefreshAddons={fetchAddons}
         onOpenRoomManagement={openRoomManagement}
         onRequireGuest={(action) => requireGuest(
@@ -9838,6 +9959,7 @@ function App() {
         guest={guestAuth}
         onGuestSignIn={() => setGuestAuthModal({ mode: 'signin', notice: null })}
         onGuestSignOut={guestSignOut}
+        onMyBookings={() => setMyBookingsOpen(true)}
         guestTexts={guestTexts}
         canEditGuestAuth={canEditBrandName}
       />
@@ -9863,6 +9985,7 @@ function App() {
         texts={guestTexts}
       />
       <TableReserveModal open={tableReserveOpen} onClose={() => setTableReserveOpen(false)} guest={guestAuth} onToast={showToast} />
+      <MyBookingsModal open={myBookingsOpen} onClose={() => setMyBookingsOpen(false)} />
       <SiteTheme colors={siteColors} type={typography} />
       <SiteColorsModal
         open={cardColorKind === 'site'}

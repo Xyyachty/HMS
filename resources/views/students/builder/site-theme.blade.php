@@ -12,9 +12,14 @@
      The top bar and the left sidebar are deliberately left out: they are the
      system's own chrome, the same on every team's screen, and recolouring them
      made the hotel's colour read as the application's. Only the working area
-     below and beside them follows the hotel. --}}
+     below and beside them follows the hotel.
+
+     The palette block is html:root[...] (0,2,1), not html[...] (0,1,1): the
+     Template 2 pages declare theirs as :root[data-ops-theme="2"] (0,2,0), which
+     beat the plain selector, so the background followed the hotel while the text
+     kept Template 2's near-black and vanished on a dark background. --}}
 <style>
-    html[data-ops-site-themed] {
+    html:root[data-ops-site-themed] {
         --bg: {{ $p['bg'] }};
         --bg-warm: {{ $p['warm'] }};
         --bg-alt: {{ $p['warm'] }};
@@ -23,6 +28,7 @@
         --fg: {{ $p['fg'] }};
         --fg-muted: {{ $p['muted'] }};
         --accent: {{ $p['accent'] }};
+        --accent-light: {{ $p['accent'] }};
     }
     html[data-ops-site-themed] body { background: {{ $p['bg'] }}; color: {{ $p['fg'] }}; }
     html[data-ops-site-themed] .content-bg,

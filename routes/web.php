@@ -140,6 +140,8 @@ Route::prefix('hotel')->name('public.hotel')->group(function () {
         ->name('.auth.login');
     Route::post('/{slug}/api/auth/logout', [\App\Http\Controllers\HotelSimulationAuthController::class, 'logout'])
         ->name('.auth.logout');
+    Route::get('/{slug}/api/auth/my-bookings', [\App\Http\Controllers\HotelSimulationAuthController::class, 'myBookings'])
+        ->name('.auth.my-bookings');
 
     // Facilities, booked by the guest reading the page. Both refuse anyone who is
     // not signed into this hotel, and both write, so both are throttled.
@@ -974,6 +976,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
     Route::post('/hotel-auth/customer/signup', [\App\Http\Controllers\HotelSimulationAuthController::class, 'customerSignup'])->name('hotel-auth.customer.signup');
     Route::post('/hotel-auth/customer/login', [\App\Http\Controllers\HotelSimulationAuthController::class, 'customerLogin'])->name('hotel-auth.customer.login');
     Route::post('/hotel-auth/logout', [\App\Http\Controllers\HotelSimulationAuthController::class, 'logout'])->name('hotel-auth.logout');
+    Route::get('/hotel-auth/my-bookings', [\App\Http\Controllers\HotelSimulationAuthController::class, 'myBookings'])->name('hotel-auth.my-bookings');
 
     // Hotel website template builder (per role, team-synced)
     Route::get('/templates/{role}', [HotelTemplateController::class, 'show'])->name('templates.show');
@@ -1771,6 +1774,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             'addons'             => 'nullable|array',
             'addons.*.addon_id'  => 'required|integer',
             'addons.*.qty'       => 'required|integer|min:1|max:99',
+            'promo_id'           => 'nullable|integer',
             // A walk-in: the guest is standing at the desk, so the booking is
             // taken and marked Arrived in one go. Room Management still hands
             // the room over (check_in), the same as for any other arrival.
@@ -1834,6 +1838,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
                         'guest_count'   => $data['guest_count'] ?? null,
                         'booked_by'     => auth()->user()?->name,
                         'notes'         => $data['notes'] ?? null,
+                        'promo_id'      => $data['promo_id'] ?? null,
                     ],
                     $data['payment'] ?? null,
                     $data['addons'] ?? []
@@ -1848,8 +1853,9 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
         } catch (\App\Exceptions\BookingOverlapException $e) {
             return response()->json(['message' => 'Those dates are already booked for this room.'], 409);
         } catch (\RuntimeException $e) {
-            // An add-on ran out between the picker rendering and this request. The whole
-            // reservation rolled back, so there is no half-booked stay to clean up.
+            // An add-on ran out between the picker rendering and this request, or the
+            // promo is not running then. The whole reservation rolled back, so there is
+            // no half-booked stay to clean up.
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
@@ -2865,6 +2871,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
                 'guestName' => $booking->guest?->full_name ?: 'Guest',
                 'roomName'  => $booking->room?->name ?? '',
                 'contactNo' => $booking->guest?->contact_no ?? '',
+                'email'     => $booking->guest?->email ?? '',
             ])
             ->values();
 

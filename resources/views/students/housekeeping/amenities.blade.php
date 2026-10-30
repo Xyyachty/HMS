@@ -346,12 +346,11 @@ function hmsCsrfToken() {
   return meta ? meta.content : '';
 }
 
-/* No stored image means a stable stand-in rather than an empty box — the same
-   deterministic seed the add-ons, rooms and menu screens use. */
+/* No stored image means a stable stand-in rather than an empty box — a stock
+   hotel photograph. */
 function amenityImg(amenity) {
   if (amenity && amenity.img) return amenity.img;
-  const seed = encodeURIComponent((amenity && (amenity.id || amenity.name)) || 'amenity');
-  return 'https://picsum.photos/seed/amenity-' + seed + '/800/600.jpg';
+  return 'https://images.unsplash.com/photo-1621293954908-907159247fc8?auto=format&fit=crop&w=800&h=600&q=80';
 }
 
 function formatDay(iso) {

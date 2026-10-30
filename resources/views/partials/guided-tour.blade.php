@@ -65,8 +65,8 @@
         ];
         $simulationText = [
             'front_desk' => 'Front Desk: book walk-in guests, check guests in, and handle room service, dining tables, amenities, promos and guest complaints.',
-            'room_management' => 'Room & Maintenance: keep rooms ready and their status up to date, and fix problems guests report.',
-            'housekeeping' => 'Housekeeping: inspect rooms, look after amenities and add-ons, and answer guest complaints.',
+            'room_management' => 'Room & Housekeeping: keep rooms ready and their status up to date, inspect rooms, and look after amenities and add-ons.',
+            'maintenance' => 'Maintenance: fix problems guests report.',
             'restaurant_management' => 'Restaurant Services: run the menu, food orders and dining tables.',
         ];
         $tourCustomize = implode(' ', array_values(array_intersect_key($customizeText, array_flip($tourRoles))));

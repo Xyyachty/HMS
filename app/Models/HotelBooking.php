@@ -62,12 +62,17 @@ class HotelBooking extends Model
         'cancelled_at',
         'booked_by',
         'notes',
+        'promo_name',
+        'promo_price',
+        'promo_blocks',
     ];
 
     protected $casts = [
         'check_in'       => 'date',
         'check_out'      => 'date',
         'room_rate'      => 'integer',
+        'promo_price'    => 'integer',
+        'promo_blocks'   => 'integer',
         'guest_count'    => 'integer',
         'reserved_at'    => 'datetime',
         'arrived_at'     => 'datetime',
@@ -222,9 +227,17 @@ class HotelBooking extends Model
      * The room charge alone. Deliberately excludes room service: the payments taken at
      * booking time recorded their balance against this figure, and moving it would
      * rewrite what those receipts said the guest still owed.
+     *
+     * A stay booked under a promo pays the package price for the blocks it was booked
+     * for; any block added after that is charged at the room rate.
      */
     public function totalDue(): float
     {
+        if ($this->promo_price !== null) {
+            return $this->promo_price
+                + max(0, $this->stayBlocks() - (int) $this->promo_blocks) * (float) $this->room_rate;
+        }
+
         return $this->stayBlocks() * (float) $this->room_rate;
     }
 
@@ -289,6 +302,8 @@ class HotelBooking extends Model
             'checkOut'      => optional($this->check_out)->toDateString(),
             'guestCount'    => $this->guest_count,
             'roomRate'      => (int) $this->room_rate,
+            'promoName'     => $this->promo_name ?? '',
+            'promoPrice'    => $this->promo_price,
             'totalDue'      => $this->totalDue(),
             'amountPaid'    => $this->amountPaid(),
             'balance'       => max(0, $this->totalDue() - $this->amountPaid()),
@@ -309,6 +324,28 @@ class HotelBooking extends Model
             'notes'         => $this->notes ?? '',
             'payment'       => $payment?->toTemplateArray(),
             'payments'      => $this->payments->map->toTemplateArray()->values()->all(),
+        ];
+    }
+
+    /**
+     * One stay as its guest sees it on My Bookings. Narrower than
+     * toReservationArray(): no ID number, no staff notes, no who-booked-it.
+     */
+    public function toGuestArray(): array
+    {
+        return [
+            'reference'   => $this->hotel_booking_id,
+            'status'      => $this->status,
+            'roomName'    => $this->room?->name ?? '',
+            'roomCategory'=> $this->room?->category ?? '',
+            'checkIn'     => optional($this->check_in)->toDateString(),
+            'checkInTime' => $this->check_in_time ?? '',
+            'checkOut'    => optional($this->check_out)->toDateString(),
+            'guestCount'  => $this->guest_count,
+            'promoName'   => $this->promo_name ?? '',
+            'total'       => $this->grandTotal(),
+            'amountPaid'  => $this->amountPaid(),
+            'balance'     => $this->outstanding(),
         ];
     }
 
@@ -346,6 +383,8 @@ class HotelBooking extends Model
                 'blocks'    => $this->stayBlocks(),
                 'blockHours'=> self::BLOCK_HOURS,
                 'rate'      => (int) $this->room_rate,
+                // Set when the stay was booked under a promo; the subtotal is then its price.
+                'promo'     => $this->promo_name,
                 'subtotal'  => $this->totalDue(),
             ],
 
