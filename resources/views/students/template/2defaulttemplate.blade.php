@@ -2337,10 +2337,8 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, capacity: roomCa
   };
 
   const addonList = Array.isArray(addons) ? addons : [];
-  /* Each extra bed taken with the stay sleeps one more guest (HotelAddon::isExtraBed).
-     Staff booking only: the published site's booking does not take add-ons
-     (PublicSiteController::book), so a bed picked there cannot raise the limit. */
-  const hasBedAddon = !window.__HMS_PUBLIC__ && addonList.some(a => a.extraBed);
+  // Each extra bed taken with the stay sleeps one more guest (HotelAddon::isExtraBed).
+  const hasBedAddon = addonList.some(a => a.extraBed);
   const extraBeds = !hasBedAddon ? 0 : addonLines.reduce((n, l) => n + (addonList.some(a => a.dbId === l.dbId && a.extraBed) ? l.qty : 0), 0);
   const capacity = roomCapacity ? roomCapacity + extraBeds : roomCapacity;
   const addonQty = (dbId) => {

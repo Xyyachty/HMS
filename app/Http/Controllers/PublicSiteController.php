@@ -438,14 +438,18 @@ class PublicSiteController extends Controller
             'promo_id'         => 'nullable|integer',
             // The guest's online payment, full or a deposit. In the Simulation nothing is
             // charged: it is recorded against the stay like a payment at the desk, never
-            // for more than the room costs. 'addons' stay absent: anything sent under
-            // that key is not read and never reaches HotelBookingDesk.
+            // for more than the room costs.
             'payment'             => 'nullable|array',
             'payment.type'        => 'nullable|string|max:20',
             'payment.amount_paid' => 'nullable|numeric|min:0',
             'payment.method'      => 'nullable|string|max:50',
             'payment.reference'   => 'nullable|string|max:255',
             'payment.payer_name'  => 'nullable|string|max:255',
+            // Housekeeping's extras the guest picked, held for the stay the same way Front
+            // Desk's are; an extra bed lets the room sleep one more (HotelBookingDesk::reserve).
+            'addons'              => 'nullable|array|max:20',
+            'addons.*.addon_id'   => 'required|integer',
+            'addons.*.qty'        => 'required|integer|min:1|max:10',
         ]);
 
         $room = HotelRoom::where('hotel_room_id', $data['room_id'])
@@ -507,8 +511,9 @@ class PublicSiteController extends Controller
                         'booked_by'     => 'Online · ' . $guestName,
                         'notes'         => $data['notes'] ?? null,
                         'promo_id'      => $data['promo_id'] ?? null,
-                    ]
-                    // No $addons — the default is [].
+                    ],
+                    null,
+                    $data['addons'] ?? []
                 );
 
                 // Priced off the stay just written, so a guest can never record more than it costs.
