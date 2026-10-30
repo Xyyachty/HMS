@@ -1155,7 +1155,7 @@
         <img src="{{ asset('new_logo_in_chtm....png') }}" alt="College of Hospitality and Tourism Management logo" />
         <div>
           <p>College of Hospitality &amp; Tourism Management</p>
-          <span>SPC Hotel Simulation System</span>
+          <span>SPC Hotel Customization and Simulation System</span>
         </div>
       </div>
       <p class="footer__meta">
