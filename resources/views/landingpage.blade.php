@@ -822,11 +822,11 @@
       flex-wrap: wrap;
     }
     .footer__brand { display: flex; align-items: center; gap: 12px; }
-    .footer__brand img { height: 36px; width: auto; object-fit: contain; }
-    .footer__brand p { margin: 0; font-size: .68rem; font-weight: 700; color: var(--wine-800); }
-    .footer__brand span { display: block; margin-top: 2px; font-size: .64rem; font-weight: 500; color: var(--ink-muted); }
-    .footer__meta { margin: 0; font-size: .66rem; line-height: 1.7; color: var(--ink-muted); }
-    .footer__note { margin: 0; font-size: .66rem; font-weight: 700; color: var(--ink-soft); }
+    .footer__brand img { height: 42px; width: auto; object-fit: contain; }
+    .footer__brand p { margin: 0; font-size: .82rem; font-weight: 700; color: var(--wine-800); }
+    .footer__brand span { display: block; margin-top: 2px; font-size: .76rem; font-weight: 500; color: var(--ink-muted); }
+    .footer__meta { margin: 0; font-size: .8rem; line-height: 1.7; color: var(--ink-muted); }
+    .footer__note { margin: 0; font-size: .8rem; font-weight: 700; color: var(--ink-soft); }
 
     /* ---------- Responsive ------------------------------------------------ */
     /* 901-1200px had no hero rule: columns stayed 1fr 1fr while the title was
@@ -1160,6 +1160,7 @@
       </div>
       <p class="footer__meta">
         &copy; {{ date('Y') }} Southern de Oro Philippines College. All rights reserved.<br />
+        Capstone Project<br />
         Developed by: Jun Alexes Orao and Xyron Sandigan
       </p>
       <p class="footer__note">For educational purposes only</p>
