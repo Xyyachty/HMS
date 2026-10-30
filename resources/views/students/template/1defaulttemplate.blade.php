@@ -3853,7 +3853,7 @@ function HomePage({ sitePromos, onNavigate, onToast, rooms, menus, canEditRooms,
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.85rem' }}>
           {bestSellerList(menuList).map(item => (
-            <div key={item.id || item.name} className="menu-card" style={{ position: 'relative', display: 'flex', gap: '0.85rem', padding: '0.85rem 1rem', border: '1px solid var(--border)', borderRadius: 12, background: 'var(--card)', alignItems: 'center' }}>
+            <div key={item.id || item.name} className="menu-card" data-hms-menu-card="1" style={{ position: 'relative', display: 'flex', gap: '0.85rem', padding: '0.85rem 1rem', border: '1px solid var(--border)', borderRadius: 12, background: 'var(--card)', alignItems: 'center' }}>
               {canEditMenuColor && (
                 <div style={{ position: 'absolute', top: 6, right: 6, zIndex: 3 }} data-hms-no-edit="1">
                   <CardColorButton kind="menu" label="Card colour (all menu cards)" />

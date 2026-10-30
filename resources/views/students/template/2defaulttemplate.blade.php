@@ -5136,7 +5136,7 @@ function HomePage({ sitePromos, onNav, onToast, rooms, menus, canEditRooms, onAd
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.85rem' }}>
           {bestSellerList(menuList).map(item => (
-            <div key={item.id || item.name} className="menu-item" style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center' }}>
+            <div key={item.id || item.name} className="menu-item" data-hms-menu-card="1" style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center' }}>
               <img src={menuFoodImg(item)} alt={item.name} loading="lazy" style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{item.name}</span>
