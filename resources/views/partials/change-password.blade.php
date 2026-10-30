@@ -7,6 +7,7 @@
     @csrf
     @method('PUT')
     <div class="pf-mhead">
+        <span class="pf-mhead-mark" aria-hidden="true"><span class="iconify" data-icon="mdi:shield-lock-outline"></span></span>
         <span class="pf-icon"><span class="iconify" data-icon="mdi:lock-reset"></span></span>
         <div>
             <p class="pf-h" id="pfPasswordTitle">Change Password</p>
@@ -37,21 +38,31 @@
             </script>
         @endif
 
+        {{-- Two steps, each ticked green once its part is filled in (see the script below). --}}
         @foreach ([
-            ['current_password', 'Current password', 'current-password'],
-            ['password', 'New password', 'new-password'],
-            ['password_confirmation', 'Confirm new password', 'new-password'],
-        ] as [$pwField, $pwLabel, $pwAutocomplete])
-            @if ($pwField === 'password')
-                <div class="pf-split"></div>
-            @endif
+            [1, 'Verify your identity', 'Enter the password you use to sign in now.', [
+                ['current_password', 'Current password', 'current-password', 'Enter your current password'],
+            ]],
+            [2, 'Choose a new password', '8 or more characters. Mix letters, numbers and symbols to make it strong.', [
+                ['password', 'New password', 'new-password', 'At least 8 characters'],
+                ['password_confirmation', 'Confirm new password', 'new-password', 'Type the new password again'],
+            ]],
+        ] as [$pwStep, $pwStepTitle, $pwStepHint, $pwFields])
+        <section class="pf-step" data-pw-step="{{ $pwStep }}">
+            <div class="pf-step-head">
+                <span class="pf-step-n">{{ $pwStep }}</span>
+                <div>
+                    <b>{{ $pwStepTitle }}</b>
+                    <span>{{ $pwStepHint }}</span>
+                </div>
+            </div>
+        @foreach ($pwFields as [$pwField, $pwLabel, $pwAutocomplete, $pwPlaceholder])
             <div class="pf-field">
                 <label for="pw_{{ $pwField }}">{{ $pwLabel }}</label>
                 <div class="pf-input has-lead has-eye">
                     <span class="pf-lead"><span class="iconify" data-icon="{{ $pwField === 'current_password' ? 'mdi:lock-outline' : 'mdi:key-outline' }}"></span></span>
-                    <input id="pw_{{ $pwField }}" name="{{ $pwField }}" type="password" autocomplete="{{ $pwAutocomplete }}"
-                        @if ($pwField !== 'current_password') minlength="8" @endif
-                        @if ($loop->first) autofocus @endif
+                    <input id="pw_{{ $pwField }}" name="{{ $pwField }}" type="password" autocomplete="{{ $pwAutocomplete }}" placeholder="{{ $pwPlaceholder }}"
+                        @if ($pwField !== 'current_password') minlength="8" @else autofocus @endif
                         required>
                     {{-- Show / hide this one field. The icons sit in wrappers because
                          Iconify swaps each span for an svg; the wrappers are what toggle. --}}
@@ -65,13 +76,23 @@
                     <p class="pf-err">{{ $pwErrors->first($pwField) }}</p>
                 @endif
             </div>
+            @if ($pwField === 'password')
+                {{-- A guide only: the server still enforces just the 8-character minimum. --}}
+                <div class="pf-meter" data-pw-meter data-level="0">
+                    <div class="pf-meter-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+                    <span class="pf-meter-label" aria-live="polite"></span>
+                </div>
+            @endif
         @endforeach
-
-        <ul class="pf-rules" aria-live="polite">
-            <li data-pw-rule="length">At least 8 characters</li>
-            <li data-pw-rule="different">Different from your current password</li>
-            <li data-pw-rule="match">Both new passwords match</li>
-        </ul>
+        @if ($pwStep === 2)
+            <ul class="pf-rules" aria-live="polite">
+                <li data-pw-rule="length">At least 8 characters</li>
+                <li data-pw-rule="different">Different from your current password</li>
+                <li data-pw-rule="match">Both new passwords match</li>
+            </ul>
+        @endif
+        </section>
+        @endforeach
     </div>
     <div class="pf-mfoot">
         <button type="button" class="pf-btn is-ghost" onclick="this.closest('dialog').close()">Cancel</button>
@@ -82,8 +103,8 @@
     </div>
 </form>
 <script>
-    // Tick the rules off as they are met, and stop a mismatched confirmation
-    // before it goes to the server.
+    // Tick the rules and steps off as they are met, rate the new password, and
+    // stop a mismatched confirmation before it goes to the server.
     (function () {
         const form = document.getElementById('change-password');
         if (!form) return;
@@ -93,8 +114,24 @@
             different: () => next.value !== '' && next.value !== current.value,
             match: () => confirm.value !== '' && confirm.value === next.value,
         };
+        const meter = form.querySelector('[data-pw-meter]');
+        const labels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
+        // 1 for any 8+ characters, plus one each for mixed case, a digit, a symbol and 12+ characters, capped at 4.
+        const strength = v => !v ? 0 : v.length < 8 ? 1 : Math.min(4, 1 + [
+            /[a-z]/.test(v) && /[A-Z]/.test(v), /\d/.test(v), /[^A-Za-z0-9]/.test(v), v.length >= 12,
+        ].filter(Boolean).length);
         form.addEventListener('input', function () {
-            form.querySelectorAll('[data-pw-rule]').forEach(li => li.classList.toggle('is-ok', rules[li.dataset.pwRule]()));
+            let allOk = true;
+            form.querySelectorAll('[data-pw-rule]').forEach(li => {
+                const ok = rules[li.dataset.pwRule]();
+                li.classList.toggle('is-ok', ok);
+                allOk = allOk && ok;
+            });
+            form.querySelector('[data-pw-step="1"]').classList.toggle('is-done', current.value !== '');
+            form.querySelector('[data-pw-step="2"]').classList.toggle('is-done', allOk);
+            const level = strength(next.value);
+            meter.dataset.level = level;
+            meter.querySelector('.pf-meter-label').textContent = level === 1 && next.value.length < 8 ? 'Too short' : labels[level];
             confirm.setCustomValidity(confirm.value && confirm.value !== next.value ? 'The new passwords do not match.' : '');
         });
     })();
