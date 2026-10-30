@@ -6045,6 +6045,8 @@ function MenuDetailModal({ item, onClose, canOrder, onAddToCart, onToast }) {
 function MyBookingsModal({ open, onClose }) {
   const [bookings, setBookings] = useState(null);
   const [error, setError] = useState('');
+  // The booking whose charges are spelled out.
+  const [openRef, setOpenRef] = useState(null);
 
   useEffect(() => {
     if (!open) return;
@@ -6115,6 +6117,39 @@ function MyBookingsModal({ open, onClose }) {
                   <p style={Object.assign({}, muted, { marginTop: '0.5rem', color: 'var(--fg)' })}>
                     Total {formatPeso(b.total)} · Paid {formatPeso(b.amountPaid)} · Balance {formatPeso(b.balance)}
                   </p>
+                  {/* The whole bill: the room, every dish ordered to it, extras and other
+                      charges, and what has been paid - the same figures Front Desk settles. */}
+                  <button type="button" onClick={() => setOpenRef(openRef === b.reference ? null : b.reference)}
+                    aria-expanded={openRef === b.reference}
+                    style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: '0.75rem', padding: '0.45rem 0 0' }}>
+                    <i className={'fa-solid ' + (openRef === b.reference ? 'fa-chevron-up' : 'fa-receipt')} style={{ fontSize: '0.65rem', marginRight: 5 }}></i>
+                    {openRef === b.reference ? 'Hide charges' : 'See all charges'}
+                  </button>
+                  {openRef === b.reference && (
+                    <div style={{ marginTop: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '0.5rem' }}>
+                      {(b.charges || []).map((c, i) => (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.8rem', padding: '0.2rem 0' }}>
+                          <span style={{ color: 'var(--fg-muted)' }}>
+                            <i className={'fa-solid ' + ({ room: 'fa-bed', food: 'fa-utensils', addon: 'fa-bell-concierge' }[c.kind] || 'fa-receipt')}
+                              style={{ width: 16, color: 'var(--accent)', fontSize: '0.7rem' }}></i> {c.label}
+                          </span>
+                          <span style={{ color: 'var(--fg)', whiteSpace: 'nowrap' }}>{formatPeso(c.amount)}</span>
+                        </div>
+                      ))}
+                      {(b.payments || []).map((p, i) => (
+                        <div key={'p' + i} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.8rem', padding: '0.2rem 0' }}>
+                          <span style={{ color: 'var(--fg-muted)' }}>
+                            <i className="fa-solid fa-money-bill-wave" style={{ width: 16, color: 'var(--accent)', fontSize: '0.7rem' }}></i> {p.type} payment{p.method ? ' · ' + p.method : ''}
+                          </span>
+                          <span style={{ color: 'var(--fg)', whiteSpace: 'nowrap' }}>− {formatPeso(p.amount)}</span>
+                        </div>
+                      ))}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.85rem', padding: '0.4rem 0 0', marginTop: '0.3rem', borderTop: '1px dashed var(--border)', fontWeight: 600 }}>
+                        <span style={{ color: 'var(--fg)' }}>Balance</span>
+                        <span style={{ color: b.balance > 0 ? '#f08a99' : 'var(--accent)' }}>{formatPeso(b.balance)}</span>
+                      </div>
+                    </div>
+                  )}
                   <p style={Object.assign({}, muted, { fontSize: '0.72rem', marginTop: '0.25rem' })}>Booking #{b.reference}</p>
                 </div>
               ))}

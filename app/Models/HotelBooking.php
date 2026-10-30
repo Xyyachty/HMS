@@ -352,7 +352,52 @@ class HotelBooking extends Model
             'total'       => $this->grandTotal(),
             'amountPaid'  => $this->amountPaid(),
             'balance'     => $this->outstanding(),
+            'charges'     => $this->guestChargeLines(),
+            'payments'    => $this->payments->sortBy('paid_at')->map(fn (HotelBookingPayment $p) => [
+                'type'   => $p->type,
+                'method' => $p->method,
+                'amount' => (float) $p->amount_paid,
+                'paidAt' => optional($p->paid_at)->toIso8601String(),
+            ])->values()->all(),
         ];
+    }
+
+    /**
+     * Everything on the stay's bill, one line each, for the guest's My Bookings: the
+     * room, every dish ordered to the room, the add-ons and the charges Front Desk added.
+     * Read off toBillArray() so the guest sees the same figures the desk settles.
+     *
+     * @return list<array{kind: string, label: string, amount: float}>
+     */
+    private function guestChargeLines(): array
+    {
+        $bill = $this->toBillArray();
+        $room = $bill['room'];
+
+        $lines = [[
+            'kind'   => 'room',
+            'label'  => $room['promo']
+                ? $room['promo'] . ' package'
+                : 'Room ' . ($bill['roomName'] ?: '') . ' · ' . $this->nights() . ' night' . ($this->nights() === 1 ? '' : 's'),
+            'amount' => (float) $room['subtotal'],
+        ]];
+        foreach ($bill['roomService']['orders'] as $order) {
+            foreach ($order['items'] as $item) {
+                $lines[] = ['kind' => 'food', 'label' => $item['name'] . ' × ' . $item['qty'] . ' · ' . $order['status'], 'amount' => (float) $item['line']];
+            }
+        }
+        foreach ($bill['addons']['items'] as $addon) {
+            $lines[] = [
+                'kind'   => 'addon',
+                'label'  => $addon['name'] . ' × ' . $addon['qty'] . ($addon['perNight'] ? ' × ' . $addon['nights'] . ' nights' : ''),
+                'amount' => (float) $addon['line'],
+            ];
+        }
+        foreach ($bill['otherCharges']['items'] as $charge) {
+            $lines[] = ['kind' => 'charge', 'label' => $charge['description'], 'amount' => (float) $charge['amount']];
+        }
+
+        return $lines;
     }
 
     /**
