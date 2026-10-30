@@ -43,6 +43,7 @@ class HotelSimulationAuthController extends Controller
         if ($slug !== null && !$context) {
             abort(404);
         }
+        HotelSimulationAuth::restore($request->user(), $context);
 
         $bookings = $context
             ? \App\Support\HotelGuestStay::bookings($context['group_name'], (int) $context['faculty_id'])

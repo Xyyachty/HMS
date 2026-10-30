@@ -4397,10 +4397,8 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, capacity: roomCa
   };
 
   const addonList = Array.isArray(addons) ? addons : [];
-  /* Each extra bed taken with the stay sleeps one more guest (HotelAddon::isExtraBed).
-     Staff booking only: the published site's booking does not take add-ons
-     (PublicSiteController::book), so a bed picked there cannot raise the limit. */
-  const hasBedAddon = !window.__HMS_PUBLIC__ && addonList.some(a => a.extraBed);
+  // Each extra bed taken with the stay sleeps one more guest (HotelAddon::isExtraBed).
+  const hasBedAddon = addonList.some(a => a.extraBed);
   const extraBeds = !hasBedAddon ? 0 : addonLines.reduce((n, l) => n + (addonList.some(a => a.dbId === l.dbId && a.extraBed) ? l.qty : 0), 0);
   const capacity = roomCapacity ? roomCapacity + extraBeds : roomCapacity;
   const addonQty = (dbId) => {
@@ -4417,7 +4415,10 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, capacity: roomCa
       return rest.concat([{ dbId: addon.dbId, name: addon.name, price: addon.price, qty: next }]);
     });
   };
-  const addonsTotal = addonLines.reduce((sum, line) => sum + (Number(line.price) || 0) * line.qty, 0);
+  // An extra bed is charged per night of the stay (HotelBookingAddon::lineTotal).
+  const stayNights = Math.max(1, Math.ceil(blocks / 2));
+  const addonsTotal = addonLines.reduce((sum, line) => sum + (Number(line.price) || 0) * line.qty
+    * (addonList.some(a => a.dbId === line.dbId && a.extraBed) ? stayNights : 1), 0);
 
   const handleRegisterSubmit = (e) => {
     e.preventDefault();
@@ -4712,7 +4713,7 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, capacity: roomCa
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--fg)' }}>{addon.name}</p>
                           <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--fg-muted)' }}>
-                            {formatPeso(addon.price)} · {addon.available} available
+                            {formatPeso(addon.price)}{addon.extraBed ? ' / night' : ''} · {addon.available} available
                           </p>
                         </div>
                         {addon.available > 0 ? (
@@ -6044,6 +6045,8 @@ function MenuDetailModal({ item, onClose, canOrder, onAddToCart, onToast }) {
 function MyBookingsModal({ open, onClose }) {
   const [bookings, setBookings] = useState(null);
   const [error, setError] = useState('');
+  // The booking whose charges are spelled out.
+  const [openRef, setOpenRef] = useState(null);
 
   useEffect(() => {
     if (!open) return;
@@ -6114,6 +6117,39 @@ function MyBookingsModal({ open, onClose }) {
                   <p style={Object.assign({}, muted, { marginTop: '0.5rem', color: 'var(--fg)' })}>
                     Total {formatPeso(b.total)} · Paid {formatPeso(b.amountPaid)} · Balance {formatPeso(b.balance)}
                   </p>
+                  {/* The whole bill: the room, every dish ordered to it, extras and other
+                      charges, and what has been paid - the same figures Front Desk settles. */}
+                  <button type="button" onClick={() => setOpenRef(openRef === b.reference ? null : b.reference)}
+                    aria-expanded={openRef === b.reference}
+                    style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: '0.75rem', padding: '0.45rem 0 0' }}>
+                    <i className={'fa-solid ' + (openRef === b.reference ? 'fa-chevron-up' : 'fa-receipt')} style={{ fontSize: '0.65rem', marginRight: 5 }}></i>
+                    {openRef === b.reference ? 'Hide charges' : 'See all charges'}
+                  </button>
+                  {openRef === b.reference && (
+                    <div style={{ marginTop: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '0.5rem' }}>
+                      {(b.charges || []).map((c, i) => (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.8rem', padding: '0.2rem 0' }}>
+                          <span style={{ color: 'var(--fg-muted)' }}>
+                            <i className={'fa-solid ' + ({ room: 'fa-bed', food: 'fa-utensils', addon: 'fa-bell-concierge' }[c.kind] || 'fa-receipt')}
+                              style={{ width: 16, color: 'var(--accent)', fontSize: '0.7rem' }}></i> {c.label}
+                          </span>
+                          <span style={{ color: 'var(--fg)', whiteSpace: 'nowrap' }}>{formatPeso(c.amount)}</span>
+                        </div>
+                      ))}
+                      {(b.payments || []).map((p, i) => (
+                        <div key={'p' + i} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.8rem', padding: '0.2rem 0' }}>
+                          <span style={{ color: 'var(--fg-muted)' }}>
+                            <i className="fa-solid fa-money-bill-wave" style={{ width: 16, color: 'var(--accent)', fontSize: '0.7rem' }}></i> {p.type} payment{p.method ? ' · ' + p.method : ''}
+                          </span>
+                          <span style={{ color: 'var(--fg)', whiteSpace: 'nowrap' }}>− {formatPeso(p.amount)}</span>
+                        </div>
+                      ))}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.85rem', padding: '0.4rem 0 0', marginTop: '0.3rem', borderTop: '1px dashed var(--border)', fontWeight: 600 }}>
+                        <span style={{ color: 'var(--fg)' }}>Balance</span>
+                        <span style={{ color: b.balance > 0 ? '#f08a99' : 'var(--accent)' }}>{formatPeso(b.balance)}</span>
+                      </div>
+                    </div>
+                  )}
                   <p style={Object.assign({}, muted, { fontSize: '0.72rem', marginTop: '0.25rem' })}>Booking #{b.reference}</p>
                 </div>
               ))}

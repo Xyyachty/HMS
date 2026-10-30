@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Exceptions\BookingOverlapException;
 use App\Models\HotelAddon;
 use App\Models\HotelBooking;
 use App\Models\HotelBookingPayment;
@@ -249,6 +250,63 @@ class HotelBookingDesk
             self::setRoomStatus($booking->room, self::ROOM_STATUS_ON['cancel']);
 
             return $booking;
+        });
+    }
+
+    /**
+     * Moves a stay that has not been handed a key yet to another room: an upgrade at
+     * the desk, say. The stay is repriced at the new room's rate, and a promo comes off
+     * because its package was for the room it was booked in. Payments stay as they are,
+     * so an upgrade leaves the difference owing.
+     *
+     * @throws BookingOverlapException when the new room is taken for those dates
+     * @throws \RuntimeException when the stay or the room cannot take the move
+     */
+    public static function changeRoom(HotelBooking $booking, HotelRoom $room): HotelBooking
+    {
+        if (!in_array($booking->status, HotelBooking::AWAITING_CHECK_IN_STATUSES, true)) {
+            throw new \RuntimeException('Only a guest who is not checked in yet can change rooms.');
+        }
+        if ($room->hotel_room_id === $booking->hotel_room_id) {
+            throw new \RuntimeException('The guest is already booked in ' . $room->name . '.');
+        }
+        // A guest at the desk walks into the new room now; one still on the way only
+        // needs a room that is not out of order.
+        if ($room->status === 'Maintenance' || ($booking->status === 'Arrived' && $room->status !== 'Available')) {
+            throw new \RuntimeException($room->name . ' is not ready (' . $room->status . '). Pick another room.');
+        }
+
+        $capacity = (int) ($room->capacity ?: HotelRoomCategory::where('group_name', $room->group_name)
+            ->where('faculty_id', $room->faculty_id)
+            ->where('name', $room->category)
+            ->value('capacity'));
+        $beds = $booking->addons->filter->isPerNight()->sum('qty');
+        if ($capacity && $booking->guest_count && $booking->guest_count > $capacity + $beds) {
+            throw new \RuntimeException($room->name . ' sleeps ' . $capacity . ' — too small for '
+                . $booking->guest_count . ' guests.');
+        }
+
+        return DB::transaction(function () use ($booking, $room) {
+            // The same lock and overlap test a new booking takes.
+            HotelRoom::whereKey($room->hotel_room_id)->lockForUpdate()->first();
+            $taken = HotelBooking::open()
+                ->where('hotel_room_id', $room->hotel_room_id)
+                ->where('check_in', '<', $booking->check_out)
+                ->where('check_out', '>', $booking->check_in)
+                ->exists();
+            if ($taken) {
+                throw new BookingOverlapException($room->name);
+            }
+
+            $booking->forceFill([
+                'hotel_room_id' => $room->hotel_room_id,
+                'room_rate'     => (int) $room->price,
+                'promo_name'    => null,
+                'promo_price'   => null,
+                'promo_blocks'  => null,
+            ])->save();
+
+            return $booking->setRelation('room', $room);
         });
     }
 

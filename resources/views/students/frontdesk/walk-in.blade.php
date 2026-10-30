@@ -549,7 +549,7 @@ function RoomWalkIn() {
   /* Housekeeping's add-ons go on the stay's bill and are settled at check-out, the
      same as when a room is booked from the hotel site (HotelBookingDesk::reserve). */
   const addonPicks = otherAddons.filter(a => addonQty[a.dbId] > 0).map(a => Object.assign({}, a, { qty: addonQty[a.dbId] }));
-  const addonsTotal = addonPicks.reduce((sum, a) => sum + a.price * a.qty, 0) + (bedAddon ? bedAddon.price * bedsTaken : 0);
+  const addonsTotal = addonPicks.reduce((sum, a) => sum + a.price * a.qty, 0) + (bedAddon ? bedAddon.price * bedsTaken * nights : 0); // a bed is charged per night
   const extrasList = addonPicks.map(a => a.qty + '× ' + a.name).concat(bedsTaken ? [bedsTaken + '× ' + bedAddon.name] : []);
   const extrasText = extrasList.length
     ? extrasList.join(', ') + (addonsTotal ? ' (' + peso(addonsTotal) + ' at check-out)' : '')
@@ -776,7 +776,7 @@ function RoomWalkIn() {
                       onChange={n => updatePick(p.id, { guests: n })} />
                   </Field>
                   {bedAddon && (
-                    <Field id={'wi-beds-' + p.id} label={bedAddon.name + (bedAddon.price ? ' · ' + peso(bedAddon.price) : '')}>
+                    <Field id={'wi-beds-' + p.id} label={bedAddon.name + (bedAddon.price ? ' · ' + peso(bedAddon.price) + ' / night' : '')}>
                       <Stepper value={p.beds} min={0} max={p.beds + bedsLeft} unit="bed" onChange={n => setBeds(p, n)} />
                     </Field>
                   )}

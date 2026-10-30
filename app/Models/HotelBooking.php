@@ -223,6 +223,12 @@ class HotelBooking extends Model
         return $hours <= 0 ? 1 : max(1, (int) ceil($hours / self::BLOCK_HOURS));
     }
 
+    /** Nights in the stay: two 12-hour blocks each, at least one. Extra beds are billed by it. */
+    public function nights(): int
+    {
+        return max(1, (int) ceil($this->stayBlocks() / 2));
+    }
+
     /**
      * The room charge alone. Deliberately excludes room service: the payments taken at
      * booking time recorded their balance against this figure, and moving it would
@@ -261,7 +267,7 @@ class HotelBooking extends Model
     /** Housekeeping add-ons on this stay, at the price they were lent for. */
     public function addonsTotal(): float
     {
-        return (float) $this->addons->sum(fn (HotelBookingAddon $addon) => $addon->lineTotal());
+        return (float) $this->addons->sum(fn (HotelBookingAddon $addon) => $addon->lineTotal($this->nights()));
     }
 
     /** Room + room service + add-ons + extras — the figure the guest actually settles. */
@@ -346,7 +352,52 @@ class HotelBooking extends Model
             'total'       => $this->grandTotal(),
             'amountPaid'  => $this->amountPaid(),
             'balance'     => $this->outstanding(),
+            'charges'     => $this->guestChargeLines(),
+            'payments'    => $this->payments->sortBy('paid_at')->map(fn (HotelBookingPayment $p) => [
+                'type'   => $p->type,
+                'method' => $p->method,
+                'amount' => (float) $p->amount_paid,
+                'paidAt' => optional($p->paid_at)->toIso8601String(),
+            ])->values()->all(),
         ];
+    }
+
+    /**
+     * Everything on the stay's bill, one line each, for the guest's My Bookings: the
+     * room, every dish ordered to the room, the add-ons and the charges Front Desk added.
+     * Read off toBillArray() so the guest sees the same figures the desk settles.
+     *
+     * @return list<array{kind: string, label: string, amount: float}>
+     */
+    private function guestChargeLines(): array
+    {
+        $bill = $this->toBillArray();
+        $room = $bill['room'];
+
+        $lines = [[
+            'kind'   => 'room',
+            'label'  => $room['promo']
+                ? $room['promo'] . ' package'
+                : 'Room ' . ($bill['roomName'] ?: '') . ' · ' . $this->nights() . ' night' . ($this->nights() === 1 ? '' : 's'),
+            'amount' => (float) $room['subtotal'],
+        ]];
+        foreach ($bill['roomService']['orders'] as $order) {
+            foreach ($order['items'] as $item) {
+                $lines[] = ['kind' => 'food', 'label' => $item['name'] . ' × ' . $item['qty'] . ' · ' . $order['status'], 'amount' => (float) $item['line']];
+            }
+        }
+        foreach ($bill['addons']['items'] as $addon) {
+            $lines[] = [
+                'kind'   => 'addon',
+                'label'  => $addon['name'] . ' × ' . $addon['qty'] . ($addon['perNight'] ? ' × ' . $addon['nights'] . ' nights' : ''),
+                'amount' => (float) $addon['line'],
+            ];
+        }
+        foreach ($bill['otherCharges']['items'] as $charge) {
+            $lines[] = ['kind' => 'charge', 'label' => $charge['description'], 'amount' => (float) $charge['amount']];
+        }
+
+        return $lines;
     }
 
     /**
@@ -408,7 +459,7 @@ class HotelBooking extends Model
 
             // What Housekeeping lent the guest, priced as it was on the day it went out.
             'addons' => [
-                'items'    => $this->addons->map->toTemplateArray()->values()->all(),
+                'items'    => $this->addons->map(fn (HotelBookingAddon $addon) => $addon->toTemplateArray($this->nights()))->values()->all(),
                 'subtotal' => $this->addonsTotal(),
             ],
 
