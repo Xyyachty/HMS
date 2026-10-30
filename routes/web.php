@@ -1753,7 +1753,16 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
         }
 
         $data = $request->validate([
-            'room_id'            => 'required|integer',
+            'room_id'            => 'required_without:rooms|integer',
+            // Several rooms for one party (a family at the walk-in desk): one stay per
+            // room, all taken together or not at all. Replaces room_id, guest_count
+            // and addons.
+            'rooms'                     => 'sometimes|array|min:1|max:10',
+            'rooms.*.room_id'           => 'required|integer|distinct',
+            'rooms.*.guest_count'       => 'nullable|integer|min:1|max:99',
+            'rooms.*.addons'            => 'nullable|array',
+            'rooms.*.addons.*.addon_id' => 'required|integer',
+            'rooms.*.addons.*.qty'      => 'required|integer|min:1|max:99',
             'guest.full_name'    => 'required|string|max:255',
             'guest.contact_no'   => 'nullable|string|max:100',
             'guest.email'        => 'nullable|string|email|max:255',
@@ -1782,11 +1791,18 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
         ]);
         $walkIn = $request->boolean('arrived');
 
-        $room = HotelRoom::where('hotel_room_id', $data['room_id'])
+        $stays = $data['rooms'] ?? [[
+            'room_id'     => $data['room_id'],
+            'guest_count' => $data['guest_count'] ?? null,
+            'addons'      => $data['addons'] ?? [],
+        ]];
+
+        $rooms = HotelRoom::whereIn('hotel_room_id', array_column($stays, 'room_id'))
             ->where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
-            ->first();
-        if (!$room) {
+            ->get()
+            ->keyBy('hotel_room_id');
+        if ($rooms->count() !== count($stays)) {
             return response()->json(['message' => 'That room is not on your team\'s floor.'], 404);
         }
 
@@ -1803,55 +1819,81 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             if (\Carbon\Carbon::parse($data['check_in'])->toDateString() !== now('Asia/Manila')->toDateString()) {
                 return response()->json(['message' => 'A walk-in guest checks in today. Set the check-in date to today.'], 422);
             }
-            if ($room->status !== 'Available') {
-                return response()->json([
-                    'message' => $room->name . ' is not ready (' . $room->status . '). Pick a room Housekeeping has cleared.',
-                ], 422);
+            foreach ($rooms as $room) {
+                if ($room->status !== 'Available') {
+                    return response()->json([
+                        'message' => $room->name . ' is not ready (' . $room->status . '). Pick a room Housekeeping has cleared.',
+                    ], 422);
+                }
             }
         }
 
         try {
-            $booking = \Illuminate\Support\Facades\DB::transaction(function () use ($membership, $room, $data, $walkIn) {
-                /* A room may carry several open stays now — one in-house, the rest booked
-                   for later — so the guard is against overlapping dates, not against any
-                   open booking at all. Checked with the room row locked: two desks booking
-                   the same room for the same dates at the same moment both passed the
-                   check before either had written, and both got the room. The second now
-                   waits for the first and then sees its booking. */
-                HotelRoom::whereKey($room->hotel_room_id)->lockForUpdate()->first();
-                $overlaps = $room->openBookings()
-                    ->where('check_in', '<', $data['check_out'])
-                    ->where('check_out', '>', $data['check_in'])
-                    ->exists();
-                if ($overlaps) {
-                    throw new \App\Exceptions\BookingOverlapException();
+            $bookings = \Illuminate\Support\Facades\DB::transaction(function () use ($membership, $rooms, $stays, $data, $walkIn) {
+                $bookings = [];
+                foreach ($stays as $i => $stay) {
+                    $room = $rooms[$stay['room_id']];
+
+                    /* A room may carry several open stays now — one in-house, the rest booked
+                       for later — so the guard is against overlapping dates, not against any
+                       open booking at all. Checked with the room row locked: two desks booking
+                       the same room for the same dates at the same moment both passed the
+                       check before either had written, and both got the room. The second now
+                       waits for the first and then sees its booking. */
+                    HotelRoom::whereKey($room->hotel_room_id)->lockForUpdate()->first();
+                    $overlaps = $room->openBookings()
+                        ->where('check_in', '<', $data['check_out'])
+                        ->where('check_out', '>', $data['check_in'])
+                        ->exists();
+                    if ($overlaps) {
+                        throw new \App\Exceptions\BookingOverlapException($room->name);
+                    }
+
+                    $booking = \App\Support\HotelBookingDesk::reserve(
+                        $membership,
+                        $room,
+                        $data['guest'],
+                        [
+                            'check_in'      => $data['check_in'],
+                            'check_in_time' => $data['check_in_time'],
+                            'check_out'     => $data['check_out'],
+                            'guest_count'   => $stay['guest_count'] ?? null,
+                            'booked_by'     => auth()->user()?->name,
+                            'notes'         => $data['notes'] ?? null,
+                            // A promo is one stay's package: it goes on the first room.
+                            'promo_id'      => $i === 0 ? ($data['promo_id'] ?? null) : null,
+                        ],
+                        null,
+                        $stay['addons'] ?? []
+                    );
+
+                    if ($walkIn) {
+                        \App\Support\HotelBookingDesk::markArrived($booking);
+                    }
+                    $bookings[] = $booking;
                 }
 
-                $booking = \App\Support\HotelBookingDesk::reserve(
-                    $membership,
-                    $room,
-                    $data['guest'],
-                    [
-                        'check_in'      => $data['check_in'],
-                        'check_in_time' => $data['check_in_time'],
-                        'check_out'     => $data['check_out'],
-                        'guest_count'   => $data['guest_count'] ?? null,
-                        'booked_by'     => auth()->user()?->name,
-                        'notes'         => $data['notes'] ?? null,
-                        'promo_id'      => $data['promo_id'] ?? null,
-                    ],
-                    $data['payment'] ?? null,
-                    $data['addons'] ?? []
-                );
-
-                if ($walkIn) {
-                    \App\Support\HotelBookingDesk::markArrived($booking);
+                /* The money taken at the desk, room by room in the order they were
+                   picked: each stay is paid up to its room charge, and whatever is left
+                   lands on the last one, so a single room records exactly what was
+                   handed over, as it always has. */
+                if (!empty($data['payment'])) {
+                    $left = (float) ($data['payment']['amount_paid'] ?? 0);
+                    foreach ($bookings as $i => $booking) {
+                        $last = $i === count($bookings) - 1;
+                        $pay = $last ? $left : min($left, $booking->totalDue());
+                        if ($pay <= 0 && !$last) {
+                            continue;
+                        }
+                        \App\Support\HotelBookingDesk::addPayment($booking, ['amount_paid' => $pay] + $data['payment']);
+                        $left -= $pay;
+                    }
                 }
 
-                return $booking;
+                return $bookings;
             });
         } catch (\App\Exceptions\BookingOverlapException $e) {
-            return response()->json(['message' => 'Those dates are already booked for this room.'], 409);
+            return response()->json(['message' => $e->getMessage()], 409);
         } catch (\RuntimeException $e) {
             // An add-on ran out between the picker rendering and this request, or the
             // promo is not running then. The whole reservation rolled back, so there is
@@ -1863,14 +1905,18 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             ActivityLog::record(
                 auth()->user(),
                 ActivityLog::GUEST_BOOKED,
-                'Booked walk-in guest ' . ($data['guest']['full_name'] ?? 'a guest') . ' into ' . $room->name
+                'Booked walk-in guest ' . ($data['guest']['full_name'] ?? 'a guest') . ' into '
+                    . $rooms->only(array_column($stays, 'room_id'))->pluck('name')->implode(', ')
                     . ' (' . $data['check_in'] . ' to ' . $data['check_out'] . ').'
             );
         }
 
+        $first = $bookings[0];
+
         return response()->json([
-            'booking' => $booking->toReservationArray(),
-            'room'    => $room->fresh()->toTemplateArray(),
+            'booking'  => $first->toReservationArray(),
+            'bookings' => array_map(fn (HotelBooking $b) => $b->toReservationArray(), $bookings),
+            'room'     => $rooms[$first->hotel_room_id]->fresh()->toTemplateArray(),
         ], 201);
     })->name('hotel.bookings.store');
 

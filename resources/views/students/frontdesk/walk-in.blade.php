@@ -459,10 +459,10 @@ function RoomWalkIn() {
   const [email, setEmail] = useState('');
   const [idNumber, setIdNumber] = useState('');
   const [nights, setNights] = useState(1);
-  const [guests, setGuests] = useState(1);
   const [checkInTime, setCheckInTime] = useState(nowClock);
   const [category, setCategory] = useState('All');
-  const [roomId, setRoomId] = useState(null);
+  // The rooms picked, in the order picked: [{ id, guests, beds }]. A family can take several.
+  const [picks, setPicks] = useState([]);
   const [promos, setPromos] = useState([]);
   const [promoId, setPromoId] = useState('');
   const [addons, setAddons] = useState([]);
@@ -521,40 +521,66 @@ function RoomWalkIn() {
   const promoChoices = promosOn(promos, checkIn);
   const promo = promoChoices.find(p => String(p.dbId) === promoId) || null;
 
-  /* Ready now, free for the whole stay, and big enough for the party. A room
-     Housekeeping has not cleared can still be sold for next week, but not handed
-     to someone standing here. */
+  /* Ready now and free for the whole stay. A room Housekeeping has not cleared can
+     still be sold for next week, but not handed to someone standing here. */
   const free = useMemo(
-    () => rooms.filter(r => r.status === 'Available' && freeFor(r, checkIn, checkOut)
-      && !((r.capacity || sleeps[r.category]) < guests)),
-    [rooms, checkIn, checkOut, sleeps, guests]
+    () => rooms.filter(r => r.status === 'Available' && freeFor(r, checkIn, checkOut)),
+    [rooms, checkIn, checkOut]
   );
   const categories = useMemo(() => ['All', ...Array.from(new Set(free.map(r => r.category).filter(Boolean)))], [free]);
   const shown = category === 'All' ? free : free.filter(r => r.category === category);
-  const room = free.find(r => r.dbId === roomId) || null;
-  // A promo is a package price for the whole stay (HotelBooking::totalDue).
-  const total = !room ? 0 : promo ? promo.promo_price : room.price * nights * BLOCKS_PER_NIGHT;
+  // How many a room sleeps: its own limit, else its category's. 0 takes any party.
+  const sleepsIn = (r) => r.capacity || sleeps[r.category] || 0;
+
+  // Housekeeping's extra bed, if it has one: each one sleeps one more guest
+  // (HotelAddon::isExtraBed). Picked per room; the other extras go with the first room.
+  const bedAddon = addons.find(a => a.extraBed) || null;
+  const otherAddons = addons.filter(a => !a.extraBed);
+  const stays = picks.map(p => Object.assign({}, p, { room: free.find(r => r.dbId === p.id) })).filter(p => p.room);
+  const bedsTaken = stays.reduce((sum, p) => sum + p.beds, 0);
+  const bedsLeft = bedAddon ? Math.max(0, bedAddon.available - bedsTaken) : 0;
+  const guestsTotal = stays.reduce((sum, p) => sum + p.guests, 0);
+  const maxGuests = (p) => (sleepsIn(p.room) ? sleepsIn(p.room) + p.beds : 20);
+
+  // A promo is one stay's package price (HotelBooking::totalDue), so it prices the first room.
+  const roomCost = (p, i) => (i === 0 && promo ? promo.promo_price : p.room.price * nights * BLOCKS_PER_NIGHT);
+  const total = stays.reduce((sum, p, i) => sum + roomCost(p, i), 0);
   const paidNow = payType === 'Full' ? total : payType === 'Partial' ? Number(amount) || 0 : 0;
   /* Housekeeping's add-ons go on the stay's bill and are settled at check-out, the
      same as when a room is booked from the hotel site (HotelBookingDesk::reserve). */
-  const addonPicks = addons.filter(a => addonQty[a.dbId] > 0).map(a => Object.assign({}, a, { qty: addonQty[a.dbId] }));
-  const addonsTotal = addonPicks.reduce((sum, a) => sum + a.price * a.qty, 0);
-  const extrasText = addonPicks.length
-    ? addonPicks.map(a => a.qty + '× ' + a.name).join(', ') + (addonsTotal ? ' (' + peso(addonsTotal) + ' at check-out)' : '')
+  const addonPicks = otherAddons.filter(a => addonQty[a.dbId] > 0).map(a => Object.assign({}, a, { qty: addonQty[a.dbId] }));
+  const addonsTotal = addonPicks.reduce((sum, a) => sum + a.price * a.qty, 0) + (bedAddon ? bedAddon.price * bedsTaken : 0);
+  const extrasList = addonPicks.map(a => a.qty + '× ' + a.name).concat(bedsTaken ? [bedsTaken + '× ' + bedAddon.name] : []);
+  const extrasText = extrasList.length
+    ? extrasList.join(', ') + (addonsTotal ? ' (' + peso(addonsTotal) + ' at check-out)' : '')
     : 'None';
+  const roomsText = stays.map(p => p.room.name).join(', ');
+
+  const toggleRoom = (r) => setPicks(prev => (prev.some(p => p.id === r.dbId)
+    ? prev.filter(p => p.id !== r.dbId)
+    : prev.concat([{ id: r.dbId, guests: Math.max(1, sleepsIn(r) || 1), beds: 0 }])));
+  const updatePick = (id, change) => setPicks(prev => prev.map(p => (p.id === id ? Object.assign({}, p, change) : p)));
+  // Taking a bed away cannot leave more guests in the room than it now sleeps.
+  const setBeds = (p, beds) => updatePick(p.id, {
+    beds,
+    guests: sleepsIn(p.room) ? Math.min(p.guests, sleepsIn(p.room) + beds) : p.guests,
+  });
 
   // A picked room that stopped being free (a teammate booked it) is dropped.
-  useEffect(() => { if (roomId && !room) setRoomId(null); }, [roomId, room]);
+  useEffect(() => {
+    if (picks.length !== stays.length) setPicks(prev => prev.filter(p => free.some(r => r.dbId === p.id)));
+  }, [picks.length, stays.length, free]);
   useEffect(() => { if (!categories.includes(category)) setCategory('All'); }, [categories, category]);
 
   const nameOk = !!fullName.trim();
   const contactOk = !!contactNo.trim();
   const emailOk = !email.trim() || /^\S+@\S+\.\S+$/.test(email.trim());
+  const hasRooms = stays.length > 0;
   const payOk = payType !== 'Partial' || (Number(amount) > 0 && Number(amount) <= total);
 
   const reset = () => {
     setFullName(''); setContactNo(''); setEmail(''); setIdNumber('');
-    setNights(1); setGuests(1); setCheckInTime(nowClock()); setRoomId(null); setPromoId(''); setAddonQty({});
+    setNights(1); setCheckInTime(nowClock()); setPicks([]); setPromoId(''); setAddonQty({});
     setPayType('Full'); setAmount(''); setMethod('Cash'); setNotes('');
     setError(''); setTried(false); setDone(null); load(); loadAddons();
   };
@@ -565,7 +591,7 @@ function RoomWalkIn() {
     if (!fullName.trim()) return setError('Enter the guest’s full name.');
     if (!contactNo.trim()) return setError('Enter a contact number for the guest.');
     if (email.trim() && !/^\S+@\S+\.\S+$/.test(email.trim())) return setError('This email address is not complete.');
-    if (!room) return setError('Pick a room for the guest.');
+    if (!hasRooms) return setError('Pick a room for the guest.');
     let payment = null;
     if (payType !== 'None') {
       const paid = payType === 'Full' ? total : Number(amount);
@@ -578,7 +604,13 @@ function RoomWalkIn() {
     writing.current = true;
     try {
       const data = await send(CFG.bookingsUrl, 'POST', {
-        room_id: room.dbId,
+        // One stay per room, booked together; the other extras ride on the first room.
+        rooms: stays.map((p, i) => ({
+          room_id: p.room.dbId,
+          guest_count: p.guests,
+          addons: (i === 0 ? addonPicks.map(a => ({ addon_id: a.dbId, qty: a.qty })) : [])
+            .concat(p.beds ? [{ addon_id: bedAddon.dbId, qty: p.beds }] : []),
+        })),
         guest: {
           full_name: fullName.trim(),
           contact_no: contactNo.trim(),
@@ -588,18 +620,16 @@ function RoomWalkIn() {
         check_in: checkIn,
         check_in_time: checkInTime,
         check_out: checkOut,
-        guest_count: guests,
         notes: ('Walk-in guest. ' + notes.trim()).trim(),
         promo_id: promo ? promo.dbId : null,
-        addons: addonPicks.map(a => ({ addon_id: a.dbId, qty: a.qty })),
         payment,
         arrived: true,
       });
-      setDone({ booking: data.booking, room, promo, extrasText, total: total + addonsTotal, paid: payment ? payment.amount_paid : 0 });
-      if (window.toast) window.toast('Booked ' + fullName.trim() + ' into ' + room.name);
+      setDone({ booking: data.booking, stays, roomsText, guestsTotal, promo, extrasText, total: total + addonsTotal, paid: payment ? payment.amount_paid : 0 });
+      if (window.toast) window.toast('Booked ' + fullName.trim() + ' into ' + roomsText);
     } catch (err) {
       setError(err.message);
-      // The room or an add-on may have gone to someone else: refresh either way.
+      // A room or an add-on may have gone to someone else: refresh either way.
       writing.current = false;
       load();
       loadAddons();
@@ -615,7 +645,8 @@ function RoomWalkIn() {
       <Done
         title={'Welcome, ' + fullName.trim()}
         rows={[
-          ['Room', done.room.name + (done.room.category ? ', ' + done.room.category : '')],
+          [done.stays.length > 1 ? 'Rooms' : 'Room', done.stays.map(p => p.room.name + (p.room.category ? ', ' + p.room.category : '')).join(' · ')],
+          ['Guests', plural(done.guestsTotal, 'guest')],
           ['Check-in', niceDate(checkIn) + ', ' + niceTime(checkInTime)],
           ['Check-out', niceDate(checkOut)],
           ['Length of stay', plural(nights, 'night')],
@@ -625,7 +656,7 @@ function RoomWalkIn() {
           ['Paid now', peso(done.paid)],
           ['Still to pay', peso(balance)],
         ]}
-        note="Room Management will give the guest the room key and check them in. Any amount still unpaid is collected at check-out in Guest Information."
+        note="Room Management will give the guest the room key and check them in. Each room is its own stay in Guest Information. Any amount still unpaid is collected at check-out in Guest Information."
         primary={{ href: CFG.guestInfoUrl, label: 'Go to Guest Information' }}
         onAgain={reset}
       />
@@ -676,17 +707,12 @@ function RoomWalkIn() {
               <i className="fa-solid fa-arrow-right" style={{ color: 'var(--fg-muted)', fontSize: '0.75rem' }}></i>
               <span>Check-out</span><b>{niceDate(checkOut)}</b>
             </div>
-            <div className="wi-two">
-              <Field id="wi-guests" label="Guests">
-                <Stepper value={guests} min={1} max={20} onChange={setGuests} unit="guest" />
-              </Field>
-              <Field id="wi-notes" label="Notes for the team" optional>
-                <input id="wi-notes" className="wi-input" value={notes} onChange={e => setNotes(e.target.value)}
-                  placeholder="e.g. Late check-out, extra pillow" autoComplete="off" />
-              </Field>
-            </div>
+            <Field id="wi-notes" label="Notes for the team" optional>
+              <input id="wi-notes" className="wi-input" value={notes} onChange={e => setNotes(e.target.value)}
+                placeholder="e.g. Late check-out, extra pillow" autoComplete="off" />
+            </Field>
             <Field id="wi-promo" label="Promo / package" optional
-              help={promo ? promo.description + ' Package price: ' + peso(promo.promo_price) + ' for the whole stay.'
+              help={promo ? promo.description + ' Package price: ' + peso(promo.promo_price) + ' for the whole stay, on the first room.'
                 : promoChoices.length ? '' : 'No promo is running today.'}>
               <select id="wi-promo" className="wi-input" value={promoId} onChange={e => setPromoId(e.target.value)}
                 disabled={!promoChoices.length}>
@@ -699,34 +725,34 @@ function RoomWalkIn() {
           </div>
         </Section>
 
-        <Section n={3} title="Choose a room" className="wi-wide"
-          hint={loaded ? (free.length === 1 ? '1 clean room is free for this stay.' : free.length + ' clean rooms are free for this stay.') : 'Looking for clean rooms…'}
-          done={!!room}
+        <Section n={3} title="Choose rooms" className="wi-wide"
+          hint={loaded ? (free.length === 1 ? '1 clean room is free for this stay.' : free.length + ' clean rooms are free for this stay. Pick several for a big party.') : 'Looking for clean rooms…'}
+          done={hasRooms}
           aside={categories.length > 2 && (
             <Chips label="Room type" value={category} onChange={setCategory}
               options={categories.map(c => [c, c === 'All' ? 'All types' : c])} />
           )}>
           {loadError && <p className="wi-alert" style={{ marginBottom: '0.8rem' }}>{loadError}</p>}
-          {tried && !room && loaded && shown.length > 0 && <p className="wi-alert" style={{ marginBottom: '0.8rem' }}>Pick a room for the guest.</p>}
+          {tried && !hasRooms && loaded && shown.length > 0 && <p className="wi-alert" style={{ marginBottom: '0.8rem' }}>Pick a room for the guest.</p>}
           {!loaded ? <CardSkeletons /> : shown.length === 0 ? (
             <div className="wi-empty">
               <i className="fa-solid fa-bed"></i>
-              No clean room {guests > 1 ? 'for ' + guests + ' guests ' : ''}is free for {nights === 1 ? 'tonight' : 'those ' + nights + ' nights'}.<br />
+              No clean room is free for {nights === 1 ? 'tonight' : 'those ' + nights + ' nights'}.<br />
               {nights > 1 ? 'Try fewer nights.' : 'Rooms show here once Housekeeping cleans them.'}
             </div>
           ) : (
             <div className="wi-cards">
               {shown.map(r => {
-                const on = r.dbId === roomId;
+                const on = picks.some(p => p.id === r.dbId);
                 return (
                   <button key={r.dbId} type="button" className={'wi-card' + (on ? ' is-on' : '')}
-                    onClick={() => setRoomId(r.dbId)} aria-pressed={on}>
+                    onClick={() => toggleRoom(r)} aria-pressed={on}>
                     <div className="wi-card-photo">
                       {r.img ? <img src={r.img} alt="" loading="lazy" /> : <i className="fa-solid fa-bed"></i>}
                     </div>
                     <div className="wi-card-body">
                       <span className="wi-card-name">{r.name}</span>
-                      <span className="wi-card-sub">{r.category || 'Room'}</span>
+                      <span className="wi-card-sub">{r.category || 'Room'}{sleepsIn(r) ? ' · sleeps ' + sleepsIn(r) : ''}</span>
                       <span className="wi-card-price">{peso(r.price * BLOCKS_PER_NIGHT)} <small>per night</small></span>
                     </div>
                     {on && <span className="wi-card-tick"><i className="fa-solid fa-check"></i></span>}
@@ -735,19 +761,45 @@ function RoomWalkIn() {
               })}
             </div>
           )}
+          {stays.length > 0 && (
+            <div className="wi-fields" style={{ marginTop: '1rem' }}>
+              {stays.map(p => (
+                <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap', padding: '0.5rem 0', borderTop: '1px solid var(--wi-line)' }}>
+                  <div style={{ flex: '1 1 9rem', minWidth: 0 }}>
+                    <b style={{ display: 'block', color: 'var(--fg)', fontSize: '0.92rem' }}>{p.room.name}</b>
+                    <small style={{ color: 'var(--fg-muted)' }}>
+                      {sleepsIn(p.room) ? 'Sleeps ' + sleepsIn(p.room) + (p.beds ? ' + ' + p.beds + ' on extra beds' : '') : 'Any party size'}
+                    </small>
+                  </div>
+                  <Field id={'wi-guests-' + p.id} label="Guests">
+                    <Stepper value={p.guests} min={1} max={maxGuests(p)} unit="guest"
+                      onChange={n => updatePick(p.id, { guests: n })} />
+                  </Field>
+                  {bedAddon && (
+                    <Field id={'wi-beds-' + p.id} label={bedAddon.name + (bedAddon.price ? ' · ' + peso(bedAddon.price) : '')}>
+                      <Stepper value={p.beds} min={0} max={p.beds + bedsLeft} unit="bed" onChange={n => setBeds(p, n)} />
+                    </Field>
+                  )}
+                </div>
+              ))}
+              {bedAddon && !bedsLeft && !bedsTaken && (
+                <p className="wi-help" style={{ margin: 0 }}>No {bedAddon.name.toLowerCase()} is left in Housekeeping.</p>
+              )}
+            </div>
+          )}
         </Section>
 
         <Section n={4} title="Extras" className="wi-wide"
-          hint="Pillows, towels, an extra bed… from Housekeeping. Added to the bill and paid at check-out."
+          hint={'Pillows, towels and more from Housekeeping' + (stays.length > 1 ? ', on ' + stays[0].room.name + '’s bill' : '') + '. Paid at check-out.'}
           done={addonPicks.length > 0}>
-          {addons.length === 0 ? (
+          {otherAddons.length === 0 ? (
             <div className="wi-empty">
               <i className="fa-solid fa-bell-concierge"></i>
               Housekeeping has not added any extras yet.
             </div>
           ) : (
             <div className="wi-fields">
-              {addons.map(a => (
+              {otherAddons.map(a => (
                 <div key={a.dbId} style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap', padding: '0.35rem 0', borderBottom: '1px solid var(--wi-line)' }}>
                   <div style={{ flex: '1 1 10rem', minWidth: 0 }}>
                     <b style={{ display: 'block', color: 'var(--fg)', fontSize: '0.92rem' }}>{a.name}</b>
@@ -768,25 +820,25 @@ function RoomWalkIn() {
         title="Booking summary"
         rows={[
           ['Guest', fullName.trim()],
-          ['Room', room ? room.name : ''],
-          ['Guests', plural(guests, 'guest')],
+          [stays.length > 1 ? 'Rooms' : 'Room', roomsText],
+          ['Guests', hasRooms ? plural(guestsTotal, 'guest') : ''],
           ['Stay', plural(nights, 'night') + ', until ' + niceDate(checkOut)],
           ['Promo', promo ? promo.name : 'None'],
           ['Extras', extrasText],
-          ['Pay now', room ? (payType === 'None' ? 'Nothing yet' : peso(paidNow) + ' by ' + method) : ''],
+          ['Pay now', hasRooms ? (payType === 'None' ? 'Nothing yet' : peso(paidNow) + ' by ' + method) : ''],
         ]}
-        total={['Total cost', room ? peso(total) : peso(0)]}
+        total={['Room cost', peso(total)]}
         todo={[
           ['Guest name', nameOk],
           ['Contact number', contactOk],
-          ['Room', !!room],
-          ['Payment', !!room && payOk],
+          ['Room', hasRooms],
+          ['Payment', hasRooms && payOk],
         ]}
         error={error}
         busy={busy}
-        button={['Book room & mark arrived', 'fa-key']}
+        button={[stays.length > 1 ? 'Book ' + stays.length + ' rooms & mark arrived' : 'Book room & mark arrived', 'fa-key']}
         note="The guest is marked as arrived right away. Room Management then gives them the key.">
-        <Section n={5} title="Payment" hint="How much does the guest pay now?" className="wi-section-bare" done={!!room && payOk}>
+        <Section n={5} title="Payment" hint="How much does the guest pay now?" className="wi-section-bare" done={hasRooms && payOk}>
           <div className="wi-fields">
             <Chips label="Payment now" value={payType} onChange={setPayType} cols={3} stack options={[
               ['Full', 'Pay in full', 'fa-check-double'],
@@ -796,10 +848,10 @@ function RoomWalkIn() {
             {payType !== 'None' && (
               <>
                 <Field id="wi-amount" label={payType === 'Full' ? 'Amount to collect' : 'Deposit amount'}
-                  bad={tried && payType === 'Partial' && !payOk ? (Number(amount) > total && room ? 'A deposit cannot be more than ' + peso(total) + '.' : 'Enter how much they are paying now.') : ''}
-                  help={payType === 'Partial' && room ? 'The rest (' + peso(Math.max(0, total - (Number(amount) || 0))) + ') is paid at check-out.' : ''}>
+                  bad={tried && payType === 'Partial' && !payOk ? (Number(amount) > total && hasRooms ? 'A deposit cannot be more than ' + peso(total) + '.' : 'Enter how much they are paying now.') : ''}
+                  help={payType === 'Partial' && hasRooms ? 'The rest (' + peso(Math.max(0, total - (Number(amount) || 0))) + ') is paid at check-out.' : ''}>
                   {payType === 'Full'
-                    ? <input id="wi-amount" className="wi-input" value={room ? peso(total) : 'Pick a room first'} readOnly />
+                    ? <input id="wi-amount" className="wi-input" value={hasRooms ? peso(total) : 'Pick a room first'} readOnly />
                     : <input id="wi-amount" type="number" min="1" step="0.01" inputMode="decimal"
                         className={'wi-input' + (tried && !payOk ? ' is-bad' : '')}
                         value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" />}

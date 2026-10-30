@@ -12,8 +12,8 @@ use RuntimeException;
  */
 class BookingOverlapException extends RuntimeException
 {
-    public function __construct()
+    public function __construct(?string $roomName = null)
     {
-        parent::__construct('Those dates are already booked for this room.');
+        parent::__construct('Those dates are already booked for ' . ($roomName ?? 'this room') . '.');
     }
 }
