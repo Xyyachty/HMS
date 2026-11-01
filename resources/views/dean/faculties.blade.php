@@ -657,7 +657,7 @@
         Swal.fire({
             title: 'End ' + name + '?',
             html: 'Every current student is archived: they can no longer sign in, and their blocks open for the next batch. '
-                + 'Their tasks, teams and reports are kept, and you can restore a student from Manage Users.',
+                + 'Their tasks, teams and reports are kept, and you can restore a student from Reports, Archived Students.',
             icon: 'warning',
             input: 'text',
             inputPlaceholder: 'Type the term name to confirm',

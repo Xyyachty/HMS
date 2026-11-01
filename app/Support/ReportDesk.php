@@ -77,6 +77,28 @@ class ReportDesk
             }
         }
 
+        // Archived Students tab: everyone End term archived (or only the picked term's),
+        // with the block, team and faculty they had when the term ended.
+        $archived = $termOptions === [] ? collect() : $scope($withArchived(Student::query())
+            ->whereNotNull('academic_term_id')
+            ->when($termId, fn ($q) => $q->where('academic_term_id', $termId))
+            ->with(['user', 'term', 'faculty.user']))
+            ->get();
+        $archivedTeams = StudentGroup::withoutGlobalScope(StudentGroup::CURRENT_SCOPE)
+            ->whereIn('student_id', $archived->pluck('user_information_id'))
+            ->pluck('group_name', 'student_id');
+        $archivedStudents = $archived->map(fn (Student $s) => [
+            'user_id' => $s->user_id,
+            'name' => self::personName($s->user) ?: (string) $s->student_number,
+            'user' => $s->user,
+            'student_number' => $s->student_number,
+            'block' => $s->archived_block ?: '—',
+            'term_id' => (int) $s->academic_term_id,
+            'term' => $s->term?->name ?? '—',
+            'team' => $archivedTeams[$s->user_information_id] ?? '—',
+            'faculty' => self::personName($s->faculty?->user) ?: '—',
+        ])->sortBy([['term_id', 'desc'], ['name', 'asc']])->values();
+
         // Done means approved: handed in and signed off, not just handed in.
         $isApproved = fn (Task $task) => $task->status === 'archived' && $task->feedback_at !== null;
 
@@ -359,6 +381,7 @@ class ReportDesk
             'filters',
             'isFiltered',
             'termOptions',
+            'archivedStudents',
             'teamOptions',
             'taskOptions',
             'roleOptions'

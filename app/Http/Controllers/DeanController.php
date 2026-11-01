@@ -196,13 +196,7 @@ class DeanController extends Controller
     {
         Faculty::closeBlockGaps();
 
-        // Archived students too, for the Archived tab: lift the scope that hides them.
-        $users = User::with([
-            'faculty.classes',
-            'student' => fn ($query) => $query->withoutGlobalScope(Student::CURRENT_SCOPE),
-            'student.facultyClass.faculty',
-            'student.term',
-        ])->latest()->get();
+        $users = self::withoutArchivedStudents(User::with(['faculty.classes', 'student.facultyClass.faculty']))->latest()->get();
         $availableBlocks = Faculty::availableBlocks();
         $systemBlocks = Faculty::existingClassLetters();
         $handOverBlocks = Faculty::handOverBlocks();
@@ -222,9 +216,15 @@ class DeanController extends Controller
         return view('dean.usermanagement', compact('users', 'availableBlocks', 'systemBlocks', 'handOverBlocks', 'facultyLoad'));
     }
 
+    /** Students archived by End term are listed on Reports, not on Manage Users. */
+    private static function withoutArchivedStudents($query)
+    {
+        return $query->where(fn ($q) => $q->where('role', '!=', 'student')->orWhere('status', '!=', 'archived')->orWhereNull('status'));
+    }
+
     public function usersLive()
     {
-        $users = User::with(['faculty.classes', 'student.facultyClass.faculty'])->latest()->get()->map(function ($user) {
+        $users = self::withoutArchivedStudents(User::with(['faculty.classes', 'student.facultyClass.faculty']))->latest()->get()->map(function ($user) {
             $displayName = trim(implode(' ', array_filter([
                 $user->last_name ?? null,
                 $user->first_name ?? null,
@@ -1030,16 +1030,16 @@ class DeanController extends Controller
     {
         $student = Student::withoutGlobalScope(Student::CURRENT_SCOPE)->where('user_id', $user->user_id)->first();
         if (!$student) {
-            return redirect()->route('dean.users', ['tab' => 'archived'])->withErrors(['status' => 'That account is not a student.']);
+            return redirect()->route('dean.reports', ['tab' => 'archived'])->withErrors(['status' => 'That account is not a student.']);
         }
 
         try {
             \App\Support\AcademicTermDesk::restore($student, auth()->user());
         } catch (\RuntimeException $e) {
-            return redirect()->route('dean.users', ['tab' => 'archived'])->withErrors(['status' => $e->getMessage()]);
+            return redirect()->route('dean.reports', ['tab' => 'archived'])->withErrors(['status' => $e->getMessage()]);
         }
 
-        return redirect()->route('dean.users', ['tab' => 'archived'])->with('success', ($user->name ?: $user->email) . ' is back in the current batch and can sign in again.');
+        return redirect()->route('dean.reports', ['tab' => 'archived'])->with('success', ($user->name ?: $user->email) . ' is back in the current batch and can sign in again.');
     }
 
     public function approveUser(User $user)
