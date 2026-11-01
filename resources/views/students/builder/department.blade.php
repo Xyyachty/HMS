@@ -823,16 +823,18 @@
         }
 
         /* ── Rotate Your Phone ──
-           Phones held upright only: a tablet or a laptop has room either way.
-           CSS alone shows and hides it, so turning the phone is all it takes;
-           nothing tries to rotate the screen. The page still works upright, so
-           the student may carry on that way. */
+           A phone held upright cannot use the editor: this covers it until the
+           phone is turned. Phones only (portrait, under 600px wide, touch); a
+           tablet or a laptop has room either way. CSS alone shows and hides it,
+           so nothing tries to rotate the screen, and the editor underneath is
+           only covered, never reloaded, so unsaved edits are still there when
+           the phone is turned back. */
         #rotateHint { display: none; }
         @media (orientation: portrait) and (max-width: 599px) and (pointer: coarse) {
-            body:not(.rotate-dismissed) #rotateHint {
+            #rotateHint {
                 display: flex; position: fixed; inset: 0; z-index: 10000;
                 align-items: center; justify-content: center; padding: 1.5rem;
-                background: rgba(5, 5, 7, 0.95);
+                background: #050507;
             }
         }
         .rotate-card { max-width: 20rem; text-align: center; color: #fafafa; font-family: 'Inter', sans-serif; }
@@ -847,16 +849,10 @@
         }
         .rotate-card h2 { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 0.5rem; }
         .rotate-card p { font-size: 0.875rem; line-height: 1.6; color: #a1a1aa; }
-        .rotate-card button {
-            margin-top: 1.75rem; min-height: 2.75rem; padding: 0 1rem; border-radius: 0.5rem;
-            background: transparent; border: 1px solid #3f3f46; color: #d4d4d8;
-            font-size: 0.8125rem; font-weight: 600; cursor: pointer;
-        }
         html[data-ops-theme="2"] #rotateHint { background: #f7f4ef !important; }
         html[data-ops-theme="2"] .rotate-card { color: #1a1a1a; }
         html[data-ops-theme="2"] .rotate-card p { color: #4a4642; }
         html[data-ops-theme="2"] .rotate-icon { color: #2d6a4f; }
-        html[data-ops-theme="2"] .rotate-card button { border-color: #e2ddd5; color: #1a1a1a; }
     </style>
 @if($opsSitePalette)
     @include('students.builder.site-theme', ['p' => $opsSitePalette])
@@ -1007,8 +1003,7 @@
                 <polyline points="57 8 58 14 52 16" opacity="0.6"/>
             </svg>
             <h2 id="rotateHintTitle">Rotate Your Phone</h2>
-            <p id="rotateHintText">For a better customization experience, please rotate your phone to landscape mode.</p>
-            <button type="button" onclick="document.body.classList.add('rotate-dismissed')">Continue in portrait</button>
+            <p id="rotateHintText">Please rotate your phone to landscape mode to access the customization editor.</p>
         </div>
     </div>
 
