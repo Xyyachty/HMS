@@ -201,8 +201,18 @@
   .hk-step-head .hk-link { color: var(--fg-muted); }
   .hk-step-title { margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--fg); }
   .hk-damage { display: grid; gap: 0.6rem; padding: 0.85rem; border-radius: 0.625rem; border: 1px dashed var(--hk-line); }
-  .hk-damage > .hk-link { grid-column: 1 / -1; justify-self: start; }
-  .hk-damage img { max-width: 10rem; max-height: 8rem; border-radius: 0.5rem; object-fit: cover; }
+  .hk-damage .hk-input { height: 2.875rem; }
+  .hk-remove { justify-self: start; height: 2.875rem; padding: 0 1rem; }
+
+  /* Photo picker: looks like the other fields, not the browser's grey button */
+  .hk-file { position: relative; display: flex; align-items: center; gap: 0.6rem; cursor: pointer; padding-top: 0; padding-bottom: 0; }
+  .hk-file:hover, .hk-file:focus-within { border-color: var(--accent); }
+  .hk-file input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  .hk-file i { color: var(--accent); }
+  .hk-file span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg-muted); }
+  .hk-file.has-photo span { color: var(--fg); }
+  .hk-file img { flex: none; width: 2rem; height: 2rem; border-radius: 0.375rem; object-fit: cover; }
+  .hk-file em { flex: none; font-style: normal; font-size: 0.78rem; font-weight: 600; color: var(--accent); }
   .hk-label { display: block; font-size: 0.82rem; font-weight: 600; color: var(--fg); margin-bottom: 0.4rem; }
   .hk-label em { font-style: normal; font-weight: 400; color: var(--fg-muted); }
   .hk-error { margin: 0.4rem 0 0; color: var(--hk-bad); font-size: 0.8rem; }
@@ -221,7 +231,9 @@
 
   @container (min-width: 720px) {
     .hk-choices { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-    .hk-damage { grid-template-columns: 1fr 1.5fr 1fr; align-items: start; }
+    .hk-damage { grid-template-columns: 1fr 1.5fr 1fr auto; align-items: end; }
+    .hk-remove span { display: none; }
+    .hk-remove { padding: 0; width: 2.875rem; }
     .hk-step .hk-actions { justify-content: flex-end; }
     .hk-step .hk-actions .hk-btn { flex: 0 0 auto; min-width: 12rem; }
   }
@@ -642,10 +654,10 @@ function ReportStep({ inspection, busy, onClose, onSubmit }) {
   const setItem = (i, patch) => setItems(prev => prev.map((it, n) => (n === i ? { ...it, ...patch } : it)));
 
   const pickPhoto = (i, file) => {
-    if (!file) { setItem(i, { photo: '' }); return; }
+    if (!file) { setItem(i, { photo: '', photoName: '' }); return; }
     if (file.size > 5 * 1024 * 1024) { setError('That photo is too big. Pick one under 5 MB.'); return; }
     const reader = new FileReader();
-    reader.onload = () => setItem(i, { photo: String(reader.result || '') });
+    reader.onload = () => setItem(i, { photo: String(reader.result || ''), photoName: file.name });
     reader.readAsDataURL(file);
   };
 
@@ -684,16 +696,23 @@ function ReportStep({ inspection, busy, onClose, onSubmit }) {
           </div>
           <div>
             <label className="hk-label" htmlFor={`hk-desc-${inspection.id}-${i}`}>What is wrong? <em>(optional)</em></label>
-            <textarea id={`hk-desc-${inspection.id}-${i}`} className="hk-input" rows={2} placeholder="Example: Missing from the bedside table." value={it.description} onChange={e => setItem(i, { description: e.target.value })} />
+            <input id={`hk-desc-${inspection.id}-${i}`} type="text" className="hk-input" placeholder="Example: Missing from the bedside table." value={it.description} onChange={e => setItem(i, { description: e.target.value })} />
           </div>
           <div>
-            <label className="hk-label" htmlFor={`hk-photo-${inspection.id}-${i}`}>Photo <em>(optional)</em></label>
-            <input id={`hk-photo-${inspection.id}-${i}`} type="file" accept="image/*" capture="environment" onChange={e => pickPhoto(i, e.target.files && e.target.files[0])} />
-            {it.photo ? <img src={it.photo} alt={`Photo of ${it.item || 'the item'}`} style={{ marginTop: '0.4rem' }} /> : null}
+            <span className="hk-label">Photo <em>(optional)</em></span>
+            {/* The real file input is hidden; the label is the themed button. */}
+            <label className={`hk-input hk-file ${it.photo ? 'has-photo' : ''}`}>
+              <input type="file" accept="image/*" capture="environment" onChange={e => pickPhoto(i, e.target.files && e.target.files[0])} />
+              {it.photo
+                ? <img src={it.photo} alt={`Photo of ${it.item || 'the item'}`} />
+                : <i className="fa-solid fa-camera"></i>}
+              <span>{it.photo ? (it.photoName || 'Photo added') : 'Choose a photo'}</span>
+              {it.photo ? <em>Change</em> : null}
+            </label>
           </div>
           {items.length > 1 ? (
-            <button type="button" className="hk-link" onClick={() => setItems(prev => prev.filter((_, n) => n !== i))}>
-              <i className="fa-solid fa-xmark"></i> Remove this item
+            <button type="button" className="hk-btn is-quiet hk-remove" aria-label={`Remove item ${i + 1}`} title="Remove this item" onClick={() => setItems(prev => prev.filter((_, n) => n !== i))}>
+              <i className="fa-solid fa-trash-can"></i><span>Remove</span>
             </button>
           ) : null}
         </div>
