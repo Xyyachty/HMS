@@ -106,6 +106,19 @@
   .bill-meta dd { margin: 0; color: var(--fg); font-size: 0.85rem; }
   @media (max-width: 520px) { .bill-meta { grid-template-columns: 1fr; } }
 
+  /* Bill and guest Details open wide (landscape) so the desk reads them without
+     scrolling: charges on the left, money on the right. The receipt stays narrow
+     like a printed slip. Below 820px the two columns stack again. */
+  .bill-modal.is-wide { max-width: 64rem; }
+  .bill-cols { display: grid; gap: 0 2.25rem; }
+  .bill-cols > * { min-width: 0; }
+  .bill-modal .booking-input { box-sizing: border-box; }
+  @media (min-width: 820px) {
+    .bill-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 0.4rem; }
+    .bill-cols > * > .bill-section-title:first-child { margin-top: 0.75rem; }
+    .bill-meta.is-four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  }
+
   /* Extend Stay: a − / + stepper for the extra nights. */
   .xs-stepper { display: flex; align-items: center; gap: 0.6rem; }
   .xs-step {
@@ -664,7 +677,7 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
 
   return (
     <div className="bill-overlay" onClick={() => { if (!busy) onClose(); }} role="dialog" aria-modal="true">
-      <div className="bill-modal" onClick={e => e.stopPropagation()}>
+      <div className="bill-modal is-wide" onClick={e => e.stopPropagation()}>
         <div className="bill-head">
           <div>
             <p style={{ color: 'var(--accent)', fontSize: '0.65rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: '0 0 0.35rem' }}>Front Desk</p>
@@ -683,7 +696,7 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
             <p style={{ color: 'var(--danger, #fb7185)', fontSize: '0.85rem', margin: 0 }}>{error}</p>
           ) : !bill ? null : (
             <>
-              <dl className="bill-meta">
+              <dl className="bill-meta is-four">
                 <div><dt>Guest</dt><dd>{bill.guestName}</dd></div>
                 <div><dt>Room</dt><dd>{bill.roomName || '—'}</dd></div>
                 <div>
@@ -696,6 +709,8 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
                 </div>
               </dl>
 
+              <div className="bill-cols">
+              <div>
               <p className="bill-section-title">Room Charges</p>
               <BillItem name={'Room ' + (bill.roomName || '')} detail={roomUnit(roomLines)} amount={formatPeso(roomLines.subtotal)} />
 
@@ -795,7 +810,9 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
                   )}
                 </div>
               )}
+              </div>
 
+              <div>
               {/* What the guest settled before today, itemised: the amount reads in
                   the money column with every other line, and the method and date sit
                   under it rather than being folded into the label. */}
@@ -873,6 +890,8 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
                   )}
                 </div>
               </form>
+              </div>
+              </div>
             </>
           )}
         </div>
@@ -1151,7 +1170,7 @@ function GuestDetailsModal({ stays, onClose }) {
 
   return (
     <div className="bill-overlay" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="bill-modal" onClick={e => e.stopPropagation()}>
+      <div className="bill-modal is-wide" onClick={e => e.stopPropagation()}>
         <div className="bill-head">
           <div>
             <p style={{ margin: 0, color: 'var(--accent)', fontSize: '0.62rem', letterSpacing: '0.14em', textTransform: 'uppercase' }}>
@@ -1178,7 +1197,7 @@ function GuestDetailsModal({ stays, onClose }) {
 
         <div className="bill-body">
           <p className="bill-section-title" style={{ marginTop: 0 }}>Guest</p>
-          <dl className="bill-meta">
+          <dl className="bill-meta is-four">
             <div><dt>Full name</dt><dd>{guest.fullName || '—'}</dd></div>
             <div><dt>Contact no.</dt><dd>{guest.contactNo || '—'}</dd></div>
             <div><dt>Email</dt><dd style={{ overflowWrap: 'anywhere' }}>{guest.email || '—'}</dd></div>
@@ -1233,6 +1252,8 @@ function StayDetails({ room, reservation, many, transactions }) {
         </div>
       )}
 
+      <div className="bill-cols">
+      <div>
       <p className="bill-section-title">Stay</p>
       <dl className="bill-meta">
         <div><dt>Room</dt><dd>{room ? `${room.name} · ${room.label || room.category}` : '—'}</dd></div>
@@ -1270,7 +1291,9 @@ function StayDetails({ room, reservation, many, transactions }) {
           </p>
         </>
       )}
+      </div>
 
+      <div>
       <p className="bill-section-title">Charges</p>
       <div className="bill-line"><span>Room charge</span><span className="bill-amt">{formatPeso(roomTotal)}</span></div>
       <div className="bill-line">
@@ -1316,6 +1339,8 @@ function StayDetails({ room, reservation, many, transactions }) {
           );
         })
       )}
+      </div>
+      </div>
     </>
   );
 }
