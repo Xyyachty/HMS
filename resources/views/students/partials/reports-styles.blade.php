@@ -58,6 +58,7 @@
   }
   .rp-table td.rp-num, .rp-table td.rp-act { white-space: nowrap; }
   .rp-act { text-align: right; width: 1%; }
+  .rp-time { font-size: 0.72rem; opacity: 0.8; white-space: nowrap; }
   .rp-view {
     display: inline-flex; align-items: center; gap: 0.35rem;
     padding: 0.35rem 0.75rem; border-radius: 0.375rem; border: 1px solid var(--accent);
@@ -70,6 +71,24 @@
     .rp-table th, .rp-table td { padding: 0.55rem 0.5rem; }
     .rp-table th { white-space: normal; }
     .rp-view { padding: 0.3rem 0.55rem; letter-spacing: 0.03em; }
+    /* A table too wide for a phone (rp-stack) turns each row into a card, the
+       column name beside each value, so every column stays without scrolling. */
+    .rp-table.rp-stack, .rp-stack tbody, .rp-stack tfoot, .rp-stack tr { display: block; }
+    .rp-stack thead { display: none; }
+    .rp-stack tr { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); }
+    .rp-stack tfoot tr { border-bottom: none; }
+    .rp-table.rp-stack td {
+      display: flex; justify-content: space-between; align-items: baseline; gap: 1rem;
+      padding: 0.2rem 0; border: none; text-align: right; width: auto;
+    }
+    .rp-table.rp-stack td::before {
+      content: attr(data-label); flex: none; text-align: left; color: var(--fg-muted);
+      font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    }
+    .rp-table.rp-stack td:not([data-label])::before { display: none; }
+    .rp-table.rp-stack td:not([data-label]) { text-align: left; }
+    .rp-table.rp-stack td.rp-act { justify-content: flex-end; padding-top: 0.45rem; }
+    .rp-table.rp-stack td:empty { display: none; }
     .rp-hide-sm { display: none; }
   }
 

@@ -394,6 +394,39 @@ function OverviewPanel({ totals, counts, rangeLabel }) {
   );
 }
 
+/* When a guest came in or left, as a date with the time under it so the column stays
+   narrow. The stamp the desk recorded wins; without one, the booked date and the
+   booked check-in clock (a stay is charged in blocks from that clock). */
+function stayStamp(at, day, clock) {
+  const opts = { month: 'short', day: 'numeric', year: 'numeric' };
+  let d = at ? new Date(at) : null;
+  if (!d || Number.isNaN(d.getTime())) {
+    if (!day) return null;
+    const [y, m, dd] = String(day).split('-').map(Number);
+    if (!y || !m || !dd) return { date: String(day), time: '' };
+    if (!/^\d{1,2}:\d{2}/.test(String(clock || ''))) return { date: formatDate(day), time: '' };
+    const [h, mi] = String(clock).split(':').map(Number);
+    d = new Date(y, m - 1, dd, h, mi);
+  }
+  return { date: d.toLocaleDateString(undefined, opts), time: d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) };
+}
+
+const checkInStamp = (b) => stayStamp(b.checkedInAt, b.checkIn, b.checkInTime);
+const checkOutStamp = (b) => stayStamp(b.checkedOutAt, b.checkOut, b.checkInTime);
+const stampText = (s) => (s ? s.date + (s.time ? ` · ${s.time}` : '') : null);
+
+function StampCell({ label, stamp }) {
+  if (!stamp) return <td data-label={label}>—</td>;
+  return (
+    <td data-label={label}>
+      <div>
+        <div>{stamp.date}</div>
+        {stamp.time ? <div className="rp-time">{stamp.time}</div> : null}
+      </div>
+    </td>
+  );
+}
+
 function stayFields(b) {
   const service = Number(b.roomServiceTotal) || 0;
   return [
@@ -403,8 +436,8 @@ function stayFields(b) {
     ['Email', b.email],
     ['Room', b.roomName],
     ['Guests', b.guestCount],
-    ['Check-In', formatDate(b.checkIn) + (b.checkInTime ? ` · ${b.checkInTime}` : '')],
-    ['Check-Out', formatDate(b.checkOut)],
+    ['Check-In', stampText(checkInStamp(b))],
+    ['Check-Out', stampText(checkOutStamp(b))],
     ['Blocks', stayBlocks(b.checkIn, b.checkOut, b.checkInTime)],
     ['Promo', b.promoName],
     ['Room Charge', formatPeso(b.totalDue)],
@@ -413,9 +446,8 @@ function stayFields(b) {
     ['Room Revenue', formatPeso(b.revenue)],
     // Billed to the stay, but counted under Room Service, not in Room Revenue.
     ['Room Service', service > 0 ? `${formatPeso(service)} (not in Room Revenue)` : '—'],
-    ['Paid', formatPeso(b.amountPaid)],
+    ['Total Paid', formatPeso(b.amountPaid)],
     ['Booked By', b.bookedBy],
-    ['Closed', formatWhen(b.checkedOutAt)],
     ['Notes', b.notes],
   ];
 }
@@ -433,32 +465,33 @@ function RoomTable({ rows, totals, page, onPage, rangeLabel, noCloseCount }) {
   return (
     <>
       <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid var(--border)' }}>
-        <table className="rp-table">
+        <table className="rp-table rp-stack">
           <thead>
             <tr>
               <th>Guest</th>
               <th>Room</th>
-              <th className="rp-hide-sm">Closed</th>
-              <th className="rp-num">Room Revenue</th>
+              <th>Check-In</th>
+              <th>Check-Out</th>
+              <th className="rp-num">Total Paid</th>
               <th className="rp-act">Action</th>
             </tr>
           </thead>
           <tbody>
             {pageRows.map(b => (
               <tr key={b.bookingId}>
-                <td className="rp-strong">{b.fullName || '—'}</td>
-                <td>{b.roomName || '—'}</td>
-                <td className="rp-hide-sm">{formatDate(b.day)}</td>
-                <td className="rp-num rp-money">{formatPeso(b.revenue)}</td>
+                <td className="rp-strong" data-label="Guest">{b.fullName || '—'}</td>
+                <td data-label="Room">{b.roomName || '—'}</td>
+                <StampCell label="Check-In" stamp={checkInStamp(b)} />
+                <StampCell label="Check-Out" stamp={checkOutStamp(b)} />
+                <td className="rp-num rp-money" data-label="Total Paid">{formatPeso(b.amountPaid)}</td>
                 <td className="rp-act"><ViewButton onClick={() => setViewing(b)} /></td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={2}>{rows.length} stay{rows.length === 1 ? '' : 's'} · {formatPeso(totals.collected)} paid</td>
-              <td className="rp-hide-sm"></td>
-              <td className="rp-num rp-money">{formatPeso(totals.room)}</td>
+              <td colSpan={4}>{rows.length} stay{rows.length === 1 ? '' : 's'} · {formatPeso(totals.room)} room revenue</td>
+              <td className="rp-num rp-money" data-label="Total Paid">{formatPeso(totals.collected)}</td>
               <td></td>
             </tr>
           </tfoot>
