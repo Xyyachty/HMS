@@ -37,7 +37,42 @@ function formatWhen(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+  return d.toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: TZ });
+}
+
+/* Every time on this page is Philippine time, whatever clock the viewer's device
+   is set to: the hotel runs in Manila, and the server stores UTC. */
+const TZ = 'Asia/Manila';
+
+/* The Manila calendar day of an instant, as YYYY-MM-DD. */
+function manilaDay(date) {
+  const p = {};
+  new Intl.DateTimeFormat('en-US', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' })
+    .formatToParts(date).forEach(x => { p[x.type] = x.value; });
+  return `${p.year}-${p.month}-${p.day}`;
+}
+
+/* An instant as a Manila date with the time under it, for table cells. */
+function whenStamp(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return {
+    date: d.toLocaleDateString(undefined, { timeZone: TZ, month: 'short', day: 'numeric', year: 'numeric' }),
+    time: d.toLocaleTimeString([], { timeZone: TZ, hour: 'numeric', minute: '2-digit' }),
+  };
+}
+
+function StampCell({ label, stamp }) {
+  if (!stamp) return <td data-label={label}>—</td>;
+  return (
+    <td data-label={label}>
+      <div>
+        <div>{stamp.date}</div>
+        {stamp.time ? <div className="rp-time">{stamp.time}</div> : null}
+      </div>
+    </td>
+  );
 }
 
 function formatDate(value) {
@@ -66,10 +101,8 @@ function stayBlocks(checkIn, checkOut, checkInTime) {
   return Math.max(1, Math.ceil(hours / BLOCK_HOURS));
 }
 
-/* A local YYYY-MM-DD. Never toISOString(): that renders the UTC day, so in Manila
-   anything before 08:00 comes back as yesterday and "Today" quietly loses the whole
-   morning. Built from the local getters, which is what the staff's wall clock, the
-   date inputs on this page, and formatWhen() all already agree on. */
+/* A YYYY-MM-DD from a Date's own getters. Only used on calendar dates built here
+   (presetRange), never on an instant: those go through manilaDay(). */
 function ymd(date) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -85,7 +118,8 @@ function ymd(date) {
    start would split the weekend across two reports. getDay() returns 0 for Sunday,
    which is day 7 of the week that just ended, not day 1 of the next one. */
 function presetRange(preset, now = new Date()) {
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const [ty, tm, td] = manilaDay(now).split('-').map(Number);
+  const today = new Date(ty, tm - 1, td);
 
   if (preset === 'today') {
     return { from: ymd(today), to: ymd(today) };
@@ -111,7 +145,7 @@ function localDayKey(value) {
   if (!raw) return '';
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
   const d = new Date(raw);
-  return Number.isNaN(d.getTime()) ? '' : ymd(d);
+  return Number.isNaN(d.getTime()) ? '' : manilaDay(d);
 }
 
 /* Both bounds inclusive; a row with no usable date is out of every window. */
@@ -398,34 +432,18 @@ function OverviewPanel({ totals, counts, rangeLabel }) {
    narrow. The stamp the desk recorded wins; without one, the booked date and the
    booked check-in clock (a stay is charged in blocks from that clock). */
 function stayStamp(at, day, clock) {
-  const opts = { month: 'short', day: 'numeric', year: 'numeric' };
-  let d = at ? new Date(at) : null;
-  if (!d || Number.isNaN(d.getTime())) {
-    if (!day) return null;
-    const [y, m, dd] = String(day).split('-').map(Number);
-    if (!y || !m || !dd) return { date: String(day), time: '' };
-    if (!/^\d{1,2}:\d{2}/.test(String(clock || ''))) return { date: formatDate(day), time: '' };
-    const [h, mi] = String(clock).split(':').map(Number);
-    d = new Date(y, m - 1, dd, h, mi);
-  }
-  return { date: d.toLocaleDateString(undefined, opts), time: d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) };
+  const recorded = whenStamp(at);
+  if (recorded) return recorded;
+  if (!day) return null;
+  if (!/^\d{1,2}:\d{2}/.test(String(clock || ''))) return { date: formatDate(day), time: '' };
+  const [h, mi] = String(clock).split(':').map(Number);
+  // The booked clock is already Manila wall time, so it is shown as is.
+  return { date: formatDate(day), time: new Date(2000, 0, 1, h, mi).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) };
 }
 
 const checkInStamp = (b) => stayStamp(b.checkedInAt, b.checkIn, b.checkInTime);
 const checkOutStamp = (b) => stayStamp(b.checkedOutAt, b.checkOut, b.checkInTime);
 const stampText = (s) => (s ? s.date + (s.time ? ` · ${s.time}` : '') : null);
-
-function StampCell({ label, stamp }) {
-  if (!stamp) return <td data-label={label}>—</td>;
-  return (
-    <td data-label={label}>
-      <div>
-        <div>{stamp.date}</div>
-        {stamp.time ? <div className="rp-time">{stamp.time}</div> : null}
-      </div>
-    </td>
-  );
-}
 
 function stayFields(b) {
   const service = Number(b.roomServiceTotal) || 0;
@@ -527,12 +545,12 @@ function DineInTable({ rows, total, page, onPage, rangeLabel, tableNameById }) {
   return (
     <>
       <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid var(--border)' }}>
-        <table className="rp-table">
+        <table className="rp-table rp-stack">
           <thead>
             <tr>
               <th>Order #</th>
               <th>Table</th>
-              <th className="rp-hide-sm">Placed</th>
+              <th>Placed</th>
               <th className="rp-num">Total</th>
               <th className="rp-act">Action</th>
             </tr>
@@ -540,19 +558,18 @@ function DineInTable({ rows, total, page, onPage, rangeLabel, tableNameById }) {
           <tbody>
             {pageRows.map(o => (
               <tr key={o.id}>
-                <td className="rp-strong">#{o.id}</td>
-                <td>{tableName(o)}</td>
-                <td className="rp-hide-sm">{formatDate(o.day)}</td>
-                <td className="rp-num rp-money">{o.total > 0 ? formatPeso(o.total) : <span className="rp-zero">₱0</span>}</td>
+                <td className="rp-strong" data-label="Order #">#{o.id}</td>
+                <td data-label="Table">{tableName(o)}</td>
+                <StampCell label="Placed" stamp={whenStamp(o.placedAt)} />
+                <td className="rp-num rp-money" data-label="Total">{o.total > 0 ? formatPeso(o.total) : <span className="rp-zero">₱0</span>}</td>
                 <td className="rp-act"><ViewButton onClick={() => setViewing(o)} /></td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={2}>{rows.length} order{rows.length === 1 ? '' : 's'}</td>
-              <td className="rp-hide-sm"></td>
-              <td className="rp-num rp-money">{formatPeso(total)}</td>
+              <td colSpan={3}>{rows.length} order{rows.length === 1 ? '' : 's'}</td>
+              <td className="rp-num rp-money" data-label="Total">{formatPeso(total)}</td>
               <td></td>
             </tr>
           </tfoot>
@@ -585,12 +602,12 @@ function RoomServiceTable({ rows, total, page, onPage, rangeLabel, openStayTotal
   return (
     <>
       <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid var(--border)' }}>
-        <table className="rp-table">
+        <table className="rp-table rp-stack">
           <thead>
             <tr>
               <th>Order #</th>
               <th>Room</th>
-              <th className="rp-hide-sm">Placed</th>
+              <th>Placed</th>
               <th className="rp-num">Total</th>
               <th className="rp-act">Action</th>
             </tr>
@@ -598,22 +615,23 @@ function RoomServiceTable({ rows, total, page, onPage, rangeLabel, openStayTotal
           <tbody>
             {pageRows.map(o => (
               <tr key={o.id}>
-                <td className="rp-strong">#{o.id}</td>
-                <td>
-                  {o.roomNumber || '—'}
-                  {o.stayOpen && <span className="rp-badge rp-cat-room" style={{ marginLeft: '0.4rem' }}>Open stay</span>}
+                <td className="rp-strong" data-label="Order #">#{o.id}</td>
+                <td data-label="Room">
+                  <span>
+                    {o.roomNumber || '—'}
+                    {o.stayOpen && <span className="rp-badge rp-cat-room" style={{ marginLeft: '0.4rem' }}>Open stay</span>}
+                  </span>
                 </td>
-                <td className="rp-hide-sm">{formatDate(o.day)}</td>
-                <td className="rp-num rp-money">{o.total > 0 ? formatPeso(o.total) : <span className="rp-zero">₱0</span>}</td>
+                <StampCell label="Placed" stamp={whenStamp(o.placedAt)} />
+                <td className="rp-num rp-money" data-label="Total">{o.total > 0 ? formatPeso(o.total) : <span className="rp-zero">₱0</span>}</td>
                 <td className="rp-act"><ViewButton onClick={() => setViewing(o)} /></td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={2}>{rows.length} order{rows.length === 1 ? '' : 's'}</td>
-              <td className="rp-hide-sm"></td>
-              <td className="rp-num rp-money">{formatPeso(total)}</td>
+              <td colSpan={3}>{rows.length} order{rows.length === 1 ? '' : 's'}</td>
+              <td className="rp-num rp-money" data-label="Total">{formatPeso(total)}</td>
               <td></td>
             </tr>
           </tfoot>

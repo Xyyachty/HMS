@@ -89,7 +89,6 @@
     .rp-table.rp-stack td:not([data-label]) { text-align: left; }
     .rp-table.rp-stack td.rp-act { justify-content: flex-end; padding-top: 0.45rem; }
     .rp-table.rp-stack td:empty { display: none; }
-    .rp-hide-sm { display: none; }
   }
 
   .rp-modal-back {
