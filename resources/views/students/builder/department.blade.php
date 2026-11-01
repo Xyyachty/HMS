@@ -788,6 +788,75 @@
         @media (max-width: 400px) {
             .topbar-brand .logo-icon { display: none; }
         }
+
+        /* ── Phone on its side ──
+           A landscape phone is wide but only 320-430px tall, so the dock moves
+           to a rail down the left edge and the Design Panel opens from the
+           right: the page keeps the full height for editing. */
+        @media (max-width: 1023px) and (max-height: 500px) and (orientation: landscape) {
+            :root {
+                --m-dock-h: 0px;
+                --m-rail-w: calc(4.25rem + env(safe-area-inset-left));
+            }
+            .topbar-row { height: 2.75rem; }
+            .topbar-actions .hdr-btn { height: 2.25rem; min-width: 2.25rem; }
+            #mainLayout { padding-left: var(--m-rail-w); }
+            #mobileDock {
+                top: 2.75rem; right: auto; width: var(--m-rail-w); height: auto;
+                grid-auto-flow: row; grid-auto-rows: 1fr; grid-auto-columns: auto;
+                padding: 0 0 env(safe-area-inset-bottom) env(safe-area-inset-left);
+                border-top: 0; border-right: 1px solid #27272a;
+            }
+            .m-dock-btn { padding: 0 0.25rem; text-align: center; }
+            #leftSidebar { top: 2.75rem; bottom: 0; left: var(--m-rail-w); }
+            #rightSidebar {
+                top: 2.75rem; bottom: 0; left: auto; right: 0; width: min(22rem, 48vw); height: auto;
+                border-top: 0; border-left: 1px solid #27272a; border-radius: 0;
+                transform: translateX(105%); box-shadow: -12px 0 40px rgba(0,0,0,0.45);
+            }
+            #mobileBackdrop { top: 2.75rem; left: var(--m-rail-w); bottom: 0; }
+            #mobileSelBar { left: var(--m-rail-w); padding: 0.375rem 0.5rem; }
+            #mobileSelBar button { height: 2.5rem; flex-direction: row; gap: 0.375rem; padding: 0 0.75rem; font-size: 0.6875rem; }
+            #toast { bottom: 3.75rem; }
+            html[data-ops-theme="2"] #mobileDock { border-right-color: #e2ddd5; }
+            html[data-ops-theme="2"] #rightSidebar { border-left-color: #e2ddd5; }
+        }
+
+        /* ── Rotate Your Phone ──
+           Phones held upright only: a tablet or a laptop has room either way.
+           CSS alone shows and hides it, so turning the phone is all it takes;
+           nothing tries to rotate the screen. The page still works upright, so
+           the student may carry on that way. */
+        #rotateHint { display: none; }
+        @media (orientation: portrait) and (max-width: 599px) and (pointer: coarse) {
+            body:not(.rotate-dismissed) #rotateHint {
+                display: flex; position: fixed; inset: 0; z-index: 10000;
+                align-items: center; justify-content: center; padding: 1.5rem;
+                background: rgba(5, 5, 7, 0.95);
+            }
+        }
+        .rotate-card { max-width: 20rem; text-align: center; color: #fafafa; font-family: 'Inter', sans-serif; }
+        .rotate-icon { width: 5.5rem; height: 5.5rem; margin: 0 auto 1.5rem; color: #22d3ee; }
+        .rotate-icon .rotate-phone { transform-origin: 48px 48px; animation: rotatePhone 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite; }
+        @keyframes rotatePhone {
+            0%, 20% { transform: rotate(0deg); }
+            55%, 100% { transform: rotate(-90deg); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .rotate-icon .rotate-phone { animation: none; transform: rotate(-90deg); }
+        }
+        .rotate-card h2 { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 0.5rem; }
+        .rotate-card p { font-size: 0.875rem; line-height: 1.6; color: #a1a1aa; }
+        .rotate-card button {
+            margin-top: 1.75rem; min-height: 2.75rem; padding: 0 1rem; border-radius: 0.5rem;
+            background: transparent; border: 1px solid #3f3f46; color: #d4d4d8;
+            font-size: 0.8125rem; font-weight: 600; cursor: pointer;
+        }
+        html[data-ops-theme="2"] #rotateHint { background: #f7f4ef !important; }
+        html[data-ops-theme="2"] .rotate-card { color: #1a1a1a; }
+        html[data-ops-theme="2"] .rotate-card p { color: #4a4642; }
+        html[data-ops-theme="2"] .rotate-icon { color: #2d6a4f; }
+        html[data-ops-theme="2"] .rotate-card button { border-color: #e2ddd5; color: #1a1a1a; }
     </style>
 @if($opsSitePalette)
     @include('students.builder.site-theme', ['p' => $opsSitePalette])
@@ -926,6 +995,22 @@
     </button>
 
     <div id="toast"></div>
+
+    <div id="rotateHint" role="dialog" aria-modal="true" aria-labelledby="rotateHintTitle" aria-describedby="rotateHintText">
+        <div class="rotate-card">
+            <svg class="rotate-icon" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <g class="rotate-phone">
+                    <rect x="31" y="14" width="34" height="68" rx="6"/>
+                    <line x1="43" y1="73" x2="53" y2="73"/>
+                </g>
+                <path d="M80 34a34 34 0 0 0-22-20" opacity="0.6"/>
+                <polyline points="57 8 58 14 52 16" opacity="0.6"/>
+            </svg>
+            <h2 id="rotateHintTitle">Rotate Your Phone</h2>
+            <p id="rotateHintText">For a better customization experience, please rotate your phone to landscape mode.</p>
+            <button type="button" onclick="document.body.classList.add('rotate-dismissed')">Continue in portrait</button>
+        </div>
+    </div>
 
     {{-- Phones and tablets only; see the "Phones and tablets" styles. --}}
     <div id="mobileBackdrop" onclick="closeMobileSheets()"></div>
