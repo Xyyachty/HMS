@@ -834,10 +834,15 @@
   }
 
   function clearSelection() {
+    const had = !!selectedEl;
     if (selectedEl) selectedEl.classList.remove('hms-edit-selected');
     selectedEl = null;
     document.querySelectorAll('.hms-edit-selected').forEach((n) => n.classList.remove('hms-edit-selected'));
     if (handlesEl) handlesEl.style.display = 'none';
+    // Every way a selection ends says so: changing page or mode cleared it in
+    // silence, and the panel and the phone toolbar went on naming a selection
+    // that was gone.
+    if (had) postToParent({ type: 'element-deselected' });
   }
 
   function selectElement(el) {
@@ -1772,6 +1777,7 @@
     selectedEl = el;
     const startRect = getVisualRect(el);
     dragState = {
+      pointerId: e.pointerId,
       el: el,
       startCss: el.style.cssText,
       alreadyCovering: coveredContent(el),
@@ -1866,6 +1872,7 @@
       ? ((el.naturalWidth && el.naturalHeight) ? (el.naturalWidth / el.naturalHeight) : (r.width / Math.max(1, r.height)))
       : 0;
     resizeState = {
+      pointerId: e.pointerId,
       el: el,
       startCss: el.style.cssText,
       alreadyCovering: coveredContent(el),
@@ -2031,7 +2038,14 @@
     setElementTranslate(el, t.x + dx, t.y + dy);
   }
 
+  // Only the finger or mouse that started a drag moves it; a second finger
+  // on the glass (a pinch) made the element jump between the two.
+  function isOtherPointer(state, e) {
+    return !!(state && e && e.pointerId != null && state.pointerId != null && e.pointerId !== state.pointerId);
+  }
+
   function onPointerMove(e) {
+    if (isOtherPointer(dragState || resizeState, e)) return;
     if (dragState) dragState.altKey = e.altKey;
     if (resizeState) resizeState.altKey = e.altKey;
     if (dragState) {
@@ -2232,7 +2246,8 @@
     rebuildFreePosSheet();
   }
 
-  function onPointerUp() {
+  function onPointerUp(e) {
+    if (isOtherPointer(dragState || resizeState, e)) return;
     if (dragState) {
       if (dragState.historyStarted) {
         const el = dragState.el;
@@ -2519,9 +2534,19 @@
     return fileInput;
   }
 
+  // Words, not pictures: an upload while one of these was picked turned into
+  // a background image painted behind the heading or paragraph.
+  function isTextOnly(el) {
+    return !!el && /^(H[1-6]|P|SPAN|EM|STRONG|SMALL|LABEL|A|LI|I)$/.test(el.tagName) && !el.hasAttribute('data-hms-bg-target');
+  }
+
   function applyImageToSelected(url, recordHistory) {
     if (!selectedEl || !url) return;
     if (isHeaderLocked(selectedEl)) return;
+    if (isTextOnly(selectedEl)) {
+      postToParent({ type: 'toast', message: 'Pick the picture you want to replace first, then upload.' });
+      return;
+    }
     if (recordHistory !== false) beginHistoryStep();
 
     // Shared-content images (brand logo) persist through the site-content store
@@ -2626,7 +2651,15 @@
       if (selectedEl.tagName === 'INPUT' || selectedEl.tagName === 'TEXTAREA') {
         selectedEl.placeholder = data.text;
       } else {
-        writeEditableText(selectedEl, data.text);
+        /* One line typed in the panel means the other lines were deleted.
+           writeEditableText reads a single line as an old save that only ever
+           held the first line, and kept the rest: "Meets Comfort" stayed under
+           a heading the student had retyped as one line. */
+        const lines = textLines(selectedEl);
+        const text = lines && String(data.text).indexOf('\n') === -1
+          ? data.text + '\n'.repeat(lines.length - 1)
+          : data.text;
+        writeEditableText(selectedEl, text);
       }
     }
     if (data.src && !isMenuContent(selectedEl)) applyImageToSelected(data.src, false);

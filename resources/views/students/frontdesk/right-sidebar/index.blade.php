@@ -1041,6 +1041,13 @@
 
     async function uploadSelectedImage(input) {
         if (!requireSelection()) { input.value = ''; return; }
+        // Checked before the upload, so a heading picked by mistake does not
+        // store a file nobody uses and then report "Image updated".
+        if (window.selectedElementIsText) {
+            input.value = '';
+            if (typeof toast === 'function') toast('Pick the picture you want to replace first, then upload.');
+            return;
+        }
         const file = input.files && input.files[0];
         if (!file) return;
         const form = new FormData();
@@ -1197,6 +1204,7 @@
 
         if (data.type === 'element-selected') {
             window.selectedElementId = data.id;
+            window.selectedElementIsText = !data.isImage && /^(h[1-6]|p|span|em|strong|small|label|a|li|i)$/.test(data.tag || '');
             const label = document.getElementById('selectedElement');
             if (label) label.textContent = (data.label || 'Selected element') + (data.tag ? ' · <' + data.tag + '>' : '');
             const parentBtn = document.getElementById('selectParentBtn');
