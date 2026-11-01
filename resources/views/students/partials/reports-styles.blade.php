@@ -50,10 +50,54 @@
     border-bottom: 1px solid var(--border); white-space: nowrap;
     text-align: left; background: rgba(255,255,255,0.02);
   }
+  /* Names and rooms wrap so the table fits the pane; numbers and the View
+     button stay on one line. Every other detail lives in the View dialog. */
   .rp-table td {
     padding: 0.7rem 0.85rem; font-size: 0.8rem; color: var(--fg-muted);
-    border-bottom: 1px solid rgba(42,38,33,0.5); vertical-align: middle; white-space: nowrap;
+    border-bottom: 1px solid rgba(42,38,33,0.5); vertical-align: middle; overflow-wrap: break-word;
   }
+  .rp-table td.rp-num, .rp-table td.rp-act { white-space: nowrap; }
+  .rp-act { text-align: right; width: 1%; }
+  .rp-view {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    padding: 0.35rem 0.75rem; border-radius: 0.375rem; border: 1px solid var(--accent);
+    background: transparent; color: var(--accent); cursor: pointer;
+    font-family: var(--font-body, 'Outfit', sans-serif); font-size: 0.68rem; font-weight: 600;
+    letter-spacing: 0.06em; text-transform: uppercase; transition: background 0.2s, color 0.2s;
+  }
+  .rp-view:hover { background: var(--accent); color: var(--bg); }
+  @media (max-width: 640px) {
+    .rp-table th, .rp-table td { padding: 0.55rem 0.5rem; }
+    .rp-table th { white-space: normal; }
+    .rp-view { padding: 0.3rem 0.55rem; letter-spacing: 0.03em; }
+    .rp-hide-sm { display: none; }
+  }
+
+  .rp-modal-back {
+    position: fixed; inset: 0; z-index: 9000; background: rgba(5,5,7,0.65);
+    display: flex; align-items: center; justify-content: center; padding: 1rem;
+  }
+  .rp-modal {
+    width: min(34rem, 100%); max-height: calc(100dvh - 2rem); overflow-y: auto;
+    background: var(--card); border: 1px solid var(--border); border-radius: 0.75rem;
+    padding: 1.2rem 1.3rem; font-family: var(--font-body, 'Outfit', sans-serif);
+  }
+  .rp-modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+  .rp-modal-head h2 { margin: 0; font-size: 1.35rem; color: var(--fg); }
+  .rp-modal-head p { margin: 0.25rem 0 0; font-size: 0.75rem; color: var(--fg-muted); }
+  .rp-modal-x {
+    border: 1px solid var(--border); background: transparent; color: var(--fg-muted);
+    border-radius: 0.375rem; width: 2rem; height: 2rem; flex: none; cursor: pointer;
+  }
+  .rp-modal-x:hover { color: var(--fg); }
+  .rp-dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.5rem 1rem; margin: 0; font-size: 0.82rem; }
+  .rp-dl dt { color: var(--fg-muted); }
+  .rp-dl dd { margin: 0; color: var(--fg); text-align: right; overflow-wrap: break-word; min-width: 0; }
+  .rp-modal-sec {
+    margin: 1.1rem 0 0.5rem; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--fg-muted);
+  }
+  .rp-modal .rp-table { border: 1px solid var(--border); }
   .rp-table tfoot td {
     border-top: 1px solid var(--border); border-bottom: none;
     color: var(--fg); font-weight: 600; background: rgba(255,255,255,0.02);

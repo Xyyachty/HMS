@@ -129,6 +129,91 @@ function itemsSummary(items) {
   return { count, title };
 }
 
+function ViewButton({ onClick }) {
+  return (
+    <button type="button" className="rp-view" onClick={onClick}>
+      <i className="fa-solid fa-eye"></i> View
+    </button>
+  );
+}
+
+/* Every detail of one row. The table keeps only what tells rows apart, so it fits
+   the pane without scrolling sideways; the rest is here. */
+function DetailModal({ title, sub, fields, items, onClose }) {
+  useEffect(() => {
+    const onKey = e => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const lines = Array.isArray(items) ? items : null;
+  return ReactDOM.createPortal(
+    <div className="rp-modal-back" onClick={onClose}>
+      <div className="rp-modal" role="dialog" aria-modal="true" aria-label={title} onClick={e => e.stopPropagation()}>
+        <div className="rp-modal-head">
+          <div>
+            <h2 className="font-display">{title}</h2>
+            {sub ? <p>{sub}</p> : null}
+          </div>
+          <button type="button" className="rp-modal-x" onClick={onClose} aria-label="Close">
+            <i className="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <dl className="rp-dl">
+          {fields.map(([label, value]) => (
+            <React.Fragment key={label}>
+              <dt>{label}</dt>
+              <dd>{value === null || value === undefined || value === '' ? '—' : value}</dd>
+            </React.Fragment>
+          ))}
+        </dl>
+        {lines && (
+          <>
+            <p className="rp-modal-sec">Items</p>
+            {lines.length === 0 ? (
+              <p className="rp-note">No items on this order.</p>
+            ) : (
+              <table className="rp-table">
+                <thead>
+                  <tr>
+                    <th>Item</th>
+                    <th className="rp-num">Qty</th>
+                    <th className="rp-num">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lines.map((it, i) => (
+                    <tr key={i}>
+                      <td>{it.name}</td>
+                      <td className="rp-num">{it.qty}</td>
+                      <td className="rp-num">{formatPeso((Number(it.price) || 0) * (Number(it.qty) || 0))}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </>
+        )}
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+/* The fields every food order shares; each table adds where it was served. */
+function orderFields(o, place) {
+  return [
+    ['Order #', '#' + o.id],
+    ...place,
+    ['Guest', o.guestName],
+    ['Items', itemsSummary(o.items).count],
+    ['Total', formatPeso(o.total)],
+    ['Placed By', o.placedBy],
+    ['Placed', formatWhen(o.placedAt)],
+    ['Completed', formatWhen(o.updatedAt)],
+  ];
+}
+
 function Tile({ label, value, sub, tone, grand }) {
   return (
     <div className={'rp-tile' + (grand ? ' rp-tile-grand' : '')}>
@@ -309,7 +394,34 @@ function OverviewPanel({ totals, counts, rangeLabel }) {
   );
 }
 
+function stayFields(b) {
+  const service = Number(b.roomServiceTotal) || 0;
+  return [
+    ['Booking #', '#' + b.bookingId],
+    ['Guest', b.fullName],
+    ['Contact', b.contactNo],
+    ['Email', b.email],
+    ['Room', b.roomName],
+    ['Guests', b.guestCount],
+    ['Check-In', formatDate(b.checkIn) + (b.checkInTime ? ` · ${b.checkInTime}` : '')],
+    ['Check-Out', formatDate(b.checkOut)],
+    ['Blocks', stayBlocks(b.checkIn, b.checkOut, b.checkInTime)],
+    ['Promo', b.promoName],
+    ['Room Charge', formatPeso(b.totalDue)],
+    ['Add-ons', formatPeso(b.addonsTotal)],
+    ['Other Charges', formatPeso(b.otherCharges)],
+    ['Room Revenue', formatPeso(b.revenue)],
+    // Billed to the stay, but counted under Room Service, not in Room Revenue.
+    ['Room Service', service > 0 ? `${formatPeso(service)} (not in Room Revenue)` : '—'],
+    ['Paid', formatPeso(b.amountPaid)],
+    ['Booked By', b.bookedBy],
+    ['Closed', formatWhen(b.checkedOutAt)],
+    ['Notes', b.notes],
+  ];
+}
+
 function RoomTable({ rows, totals, page, onPage, rangeLabel, noCloseCount }) {
+  const [viewing, setViewing] = useState(null);
   const totalPages = Math.max(1, Math.ceil(rows.length / PER_PAGE));
   const safePage = Math.min(page, totalPages);
   const pageRows = rows.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
@@ -326,57 +438,40 @@ function RoomTable({ rows, totals, page, onPage, rangeLabel, noCloseCount }) {
             <tr>
               <th>Guest</th>
               <th>Room</th>
-              <th>Check-In</th>
-              <th>Check-Out</th>
-              <th className="rp-num">Blocks</th>
-              <th className="rp-num">Room Charge</th>
-              <th className="rp-num">Add-ons</th>
-              <th className="rp-num">Other</th>
+              <th className="rp-hide-sm">Closed</th>
               <th className="rp-num">Room Revenue</th>
-              <th className="rp-num" title="Billed to the stay, counted under Room Service — not included in Room Revenue.">Room Svc (excl.)</th>
-              <th className="rp-num">Paid</th>
-              <th>Closed</th>
+              <th className="rp-act">Action</th>
             </tr>
           </thead>
           <tbody>
-            {pageRows.map(b => {
-              const roomCharge = Number(b.totalDue) || 0;
-              const addons = Number(b.addonsTotal) || 0;
-              const extras = Number(b.otherCharges) || 0;
-              const service = Number(b.roomServiceTotal) || 0;
-              const paid = Number(b.amountPaid) || 0;
-              return (
-                <tr key={b.bookingId}>
-                  <td className="rp-strong">{b.fullName || '—'}</td>
-                  <td>{b.roomName || '—'}</td>
-                  <td>{formatDate(b.checkIn)}{b.checkInTime ? ` · ${b.checkInTime}` : ''}</td>
-                  <td>{formatDate(b.checkOut)}</td>
-                  <td className="rp-num">{stayBlocks(b.checkIn, b.checkOut, b.checkInTime)}</td>
-                  <td className="rp-num">{formatPeso(roomCharge)}</td>
-                  <td className="rp-num">{addons > 0 ? formatPeso(addons) : '—'}</td>
-                  <td className="rp-num">{extras > 0 ? formatPeso(extras) : '—'}</td>
-                  <td className="rp-num rp-money">{formatPeso(b.revenue)}</td>
-                  <td className="rp-num rp-muted-money">{service > 0 ? formatPeso(service) : '—'}</td>
-                  <td className="rp-num">{formatPeso(paid)}</td>
-                  <td>{formatWhen(b.checkedOutAt)}</td>
-                </tr>
-              );
-            })}
+            {pageRows.map(b => (
+              <tr key={b.bookingId}>
+                <td className="rp-strong">{b.fullName || '—'}</td>
+                <td>{b.roomName || '—'}</td>
+                <td className="rp-hide-sm">{formatDate(b.day)}</td>
+                <td className="rp-num rp-money">{formatPeso(b.revenue)}</td>
+                <td className="rp-act"><ViewButton onClick={() => setViewing(b)} /></td>
+              </tr>
+            ))}
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={5}>{rows.length} stay{rows.length === 1 ? '' : 's'}</td>
-              <td className="rp-num">{formatPeso(totals.roomCharge)}</td>
-              <td className="rp-num">{formatPeso(totals.addons)}</td>
-              <td className="rp-num">{formatPeso(totals.extras)}</td>
+              <td colSpan={2}>{rows.length} stay{rows.length === 1 ? '' : 's'} · {formatPeso(totals.collected)} paid</td>
+              <td className="rp-hide-sm"></td>
               <td className="rp-num rp-money">{formatPeso(totals.room)}</td>
-              <td className="rp-num"></td>
-              <td className="rp-num rp-money">{formatPeso(totals.collected)}</td>
               <td></td>
             </tr>
           </tfoot>
         </table>
       </div>
+      {viewing && (
+        <DetailModal
+          title={viewing.fullName || 'Stay'}
+          sub={`Booking #${viewing.bookingId} · ${viewing.roomName || 'No room'}`}
+          fields={stayFields(viewing)}
+          onClose={() => setViewing(null)}
+        />
+      )}
       {noCloseCount > 0 && (
         <p className="rp-note">{noCloseCount} checked-out stay{noCloseCount === 1 ? '' : 's'} have no closing date and are not included in any range.</p>
       )}
@@ -386,9 +481,11 @@ function RoomTable({ rows, totals, page, onPage, rangeLabel, noCloseCount }) {
 }
 
 function DineInTable({ rows, total, page, onPage, rangeLabel, tableNameById }) {
+  const [viewing, setViewing] = useState(null);
   const totalPages = Math.max(1, Math.ceil(rows.length / PER_PAGE));
   const safePage = Math.min(page, totalPages);
   const pageRows = rows.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
+  const tableName = (o) => (o.tableId ? (tableNameById[o.tableId] || `#${o.tableId}`) : '—');
 
   if (rows.length === 0) {
     return <EmptyState icon="fa-utensils" message={`No dine-in orders were completed between ${rangeLabel}.`} />;
@@ -402,44 +499,48 @@ function DineInTable({ rows, total, page, onPage, rangeLabel, tableNameById }) {
             <tr>
               <th>Order #</th>
               <th>Table</th>
-              <th>Guest</th>
-              <th className="rp-num">Items</th>
+              <th className="rp-hide-sm">Placed</th>
               <th className="rp-num">Total</th>
-              <th>Placed By</th>
-              <th>Placed</th>
+              <th className="rp-act">Action</th>
             </tr>
           </thead>
           <tbody>
-            {pageRows.map(o => {
-              const { count, title } = itemsSummary(o.items);
-              return (
-                <tr key={o.id}>
-                  <td className="rp-strong">#{o.id}</td>
-                  <td>{o.tableId ? (tableNameById[o.tableId] || `#${o.tableId}`) : '—'}</td>
-                  <td>{o.guestName || '—'}</td>
-                  <td className="rp-num" title={title}>{count}</td>
-                  <td className="rp-num rp-money">{o.total > 0 ? formatPeso(o.total) : <span className="rp-zero">₱0</span>}</td>
-                  <td>{o.placedBy || '—'}</td>
-                  <td>{formatWhen(o.placedAt)}</td>
-                </tr>
-              );
-            })}
+            {pageRows.map(o => (
+              <tr key={o.id}>
+                <td className="rp-strong">#{o.id}</td>
+                <td>{tableName(o)}</td>
+                <td className="rp-hide-sm">{formatDate(o.day)}</td>
+                <td className="rp-num rp-money">{o.total > 0 ? formatPeso(o.total) : <span className="rp-zero">₱0</span>}</td>
+                <td className="rp-act"><ViewButton onClick={() => setViewing(o)} /></td>
+              </tr>
+            ))}
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={4}>{rows.length} order{rows.length === 1 ? '' : 's'}</td>
+              <td colSpan={2}>{rows.length} order{rows.length === 1 ? '' : 's'}</td>
+              <td className="rp-hide-sm"></td>
               <td className="rp-num rp-money">{formatPeso(total)}</td>
-              <td colSpan={2}></td>
+              <td></td>
             </tr>
           </tfoot>
         </table>
       </div>
+      {viewing && (
+        <DetailModal
+          title={`Dine-In Order #${viewing.id}`}
+          sub={tableName(viewing)}
+          fields={orderFields(viewing, [['Table', tableName(viewing)]])}
+          items={viewing.items}
+          onClose={() => setViewing(null)}
+        />
+      )}
       <Pager page={safePage} totalPages={totalPages} total={rows.length} perPage={PER_PAGE} onPage={onPage} />
     </>
   );
 }
 
 function RoomServiceTable({ rows, total, page, onPage, rangeLabel, openStayTotal }) {
+  const [viewing, setViewing] = useState(null);
   const totalPages = Math.max(1, Math.ceil(rows.length / PER_PAGE));
   const safePage = Math.min(page, totalPages);
   const pageRows = rows.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
@@ -456,43 +557,48 @@ function RoomServiceTable({ rows, total, page, onPage, rangeLabel, openStayTotal
             <tr>
               <th>Order #</th>
               <th>Room</th>
-              <th>Booking #</th>
-              <th>Guest</th>
-              <th className="rp-num">Items</th>
+              <th className="rp-hide-sm">Placed</th>
               <th className="rp-num">Total</th>
-              <th>Placed By</th>
-              <th>Placed</th>
+              <th className="rp-act">Action</th>
             </tr>
           </thead>
           <tbody>
-            {pageRows.map(o => {
-              const { count, title } = itemsSummary(o.items);
-              return (
-                <tr key={o.id}>
-                  <td className="rp-strong">#{o.id}</td>
-                  <td>{o.roomNumber || '—'}</td>
-                  <td>
-                    {o.bookingId ? `#${o.bookingId}` : '—'}
-                    {o.stayOpen && <span className="rp-badge rp-cat-room" style={{ marginLeft: '0.4rem' }}>Open stay</span>}
-                  </td>
-                  <td>{o.guestName || '—'}</td>
-                  <td className="rp-num" title={title}>{count}</td>
-                  <td className="rp-num rp-money">{o.total > 0 ? formatPeso(o.total) : <span className="rp-zero">₱0</span>}</td>
-                  <td>{o.placedBy || '—'}</td>
-                  <td>{formatWhen(o.placedAt)}</td>
-                </tr>
-              );
-            })}
+            {pageRows.map(o => (
+              <tr key={o.id}>
+                <td className="rp-strong">#{o.id}</td>
+                <td>
+                  {o.roomNumber || '—'}
+                  {o.stayOpen && <span className="rp-badge rp-cat-room" style={{ marginLeft: '0.4rem' }}>Open stay</span>}
+                </td>
+                <td className="rp-hide-sm">{formatDate(o.day)}</td>
+                <td className="rp-num rp-money">{o.total > 0 ? formatPeso(o.total) : <span className="rp-zero">₱0</span>}</td>
+                <td className="rp-act"><ViewButton onClick={() => setViewing(o)} /></td>
+              </tr>
+            ))}
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={5}>{rows.length} order{rows.length === 1 ? '' : 's'}</td>
+              <td colSpan={2}>{rows.length} order{rows.length === 1 ? '' : 's'}</td>
+              <td className="rp-hide-sm"></td>
               <td className="rp-num rp-money">{formatPeso(total)}</td>
-              <td colSpan={2}></td>
+              <td></td>
             </tr>
           </tfoot>
         </table>
       </div>
+      {viewing && (
+        <DetailModal
+          title={`Room Service Order #${viewing.id}`}
+          sub={viewing.roomNumber || ''}
+          fields={orderFields(viewing, [
+            ['Room', viewing.roomNumber],
+            ['Booking #', viewing.bookingId ? `#${viewing.bookingId}` : null],
+            ['Stay', viewing.bookingId ? (viewing.stayOpen ? 'Still open' : 'Checked out') : null],
+          ])}
+          items={viewing.items}
+          onClose={() => setViewing(null)}
+        />
+      )}
       {openStayTotal > 0 && (
         <p className="rp-note">{formatPeso(openStayTotal)} of this is on stays that have not checked out yet.</p>
       )}
@@ -673,7 +779,7 @@ function App() {
   const dineLoaded = tab !== 'dinein' || loadedTables;
 
   return (
-    <div data-hms-no-edit="1" style={{ padding: '1.5rem' }}>
+    <div data-hms-no-edit="1" style={{ padding: 'clamp(0.75rem, 4vw, 1.5rem)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
         <div>
           <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Front Desk</p>
