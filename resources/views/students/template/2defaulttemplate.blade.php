@@ -5191,14 +5191,14 @@ function HomePage({ sitePromos, onNav, onToast, rooms, menus, canEditRooms, canE
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.85rem' }}>
           {bestSellerList(menuList).map(item => (
-            <div key={item.id || item.name} className="menu-item" data-hms-menu-card="1" style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center' }}>
+            <div key={item.id || item.name} className="menu-item" data-hms-menu-card="1" style={{ position: 'relative', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '1rem', alignItems: 'center' }}>
               {canEditMenuColor && (
                 <div style={{ position: 'absolute', top: 6, right: 6, zIndex: 3 }} data-hms-no-edit="1">
                   <CardColorButton kind="menu" label="Card colour (all menu cards)" />
                 </div>
               )}
               <img src={menuFoodImg(item)} alt={item.name} loading="lazy" style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ flex: 1, minWidth: '6rem' }}>
                 <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{item.name}</span>
                 <p style={{ fontSize: '0.72rem', color: 'var(--fg-muted)', margin: '0.3rem 0 0' }}>{item.sub}</p>
                 {item.category ? <p style={{ fontSize: '0.65rem', color: 'var(--warm)', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0.4rem 0 0' }}>{normalizeMenuCategory(item.category)}</p> : null}
@@ -7186,14 +7186,14 @@ function RestaurantPage({ onNav, onToast, menus, canManageMenus, canEditMenuColo
           ) : null}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.85rem' }}>
             {bestSellerList(menuList).map(item => (
-              <div key={item.id || item.name} className="menu-item" data-hms-best-picked={item.bestSeller ? '1' : undefined} data-hms-menu-card="1" data-hms-menu-state={item.reviewState || undefined} onClick={() => setSelectedMenuId(item.id)} style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', gap: '1rem', cursor: 'pointer', alignItems: 'center' }}>
+              <div key={item.id || item.name} className="menu-item" data-hms-best-picked={item.bestSeller ? '1' : undefined} data-hms-menu-card="1" data-hms-menu-state={item.reviewState || undefined} onClick={() => setSelectedMenuId(item.id)} style={{ position: 'relative', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '1rem', cursor: 'pointer', alignItems: 'center' }}>
                 {canEditMenuColor && (
                   <div style={{ position: 'absolute', top: 6, right: 6, zIndex: 3 }} data-hms-no-edit="1" onClick={e => e.stopPropagation()}>
                     <CardColorButton kind="menu" label="Card colour (all menu cards)" />
                   </div>
                 )}
                 <img src={menuFoodImg(item)} alt={item.name} loading="lazy" style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ flex: 1, minWidth: '6rem' }}>
                   <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{item.name}</span>
                   <p style={{ fontSize: '0.72rem', color: 'var(--fg-muted)', margin: '0.3rem 0 0' }}>{item.sub}</p>
                   {item.category ? <p style={{ fontSize: '0.65rem', color: 'var(--warm)', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0.4rem 0 0' }}>{normalizeMenuCategory(item.category)}</p> : null}

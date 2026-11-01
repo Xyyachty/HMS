@@ -1899,7 +1899,7 @@
      pulled back inside its card once, on drop. Clamping every pointer move
      instead pulled the element out from under the cursor the moment it met an
      edge, leaving the move handle behind. */
-  const DRAG_BOUNDS_SELECTOR = '.room-card, .menu-food-card, .menu-card';
+  const DRAG_BOUNDS_SELECTOR = '.room-card, .menu-food-card, .menu-card, .menu-item';
 
   /* What a dropped element must stay inside: its card, else its section. A
      heading dragged down into the next section, or past the page edge, read
@@ -1921,7 +1921,7 @@
      out - an element always sits inside some box - and so are the section
      backgrounds and hero slides, which are painted, not <img>. */
   const OBSTACLE_SELECTOR = 'img, h1, h2, h3, h4, h5, h6, p, button, a, li, input, textarea, [data-hms-user], '
-    + '.partner-card, .room-card, .menu-food-card, .menu-card, .team-card, .facility-card, .cat-card';
+    + '.partner-card, .room-card, .menu-food-card, .menu-card, .menu-item, .team-card, .facility-card, .cat-card';
 
   // Text claims its glyphs, not its whole line box, so a short heading does
   // not block the empty space beside it.
