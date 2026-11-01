@@ -1099,20 +1099,24 @@
   }
   .empty-state i { font-size: 2.5rem; opacity: 0.25; margin-bottom: 1rem; display: block; }
 
-  /* Desktop layout stays side-by-side in the builder iframe (often < 900px wide). */
-  html.hms-in-builder .hero-split {
-    flex-direction: row !important;
-  }
-  html.hms-in-builder .hero-img {
-    flex: 0 0 55% !important;
-    height: auto !important;
-    min-height: 64vh !important;
-  }
-  html.hms-in-builder .hero-img img {
-    min-height: 64vh !important;
-  }
-  html.hms-in-builder .hero-content {
-    padding: 2rem 0 !important;
+  /* Desktop layout stays side-by-side in the builder iframe (often < 900px wide).
+     Not on a phone-wide canvas, though: there the heading was squeezed into a
+     column a few letters wide, so it stacks the way the live site does. */
+  @media (min-width: 600px) {
+    html.hms-in-builder .hero-split {
+      flex-direction: row !important;
+    }
+    html.hms-in-builder .hero-img {
+      flex: 0 0 55% !important;
+      height: auto !important;
+      min-height: 64vh !important;
+    }
+    html.hms-in-builder .hero-img img {
+      min-height: 64vh !important;
+    }
+    html.hms-in-builder .hero-content {
+      padding: 2rem 0 !important;
+    }
   }
 
   /* The Restaurant page opens on this: a plated photograph, what the kitchen is

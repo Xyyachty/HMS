@@ -580,10 +580,13 @@
     ].join('');
     document.body.appendChild(handlesEl);
 
+    /* Pointer events, not mouse events: a phone sends no mousemove while a
+       finger drags, so the handles never moved there. A mouse sends pointer
+       events too, so the desktop behaves as before. */
     handlesEl.querySelectorAll('.hms-handle').forEach((h) => {
-      h.addEventListener('mousedown', onResizeStart);
+      h.addEventListener('pointerdown', onResizeStart);
     });
-    handlesEl.querySelector('.hms-move-handle').addEventListener('mousedown', onMoveHandleDown);
+    handlesEl.querySelector('.hms-move-handle').addEventListener('pointerdown', onMoveHandleDown);
     return handlesEl;
   }
 
@@ -742,12 +745,9 @@
         decls.push('bottom:auto !important');
         decls.push('margin:0 !important');
       }
-      if (entry['font-size']) decls.push('font-size:' + entry['font-size'] + ' !important');
-      if (entry.width) decls.push('width:' + entry.width + ' !important');
-      if (entry.height) decls.push('height:' + entry.height + ' !important');
-      if (entry['max-width']) decls.push('max-width:' + entry['max-width'] + ' !important');
-      if (entry['z-index']) decls.push('z-index:' + entry['z-index'] + ' !important');
-      if (entry['white-space']) decls.push('white-space:' + entry['white-space'] + ' !important');
+      ['font-size', 'width', 'height', 'max-width', 'z-index', 'white-space'].forEach(function (prop) {
+        if (entry[prop] && !isTemplateOwnValue(id, prop, entry[prop])) decls.push(prop + ':' + entry[prop] + ' !important');
+      });
       if (!decls.length) return;
       // Never a locked block (a partner brand card) or anything in it: those
       // cannot be picked any more, so a rule for one is left over from before
@@ -919,6 +919,20 @@
       src: el.tagName === 'IMG' ? el.getAttribute('src') : null,
       freePosition: el.getAttribute('data-hms-free-position'),
     });
+  }
+
+  /* Whether value is what the template itself wrote on the element's style
+     attribute. Saving an element records every inline style it carries, so a
+     heading that was only moved also stored the template's own font size and
+     width. Put back with !important, those beat the template's smaller phone
+     sizes, and the heading came out at its desktop size on a phone. Such a
+     value is not an edit, so it is left to the template. */
+  function isTemplateOwnValue(id, prop, value) {
+    const state = id ? originalStates.get(id) : null;
+    if (!state || !state.style || value == null) return false;
+    const probe = isTemplateOwnValue.probe || (isTemplateOwnValue.probe = document.createElement('div'));
+    probe.setAttribute('style', state.style);
+    return probe.style.getPropertyValue(prop) === String(value);
   }
 
   function restoreOriginalStates() {
@@ -1298,9 +1312,11 @@
       el.style.display = 'none';
       return;
     }
+    const ownerId = el.getAttribute('data-edit-id');
     STYLE_PROPS.forEach((prop) => {
       if (entry[prop] != null && entry[prop] !== '') {
         const important = entry.freePosition === true;
+        if (important && isTemplateOwnValue(ownerId, prop, entry[prop])) return;
         el.style.setProperty(prop, entry[prop], important ? 'important' : '');
       }
     });
@@ -1831,6 +1847,7 @@
   function onResizeStart(e) {
     if (!designMode || !canEdit || !selectedEl) return;
     if (isHeaderLocked(selectedEl)) return;
+    if (e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
     const el = resolveEditableRoot(selectedEl) || selectedEl;
@@ -2323,22 +2340,25 @@
     if (!designMode || !canEdit) return;
     // The header has its own click-to-edit dialogs; never open a caret in it.
     if (isHeaderLocked(e.target)) return;
-    const el = findEditableAtPoint(e);
+    if (startTextEdit(findEditableAtPoint(e), e.target)) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }
+
+  /* Opens a caret in el's text. Double-click calls it, and so does the Edit
+     Text button the builder shows on phones, where a double tap zooms or is
+     never sent. Returns false when el has no text to edit. */
+  function startTextEdit(el, target) {
     if (!canEditElement(el)) {
-      e.preventDefault();
-      e.stopPropagation();
       blockEditToast(sectionBlockMessage(el));
-      return;
+      return true;
     }
-    if (!el || ['IMG', 'I', 'SVG', 'INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) return;
+    if (!el || ['IMG', 'I', 'SVG', 'INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) return false;
     if (isMenuContent(el)) {
-      e.preventDefault();
-      e.stopPropagation();
       blockEditToast('Change a dish\'s name and details from its Edit Menu Item button.');
-      return;
+      return true;
     }
-    e.preventDefault();
-    e.stopPropagation();
     selectElement(el);
     beginHistoryStep();
     /* A lined heading is edited line by line, each line its own editing host.
@@ -2354,7 +2374,7 @@
       // An emptied line keeps a height, so the caret has somewhere to sit.
       if (lines) host.style.minHeight = '1em';
     });
-    const host = lines ? (lines.find((line) => line.contains(e.target)) || lines[0]) : el;
+    const host = lines ? (lines.find((line) => line.contains(target)) || lines[0]) : el;
     host.focus();
     /* A button takes focus without a caret, so what was typed went nowhere, or
        into the text edited before it. Select the text when the caret is not
@@ -2409,6 +2429,7 @@
     el.addEventListener('input', onInput);
     el.addEventListener('keydown', onKeyDown);
     el.addEventListener('focusout', onFocusOut);
+    return true;
   }
 
   /* A '\n' at the caret, inside the line it is on, shown by pre-line. A break
@@ -2844,6 +2865,44 @@
     return true;
   }
 
+  /* One step bigger or smaller, for the phone toolbar: a finger on a 10px
+     corner handle is guesswork. Text grows by its font size, anything else by
+     its box, and the step is put back if it lands on other content, the same
+     as a dragged resize. */
+  function resizeSelected(step) {
+    if (!selectedEl || !canEditCurrentPage()) return false;
+    if (isHeaderLocked(selectedEl)) return false;
+    const el = resolveEditableRoot(selectedEl) || selectedEl;
+    selectedEl = el;
+    const factor = step > 0 ? 1.1 : 1 / 1.1;
+    const state = { el: el, startCss: el.style.cssText, alreadyCovering: coveredContent(el) };
+    beginHistoryStep();
+    const r = getVisualRect(el);
+    // Recorded the way a dragged resize is, so the new size is kept on reload.
+    if (el.hasAttribute('data-hms-user')) {
+      promoteToAbsolute(el);
+    } else {
+      normalizeToTransformMove(el);
+      el.setAttribute('data-hms-move-mode', 'transform');
+    }
+    if (isBlockTextTag(el.tagName) || isInlineTextTag(el.tagName) || el.getAttribute('data-hms-text') === '1') {
+      const size = parseFloat(window.getComputedStyle(el).fontSize) || 16;
+      // Forced like a dragged text resize, or the template's phone size wins.
+      setPosImportant(el, 'font-size', Math.max(8, Math.min(220, size * factor)).toFixed(2) + 'px');
+    } else {
+      setPosImportant(el, 'max-width', 'none');
+      setPosImportant(el, 'min-width', '0');
+      setPosImportant(el, 'min-height', '0');
+      setPosImportant(el, 'width', Math.max(16, Math.round(r.width * factor)) + 'px');
+      setPosImportant(el, 'height', Math.max(16, Math.round(r.height * factor)) + 'px');
+      if (!el.hasAttribute('data-hms-user')) clampSizeIntoBounds(el);
+    }
+    undoIfCovering(state, false);
+    saveElementState(el);
+    updateHandles();
+    return true;
+  }
+
   function alignSelected(direction) {
     if (!selectedEl || !canEditCurrentPage()) return;
     if (isHeaderLocked(selectedEl)) return;
@@ -3005,6 +3064,14 @@
       pointer-events: auto; cursor: grab; box-shadow: 0 4px 12px rgba(8,145,178,.35);
     }
     #hms-editor-ui .hms-move-handle:active { cursor: grabbing; }
+    /* A finger drag on a handle moves the element, never the page. */
+    #hms-editor-ui .hms-handle, #hms-editor-ui .hms-move-handle { touch-action: none; }
+    @media (pointer: coarse) {
+      #hms-editor-ui .hms-handle { width: 22px; height: 22px; margin: -6px 0 0 -6px; border-radius: 50%; }
+      #hms-editor-ui .hms-move-handle { height: 34px; padding: 0 14px; font-size: 12px; }
+      #hms-section-rail { max-width: calc(100vw - 16px); overflow-x: auto; }
+      #hms-section-rail button { padding: 10px 14px; white-space: nowrap; }
+    }
     .hms-smart-guide {
       display: none; position: fixed; z-index: 99997; pointer-events: none;
       background: #ec4899; box-shadow: 0 0 0 1px rgba(236,72,153,.35);
@@ -3133,8 +3200,10 @@
   document.addEventListener('click', onClick, true);
   document.addEventListener('submit', onSubmit, true);
   document.addEventListener('dblclick', onDblClick, true);
-  document.addEventListener('mousemove', onPointerMove, true);
-  document.addEventListener('mouseup', onPointerUp, true);
+  document.addEventListener('pointermove', onPointerMove, true);
+  document.addEventListener('pointerup', onPointerUp, true);
+  // The browser took the touch back (a system gesture, say): finish the drag where it is.
+  document.addEventListener('pointercancel', onPointerUp, true);
   window.addEventListener('scroll', updateHandles, true);
   window.addEventListener('resize', updateHandles);
 
@@ -3512,6 +3581,29 @@
         break;
       case 'select-parent':
         selectParentElement();
+        break;
+      // The builder's phone toolbar: buttons for what a desktop does with a
+      // double-click, the arrow keys and the resize handles.
+      case 'edit-text':
+        if (designMode && canEdit && selectedEl) startTextEdit(selectedEl, selectedEl);
+        break;
+      case 'nudge-element':
+        if (!canEditCurrentPage()) {
+          blockEditToast();
+          break;
+        }
+        if (selectedEl && isMoveLocked(selectedEl)) {
+          postToParent({ type: 'toast', message: 'This item stays in place; it cannot be moved.' });
+          break;
+        }
+        nudgeSelected(Number(data.dx) || 0, Number(data.dy) || 0);
+        break;
+      case 'resize-element':
+        if (!canEditCurrentPage()) {
+          blockEditToast();
+          break;
+        }
+        resizeSelected(Number(data.step) || 1);
         break;
       case 'align-element':
         alignSelected(data.direction || 'center');
