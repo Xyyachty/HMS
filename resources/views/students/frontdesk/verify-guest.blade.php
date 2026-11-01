@@ -1469,18 +1469,17 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
   /* Check-out starts with Housekeeping, not the bill: they inspect the room so any
      damage can still be charged before the guest leaves. */
   const startCheckOut = (room, reservation) => {
-    const name = reservation.fullName || 'this guest';
     const go = () => Promise.resolve(onRequestInspection(reservation.bookingId))
       .then(() => { if (onToast) onToast(`Housekeeping has been asked to inspect ${room.name}.`); })
       .catch(err => { if (onToast) onToast((err && err.message) || 'Could not start the check-out.'); });
-    if (!window.Swal) { if (window.confirm(`Start check-out for ${name}?`)) go(); return; }
+    if (!window.Swal) { if (window.confirm('Request Room Inspection?')) go(); return; }
     window.Swal.fire({
-      title: `Start check-out for ${name}?`,
-      text: `Housekeeping inspects ${room.name} for damage first. You finish the final bill when their report is in.`,
+      title: 'Request Room Inspection?',
+      text: `Housekeeping will inspect ${room.name} for any damages or missing items before the final bill and checkout are completed.`,
       icon: 'question',
       showCancelButton: true,
-      confirmButtonText: 'Yes, ask Housekeeping',
-      cancelButtonText: 'Not yet',
+      confirmButtonText: 'Request Inspection',
+      cancelButtonText: 'Cancel',
       background: fdThemeColor('--card', '#181714'),
       color: fdThemeColor('--fg', '#f5f0e8'),
       confirmButtonColor: fdThemeColor('--accent', '#c9a84c'),
