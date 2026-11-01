@@ -349,6 +349,8 @@
     // a pinned section is still the student's to place.
     if (!el || el.nodeType !== 1 || !el.hasAttribute) return false;
     if (el.hasAttribute('data-hms-no-move')) return true;
+    // A dish card is laid out by the template, see isSizeLocked.
+    if (isSizeLocked(el)) return true;
     const root = resolveEditableRoot(el);
     return !!(root && root !== el && root.hasAttribute && root.hasAttribute('data-hms-no-move'));
   }
@@ -359,6 +361,24 @@
      Styling still saves; the content is left to the card. */
   function isMenuContent(el) {
     return !!(el && el.closest && el.closest('[data-hms-menu-card]'));
+  }
+
+  /* A dish card keeps the template's layout. A photo resized inside one
+     squeezed the dish's name into a one-letter column, and a description
+     dragged out of it sat over the next card. Colours and fonts still save;
+     place and size do not, and any saved before are dropped on load. */
+  const SIZE_PROPS = ['width', 'height', 'max-width', 'min-width', 'min-height'];
+
+  function isSizeLocked(el) {
+    return isMenuContent(el);
+  }
+
+  function stripSize(entry) {
+    let had = false;
+    SIZE_PROPS.forEach((prop) => {
+      if (entry && entry[prop] != null) { delete entry[prop]; had = true; }
+    });
+    return had;
   }
 
   function isBackgroundLayer(el) {
@@ -627,7 +647,7 @@
     Object.keys(corners).forEach((dir) => {
       const h = ui.querySelector('.hms-handle.' + dir);
       if (!h) return;
-      h.style.display = 'block';
+      h.style.display = isSizeLocked(el) ? 'none' : 'block';
       h.style.left = (corners[dir][0] - 5) + 'px';
       h.style.top = (corners[dir][1] - 5) + 'px';
     });
@@ -1194,6 +1214,7 @@
     if (isMoveLocked(el)) {
       stripPlacement(entry);
     }
+    if (isSizeLocked(el)) stripSize(entry);
 
     // Images owned by the shared site-content store (e.g. the brand logo) keep
     // their src there so one change updates every place that renders it.
@@ -1619,6 +1640,10 @@
         clearPlacementStyles(el);
         migrated = true;
       }
+      if (isSizeLocked(el) && stripSize(customizations[id])) {
+        SIZE_PROPS.forEach((prop) => el.style.removeProperty(prop));
+        migrated = true;
+      }
 
       /* A slide dragged out of place, or hidden, before the carousel's layers
          were left to the carousel. Kept, the hero jumps or goes blank when that
@@ -1852,7 +1877,7 @@
 
   function onResizeStart(e) {
     if (!designMode || !canEdit || !selectedEl) return;
-    if (isHeaderLocked(selectedEl)) return;
+    if (isHeaderLocked(selectedEl) || isSizeLocked(selectedEl)) return;
     if (e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
@@ -2904,7 +2929,7 @@
      as a dragged resize. */
   function resizeSelected(step) {
     if (!selectedEl || !canEditCurrentPage()) return false;
-    if (isHeaderLocked(selectedEl)) return false;
+    if (isHeaderLocked(selectedEl) || isSizeLocked(selectedEl)) return false;
     const el = resolveEditableRoot(selectedEl) || selectedEl;
     selectedEl = el;
     const factor = step > 0 ? 1.1 : 1 / 1.1;
@@ -3634,6 +3659,10 @@
       case 'resize-element':
         if (!canEditCurrentPage()) {
           blockEditToast();
+          break;
+        }
+        if (selectedEl && isSizeLocked(selectedEl)) {
+          postToParent({ type: 'toast', message: 'A dish card keeps its size; change its photo from Edit Menu Item.' });
           break;
         }
         resizeSelected(Number(data.step) || 1);
