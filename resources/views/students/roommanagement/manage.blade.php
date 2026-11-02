@@ -409,6 +409,28 @@
   .mr-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
   .mr-actions .mr-btn { flex: 1 1 auto; }
 
+  /* Child pricing: one row per age range, and a 0–17 ruler of what each age pays */
+  .mr-band { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.3fr) auto; gap: 0.5rem; align-items: end; padding-top: 0.6rem; border-top: 1px solid var(--mr-line); animation: mr-rise 0.32s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .mr-band:first-of-type { border-top: 0; padding-top: 0; }
+  .mr-band > .mr-close { margin-bottom: 0.3rem; }
+  .mr-ruler { display: grid; grid-template-columns: repeat(18, minmax(0, 1fr)); gap: 2px; }
+  .mr-seg { min-width: 0; height: 2.6rem; padding: 0.3rem 0.35rem; border-radius: 0.375rem; display: flex; flex-direction: column; justify-content: center; overflow: hidden; font-size: 0.7rem; line-height: 1.2; transition: background-color 0.3s cubic-bezier(0.16, 1, 0.3, 1), color 0.3s; }
+  .mr-seg b, .mr-seg span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mr-seg b { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .mr-seg span { opacity: 0.8; }
+  .mr-seg.is-free { background: color-mix(in srgb, var(--mr-ok) 16%, transparent); color: var(--mr-ok); }
+  .mr-seg.is-charge { background: var(--mr-tint); color: var(--accent); }
+  .mr-seg.is-adult { background: var(--mr-soft); color: var(--fg-muted); }
+  .mr-ticks { display: grid; grid-template-columns: repeat(18, minmax(0, 1fr)); gap: 2px; margin-top: 0.25rem; font-size: 0.62rem; color: var(--fg-muted); font-variant-numeric: tabular-nums; text-align: center; }
+  @keyframes mr-rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .mr-band { animation: none; } .mr-seg { transition: none; } }
+  @media (max-width: 480px) {
+    .mr-band { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; }
+    .mr-band > .mr-field:nth-child(3) { grid-column: 1 / 3; grid-row: 2; }
+    .mr-band > .mr-close { grid-column: 3; grid-row: 2; }
+    .mr-ticks span:nth-child(even) { visibility: hidden; }
+  }
+
   @media (max-width: 860px) {
     .mr-how, .mr-stats { grid-template-columns: 1fr; }
   }
@@ -1124,6 +1146,18 @@ function ChildPolicyModal({ policy, saving, error, onSubmit, onCancel }) {
     : sorted.some((b, i) => i > 0 && b.min <= sorted[i - 1].max) ? 'Two age ranges overlap.'
     : bands.some(b => !/^\d+$/.test(String(b.rate).trim())) ? 'Enter each charge as a whole number of pesos. Use 0 for free.' : '';
 
+  // Runs of consecutive ages that pay the same, for the ruler.
+  const segments = [];
+  ages(0, 17).forEach(age => {
+    const band = age < adultAge ? sorted.find(b => age >= b.min && age <= b.max) : null;
+    const rate = band ? parseInt(band.rate, 10) || 0 : 0;
+    const kind = age >= adultAge ? 'adult' : rate ? 'charge' : 'free';
+    const text = kind === 'adult' ? 'Adult' : rate ? '₱' + rate.toLocaleString() : 'Free';
+    const last = segments[segments.length - 1];
+    if (last && last.kind === kind && last.text === text) last.to = age;
+    else segments.push({ from: age, to: age, kind, text });
+  });
+
   const submit = (e) => {
     if (e) e.preventDefault();
     if (problem || saving) return;
@@ -1153,7 +1187,7 @@ function ChildPolicyModal({ policy, saving, error, onSubmit, onCancel }) {
             {bands.length === 0 ? (
               <p className="mr-help">No age ranges yet, so every child stays free.</p>
             ) : bands.map((b, i) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.3fr) auto', gap: '0.5rem', alignItems: 'end' }}>
+              <div key={i} className="mr-band">
                 <div className="mr-field">
                   <label className="mr-label" htmlFor={uid + '-min' + i}><em>From age</em></label>
                   <select id={uid + '-min' + i} className="mr-input" value={b.min} onChange={e => setBand(i, { min: parseInt(e.target.value, 10) })}>
@@ -1185,6 +1219,28 @@ function ChildPolicyModal({ policy, saving, error, onSubmit, onCancel }) {
               </button>
             </div>
             <p className="mr-help">₱0 means the child stays free. An age no range covers also stays free.</p>
+          </div>
+
+          {/* The policy as a guest hears it: every age from 0 to 17, grouped into
+              runs that pay the same. Redrawn as the fields above change. */}
+          <div className="mr-field">
+            <span className="mr-label" id={uid + '-ruler'}>What each age pays per night</span>
+            <div className="mr-ruler" role="img"
+              aria-label={segments.map(s => `ages ${s.from} to ${s.to}: ${s.text}`).join('; ')}>
+              {segments.map(s => (
+                <div key={s.from} className={`mr-seg is-${s.kind}`} style={{ gridColumn: `${s.from + 1} / span ${s.to - s.from + 1}` }}
+                  title={`Ages ${s.from}–${s.to}: ${s.text}`}>
+                  <b>{s.text}</b>
+                  <span>{s.from === s.to ? s.from : `${s.from}–${s.to}`}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mr-ticks" aria-hidden="true">
+              {ages(0, 17).map(n => <span key={n}>{n}</span>)}
+            </div>
+            {shareFree && (
+              <p className="mr-help">These rates apply to a child past the room's guest limit. Children within the limit stay free.</p>
+            )}
           </div>
 
           <div className="mr-field">

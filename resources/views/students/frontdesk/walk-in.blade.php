@@ -217,6 +217,11 @@
 
   /* Guests: one age box per child, and the free / charged tag on each */
   .wi-ages { display: grid; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); gap: 0.6rem; }
+  .wi-ages > div { animation: wi-rise 0.32s cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: calc(var(--i, 0) * 45ms); }
+  .wi-age-hint { margin: 0.35rem 0 0; display: flex; }
+  .wi-bill > div { animation: wi-rise 0.32s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  @keyframes wi-rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .wi-ages > div, .wi-bill > div { animation: none; } }
   .wi-occupancy { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; padding: 0.6rem 0.8rem; border-radius: 0.625rem; background: var(--wi-soft); font-size: 0.86rem; color: var(--fg); }
   .wi-occupancy i { color: var(--accent); }
   .wi-tag { display: inline-block; padding: 0.08rem 0.45rem; border-radius: 999px; font-size: 0.7rem; font-weight: 600; white-space: nowrap; }
@@ -866,7 +871,7 @@ function RoomWalkIn() {
           </div>
         </Section>
 
-        <Section n={3} title="Guests" hint="Children count toward a room’s limit, even when they stay free." done={agesOk}>
+        <Section n={3} title="Guests" className="wi-wide" hint="Children count toward a room’s limit, even when they stay free." done={agesOk}>
           <div className="wi-fields">
             <div className="wi-two">
               <Field id="wi-adults" label="Adults">
@@ -878,17 +883,33 @@ function RoomWalkIn() {
             </div>
             {kids > 0 && (
               <div className="wi-ages">
-                {childAges.map((age, i) => (
-                  <Field key={i} id={'wi-age-' + i} label={'Child ' + (i + 1) + '’s age'} bad={tried && age === '' ? 'Pick an age.' : ''}>
-                    <select id={'wi-age-' + i} className={'wi-input' + (tried && age === '' ? ' is-bad' : '')}
-                      value={age === '' ? '' : String(age)} onChange={e => setAge(i, e.target.value)}>
-                      <option value="">Select age</option>
-                      {Array.from({ length: 18 }, (_, n) => (
-                        <option key={n} value={String(n)}>{n === 0 ? 'Under 1 year' : plural(n, 'year')}</option>
-                      ))}
-                    </select>
-                  </Field>
-                ))}
+                {childAges.map((age, i) => {
+                  // The age's own rate, before a room is picked: which children fit in
+                  // the room's beds is only known once there is a room.
+                  const own = age === '' ? null : childLines(Object.assign({}, childPolicy, { freeWithExistingBedding: false }), [age], 1, 0)[0];
+                  return (
+                    <div key={i} style={{ '--i': i }}>
+                      <Field id={'wi-age-' + i} label={'Child ' + (i + 1) + '’s age'} bad={tried && age === '' ? 'Pick an age.' : ''}>
+                        <select id={'wi-age-' + i} className={'wi-input' + (tried && age === '' ? ' is-bad' : '')}
+                          value={age === '' ? '' : String(age)} onChange={e => setAge(i, e.target.value)}>
+                          <option value="">Select age</option>
+                          {Array.from({ length: 18 }, (_, n) => (
+                            <option key={n} value={String(n)}>{n === 0 ? 'Under 1 year' : plural(n, 'year')}</option>
+                          ))}
+                        </select>
+                      </Field>
+                      {own && (
+                        <p className="wi-age-hint">
+                          <span className={'wi-tag ' + (own.rate ? 'is-charge' : 'is-free')} title={own.label}>
+                            {own.age >= childPolicy.adultAge ? 'Priced as adult'
+                              : own.rate ? peso(own.rate) + ' / night' + (childPolicy.freeWithExistingBedding ? ' on an extra bed' : '')
+                              : 'Stays free'}
+                          </span>
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
             <div className="wi-occupancy">
@@ -897,7 +918,7 @@ function RoomWalkIn() {
                 ? <span className="wi-tag is-charge">Additional child charges: {peso(childTotal)}</span>
                 : kids > 0 && agesOk && hasRooms ? <span className="wi-tag is-free">Children stay free</span> : null}
             </div>
-            <p className="wi-help" style={{ margin: 0 }}><b>Child policy:</b> {policyText(childPolicy)}</p>
+            <p className="wi-note"><b style={{ color: 'var(--fg)' }}>Child policy:</b> {policyText(childPolicy)}</p>
           </div>
         </Section>
 
