@@ -773,8 +773,11 @@
       // cannot be picked any more, so a rule for one is left over from before
       // the lock and would keep a card dragged or stretched over its
       // neighbours. Guarded in the selector, so it also holds after React
-      // re-renders the list into a different order.
-      const guard = ':not([data-hms-no-edit]):not([data-hms-no-edit] *)';
+      // re-renders the list into a different order. Dish cards too: a loose
+      // saved selector such as "div:nth-of-type(3) > div > p" also matched a
+      // dish's description and threw it out of its card.
+      const guard = ':not([data-hms-no-edit]):not([data-hms-no-edit] *)'
+        + ':not([data-hms-menu-card]):not([data-hms-menu-card] *)';
       parts.push(':is(' + sel + ')' + guard + '{' + decls.join(';') + '}');
     });
     sheet.textContent = parts.join('\n');
@@ -1640,10 +1643,9 @@
         clearPlacementStyles(el);
         migrated = true;
       }
-      if (isSizeLocked(el) && stripSize(customizations[id])) {
-        SIZE_PROPS.forEach((prop) => el.style.removeProperty(prop));
-        migrated = true;
-      }
+      // Only the entry: the inline width and height are the card's own
+      // thumbnail size, and clearing them showed the photo full size.
+      if (isSizeLocked(el) && stripSize(customizations[id])) migrated = true;
 
       /* A slide dragged out of place, or hidden, before the carousel's layers
          were left to the carousel. Kept, the hero jumps or goes blank when that
