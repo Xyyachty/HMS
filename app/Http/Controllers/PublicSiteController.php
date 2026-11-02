@@ -117,6 +117,8 @@ class PublicSiteController extends Controller
             // Read, not written: the team's own categories decide which tabs a visitor
             // sees, so a room in one the team invented is not filed under Classic.
             'categories' => \App\Support\HotelRoomDefaults::categoriesForTeam($groupName, $facultyId),
+            // So a guest sees what their children cost before booking.
+            'childPolicy' => \App\Models\HotelChildPolicy::forTeam($groupName, (int) $facultyId)->toTemplateArray(),
         ]);
     }
 
@@ -434,6 +436,10 @@ class PublicSiteController extends Controller
             'check_in_time'    => 'nullable|string|max:10',
             'check_out'        => 'required|date|after:check_in',
             'guest_count'      => 'nullable|integer|min:1|max:99',
+            // Adults and each child's age, priced by the hotel's child policy.
+            'adults'           => 'nullable|integer|min:1|max:99',
+            'child_ages'       => 'nullable|array|max:20',
+            'child_ages.*'     => 'required|integer|min:0|max:17',
             'notes'            => 'nullable|string|max:2000',
             'promo_id'         => 'nullable|integer',
             // The guest's online payment, full or a deposit. In the Simulation nothing is
@@ -515,6 +521,8 @@ class PublicSiteController extends Controller
                         'check_in_time' => trim((string) ($data['check_in_time'] ?? '')) ?: '14:00',
                         'check_out'     => $data['check_out'],
                         'guest_count'   => $data['guest_count'] ?? null,
+                        'adults'        => $data['adults'] ?? null,
+                        'child_ages'    => $data['child_ages'] ?? [],
                         // The channel, not a user. Front Desk can see at a glance which stays came
                         // in from the portfolio rather than across the desk.
                         'booked_by'     => 'Online · ' . $guestName,

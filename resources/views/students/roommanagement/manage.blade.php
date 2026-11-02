@@ -1099,6 +1099,122 @@ function SleepsModal({ category, current, saving, error, onSubmit, onCancel }) {
   );
 }
 
+/* The hotel's child pricing: from what age a guest counts as an adult, what each age
+   range pays per night, and whether children in the room's own beds stay free. Front
+   Desk and the hotel website price every child by it; a stay already booked keeps the
+   prices it was sold at. Extra beds are priced by Housekeeping as an add-on. */
+function ChildPolicyModal({ policy, saving, error, onSubmit, onCancel }) {
+  const start = policy || { adultAge: 12, freeWithExistingBedding: false, bands: [] };
+  const [adultAge, setAdultAge] = useState(start.adultAge);
+  const [shareFree, setShareFree] = useState(!!start.freeWithExistingBedding);
+  const [bands, setBands] = useState((start.bands || []).map(b => ({ min: b.min_age, max: b.max_age, rate: String(b.rate) })));
+  const uid = useId();
+  useEscapeKey(onCancel);
+
+  const ages = (from, to) => Array.from({ length: Math.max(0, to - from + 1) }, (_, i) => from + i);
+  const setBand = (i, change) => setBands(prev => prev.map((b, j) => (j === i ? Object.assign({}, b, change) : b)));
+  const addBand = () => setBands(prev => {
+    const from = prev.length ? Math.min(adultAge - 1, prev[prev.length - 1].max + 1) : 0;
+    return prev.concat([{ min: from, max: adultAge - 1, rate: '0' }]);
+  });
+  // Said here before saving; the server checks the same rules.
+  const sorted = bands.slice().sort((a, b) => a.min - b.min);
+  const problem = bands.some(b => b.max < b.min) ? 'Each range needs a "from" age no higher than its "to" age.'
+    : bands.some(b => b.max >= adultAge) ? `Ranges stop below ${adultAge}, the age a guest is priced as an adult.`
+    : sorted.some((b, i) => i > 0 && b.min <= sorted[i - 1].max) ? 'Two age ranges overlap.'
+    : bands.some(b => !/^\d+$/.test(String(b.rate).trim())) ? 'Enter each charge as a whole number of pesos. Use 0 for free.' : '';
+
+  const submit = (e) => {
+    if (e) e.preventDefault();
+    if (problem || saving) return;
+    onSubmit({
+      adult_age: adultAge,
+      free_with_existing_bedding: shareFree,
+      bands: sorted.map(b => ({ min_age: b.min, max_age: b.max, rate: parseInt(b.rate, 10) || 0 })),
+    });
+  };
+
+  return (
+    <div className="mr-overlay" onClick={onCancel}>
+      <div className="mr-modal" role="dialog" aria-modal="true" aria-labelledby={uid + '-t'} onClick={e => e.stopPropagation()}>
+        <MrModalHead titleId={uid + '-t'} title="Child pricing policy"
+          text="Front Desk and your hotel website price every child by these rules. Children always count toward a room's guest limit, even when they stay free." onClose={onCancel} />
+        <form onSubmit={submit} className="mr-form" noValidate>
+          <div className="mr-field">
+            <label className="mr-label" htmlFor={uid + '-adult'}>Priced as an adult from age</label>
+            <select id={uid + '-adult'} className="mr-input" value={adultAge} onChange={e => setAdultAge(parseInt(e.target.value, 10))}>
+              {ages(1, 18).map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+            <p className="mr-help">A guest this age or older is an adult. The room rate already covers adults.</p>
+          </div>
+
+          <div className="mr-field">
+            <span className="mr-label">Child rates per night</span>
+            {bands.length === 0 ? (
+              <p className="mr-help">No age ranges yet, so every child stays free.</p>
+            ) : bands.map((b, i) => (
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.3fr) auto', gap: '0.5rem', alignItems: 'end' }}>
+                <div className="mr-field">
+                  <label className="mr-label" htmlFor={uid + '-min' + i}><em>From age</em></label>
+                  <select id={uid + '-min' + i} className="mr-input" value={b.min} onChange={e => setBand(i, { min: parseInt(e.target.value, 10) })}>
+                    {ages(0, 17).map(n => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                </div>
+                <div className="mr-field">
+                  <label className="mr-label" htmlFor={uid + '-max' + i}><em>To age</em></label>
+                  <select id={uid + '-max' + i} className="mr-input" value={b.max} onChange={e => setBand(i, { max: parseInt(e.target.value, 10) })}>
+                    {ages(0, 17).map(n => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                </div>
+                <div className="mr-field">
+                  <label className="mr-label" htmlFor={uid + '-rate' + i}><em>Charge / night</em></label>
+                  <div className="mr-money">
+                    <span>₱</span>
+                    <input id={uid + '-rate' + i} type="text" inputMode="numeric" className="mr-input" value={b.rate}
+                      onChange={e => setBand(i, { rate: e.target.value.replace(/[^0-9]/g, '') })} placeholder="0" />
+                  </div>
+                </div>
+                <button type="button" className="mr-close" aria-label={`Remove ages ${b.min} to ${b.max}`} onClick={() => setBands(prev => prev.filter((_, j) => j !== i))}>
+                  <i className="fa-solid fa-trash"></i>
+                </button>
+              </div>
+            ))}
+            <div>
+              <button type="button" className="mr-btn is-quiet is-small" onClick={addBand} disabled={bands.length >= 10}>
+                <i className="fa-solid fa-plus"></i> Add an age range
+              </button>
+            </div>
+            <p className="mr-help">₱0 means the child stays free. An age no range covers also stays free.</p>
+          </div>
+
+          <div className="mr-field">
+            <span className="mr-label">Children in the room's own beds stay free</span>
+            <div className="mr-chips" role="radiogroup" aria-label="Children in the room's own beds stay free">
+              {[[true, 'Yes'], [false, 'No']].map(([v, t]) => (
+                <button key={t} type="button" role="radio" aria-checked={shareFree === v} className={`mr-chip ${shareFree === v ? 'is-on' : ''}`} onClick={() => setShareFree(v)}>{t}</button>
+              ))}
+            </div>
+            <p className="mr-help">
+              {shareFree
+                ? "Yes: a child who fits within the room's guest limit pays nothing. Only a child past the limit, on an extra bed, pays the rate for their age."
+                : 'No: every child pays the rate for their age, wherever they sleep.'}
+              {' '}Extra beds are charged at Housekeeping's add-on price.
+            </p>
+          </div>
+
+          {(problem || error) && <p className="mr-error" role="alert">{problem || error}</p>}
+          <div className="mr-actions">
+            <button type="button" className="mr-btn is-quiet" onClick={onCancel}>Cancel</button>
+            <button type="submit" className="mr-btn is-solid" disabled={!!problem || saving}>
+              <i className="fa-solid fa-child"></i> {saving ? 'Saving…' : 'Save policy'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 /* A room type the team invents. The rate seeds the price of every room created under
    it, and a type stored at zero would price its rooms at nothing, so it is required
    here exactly as it is in the site's own Add Room Category dialog — same default,
@@ -1528,7 +1644,7 @@ function RoomCard({ room, sleeps, onEdit }) {
 
 const MR_PAGE = 12;
 
-function ManageRoomPanel({ rooms, categories, sleeps, onSubmit, onRoomUpdated, onAddCategory, onRenameCategory, onSetSleeps, onToast }) {
+function ManageRoomPanel({ rooms, categories, sleeps, childPolicy, onSaveChildPolicy, onSubmit, onRoomUpdated, onAddCategory, onRenameCategory, onSetSleeps, onToast }) {
   // The inventory list that used to be its own Room Availability section. Adding a
   // room and looking one up are the same job, so they share a screen.
   const [tab, setTab] = useState('All');
@@ -1547,6 +1663,18 @@ function ManageRoomPanel({ rooms, categories, sleeps, onSubmit, onRoomUpdated, o
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [categorySaving, setCategorySaving] = useState(false);
   const [categoryError, setCategoryError] = useState('');
+  const [policyOpen, setPolicyOpen] = useState(false);
+  const [policySaving, setPolicySaving] = useState(false);
+  const [policyError, setPolicyError] = useState('');
+
+  const savePolicy = (payload) => {
+    setPolicySaving(true);
+    setPolicyError('');
+    Promise.resolve(onSaveChildPolicy(payload))
+      .then(() => { setPolicyOpen(false); if (onToast) onToast('Child pricing policy saved.'); })
+      .catch(err => setPolicyError((err && err.message) || 'Could not save the policy. Try again.'))
+      .finally(() => setPolicySaving(false));
+  };
 
   const list = rooms || [];
   const categoryNames = (categories && categories.length) ? categories : DEFAULT_ROOM_CATEGORIES;
@@ -1629,6 +1757,11 @@ function ManageRoomPanel({ rooms, categories, sleeps, onSubmit, onRoomUpdated, o
           </p>
         </div>
         <div className="mr-head-actions">
+          {onSaveChildPolicy ? (
+            <button type="button" className="mr-btn is-quiet" onClick={() => { setPolicyError(''); setPolicyOpen(true); }}>
+              <i className="fa-solid fa-child"></i> Child pricing policy
+            </button>
+          ) : null}
           <button type="button" className="mr-btn is-solid" onClick={() => setAddOpen(true)}>
             <i className="fa-solid fa-plus"></i> Add a room
           </button>
@@ -1747,6 +1880,16 @@ function ManageRoomPanel({ rooms, categories, sleeps, onSubmit, onRoomUpdated, o
           error={categoryError}
           onSubmit={handleAddCategory}
           onCancel={() => { setCategoryOpen(false); setCategoryError(''); }}
+        />
+      )}
+
+      {policyOpen && (
+        <ChildPolicyModal
+          policy={childPolicy}
+          saving={policySaving}
+          error={policyError}
+          onSubmit={savePolicy}
+          onCancel={() => { setPolicyOpen(false); setPolicyError(''); }}
         />
       )}
 
@@ -2125,7 +2268,7 @@ function GuestDetailsPanel({ rooms, onBookingAction, onToast }) {
   );
 }
 
-function RoomManagementPage({ initialNav, rooms, categories, sleeps, onAddRoom, onRoomUpdated, onAddCategory, onRenameCategory, onSetSleeps, onBookingAction, onToast }) {
+function RoomManagementPage({ initialNav, rooms, categories, sleeps, childPolicy, onSaveChildPolicy, onAddRoom, onRoomUpdated, onAddCategory, onRenameCategory, onSetSleeps, onBookingAction, onToast }) {
   const activeNav = initialNav || 'manage-room';
 
   const handleAddRoom = (payload) => {
@@ -2141,7 +2284,7 @@ function RoomManagementPage({ initialNav, rooms, categories, sleeps, onAddRoom, 
         // Manage Room is the fallback: ?nav=rooms was the old Room Availability
         // section, whose room list lives here now, so an old link still lands
         // somewhere sensible instead of on a blank panel.
-        <ManageRoomPanel rooms={rooms} categories={categories} sleeps={sleeps} onSubmit={handleAddRoom} onRoomUpdated={onRoomUpdated} onAddCategory={onAddCategory} onRenameCategory={onRenameCategory} onSetSleeps={onSetSleeps} onToast={onToast} />
+        <ManageRoomPanel rooms={rooms} categories={categories} sleeps={sleeps} childPolicy={childPolicy} onSaveChildPolicy={onSaveChildPolicy} onSubmit={handleAddRoom} onRoomUpdated={onRoomUpdated} onAddCategory={onAddCategory} onRenameCategory={onRenameCategory} onSetSleeps={onSetSleeps} onToast={onToast} />
       )}
     </div>
   );
@@ -2154,6 +2297,8 @@ function App() {
   const [categories, setCategories] = useState(DEFAULT_ROOM_CATEGORIES);
   // Category name to how many guests it sleeps; a type without one takes any party.
   const [sleeps, setSleeps] = useState({});
+  // How children are priced (HotelChildPolicy), read with the rooms.
+  const [childPolicy, setChildPolicy] = useState(null);
   const pendingWrites = useRef(0);
 
   // Every response that carries the team's categories goes through here.
@@ -2179,8 +2324,29 @@ function App() {
         if (pendingWrites.current > 0) return;
         if (Array.isArray(data.rooms)) setRooms(data.rooms);
         if (Array.isArray(data.categories) && data.categories.length) applyCategories(data.categories);
+        if (data.childPolicy) setChildPolicy(data.childPolicy);
       })
       .catch(() => {});
+  }, []);
+
+  /* Saves the child pricing policy. Rejects with the server's message, so the dialog
+     can say why (a range overlapping another, or a role that may not set it). */
+  const saveChildPolicy = useCallback((payload) => {
+    pendingWrites.current += 1;
+    return fetch('/students/hotel/child-policy', {
+      method: 'PUT',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+      .then(r => r.json().catch(() => ({})).then(data => {
+        if (!r.ok) {
+          const first = data.errors && Object.values(data.errors)[0];
+          throw new Error((Array.isArray(first) && first[0]) || data.message || 'Could not save the policy.');
+        }
+        if (data.childPolicy) setChildPolicy(data.childPolicy);
+      }))
+      .finally(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); });
   }, []);
 
   useEffect(() => {
@@ -2284,6 +2450,8 @@ function App() {
       rooms={rooms}
       categories={categories}
       sleeps={sleeps}
+      childPolicy={childPolicy}
+      onSaveChildPolicy={saveChildPolicy}
       onBack={() => { window.location.href = window.HMS_ROOMMANAGEMENT_URL; }}
       onAddRoom={addRoom}
       onRoomUpdated={replaceRoom}

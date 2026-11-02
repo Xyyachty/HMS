@@ -1340,8 +1340,53 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
         return response()->json([
             'rooms' => $rooms,
             'categories' => \App\Support\HotelRoomDefaults::categoriesFor($membership),
+            // Every screen that books a room previews the children's charges from it.
+            'childPolicy' => \App\Models\HotelChildPolicy::forTeam($membership->group_name, (int) $membership->faculty_id)->toTemplateArray(),
         ]);
     })->name('hotel.rooms.index');
+
+    /**
+     * Room Management's child pricing: from what age a guest is an adult, the age
+     * ranges and what each pays per night, and whether children in the room's own
+     * beds stay free. Saved per team; a stay already booked keeps the prices it was
+     * sold at (HotelBooking::children).
+     */
+    Route::put('/hotel/child-policy', function (Request $request) {
+        $membership = \App\Support\HotelBookingDesk::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Group not found'], 404);
+        }
+        if (!\App\Support\HotelTemplateBuilder::canEdit(auth()->user(), $membership, 'room_management')) {
+            return response()->json(['message' => 'Only Room Management can set the child pricing policy.'], 403);
+        }
+
+        $data = $request->validate([
+            'adult_age'                  => 'required|integer|min:1|max:' . (\App\Models\HotelChildPolicy::MAX_CHILD_AGE + 1),
+            'free_with_existing_bedding' => 'required|boolean',
+            'bands'                      => 'present|array|max:10',
+            'bands.*.min_age'            => 'required|integer|min:0|max:17',
+            'bands.*.max_age'            => 'required|integer|min:0|max:17',
+            'bands.*.rate'               => 'required|integer|min:0|max:1000000',
+        ]);
+
+        try {
+            $bands = \App\Models\HotelChildPolicy::cleanBands($data['bands'], (int) $data['adult_age']);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        $policy = \App\Models\HotelChildPolicy::updateOrCreate(
+            ['group_name' => $membership->group_name, 'faculty_id' => $membership->faculty_id],
+            [
+                'group_id'                   => $membership->group_id,
+                'adult_age'                  => (int) $data['adult_age'],
+                'free_with_existing_bedding' => (bool) $data['free_with_existing_bedding'],
+                'bands'                      => $bands,
+            ]
+        );
+
+        return response()->json(['childPolicy' => $policy->toTemplateArray()]);
+    })->name('hotel.child-policy.update');
 
     /**
      * A category the team invented — "Executive", "Cabana" — on top of the five it
@@ -1770,6 +1815,11 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             'rooms'                     => 'sometimes|array|min:1|max:10',
             'rooms.*.room_id'           => 'required|integer|distinct',
             'rooms.*.guest_count'       => 'nullable|integer|min:1|max:99',
+            // The party split into adults and each child's age, priced by the team's
+            // child policy (HotelBookingDesk::reserve). Replaces guest_count when sent.
+            'rooms.*.adults'            => 'nullable|integer|min:1|max:99',
+            'rooms.*.child_ages'        => 'nullable|array|max:20',
+            'rooms.*.child_ages.*'      => 'required|integer|min:0|max:17',
             'rooms.*.addons'            => 'nullable|array',
             'rooms.*.addons.*.addon_id' => 'required|integer',
             'rooms.*.addons.*.qty'      => 'required|integer|min:1|max:99',
@@ -1781,6 +1831,9 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             'check_in_time'      => 'required|string|max:10',
             'check_out'          => 'required|date|after:check_in',
             'guest_count'        => 'nullable|integer|min:1|max:99',
+            'adults'             => 'nullable|integer|min:1|max:99',
+            'child_ages'         => 'nullable|array|max:20',
+            'child_ages.*'       => 'required|integer|min:0|max:17',
             'notes'              => 'nullable|string|max:2000',
             'payment'            => 'nullable|array',
             'payment.type'       => 'nullable|string|max:20',
@@ -1804,6 +1857,8 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
         $stays = $data['rooms'] ?? [[
             'room_id'     => $data['room_id'],
             'guest_count' => $data['guest_count'] ?? null,
+            'adults'      => $data['adults'] ?? null,
+            'child_ages'  => $data['child_ages'] ?? [],
             'addons'      => $data['addons'] ?? [],
         ]];
 
@@ -1868,6 +1923,8 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
                             'check_in_time' => $data['check_in_time'],
                             'check_out'     => $data['check_out'],
                             'guest_count'   => $stay['guest_count'] ?? null,
+                            'adults'        => $stay['adults'] ?? null,
+                            'child_ages'    => $stay['child_ages'] ?? [],
                             'booked_by'     => auth()->user()?->name,
                             'notes'         => $data['notes'] ?? null,
                             // A promo is one stay's package: it goes on the first room.
@@ -1957,9 +2014,36 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             'notes'         => 'sometimes|nullable|string|max:2000',
             // Change Room: move a stay not yet checked in, an upgrade at the desk.
             'room_id'       => 'sometimes|integer',
+            // Correcting the party: the children are priced again, payments stay.
+            'adults'        => 'sometimes|integer|min:1|max:99',
+            'child_ages'    => 'sometimes|array|max:20',
+            'child_ages.*'  => 'integer|min:0|max:17',
         ]);
 
         $action = $data['action'] ?? null;
+
+        if (isset($data['adults']) || array_key_exists('child_ages', $data)) {
+            if (!\App\Support\HotelTableAccess::canAssign($membership)) {
+                return response()->json(['message' => 'Only Front Desk staff can change the guests on a stay.'], 403);
+            }
+            try {
+                \App\Support\HotelBookingDesk::updateOccupancy(
+                    $booking,
+                    (int) ($data['adults'] ?? $booking->adultCount() ?? 1),
+                    $data['child_ages'] ?? array_column($booking->childLines(), 'age')
+                );
+            } catch (\RuntimeException $e) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+
+            $booking = \App\Support\HotelBookingDesk::findBooking($membership, $id);
+
+            return response()->json([
+                'booking' => $booking->toReservationArray(),
+                'room'    => $booking->room?->fresh()->toTemplateArray(),
+                'bill'    => $booking->toBillArray(),
+            ]);
+        }
 
         if (isset($data['room_id'])) {
             if (!\App\Support\HotelTableAccess::canAssign($membership)) {

@@ -215,6 +215,19 @@
   }
   .wi-note { margin: 0; font-size: 0.76rem; color: var(--fg-muted); line-height: 1.5; }
 
+  /* Guests: one age box per child, and the free / charged tag on each */
+  .wi-ages { display: grid; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); gap: 0.6rem; }
+  .wi-occupancy { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; padding: 0.6rem 0.8rem; border-radius: 0.625rem; background: var(--wi-soft); font-size: 0.86rem; color: var(--fg); }
+  .wi-occupancy i { color: var(--accent); }
+  .wi-tag { display: inline-block; padding: 0.08rem 0.45rem; border-radius: 999px; font-size: 0.7rem; font-weight: 600; white-space: nowrap; }
+  .wi-tag.is-free { color: var(--wi-ok); background: color-mix(in srgb, var(--wi-ok) 14%, transparent); }
+  .wi-tag.is-charge { color: var(--accent); background: var(--wi-tint); }
+  .wi-bill { display: grid; gap: 0.4rem; margin: 0; padding-top: 0.6rem; border-top: 1px dashed var(--wi-line); }
+  .wi-bill div { display: flex; justify-content: space-between; gap: 0.8rem; font-size: 0.8rem; }
+  .wi-bill dt { color: var(--fg-muted); min-width: 0; }
+  .wi-bill dt small { display: block; font-size: 0.72rem; }
+  .wi-bill dd { margin: 0; color: var(--fg); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
   /* Booked */
   .wi-done { max-width: 35rem; margin: 0 auto; background: var(--card); border: 1px solid var(--wi-line); border-radius: 0.875rem; padding: 1.6rem 1.5rem 1.5rem; text-align: center; }
   .wi-done-icon {
@@ -320,6 +333,40 @@ function freeFor(room, from, to) {
   return !(room.bookedRanges || []).some(r => r.from < to && r.to > from);
 }
 
+/* What each child costs per night under the hotel's child policy (Room Management
+   sets it). Mirrors HotelChildPolicy::price(); the server prices the stay again when
+   it is booked. capacity is what the room sleeps without extra beds, 0 for no limit. */
+const NO_CHILD_POLICY = { saved: false, adultAge: 12, freeWithExistingBedding: false, bands: [] };
+function childLines(policy, ages, adults, capacity) {
+  const p = policy || NO_CHILD_POLICY;
+  const lines = ages.map(age => {
+    if (age >= p.adultAge) return { age, rate: 0, label: 'Priced as adult (' + p.adultAge + '+), in the room rate' };
+    const band = (p.bands || []).find(b => age >= b.min_age && age <= b.max_age);
+    const rate = band ? Number(band.rate) || 0 : 0;
+    return { age, rate, label: (rate ? 'Child rate, ' : 'Free, ') + (band ? 'ages ' + band.min_age + '–' + band.max_age : 'no charge set for this age') };
+  });
+  if (p.freeWithExistingBedding) {
+    // Adults take the room's own beds first; the beds left go to the children who would cost most.
+    let spare = capacity ? capacity - adults - lines.filter(l => l.age >= p.adultAge).length : Infinity;
+    lines.map((l, i) => i).filter(i => lines[i].rate > 0).sort((a, b) => lines[b].rate - lines[a].rate)
+      .forEach(i => { if (spare-- > 0) lines[i] = { age: lines[i].age, rate: 0, label: 'Free, shares the existing beds' }; });
+  }
+  return lines;
+}
+
+/* The policy in one line, for the front desk to read out to the guest. */
+function policyText(policy) {
+  const p = policy || NO_CHILD_POLICY;
+  if (!p.saved) return 'Room Management has not set a child policy yet, so children stay free.';
+  const bands = (p.bands || []).map(b => 'ages ' + b.min_age + '–' + b.max_age + ': ' + (Number(b.rate) ? peso(b.rate) + ' a night' : 'free'));
+  return [bands.join(' · ') || 'Children stay free', 'from ' + p.adultAge + ': priced as adult']
+    .concat(p.freeWithExistingBedding ? ['children in the room’s own beds stay free'] : []).join(' · ') + '.';
+}
+
+function partyText(adults, kids) {
+  return plural(adults, 'Adult') + (kids ? ' + ' + kids + ' ' + (kids === 1 ? 'Child' : 'Children') : '');
+}
+
 async function send(url, method, payload) {
   const res = await fetch(url, {
     method,
@@ -364,13 +411,14 @@ function Field({ id, label, optional, help, bad, children }) {
   );
 }
 
-function Stepper({ value, min, max, onChange, unit }) {
+function Stepper({ value, min, max, onChange, unit, units }) {
+  const many = units || unit + 's';
   return (
     <div className="wi-stepper">
-      <button type="button" className="wi-step-btn" aria-label={'Fewer ' + unit + 's'} disabled={value <= min}
+      <button type="button" className="wi-step-btn" aria-label={'Fewer ' + many} disabled={value <= min}
         onClick={() => onChange(Math.max(min, value - 1))}><i className="fa-solid fa-minus"></i></button>
-      <output aria-live="polite">{value}<small>{value === 1 ? unit : unit + 's'}</small></output>
-      <button type="button" className="wi-step-btn" aria-label={'More ' + unit + 's'} disabled={value >= max}
+      <output aria-live="polite">{value}<small>{value === 1 ? unit : many}</small></output>
+      <button type="button" className="wi-step-btn" aria-label={'More ' + many} disabled={value >= max}
         onClick={() => onChange(Math.min(max, value + 1))}><i className="fa-solid fa-plus"></i></button>
     </div>
   );
@@ -398,7 +446,7 @@ function CardSkeletons() {
 
 /* The right-hand panel: any last step (children), what is being booked, what
    is still missing, and the button. */
-function Summary({ title, rows, total, todo, error, busy, button, note, children }) {
+function Summary({ title, rows, bill, total, todo, error, busy, button, note, children }) {
   return (
     <aside className="wi-summary" aria-label={title}>
       {children}
@@ -409,6 +457,14 @@ function Summary({ title, rows, total, todo, error, busy, button, note, children
             <div key={k}><dt>{k}</dt><dd>{v || <span style={{ color: 'var(--fg-muted)' }}>Not set</span>}</dd></div>
           ))}
         </dl>
+        {/* The price, line by line, before anything is booked: [label, detail, amount]. */}
+        {bill && bill.length > 0 && (
+          <dl className="wi-bill" aria-label="Price breakdown">
+            {bill.map(([label, detail, amount], i) => (
+              <div key={i}><dt>{label}{detail && <small>{detail}</small>}</dt><dd>{amount}</dd></div>
+            ))}
+          </dl>
+        )}
         {total && (
           <div className="wi-sum-total"><span>{total[0]}</span><b>{total[1]}</b></div>
         )}
@@ -461,7 +517,12 @@ function RoomWalkIn() {
   const [nights, setNights] = useState(1);
   const [checkInTime, setCheckInTime] = useState(nowClock);
   const [category, setCategory] = useState('All');
-  // The rooms picked, in the order picked: [{ id, guests, beds }]. A family can take several.
+  // The whole party. childAges holds one entry per child: a number, or '' until asked.
+  const [adults, setAdults] = useState(1);
+  const [childAges, setChildAges] = useState([]);
+  const [childPolicy, setChildPolicy] = useState(NO_CHILD_POLICY);
+  // The rooms picked, in the order picked: [{ id, adults, kids, beds }]. A family can
+  // take several; the children go to the rooms in the order they were listed.
   const [picks, setPicks] = useState([]);
   const [promos, setPromos] = useState([]);
   const [promoId, setPromoId] = useState('');
@@ -487,6 +548,7 @@ function RoomWalkIn() {
         setRooms(Array.isArray(data.rooms) ? data.rooms : []);
         // Category name to how many it sleeps; a category without one takes any party.
         setSleeps(Object.fromEntries((data.categories || []).filter(c => c.capacity).map(c => [c.name, c.capacity])));
+        if (data.childPolicy) setChildPolicy(data.childPolicy);
         setLoadError('');
         setLoaded(true);
       })
@@ -527,8 +589,6 @@ function RoomWalkIn() {
     () => rooms.filter(r => r.status === 'Available' && freeFor(r, checkIn, checkOut)),
     [rooms, checkIn, checkOut]
   );
-  const categories = useMemo(() => ['All', ...Array.from(new Set(free.map(r => r.category).filter(Boolean)))], [free]);
-  const shown = category === 'All' ? free : free.filter(r => r.category === category);
   // How many a room sleeps: its own limit, else its category's. 0 takes any party.
   const sleepsIn = (r) => r.capacity || sleeps[r.category] || 0;
 
@@ -536,15 +596,46 @@ function RoomWalkIn() {
   // (HotelAddon::isExtraBed). Picked per room; the other extras go with the first room.
   const bedAddon = addons.find(a => a.extraBed) || null;
   const otherAddons = addons.filter(a => !a.extraBed);
+  const bedsInStock = bedAddon ? bedAddon.available : 0;
+
+  const kids = childAges.length;
+  const party = adults + kids;
+  const agesOk = childAges.every(a => a !== '');
+
+  /* Rooms that take the whole party, children counted even when they stay free, with
+     the extra beds Housekeeping has left. When no single room does, every free room
+     is shown so the party can be split across several. */
+  const fitting = free.filter(r => !sleepsIn(r) || sleepsIn(r) + bedsInStock >= party);
+  const splitting = fitting.length === 0 && free.length > 0;
+  const matched = splitting ? free : fitting;
+  const categories = ['All', ...Array.from(new Set(matched.map(r => r.category).filter(Boolean)))];
+  const shown = category === 'All' ? matched : matched.filter(r => r.category === category);
+
   const stays = picks.map(p => Object.assign({}, p, { room: free.find(r => r.dbId === p.id) })).filter(p => p.room);
   const bedsTaken = stays.reduce((sum, p) => sum + p.beds, 0);
-  const bedsLeft = bedAddon ? Math.max(0, bedAddon.available - bedsTaken) : 0;
-  const guestsTotal = stays.reduce((sum, p) => sum + p.guests, 0);
-  const maxGuests = (p) => (sleepsIn(p.room) ? sleepsIn(p.room) + p.beds : 20);
+  const bedsLeft = Math.max(0, bedsInStock - bedsTaken);
+  const adultsPlaced = stays.reduce((sum, p) => sum + p.adults, 0);
+  const kidsPlaced = stays.reduce((sum, p) => sum + p.kids, 0);
+  const roomMax = (p) => (sleepsIn(p.room) ? sleepsIn(p.room) + p.beds : 99);
 
-  // A promo is one stay's package price (HotelBooking::totalDue), so it prices the first room.
-  const roomCost = (p, i) => (i === 0 && promo ? promo.promo_price : p.room.price * nights * BLOCKS_PER_NIGHT);
-  const total = stays.reduce((sum, p, i) => sum + roomCost(p, i), 0);
+  /* Each room's share of the children, in the order they were listed, priced under
+     the hotel's child policy. A promo is one stay's package price
+     (HotelBooking::totalDue), so it prices the first room. */
+  let kidCursor = 0;
+  const priced = stays.map((p, i) => {
+    const ages = childAges.slice(kidCursor, kidCursor + p.kids).map(Number);
+    kidCursor += p.kids;
+    const children = agesOk ? childLines(childPolicy, ages, p.adults, sleepsIn(p.room)) : [];
+    return Object.assign({}, p, {
+      ages,
+      children,
+      roomCost: i === 0 && promo ? promo.promo_price : p.room.price * nights * BLOCKS_PER_NIGHT,
+      childCost: children.reduce((sum, c) => sum + c.rate, 0) * nights,
+    });
+  });
+  const childTotal = priced.reduce((sum, p) => sum + p.childCost, 0);
+  // What is due at booking: the rooms and the children, the server's totalDue().
+  const total = priced.reduce((sum, p) => sum + p.roomCost + p.childCost, 0);
   const paidNow = payType === 'Full' ? total : payType === 'Partial' ? Number(amount) || 0 : 0;
   /* Housekeeping's add-ons go on the stay's bill and are settled at check-out, the
      same as when a room is booked from the hotel site (HotelBookingDesk::reserve). */
@@ -556,31 +647,66 @@ function RoomWalkIn() {
     : 'None';
   const roomsText = stays.map(p => p.room.name).join(', ');
 
-  const toggleRoom = (r) => setPicks(prev => (prev.some(p => p.id === r.dbId)
+  /* Spreads the party over the picked rooms in the order they were picked: at least
+     one adult per room while adults last, then as many guests as each room sleeps,
+     adding the extra beds it needs while Housekeeping has any. Re-run whenever the
+     rooms or the party change, so nobody is left out or counted twice. */
+  const spread = (list, nAdults, nKids) => {
+    let ra = nAdults, rk = nKids, stock = bedsInStock;
+    return list.map((p, i) => {
+      const r = free.find(x => x.dbId === p.id);
+      const cap = r ? sleepsIn(r) : 0;
+      const roomFor = cap ? cap + stock : 99;
+      const a = Math.max(Math.min(1, ra), Math.min(ra - (list.length - i - 1), roomFor));
+      const k = Math.min(rk, roomFor - a);
+      ra -= a; rk -= k;
+      const beds = Math.min(stock, cap ? Math.max(p.beds || 0, a + k - cap) : (p.beds || 0));
+      stock -= beds;
+      return Object.assign({}, p, { adults: a, kids: k, beds });
+    });
+  };
+  const toggleRoom = (r) => setPicks(prev => spread(prev.some(p => p.id === r.dbId)
     ? prev.filter(p => p.id !== r.dbId)
-    : prev.concat([{ id: r.dbId, guests: Math.max(1, sleepsIn(r) || 1), beds: 0 }])));
+    : prev.concat([{ id: r.dbId, adults: 0, kids: 0, beds: 0 }]), adults, kids));
+  const changeParty = (nAdults, ages) => {
+    setAdults(nAdults);
+    setChildAges(ages);
+    setPicks(prev => spread(prev, nAdults, ages.length));
+  };
+  const setKidCount = (n) => changeParty(adults, n > kids ? childAges.concat(Array(n - kids).fill('')) : childAges.slice(0, n));
+  const setAge = (i, value) => setChildAges(prev => prev.map((a, j) => (j === i ? (value === '' ? '' : Number(value)) : a)));
   const updatePick = (id, change) => setPicks(prev => prev.map(p => (p.id === id ? Object.assign({}, p, change) : p)));
   // Taking a bed away cannot leave more guests in the room than it now sleeps.
-  const setBeds = (p, beds) => updatePick(p.id, {
-    beds,
-    guests: sleepsIn(p.room) ? Math.min(p.guests, sleepsIn(p.room) + beds) : p.guests,
-  });
+  const setBeds = (p, beds) => {
+    const max = sleepsIn(p.room) ? sleepsIn(p.room) + beds : 99;
+    const a = Math.min(p.adults, max);
+    updatePick(p.id, { beds, adults: a, kids: Math.min(p.kids, max - a) });
+  };
 
   // A picked room that stopped being free (a teammate booked it) is dropped.
   useEffect(() => {
-    if (picks.length !== stays.length) setPicks(prev => prev.filter(p => free.some(r => r.dbId === p.id)));
+    if (picks.length !== stays.length) setPicks(prev => spread(prev.filter(p => free.some(r => r.dbId === p.id)), adults, kids));
   }, [picks.length, stays.length, free]);
-  useEffect(() => { if (!categories.includes(category)) setCategory('All'); }, [categories, category]);
+  useEffect(() => { if (!categories.includes(category)) setCategory('All'); }, [categories.join('|'), category]);
 
   const nameOk = !!fullName.trim();
   const contactOk = !!contactNo.trim();
   const emailOk = !email.trim() || /^\S+@\S+\.\S+$/.test(email.trim());
   const hasRooms = stays.length > 0;
+  // Everyone in exactly one room, and an adult in every room.
+  const placedOk = hasRooms && adultsPlaced === adults && kidsPlaced === kids && stays.every(p => p.adults >= 1);
+  const placeProblem = !hasRooms ? '' : stays.some(p => p.adults < 1) ? 'Each room needs at least one adult.'
+    : adultsPlaced + kidsPlaced < party ? [
+        adults > adultsPlaced ? plural(adults - adultsPlaced, 'adult') : '',
+        kids > kidsPlaced ? (kids - kidsPlaced === 1 ? '1 child' : (kids - kidsPlaced) + ' children') : '',
+      ].filter(Boolean).join(' and ') + ' without a room yet. Add a room or an extra bed.'
+    : adultsPlaced !== adults || kidsPlaced !== kids ? 'The rooms hold a different party from the one entered under Guests.' : '';
   const payOk = payType !== 'Partial' || (Number(amount) > 0 && Number(amount) <= total);
 
   const reset = () => {
     setFullName(''); setContactNo(''); setEmail(''); setIdNumber('');
     setNights(1); setCheckInTime(nowClock()); setPicks([]); setPromoId(''); setAddonQty({});
+    setAdults(1); setChildAges([]);
     setPayType('Full'); setAmount(''); setMethod('Cash'); setNotes('');
     setError(''); setTried(false); setDone(null); load(); loadAddons();
   };
@@ -591,7 +717,9 @@ function RoomWalkIn() {
     if (!fullName.trim()) return setError('Enter the guest’s full name.');
     if (!contactNo.trim()) return setError('Enter a contact number for the guest.');
     if (email.trim() && !/^\S+@\S+\.\S+$/.test(email.trim())) return setError('This email address is not complete.');
+    if (!agesOk) return setError('Enter the age of every child. The child policy prices each child by age.');
     if (!hasRooms) return setError('Pick a room for the guest.');
+    if (!placedOk) return setError(placeProblem);
     let payment = null;
     if (payType !== 'None') {
       const paid = payType === 'Full' ? total : Number(amount);
@@ -605,9 +733,10 @@ function RoomWalkIn() {
     try {
       const data = await send(CFG.bookingsUrl, 'POST', {
         // One stay per room, booked together; the other extras ride on the first room.
-        rooms: stays.map((p, i) => ({
+        rooms: priced.map((p, i) => ({
           room_id: p.room.dbId,
-          guest_count: p.guests,
+          adults: p.adults,
+          child_ages: p.ages,
           addons: (i === 0 ? addonPicks.map(a => ({ addon_id: a.dbId, qty: a.qty })) : [])
             .concat(p.beds ? [{ addon_id: bedAddon.dbId, qty: p.beds }] : []),
         })),
@@ -625,7 +754,7 @@ function RoomWalkIn() {
         payment,
         arrived: true,
       });
-      setDone({ booking: data.booking, stays, roomsText, guestsTotal, promo, extrasText, total: total + addonsTotal, paid: payment ? payment.amount_paid : 0 });
+      setDone({ booking: data.booking, stays, roomsText, partyLabel: partyText(adults, kids), childTotal, promo, extrasText, total: total + addonsTotal, paid: payment ? payment.amount_paid : 0 });
       if (window.toast) window.toast('Booked ' + fullName.trim() + ' into ' + roomsText);
     } catch (err) {
       setError(err.message);
@@ -646,7 +775,8 @@ function RoomWalkIn() {
         title={'Welcome, ' + fullName.trim()}
         rows={[
           [done.stays.length > 1 ? 'Rooms' : 'Room', done.stays.map(p => p.room.name + (p.room.category ? ', ' + p.room.category : '')).join(' · ')],
-          ['Guests', plural(done.guestsTotal, 'guest')],
+          ['Guests', done.partyLabel],
+          ['Additional child charges', done.childTotal ? peso(done.childTotal) : 'None'],
           ['Check-in', niceDate(checkIn) + ', ' + niceTime(checkInTime)],
           ['Check-out', niceDate(checkOut)],
           ['Length of stay', plural(nights, 'night')],
@@ -662,6 +792,17 @@ function RoomWalkIn() {
       />
     );
   }
+
+  /* The itemised price shown before booking: [label, detail, amount]. Rooms and
+     children are paid now; extra beds and extras go on the bill for check-out. */
+  const nightsText = plural(nights, 'night');
+  const bill = [];
+  priced.forEach((p, i) => {
+    bill.push([p.room.name, i === 0 && promo ? promo.name + ' package' : peso(p.room.price * BLOCKS_PER_NIGHT) + ' × ' + nightsText, peso(p.roomCost)]);
+    p.children.forEach(c => bill.push(['Child, age ' + c.age, c.rate ? peso(c.rate) + ' × ' + nightsText : c.label, c.rate ? peso(c.rate * nights) : 'Free']));
+    if (p.beds && bedAddon) bill.push([bedAddon.name + ' × ' + p.beds, peso(bedAddon.price) + ' / night, paid at check-out', peso(bedAddon.price * p.beds * nights)]);
+  });
+  addonPicks.forEach(a => bill.push([a.name + ' × ' + a.qty, 'Paid at check-out', peso(a.price * a.qty)]));
 
   return (
     <form className="wi-layout" onSubmit={submit} noValidate>
@@ -725,9 +866,47 @@ function RoomWalkIn() {
           </div>
         </Section>
 
-        <Section n={3} title="Choose rooms" className="wi-wide"
-          hint={loaded ? (free.length === 1 ? '1 clean room is free for this stay.' : free.length + ' clean rooms are free for this stay. Pick several for a big party.') : 'Looking for clean rooms…'}
-          done={hasRooms}
+        <Section n={3} title="Guests" hint="Children count toward a room’s limit, even when they stay free." done={agesOk}>
+          <div className="wi-fields">
+            <div className="wi-two">
+              <Field id="wi-adults" label="Adults">
+                <Stepper value={adults} min={1} max={20} unit="adult" onChange={n => changeParty(n, childAges)} />
+              </Field>
+              <Field id="wi-children" label="Children" help="Guests under 18. Ask each child’s age.">
+                <Stepper value={kids} min={0} max={10} unit="child" units="children" onChange={setKidCount} />
+              </Field>
+            </div>
+            {kids > 0 && (
+              <div className="wi-ages">
+                {childAges.map((age, i) => (
+                  <Field key={i} id={'wi-age-' + i} label={'Child ' + (i + 1) + '’s age'} bad={tried && age === '' ? 'Pick an age.' : ''}>
+                    <select id={'wi-age-' + i} className={'wi-input' + (tried && age === '' ? ' is-bad' : '')}
+                      value={age === '' ? '' : String(age)} onChange={e => setAge(i, e.target.value)}>
+                      <option value="">Select age</option>
+                      {Array.from({ length: 18 }, (_, n) => (
+                        <option key={n} value={String(n)}>{n === 0 ? 'Under 1 year' : plural(n, 'year')}</option>
+                      ))}
+                    </select>
+                  </Field>
+                ))}
+              </div>
+            )}
+            <div className="wi-occupancy">
+              <i className="fa-solid fa-users"></i><b>{partyText(adults, kids)}</b>
+              {childTotal > 0
+                ? <span className="wi-tag is-charge">Additional child charges: {peso(childTotal)}</span>
+                : kids > 0 && agesOk && hasRooms ? <span className="wi-tag is-free">Children stay free</span> : null}
+            </div>
+            <p className="wi-help" style={{ margin: 0 }}><b>Child policy:</b> {policyText(childPolicy)}</p>
+          </div>
+        </Section>
+
+        <Section n={4} title="Choose rooms" className="wi-wide"
+          hint={!loaded ? 'Looking for clean rooms…'
+            : free.length === 0 ? 'No clean room is free for this stay.'
+            : splitting ? 'No single room sleeps ' + plural(party, 'guest') + '. Pick several rooms and split the party.'
+            : (fitting.length === 1 ? '1 clean room takes ' : fitting.length + ' clean rooms take ') + partyText(adults, kids) + ' for this stay.'}
+          done={placedOk}
           aside={categories.length > 2 && (
             <Chips label="Room type" value={category} onChange={setCategory}
               options={categories.map(c => [c, c === 'All' ? 'All types' : c])} />
@@ -744,6 +923,7 @@ function RoomWalkIn() {
             <div className="wi-cards">
               {shown.map(r => {
                 const on = picks.some(p => p.id === r.dbId);
+                const bedsNeeded = !splitting && sleepsIn(r) ? Math.max(0, party - sleepsIn(r)) : 0;
                 return (
                   <button key={r.dbId} type="button" className={'wi-card' + (on ? ' is-on' : '')}
                     onClick={() => toggleRoom(r)} aria-pressed={on}>
@@ -752,8 +932,9 @@ function RoomWalkIn() {
                     </div>
                     <div className="wi-card-body">
                       <span className="wi-card-name">{r.name}</span>
-                      <span className="wi-card-sub">{r.category || 'Room'}{sleepsIn(r) ? ' · sleeps ' + sleepsIn(r) : ''}</span>
+                      <span className="wi-card-sub">{r.category || 'Room'} · {sleepsIn(r) ? 'Max occupancy ' + sleepsIn(r) : 'No guest limit'}</span>
                       <span className="wi-card-price">{peso(r.price * BLOCKS_PER_NIGHT)} <small>per night</small></span>
+                      {bedsNeeded > 0 && <span className="wi-tag is-charge">Needs {plural(bedsNeeded, 'extra bed')}</span>}
                     </div>
                     {on && <span className="wi-card-tick"><i className="fa-solid fa-check"></i></span>}
                   </button>
@@ -761,27 +942,43 @@ function RoomWalkIn() {
               })}
             </div>
           )}
-          {stays.length > 0 && (
+          {priced.length > 0 && (
             <div className="wi-fields" style={{ marginTop: '1rem' }}>
-              {stays.map(p => (
+              {priced.map(p => (
                 <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap', padding: '0.5rem 0', borderTop: '1px solid var(--wi-line)' }}>
                   <div style={{ flex: '1 1 9rem', minWidth: 0 }}>
                     <b style={{ display: 'block', color: 'var(--fg)', fontSize: '0.92rem' }}>{p.room.name}</b>
                     <small style={{ color: 'var(--fg-muted)' }}>
-                      {sleepsIn(p.room) ? 'Sleeps ' + sleepsIn(p.room) + (p.beds ? ' + ' + p.beds + ' on extra beds' : '') : 'Any party size'}
+                      {sleepsIn(p.room) ? 'Max occupancy ' + sleepsIn(p.room) + (p.beds ? ' + ' + p.beds + ' on extra beds' : '') : 'No guest limit'}
                     </small>
                   </div>
-                  <Field id={'wi-guests-' + p.id} label="Guests">
-                    <Stepper value={p.guests} min={1} max={maxGuests(p)} unit="guest"
-                      onChange={n => updatePick(p.id, { guests: n })} />
+                  <Field id={'wi-adults-' + p.id} label="Adults">
+                    <Stepper value={p.adults} min={0} max={Math.min(roomMax(p) - p.kids, p.adults + adults - adultsPlaced)} unit="adult"
+                      onChange={n => updatePick(p.id, { adults: n })} />
                   </Field>
+                  {kids > 0 && (
+                    <Field id={'wi-kids-' + p.id} label="Children">
+                      <Stepper value={p.kids} min={0} max={Math.min(roomMax(p) - p.adults, p.kids + kids - kidsPlaced)} unit="child" units="children"
+                        onChange={n => updatePick(p.id, { kids: n })} />
+                    </Field>
+                  )}
                   {bedAddon && (
                     <Field id={'wi-beds-' + p.id} label={bedAddon.name + (bedAddon.price ? ' · ' + peso(bedAddon.price) + ' / night' : '')}>
                       <Stepper value={p.beds} min={0} max={p.beds + bedsLeft} unit="bed" onChange={n => setBeds(p, n)} />
                     </Field>
                   )}
+                  {p.children.length > 0 && (
+                    <div style={{ flexBasis: '100%', display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                      {p.children.map((c, j) => (
+                        <span key={j} className={'wi-tag ' + (c.rate ? 'is-charge' : 'is-free')} title={c.label}>
+                          Child, age {c.age}: {c.rate ? peso(c.rate) + ' / night' : 'Free'}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
+              {placeProblem && <p className="wi-alert" role="alert">{placeProblem}</p>}
               {bedAddon && !bedsLeft && !bedsTaken && (
                 <p className="wi-help" style={{ margin: 0 }}>No {bedAddon.name.toLowerCase()} is left in Housekeeping.</p>
               )}
@@ -789,7 +986,7 @@ function RoomWalkIn() {
           )}
         </Section>
 
-        <Section n={4} title="Extras" className="wi-wide"
+        <Section n={5} title="Extras" className="wi-wide"
           hint={'Pillows, towels and more from Housekeeping' + (stays.length > 1 ? ', on ' + stays[0].room.name + '’s bill' : '') + '. Paid at check-out.'}
           done={addonPicks.length > 0}>
           {otherAddons.length === 0 ? (
@@ -821,24 +1018,26 @@ function RoomWalkIn() {
         rows={[
           ['Guest', fullName.trim()],
           [stays.length > 1 ? 'Rooms' : 'Room', roomsText],
-          ['Guests', hasRooms ? plural(guestsTotal, 'guest') : ''],
+          ['Guests', partyText(adults, kids)],
           ['Stay', plural(nights, 'night') + ', until ' + niceDate(checkOut)],
           ['Promo', promo ? promo.name : 'None'],
           ['Extras', extrasText],
           ['Pay now', hasRooms ? (payType === 'None' ? 'Nothing yet' : peso(paidNow) + ' by ' + method) : ''],
         ]}
-        total={['Room cost', peso(total)]}
+        bill={bill}
+        total={['Room & child charges', peso(total)]}
         todo={[
           ['Guest name', nameOk],
           ['Contact number', contactOk],
-          ['Room', hasRooms],
+          ['Children’s ages', agesOk],
+          ['Room', placedOk],
           ['Payment', hasRooms && payOk],
         ]}
         error={error}
         busy={busy}
         button={[stays.length > 1 ? 'Book ' + stays.length + ' rooms & mark arrived' : 'Book room & mark arrived', 'fa-key']}
         note="The guest is marked as arrived right away. Room Management then gives them the key.">
-        <Section n={5} title="Payment" hint="How much does the guest pay now?" className="wi-section-bare" done={hasRooms && payOk}>
+        <Section n={6} title="Payment" hint="How much does the guest pay now?" className="wi-section-bare" done={hasRooms && payOk}>
           <div className="wi-fields">
             <Chips label="Payment now" value={payType} onChange={setPayType} cols={3} stack options={[
               ['Full', 'Pay in full', 'fa-check-double'],

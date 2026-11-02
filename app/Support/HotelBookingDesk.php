@@ -7,6 +7,7 @@ use App\Models\HotelAddon;
 use App\Models\HotelBooking;
 use App\Models\HotelBookingCharge;
 use App\Models\HotelBookingPayment;
+use App\Models\HotelChildPolicy;
 use App\Models\HotelGuest;
 use App\Models\HotelInspectionDamage;
 use App\Models\HotelPromo;
@@ -66,7 +67,9 @@ class HotelBookingDesk
      *
      * $guest keys: full_name, contact_no, email, id_number.
      * $stay  keys: check_in, check_in_time, check_out, guest_count, booked_by, notes,
-     *        promo_id (optional: books the stay at that promo's price).
+     *        promo_id (optional: books the stay at that promo's price),
+     *        adults + child_ages (optional: the party split; replaces guest_count and
+     *        prices each child by the team's HotelChildPolicy).
      * $payment (optional) keys: type, amount_paid, method, reference, payer_name, notes.
      * $addons (optional) lines: [['addon_id' => int, 'qty' => int], ...]. Attaching them
      * here rather than in a second request means a folding bed that ran out takes the
@@ -81,16 +84,13 @@ class HotelBookingDesk
         array $addons = []
     ): HotelBooking {
         $scope = self::scope($membership);
-        $guestCount = isset($stay['guest_count']) ? max(1, (int) $stay['guest_count']) : null;
+        [$guestCount, $adults, $ages] = self::party($stay);
+        $capacity = self::capacityOf($room);
 
         // The room's own limit, else its category's "Sleeps N", plus one per extra bed
         // taken with the stay. Neither set takes any party, the same as before the
-        // fields existed.
+        // fields existed. Children count here even when they stay free.
         if ($guestCount !== null) {
-            $capacity = (int) ($room->capacity ?: HotelRoomCategory::where('group_name', $room->group_name)
-                ->where('faculty_id', $room->faculty_id)
-                ->where('name', $room->category)
-                ->value('capacity'));
             $beds = $capacity ? HotelAddon::extraBedsIn($addons) : 0;
 
             if ($capacity && $guestCount > $capacity + $beds) {
@@ -102,6 +102,10 @@ class HotelBookingDesk
             }
         }
 
+        $children = $ages
+            ? HotelChildPolicy::forTeam($room->group_name, (int) $room->faculty_id)->price($ages, $adults, $capacity)
+            : null;
+
         $promo = empty($stay['promo_id']) ? null : HotelPromo::bookable(
             $membership->group_name,
             (int) $membership->faculty_id,
@@ -109,7 +113,7 @@ class HotelBookingDesk
             (string) ($stay['check_in'] ?? '')
         );
 
-        return DB::transaction(function () use ($scope, $room, $guest, $stay, $payment, $addons, $guestCount, $promo) {
+        return DB::transaction(function () use ($scope, $room, $guest, $stay, $payment, $addons, $guestCount, $children, $promo) {
             $guestModel = HotelGuest::findOrCreateFor($scope, $guest);
 
             $booking = new HotelBooking($scope + [
@@ -120,6 +124,8 @@ class HotelBookingDesk
                 'check_in_time'  => $stay['check_in_time'] ?? null,
                 'check_out'      => $stay['check_out'] ?? null,
                 'guest_count'    => $guestCount,
+                // Snapshot, like room_rate: a policy changed later must not move a sold stay.
+                'children'       => $children,
                 // Snapshot: repricing the room later must not move a sold stay.
                 'room_rate'      => (int) $room->price,
                 'reserved_at'    => now(),
@@ -141,8 +147,8 @@ class HotelBookingDesk
             }
 
             // After the add-ons, and deliberately: addPayment() prices the receipt off
-            // totalDue(), which is the room alone. Add-ons settle at check-out the same
-            // way room service does.
+            // totalDue(), which is the room and the children. Add-ons settle at
+            // check-out the same way room service does.
             if ($payment !== null) {
                 self::addPayment($booking, $payment);
             }
@@ -366,17 +372,21 @@ class HotelBookingDesk
             throw new \RuntimeException($room->name . ' is not ready (' . $room->status . '). Pick another room.');
         }
 
-        $capacity = (int) ($room->capacity ?: HotelRoomCategory::where('group_name', $room->group_name)
-            ->where('faculty_id', $room->faculty_id)
-            ->where('name', $room->category)
-            ->value('capacity'));
+        $capacity = self::capacityOf($room);
         $beds = $booking->addons->filter->isPerNight()->sum('qty');
         if ($capacity && $booking->guest_count && $booking->guest_count > $capacity + $beds) {
             throw new \RuntimeException($room->name . ' sleeps ' . $capacity . ' — too small for '
                 . $booking->guest_count . ' guests.');
         }
 
-        return DB::transaction(function () use ($booking, $room) {
+        // Priced again for the new room, like the room rate: which children fit in its
+        // own beds can change with it.
+        $ages = array_column($booking->childLines(), 'age');
+        $children = $ages
+            ? HotelChildPolicy::forTeam($room->group_name, (int) $room->faculty_id)->price($ages, (int) $booking->adultCount(), $capacity)
+            : $booking->children;
+
+        return DB::transaction(function () use ($booking, $room, $children) {
             // The same lock and overlap test a new booking takes.
             HotelRoom::whereKey($room->hotel_room_id)->lockForUpdate()->first();
             $taken = HotelBooking::open()
@@ -391,6 +401,7 @@ class HotelBookingDesk
             $booking->forceFill([
                 'hotel_room_id' => $room->hotel_room_id,
                 'room_rate'     => (int) $room->price,
+                'children'      => $children,
                 'promo_name'    => null,
                 'promo_price'   => null,
                 'promo_blocks'  => null,
@@ -398,6 +409,70 @@ class HotelBookingDesk
 
             return $booking->setRelation('room', $room);
         });
+    }
+
+    /**
+     * Front Desk correcting who is in the party: a child who was not mentioned at
+     * booking, an age given wrong. The children are priced again under the team's
+     * policy as it stands now. Payments are left as they were, so the balance is
+     * simply the new total less what was already paid.
+     *
+     * @throws \RuntimeException when the stay is closed or the room is too small
+     */
+    public static function updateOccupancy(HotelBooking $booking, int $adults, array $ages): HotelBooking
+    {
+        if (!in_array($booking->status, ['Booked', 'Arrived', 'Checked In'], true)) {
+            throw new \RuntimeException('The party can only be changed before check-out starts.');
+        }
+
+        $room = $booking->room;
+        $capacity = self::capacityOf($room);
+        $beds = $booking->addons->filter->isPerNight()->sum('qty');
+        [$guestCount, $adults, $ages] = self::party(['adults' => $adults, 'child_ages' => $ages]);
+        if ($capacity && $guestCount > $capacity + $beds) {
+            throw new \RuntimeException($room->name . ' sleeps ' . $capacity
+                . ($beds ? ' and ' . $beds . ' on extra beds' : '') . ' — too small for ' . $guestCount . ' guests.');
+        }
+
+        $booking->forceFill([
+            'guest_count' => $guestCount,
+            'children'    => $ages
+                ? HotelChildPolicy::forTeam($room->group_name, (int) $room->faculty_id)->price($ages, $adults, $capacity)
+                : null,
+        ])->save();
+
+        return $booking;
+    }
+
+    /**
+     * The party from a stay's keys: [guest_count, adults, child ages]. adults and
+     * child_ages win when sent; a caller sending only guest_count (an older screen)
+     * books that many adults, as before.
+     */
+    private static function party(array $stay): array
+    {
+        if (isset($stay['adults']) || !empty($stay['child_ages'])) {
+            $ages = array_map(
+                fn ($age) => max(0, min(HotelChildPolicy::MAX_CHILD_AGE, (int) $age)),
+                array_values((array) ($stay['child_ages'] ?? []))
+            );
+            $adults = max(1, (int) ($stay['adults'] ?? 1));
+
+            return [$adults + count($ages), $adults, $ages];
+        }
+
+        $count = isset($stay['guest_count']) ? max(1, (int) $stay['guest_count']) : null;
+
+        return [$count, $count, []];
+    }
+
+    /** What the room sleeps without extra beds: its own limit, else its category's. 0 = no limit. */
+    private static function capacityOf(HotelRoom $room): int
+    {
+        return (int) ($room->capacity ?: HotelRoomCategory::where('group_name', $room->group_name)
+            ->where('faculty_id', $room->faculty_id)
+            ->where('name', $room->category)
+            ->value('capacity'));
     }
 
     /**

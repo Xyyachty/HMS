@@ -531,6 +531,9 @@ function ReceiptModal({ receipt, onClose }) {
             <div className="rc-block">
               <p className="rc-head">Charges</p>
               {line('Room ' + (bill.roomName || ''), formatPeso(bill.room.subtotal), 'room', '', roomUnit(bill.room))}
+              {((bill.children && bill.children.items) || []).map((c, i) => (
+                line(`Child, age ${c.age}`, c.line ? formatPeso(c.line) : 'Free', 'ch' + i, '', c.rate ? `${c.nights} × ${formatPeso(c.rate)}` : c.label)
+              ))}
               {service.orders.map(order => order.items.map((item, i) => (
                 line(`Room service — ${item.name}`, formatPeso(item.line), 'rs' + order.orderId + '-' + i, '', `${item.qty} × ${formatPeso(item.price)}`)
               )))}
@@ -713,6 +716,12 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
               <div>
               <p className="bill-section-title">Room Charges</p>
               <BillItem name={'Room ' + (bill.roomName || '')} detail={roomUnit(roomLines)} amount={formatPeso(roomLines.subtotal)} />
+              {/* Each child as the child policy priced them at booking, free ones too. */}
+              {((bill.children && bill.children.items) || []).map((c, i) => (
+                <BillItem key={'ch' + i} name={`Child, age ${c.age}`}
+                  detail={c.rate ? `${c.nights} night${c.nights === 1 ? '' : 's'} × ${formatPeso(c.rate)}` : c.label}
+                  amount={c.line ? formatPeso(c.line) : 'Free'} />
+              ))}
 
               {service.orders.length > 0 && (
                 <>
@@ -1226,13 +1235,14 @@ function GuestDetailsModal({ stays, onClose }) {
 
 /* One booking inside GuestDetailsModal: its room, dates, charges and payments. */
 function StayDetails({ room, reservation, many, transactions }) {
-  const roomTotal = Number(reservation.totalDue) || 0;
+  const childCharges = Number(reservation.childCharges) || 0;
+  const roomTotal = (Number(reservation.totalDue) || 0) - childCharges;
   const foodTotal = Number(reservation.roomServiceTotal) || 0;
   const foodCount = Number(reservation.roomServiceCount) || 0;
   const extras = Number(reservation.otherCharges) || 0;
   const addonsTotal = Number(reservation.addonsTotal) || 0;
   const addonsCount = Number(reservation.addonsCount) || 0;
-  const grandTotal = Number(reservation.grandTotal) || (roomTotal + foodTotal + addonsTotal + extras);
+  const grandTotal = Number(reservation.grandTotal) || (roomTotal + childCharges + foodTotal + addonsTotal + extras);
   const paid = Number(reservation.amountPaid) || 0;
   const outstanding = reservation.outstanding != null
     ? Number(reservation.outstanding)
@@ -1258,6 +1268,9 @@ function StayDetails({ room, reservation, many, transactions }) {
       <dl className="bill-meta">
         <div><dt>Room</dt><dd>{room ? `${room.name} · ${room.label || room.category}` : '—'}</dd></div>
         <div><dt>Rate / 12 hrs</dt><dd>{formatPeso(reservation.roomRate || (room && room.price))}</dd></div>
+        {reservation.occupancy && (
+          <div><dt>Guests</dt><dd>{reservation.occupancy}{(reservation.children || []).length > 0 ? ' · ages ' + reservation.children.map(c => c.age).join(', ') : ''}</dd></div>
+        )}
         {reservation.promoName && (
           <div><dt>Promo / package</dt><dd>{reservation.promoName} · {formatPeso(reservation.promoPrice)}</dd></div>
         )}
@@ -1296,6 +1309,12 @@ function StayDetails({ room, reservation, many, transactions }) {
       <div>
       <p className="bill-section-title">Charges</p>
       <div className="bill-line"><span>Room charge</span><span className="bill-amt">{formatPeso(roomTotal)}</span></div>
+      {(reservation.children || []).length > 0 && (
+        <div className="bill-line">
+          <span>Additional child charges{childCharges ? '' : ' (children stay free)'}</span>
+          <span className="bill-amt">{formatPeso(childCharges)}</span>
+        </div>
+      )}
       <div className="bill-line">
         <span>Room service{foodCount > 0 ? ` (${foodCount} order${foodCount === 1 ? '' : 's'})` : ''}</span>
         <span className="bill-amt">{formatPeso(foodTotal)}</span>

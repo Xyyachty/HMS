@@ -70,6 +70,7 @@ class HotelBooking extends Model
         'promo_name',
         'promo_price',
         'promo_blocks',
+        'children',
     ];
 
     protected $casts = [
@@ -79,6 +80,8 @@ class HotelBooking extends Model
         'promo_price'    => 'integer',
         'promo_blocks'   => 'integer',
         'guest_count'    => 'integer',
+        // [{age, rate, label}] per child, priced by HotelChildPolicy when booked.
+        'children'       => 'array',
         'reserved_at'    => 'datetime',
         'arrived_at'     => 'datetime',
         'checked_in_at'  => 'datetime',
@@ -242,14 +245,22 @@ class HotelBooking extends Model
     }
 
     /**
-     * The room charge alone. Deliberately excludes room service: the payments taken at
-     * booking time recorded their balance against this figure, and moving it would
-     * rewrite what those receipts said the guest still owed.
+     * The stay's accommodation: the room plus the children's charges. Deliberately
+     * excludes room service: the payments taken at booking time recorded their balance
+     * against this figure, and moving it would rewrite what those receipts said the
+     * guest still owed. A stay booked before child pricing has no children, so its
+     * figure is unchanged.
      *
      * A stay booked under a promo pays the package price for the blocks it was booked
      * for; any block added after that is charged at the room rate.
      */
     public function totalDue(): float
+    {
+        return $this->roomCharge() + $this->childChargesTotal();
+    }
+
+    /** The room at its rate or package price, without the children's charges. */
+    public function roomCharge(): float
     {
         if ($this->promo_price !== null) {
             return $this->promo_price
@@ -257,6 +268,37 @@ class HotelBooking extends Model
         }
 
         return $this->stayBlocks() * (float) $this->room_rate;
+    }
+
+    /** The children on the stay, as priced when it was booked: [{age, rate, label}]. */
+    public function childLines(): array
+    {
+        return is_array($this->children) ? array_values($this->children) : [];
+    }
+
+    /** Adults in the party: everyone who is not on the children list. */
+    public function adultCount(): ?int
+    {
+        return $this->guest_count === null ? null : max(0, $this->guest_count - count($this->childLines()));
+    }
+
+    /** Child rates are per night, so Extend Stay moves this with the stay. */
+    public function childChargesTotal(): float
+    {
+        return (float) array_sum(array_column($this->childLines(), 'rate')) * $this->nights();
+    }
+
+    /** "1 Adult + 2 Children", or "" when the party size was never asked. */
+    public function occupancyLabel(): string
+    {
+        $adults = $this->adultCount();
+        if ($adults === null) {
+            return '';
+        }
+        $kids = count($this->childLines());
+
+        return $adults . ' Adult' . ($adults === 1 ? '' : 's')
+            . ($kids ? ' + ' . $kids . ' ' . ($kids === 1 ? 'Child' : 'Children') : '');
     }
 
     public function amountPaid(): float
@@ -319,6 +361,10 @@ class HotelBooking extends Model
             'checkInTime'   => $this->check_in_time ?? '',
             'checkOut'      => optional($this->check_out)->toDateString(),
             'guestCount'    => $this->guest_count,
+            'adults'        => $this->adultCount(),
+            'children'      => $this->childLines(),
+            'occupancy'     => $this->occupancyLabel(),
+            'childCharges'  => $this->childChargesTotal(),
             'roomRate'      => (int) $this->room_rate,
             'promoName'     => $this->promo_name ?? '',
             'promoPrice'    => $this->promo_price,
@@ -387,6 +433,7 @@ class HotelBooking extends Model
             'checkInTime' => $this->check_in_time ?? '',
             'checkOut'    => optional($this->check_out)->toDateString(),
             'guestCount'  => $this->guest_count,
+            'occupancy'   => $this->occupancyLabel(),
             'promoName'   => $this->promo_name ?? '',
             'total'       => $this->grandTotal(),
             'amountPaid'  => $this->amountPaid(),
@@ -426,6 +473,16 @@ class HotelBooking extends Model
                     . ' · ' . $this->nights() . ' night' . ($this->nights() === 1 ? '' : 's'),
             'amount' => (float) $room['subtotal'],
         ]];
+        foreach ($bill['children']['items'] as $child) {
+            $lines[] = [
+                'kind'   => 'child',
+                'label'  => 'Child, age ' . $child['age'],
+                'detail' => $child['rate']
+                    ? $peso($child['rate']) . ' × ' . $child['nights'] . ' night' . ($child['nights'] === 1 ? '' : 's')
+                    : $child['label'],
+                'amount' => (float) $child['line'],
+            ];
+        }
         foreach ($bill['roomService']['orders'] as $order) {
             foreach ($order['items'] as $item) {
                 $lines[] = [
@@ -488,7 +545,17 @@ class HotelBooking extends Model
                 'rate'      => (int) $this->room_rate,
                 // Set when the stay was booked under a promo; the subtotal is then its price.
                 'promo'     => $this->promo_name,
-                'subtotal'  => $this->totalDue(),
+                'subtotal'  => $this->roomCharge(),
+            ],
+
+            // One line per child, free ones too, so the bill says why a child cost nothing.
+            'occupancy' => $this->occupancyLabel(),
+            'children' => [
+                'items'    => array_map(fn ($child) => $child + [
+                    'nights' => $this->nights(),
+                    'line'   => (int) $child['rate'] * $this->nights(),
+                ], $this->childLines()),
+                'subtotal' => $this->childChargesTotal(),
             ],
 
             // One line per dish across every billable order, so the guest sees what they
