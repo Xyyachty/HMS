@@ -186,6 +186,8 @@
     padding: 0.5rem 0.8rem; border-radius: 0.5rem; border: 1px solid var(--border); background: transparent; color: var(--fg);
     font: 600 0.78rem/1 var(--font-body, 'Outfit', sans-serif); text-decoration: none; transition: border-color 0.15s, color 0.15s, background 0.15s, filter 0.15s;
   }
+  /* A guest with several bookings has one button, its own size, centred. */
+  .vg-actions.is-one { display: flex; justify-content: center; }
   .vg-actions .vg-lifecycle-btn { width: 100%; box-sizing: border-box; }
   .vg-actions > .vg-btn:not(.vg-lifecycle-btn) { width: 100%; box-sizing: border-box; }
   .vg-btn i { font-size: 0.72rem; }
@@ -243,7 +245,7 @@
     .vg-table tbody tr:hover td { background: none; }
     .vg-table td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 0.15rem; font-size: 0.7rem; color: var(--fg-muted); }
     .vg-table td.vg-wide { grid-column: 1 / -1; }
-    .vg-actions { display: flex; justify-content: flex-start; flex-wrap: wrap; }
+    .vg-actions, .vg-actions.is-one { display: flex; justify-content: flex-start; flex-wrap: wrap; }
     .vg-actions-gap { display: none; }
   }
   @media (max-width: 640px) {
@@ -1889,9 +1891,9 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
                           {!many && statusHint(guest) && <span className="vg-sub">{statusHint(guest)}</span>}
                         </td>
                         <td className="vg-wide">
-                          <div className="vg-actions">
+                          <div className={'vg-actions' + (many ? ' is-one' : '')}>
                             {many ? (
-                              <button type="button" className="vg-btn vg-btn-main" style={{ gridColumn: '1 / -1' }}
+                              <button type="button" className="vg-btn vg-btn-line"
                                 onClick={() => setDetailsFor(key)}
                                 title="Open each booking on its own, with its own buttons">
                                 <i className="fa-solid fa-layer-group"></i> View {stays.length} bookings
