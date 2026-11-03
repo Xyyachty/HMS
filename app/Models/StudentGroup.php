@@ -11,7 +11,17 @@ class StudentGroup extends Model
 {
     use HasFactory;
 
+    /** Same name and purpose as Student::CURRENT_SCOPE: archived teams stay out of the working screens. */
+    public const CURRENT_SCOPE = 'current';
+
     protected $primaryKey = 'student_group_id';
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope(self::CURRENT_SCOPE, function ($query) {
+            $query->whereNull($query->getModel()->getTable() . '.archived_at');
+        });
+    }
 
     protected $fillable = [
         'group_name',

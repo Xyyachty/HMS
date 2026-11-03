@@ -87,16 +87,16 @@ return new class extends Migration
 
     /** table => [primary key, image columns] */
     private const COLUMNS = [
-        'hotel_rooms' => ['id', ['image', 'gallery']],
+        'hotel_rooms' => ['hotel_room_id', ['image', 'gallery']],
         'hotel_room_categories' => ['hotel_room_category_id', ['image_path', 'gallery']],
         'hotel_amenities' => ['hotel_amenity_id', ['image', 'gallery']],
         'hotel_addons' => ['hotel_addon_id', ['image']],
         'hotel_catering_packages' => ['hotel_catering_package_id', ['image']],
         'hotel_promos' => ['hotel_promo_id', ['image']],
-        'hotel_menu_items' => ['id', ['image']],
-        'template_images' => ['id', ['image_path']],
-        'template_elements' => ['id', ['image_src', 'image_background']],
-        'template_content_fields' => ['id', ['field_value']],
+        'hotel_menu_items' => ['hotel_menu_item_id', ['image']],
+        'template_images' => ['template_image_id', ['image_path']],
+        'template_elements' => ['template_element_id', ['image_src', 'image_background']],
+        'template_content_fields' => ['template_content_field_id', ['field_value']],
     ];
 
     public function up(): void
@@ -114,8 +114,8 @@ return new class extends Migration
                 $query = DB::table($table)->whereRaw("CAST($column AS $text) LIKE ?", ['%picsum.photos%']);
                 if ($table === 'template_content_fields') {
                     // The item tells a saved Presidential Suite from a saved Classic room.
-                    $query->leftJoin('template_content_items', 'template_content_items.id', '=', 'template_content_fields.content_item_id')
-                        ->select('template_content_fields.id', "template_content_fields.$column", 'template_content_items.item_ref');
+                    $query->leftJoin('template_content_items', 'template_content_items.template_content_item_id', '=', 'template_content_fields.template_content_item_id')
+                        ->select('template_content_fields.template_content_field_id', "template_content_fields.$column", 'template_content_items.item_ref');
                 } else {
                     $query->select($key, $column);
                 }

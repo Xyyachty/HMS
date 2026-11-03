@@ -444,6 +444,9 @@
             font-size: 0.8125rem; font-family: 'Inter', sans-serif; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s;
             opacity: 0; z-index: 9999;
+            /* Hidden, it still sat over the bottom of the screen and ate taps meant
+               for the phone toolbar under it. It is never clicked anyway. */
+            pointer-events: none;
         }
         #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
         /* ── Fullscreen Redesign Mode ── */
@@ -678,6 +681,178 @@
         html[data-ops-theme="2"] #assignedTaskPager { background: #efe9e0; border-color: #e2ddd5; }
         html[data-ops-theme="2"] #assignedTaskPager button { background: #ffffff; border-color: #e2ddd5; color: #1a1a1a; }
         html[data-ops-theme="2"] #assignedTaskPager button:hover:not(:disabled) { border-color: #2d6a4f; color: #1b4332; }
+
+        /* ── Canvas size: Desktop or Phone view ──
+           Phone view narrows the canvas to a phone's width, so the student sees
+           the site the way a guest on a phone does. On a phone or tablet,
+           Desktop view draws the page at a laptop's width and scales it down,
+           so it can be checked, and edited, in the layout laptop users see. */
+        .device-tabs {
+            display: flex; align-items: center; gap: 0.25rem; margin-left: 0.5rem;
+            padding: 0.25rem; border-radius: 0.5rem;
+            background: rgba(24, 24, 27, 0.6); border: 1px solid #27272a;
+        }
+        .device-tabs button {
+            width: 2.25rem; height: 2rem; border-radius: 0.375rem; border: 1px solid transparent;
+            background: transparent; color: #71717a; font-size: 0.8125rem; cursor: pointer;
+        }
+        .device-tabs button.is-on { background: #27272a; border-color: #3f3f46; color: #fff; }
+        html[data-ops-theme="2"] .device-tabs { background: rgba(27,67,50,0.05); border-color: #e2ddd5; }
+        html[data-ops-theme="2"] .device-tabs button.is-on { background: #fff; border-color: #e2ddd5; color: #1b4332; }
+        #canvasFrame .canvas-frame > div { position: relative; overflow: hidden; }
+        @media (min-width: 1024px) {
+            body.dev-phone #canvasFrame .canvas-frame { max-width: 24.375rem; margin: 0 auto; }
+        }
+
+        /* ── Phones and tablets ──
+           The three columns cannot fit, so the canvas takes the whole screen.
+           Assigned Tasks slides in from the left, the Design Panel rises from
+           the bottom, and a dock along the bottom opens either one. Picking
+           something on the page brings up a row of large buttons for the
+           common edits, so nothing depends on a double-click, the arrow keys
+           or a 10px resize handle. */
+        :root { --m-dock-h: calc(3.75rem + env(safe-area-inset-bottom)); }
+        #mobileDock, #mobileSelBar, #mobileBackdrop, .m-only { display: none; }
+        @media (max-width: 1023px) {
+            body.h-screen, html body.swal2-height-auto { height: 100dvh !important; }
+            .topbar-row { height: 3.25rem; padding: 0 0.625rem; gap: 0.5rem; }
+            .topbar-brand { flex: 1 1 auto; }
+            .hms-logo-text, .topbar-brand > .w-px, .topbar-mid, #fsToggleBtn, #fsPanelToggle, .m-hide { display: none !important; }
+            .module-badge { max-width: 8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            .topbar-actions .hdr-btn { height: 2.5rem; min-width: 2.5rem; padding: 0 0.75rem; justify-content: center; }
+            .topbar-actions .hdr-label { display: none; }
+            .m-only { display: inline; }
+            .topbar-actions .hdr-btn.m-only { display: flex; }
+
+            #mainLayout { padding-bottom: var(--m-dock-h); }
+            #centerCanvasWrap > div { padding: 0 !important; }
+            #canvasFrame .canvas-frame { border-radius: 0; border: 0; box-shadow: none; }
+
+            #leftSidebar, #rightSidebar { position: fixed; z-index: 80; transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1); }
+            #leftSidebar {
+                top: 3.25rem; bottom: var(--m-dock-h); left: 0; width: min(20rem, 88vw);
+                transform: translateX(-105%); overflow-y: auto;
+            }
+            body.m-tasks-open #leftSidebar { transform: none; box-shadow: 12px 0 40px rgba(0,0,0,0.5); }
+            #rightSidebar {
+                left: 0; right: 0; bottom: var(--m-dock-h); width: auto; height: min(58dvh, 34rem);
+                border-left: 0; border-top: 1px solid #27272a; border-radius: 1rem 1rem 0 0;
+                transform: translateY(calc(100% + var(--m-dock-h))); box-shadow: 0 -12px 40px rgba(0,0,0,0.45);
+            }
+            body.m-panel-open #rightSidebar { transform: none; }
+            #mobileBackdrop {
+                display: block; position: fixed; top: 3.25rem; left: 0; right: 0; bottom: var(--m-dock-h);
+                z-index: 75; background: rgba(0,0,0,0.45); opacity: 0; pointer-events: none; transition: opacity 0.2s;
+            }
+            body.m-tasks-open #mobileBackdrop { opacity: 1; pointer-events: auto; }
+
+            #mobileDock {
+                display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+                position: fixed; left: 0; right: 0; bottom: 0; z-index: 85;
+                height: var(--m-dock-h); padding-bottom: env(safe-area-inset-bottom);
+                background: #0a0a0c; border-top: 1px solid #27272a;
+            }
+            .m-dock-btn {
+                display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.25rem;
+                min-width: 0; border: 0; background: none; color: #a1a1aa; cursor: pointer;
+                font: 600 0.6875rem/1.1 Inter, sans-serif;
+            }
+            .m-dock-btn i { font-size: 1.05rem; }
+            .m-dock-btn.is-on { color: #22d3ee; }
+
+            #mobileSelBar {
+                position: fixed; left: 0; right: 0; bottom: var(--m-dock-h); z-index: 82;
+                gap: 0.375rem; padding: 0.5rem 0.625rem; overflow-x: auto; -webkit-overflow-scrolling: touch;
+                background: rgba(10,10,12,0.96); border-top: 1px solid #27272a;
+            }
+            body.m-has-sel:not(.m-panel-open):not(.m-tasks-open):not(.m-preview) #mobileSelBar { display: flex; }
+            #mobileSelBar button {
+                flex: 0 0 auto; min-width: 3.25rem; height: 3rem; padding: 0 0.5rem; border-radius: 0.625rem;
+                display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.2rem;
+                background: #18181b; border: 1px solid #27272a; color: #e4e4e7; cursor: pointer;
+                font: 600 0.625rem/1 Inter, sans-serif;
+            }
+            #mobileSelBar button i { font-size: 0.95rem; }
+            #mobileSelBar button:active { transform: scale(0.96); }
+            #mobileSelBar button.is-danger { color: #fca5a5; }
+            #toast { bottom: calc(var(--m-dock-h) + 4.25rem); max-width: calc(100vw - 2rem); }
+
+            html[data-ops-theme="2"] #mobileDock,
+            html[data-ops-theme="2"] #mobileSelBar { background: #ffffff; border-color: #e2ddd5; }
+            html[data-ops-theme="2"] .m-dock-btn { color: #7a7570; }
+            html[data-ops-theme="2"] .m-dock-btn.is-on { color: #1b4332; }
+            html[data-ops-theme="2"] #mobileSelBar button { background: #f7f4ef; border-color: #e2ddd5; color: #1a1a1a; }
+            html[data-ops-theme="2"] #mobileSelBar button.is-danger { color: #be123c; }
+            html[data-ops-theme="2"] #rightSidebar { border-top-color: #e2ddd5; }
+        }
+        @media (max-width: 400px) {
+            .topbar-brand .logo-icon { display: none; }
+        }
+
+        /* ── Phone on its side ──
+           A landscape phone is wide but only 320-430px tall, so the dock moves
+           to a rail down the left edge and the Design Panel opens from the
+           right: the page keeps the full height for editing. */
+        @media (max-width: 1023px) and (max-height: 500px) and (orientation: landscape) {
+            :root {
+                --m-dock-h: 0px;
+                --m-rail-w: calc(4.25rem + env(safe-area-inset-left));
+            }
+            .topbar-row { height: 2.75rem; }
+            .topbar-actions .hdr-btn { height: 2.25rem; min-width: 2.25rem; }
+            #mainLayout { padding-left: var(--m-rail-w); }
+            #mobileDock {
+                top: 2.75rem; right: auto; width: var(--m-rail-w); height: auto;
+                grid-auto-flow: row; grid-auto-rows: 1fr; grid-auto-columns: auto;
+                padding: 0 0 env(safe-area-inset-bottom) env(safe-area-inset-left);
+                border-top: 0; border-right: 1px solid #27272a;
+            }
+            .m-dock-btn { padding: 0 0.25rem; text-align: center; }
+            #leftSidebar { top: 2.75rem; bottom: 0; left: var(--m-rail-w); }
+            #rightSidebar {
+                top: 2.75rem; bottom: 0; left: auto; right: 0; width: min(22rem, 48vw); height: auto;
+                border-top: 0; border-left: 1px solid #27272a; border-radius: 0;
+                transform: translateX(105%); box-shadow: -12px 0 40px rgba(0,0,0,0.45);
+            }
+            #mobileBackdrop { top: 2.75rem; left: var(--m-rail-w); bottom: 0; }
+            #mobileSelBar { left: var(--m-rail-w); padding: 0.375rem 0.5rem; }
+            #mobileSelBar button { height: 2.5rem; flex-direction: row; gap: 0.375rem; padding: 0 0.75rem; font-size: 0.6875rem; }
+            #toast { bottom: 3.75rem; }
+            html[data-ops-theme="2"] #mobileDock { border-right-color: #e2ddd5; }
+            html[data-ops-theme="2"] #rightSidebar { border-left-color: #e2ddd5; }
+        }
+
+        /* ── Rotate Your Phone ──
+           A phone held upright cannot use the editor: this covers it until the
+           phone is turned. Phones only (portrait, under 600px wide, touch); a
+           tablet or a laptop has room either way. CSS alone shows and hides it,
+           so nothing tries to rotate the screen, and the editor underneath is
+           only covered, never reloaded, so unsaved edits are still there when
+           the phone is turned back. */
+        #rotateHint { display: none; }
+        @media (orientation: portrait) and (max-width: 599px) and (pointer: coarse) {
+            #rotateHint {
+                display: flex; position: fixed; inset: 0; z-index: 10000;
+                align-items: center; justify-content: center; padding: 1.5rem;
+                background: #050507;
+            }
+        }
+        .rotate-card { max-width: 20rem; text-align: center; color: #fafafa; font-family: 'Inter', sans-serif; }
+        .rotate-icon { width: 5.5rem; height: 5.5rem; margin: 0 auto 1.5rem; color: #22d3ee; }
+        .rotate-icon .rotate-phone { transform-origin: 48px 48px; animation: rotatePhone 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite; }
+        @keyframes rotatePhone {
+            0%, 20% { transform: rotate(0deg); }
+            55%, 100% { transform: rotate(-90deg); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .rotate-icon .rotate-phone { animation: none; transform: rotate(-90deg); }
+        }
+        .rotate-card h2 { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 0.5rem; }
+        .rotate-card p { font-size: 0.875rem; line-height: 1.6; color: #a1a1aa; }
+        html[data-ops-theme="2"] #rotateHint { background: #f7f4ef !important; }
+        html[data-ops-theme="2"] .rotate-card { color: #1a1a1a; }
+        html[data-ops-theme="2"] .rotate-card p { color: #4a4642; }
+        html[data-ops-theme="2"] .rotate-icon { color: #2d6a4f; }
     </style>
 @if($opsSitePalette)
     @include('students.builder.site-theme', ['p' => $opsSitePalette])
@@ -727,7 +902,7 @@
                  switcher above. --}}
         </div>
 
-        <div class="topbar-modes">
+        <div class="topbar-modes {{ ($canEditTemplate ?? false) ? 'm-hide' : '' }}">
             <div class="flex items-center gap-1 bg-zinc-900/60 rounded-lg p-1 border border-zinc-800" id="editorModeTabs">
                 @if($canEditTemplate ?? false)
                     <button onclick="setMode(this,'design')" class="mode-tab active-tab px-4 py-2 rounded-md text-xs text-white transition-all bg-zinc-800 border border-zinc-700">Design</button>
@@ -735,6 +910,10 @@
                 @else
                     <span class="px-3 py-2 rounded-md text-xs font-semibold text-amber-300/90 bg-amber-500/10 border border-amber-500/20">View only</span>
                 @endif
+            </div>
+            <div class="device-tabs m-hide" role="group" aria-label="Canvas size">
+                <button type="button" data-device="desktop" onclick="setCanvasDevice('desktop')" title="Desktop view" aria-label="Desktop view"><i class="fas fa-desktop"></i></button>
+                <button type="button" data-device="phone" onclick="setCanvasDevice('phone')" title="Phone view" aria-label="Phone view"><i class="fas fa-mobile-screen-button"></i></button>
             </div>
         </div>
 
@@ -749,12 +928,12 @@
             </button>
             @if($canEditTemplate ?? false)
                 @if(!empty($selectedTemplate))
-                    <a href="{{ route('students.frontdesk.template.' . $selectedTemplate, ['role' => $builderRole]) }}" target="_blank" rel="noopener" class="hdr-btn btn-secondary" title="View live site">
-                        <i class="fas fa-up-right-from-square"></i> View Live
+                    <a href="{{ route('students.frontdesk.template.' . $selectedTemplate, ['role' => $builderRole]) }}" target="_blank" rel="noopener" class="hdr-btn btn-secondary" title="View live site" aria-label="View live site">
+                        <i class="fas fa-up-right-from-square"></i> <span class="hdr-label">View Live</span>
                     </a>
                 @else
                     <button type="button" class="hdr-btn btn-secondary" disabled title="Select a template first" style="opacity:.4;cursor:not-allowed;">
-                        <i class="fas fa-up-right-from-square"></i> View Live
+                        <i class="fas fa-up-right-from-square"></i> <span class="hdr-label">View Live</span>
                     </button>
                 @endif
                 {{-- Save Draft and Publish used to live here as explicit buttons.
@@ -765,9 +944,13 @@
                      buttons. Everything else here keeps a draft; this one hands the
                      work to faculty and closes the role's open tasks against a
                      snapshot of exactly what was handed in. --}}
+                {{-- Phones have no Ctrl+S, so they get the button the desktop dropped. --}}
+                <button type="button" class="hdr-btn btn-secondary m-only" onclick="saveTemplateDraft(false)" title="Save now" aria-label="Save now">
+                    <i class="fas fa-floppy-disk"></i>
+                </button>
                 <button class="hdr-btn btn-submit" onclick="submitTemplateChanges()" id="submitChangesBtn"
                         title="Send this work to your faculty for review">
-                    <i class="fas fa-circle-check"></i> Submit Changes
+                    <i class="fas fa-circle-check"></i> <span class="hdr-label">Submit Changes</span><span class="m-only">Submit</span>
                 </button>
 
             @endif
@@ -808,6 +991,47 @@
     </button>
 
     <div id="toast"></div>
+
+    <div id="rotateHint" role="dialog" aria-modal="true" aria-labelledby="rotateHintTitle" aria-describedby="rotateHintText">
+        <div class="rotate-card">
+            <svg class="rotate-icon" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <g class="rotate-phone">
+                    <rect x="31" y="14" width="34" height="68" rx="6"/>
+                    <line x1="43" y1="73" x2="53" y2="73"/>
+                </g>
+                <path d="M80 34a34 34 0 0 0-22-20" opacity="0.6"/>
+                <polyline points="57 8 58 14 52 16" opacity="0.6"/>
+            </svg>
+            <h2 id="rotateHintTitle">Rotate Your Phone</h2>
+            <p id="rotateHintText">Please rotate your phone to landscape mode to access the customization editor.</p>
+        </div>
+    </div>
+
+    {{-- Phones and tablets only; see the "Phones and tablets" styles. --}}
+    <div id="mobileBackdrop" onclick="closeMobileSheets()"></div>
+    @if($canEditTemplate ?? false)
+    <div id="mobileSelBar" role="toolbar" aria-label="Selected item">
+        <button type="button" onclick="postToTemplate({ type: 'edit-text' })"><i class="fas fa-pen"></i>Edit text</button>
+        <button type="button" onclick="document.getElementById('designImageInput').click()"><i class="fas fa-image"></i>Photo</button>
+        <button type="button" onclick="postToTemplate({ type: 'nudge-element', dx: 0, dy: -10 })" aria-label="Move up"><i class="fas fa-arrow-up"></i>Up</button>
+        <button type="button" onclick="postToTemplate({ type: 'nudge-element', dx: 0, dy: 10 })" aria-label="Move down"><i class="fas fa-arrow-down"></i>Down</button>
+        <button type="button" onclick="postToTemplate({ type: 'nudge-element', dx: -10, dy: 0 })" aria-label="Move left"><i class="fas fa-arrow-left"></i>Left</button>
+        <button type="button" onclick="postToTemplate({ type: 'nudge-element', dx: 10, dy: 0 })" aria-label="Move right"><i class="fas fa-arrow-right"></i>Right</button>
+        <button type="button" onclick="postToTemplate({ type: 'resize-element', step: -1 })"><i class="fas fa-minus"></i>Smaller</button>
+        <button type="button" onclick="postToTemplate({ type: 'resize-element', step: 1 })"><i class="fas fa-plus"></i>Bigger</button>
+        <button type="button" onclick="undoEditorChange()"><i class="fas fa-rotate-left"></i>Undo</button>
+        <button type="button" class="is-danger" onclick="deleteSelectedElement()"><i class="fas fa-trash"></i>Delete</button>
+        <button type="button" onclick="toggleMobileSheet('panel', true)"><i class="fas fa-sliders"></i>More</button>
+    </div>
+    @endif
+    <nav id="mobileDock" aria-label="Editor">
+        <button type="button" class="m-dock-btn" id="mDockTasks" onclick="toggleMobileSheet('tasks')"><i class="fas fa-list-check"></i>Tasks</button>
+        @if($canEditTemplate ?? false)
+        <button type="button" class="m-dock-btn" id="mDockMode" onclick="toggleMobileMode()"><i class="fas fa-eye"></i><span>Preview</span></button>
+        <button type="button" class="m-dock-btn" id="mDockPanel" onclick="toggleMobileSheet('panel')"><i class="fas fa-palette"></i>Design</button>
+        @endif
+        <button type="button" class="m-dock-btn" id="mDockDevice" onclick="setCanvasDevice(canvasDevice === 'phone' ? 'desktop' : 'phone')"><i class="fas fa-desktop"></i><span>Desktop view</span></button>
+    </nav>
 
     <script src="{{ asset('js/hms-hotel-builder.js') }}?v={{ filemtime(public_path('js/hms-hotel-builder.js')) }}"></script>
     <script>
@@ -1857,6 +2081,97 @@
         });
 
         let toastTimer;
+        /* ── Phones and tablets: the dock, the two sheets, the canvas size ── */
+        const MOBILE_EDITOR = window.matchMedia('(max-width: 1023px)');
+        const DESKTOP_CANVAS_WIDTH = 1280;
+        let canvasDevice = MOBILE_EDITOR.matches ? 'phone' : 'desktop';
+
+        function toggleMobileSheet(which, force) {
+            const cls = which === 'tasks' ? 'm-tasks-open' : 'm-panel-open';
+            const on = typeof force === 'boolean' ? force : !document.body.classList.contains(cls);
+            document.body.classList.remove('m-tasks-open', 'm-panel-open');
+            document.body.classList.toggle(cls, on);
+            syncMobileDock();
+        }
+
+        function closeMobileSheets() {
+            document.body.classList.remove('m-tasks-open', 'm-panel-open');
+            syncMobileDock();
+        }
+
+        function toggleMobileMode() {
+            const mode = window.currentEditorMode === 'preview' ? 'design' : 'preview';
+            setMode(document.querySelector('.mode-tab[onclick*="' + mode + '"]'), mode);
+            if (mode === 'preview') closeMobileSheets();
+            syncMobileDock();
+        }
+
+        function syncMobileDock() {
+            const body = document.body;
+            const preview = window.currentEditorMode === 'preview';
+            body.classList.toggle('m-preview', preview);
+            document.getElementById('mDockTasks')?.classList.toggle('is-on', body.classList.contains('m-tasks-open'));
+            document.getElementById('mDockPanel')?.classList.toggle('is-on', body.classList.contains('m-panel-open'));
+            const panelBtn = document.getElementById('mDockPanel');
+            if (panelBtn) panelBtn.style.display = preview ? 'none' : '';
+            const modeBtn = document.getElementById('mDockMode');
+            if (modeBtn) {
+                modeBtn.querySelector('i').className = preview ? 'fas fa-pen' : 'fas fa-eye';
+                modeBtn.querySelector('span').textContent = preview ? 'Edit' : 'Preview';
+            }
+            const deviceBtn = document.getElementById('mDockDevice');
+            if (deviceBtn) {
+                deviceBtn.querySelector('i').className = canvasDevice === 'phone' ? 'fas fa-desktop' : 'fas fa-mobile-screen-button';
+                deviceBtn.querySelector('span').textContent = canvasDevice === 'phone' ? 'Desktop view' : 'Phone view';
+            }
+        }
+
+        function setCanvasDevice(device) {
+            canvasDevice = device === 'phone' ? 'phone' : 'desktop';
+            document.body.classList.toggle('dev-phone', canvasDevice === 'phone');
+            document.querySelectorAll('.device-tabs [data-device]').forEach(function (b) {
+                b.classList.toggle('is-on', b.getAttribute('data-device') === canvasDevice);
+            });
+            fitCanvasDevice();
+            syncMobileDock();
+        }
+
+        // Desktop view on a narrow screen: a laptop-wide page, scaled to fit.
+        function fitCanvasDevice() {
+            const frame = document.getElementById('templateFrame');
+            if (!frame || !frame.parentElement) return;
+            const host = frame.parentElement;
+            const scale = canvasDevice === 'desktop' && MOBILE_EDITOR.matches && host.clientWidth
+                ? host.clientWidth / DESKTOP_CANVAS_WIDTH : 0;
+            frame.style.width = scale ? DESKTOP_CANVAS_WIDTH + 'px' : '';
+            frame.style.height = scale ? (host.clientHeight / scale) + 'px' : '';
+            frame.style.transform = scale ? 'scale(' + scale + ')' : '';
+            frame.style.transformOrigin = scale ? '0 0' : '';
+        }
+
+        window.addEventListener('resize', fitCanvasDevice);
+        MOBILE_EDITOR.addEventListener('change', function () {
+            closeMobileSheets();
+            setCanvasDevice(MOBILE_EDITOR.matches ? 'phone' : 'desktop');
+        });
+
+        // A task picked from the drawer is what the student came for; get out of the way.
+        document.getElementById('leftSidebar')?.addEventListener('click', function (e) {
+            if (MOBILE_EDITOR.matches && e.target.closest('.assigned-task-card')) closeMobileSheets();
+        });
+
+        window.addEventListener('message', function (event) {
+            const data = event.data || {};
+            if (data.source !== 'hms-template') return;
+            if (data.type === 'element-selected') document.body.classList.add('m-has-sel');
+            if (data.type === 'element-deselected') document.body.classList.remove('m-has-sel');
+            // The template explains a refused edit or a drop that went back; nothing
+            // here was showing it.
+            if ((data.type === 'toast' || data.type === 'edit-blocked') && data.message) toast(data.message);
+        });
+
+        setCanvasDevice(canvasDevice);
+
         function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.remove('show'), 2000); }
     </script>
 @include('partials.logout-confirm')

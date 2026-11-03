@@ -14,7 +14,9 @@
 <script src="{{ asset('js/hms-swal-theme.js') }}?v={{ filemtime(public_path('js/hms-swal-theme.js')) }}"></script>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+{{-- Pinned. The unversioned URL is whatever Babel is newest, and it moved to
+     Babel 8 on its own; a major release must not reach the live site unasked. --}}
+<script src="https://unpkg.com/@babel/standalone@7.28.5/babel.min.js"></script>
 <style>
   :root {
     --bg: #f7f4ef;
@@ -1099,20 +1101,24 @@
   }
   .empty-state i { font-size: 2.5rem; opacity: 0.25; margin-bottom: 1rem; display: block; }
 
-  /* Desktop layout stays side-by-side in the builder iframe (often < 900px wide). */
-  html.hms-in-builder .hero-split {
-    flex-direction: row !important;
-  }
-  html.hms-in-builder .hero-img {
-    flex: 0 0 55% !important;
-    height: auto !important;
-    min-height: 64vh !important;
-  }
-  html.hms-in-builder .hero-img img {
-    min-height: 64vh !important;
-  }
-  html.hms-in-builder .hero-content {
-    padding: 2rem 0 !important;
+  /* Desktop layout stays side-by-side in the builder iframe (often < 900px wide).
+     Not on a phone-wide canvas, though: there the heading was squeezed into a
+     column a few letters wide, so it stacks the way the live site does. */
+  @media (min-width: 600px) {
+    html.hms-in-builder .hero-split {
+      flex-direction: row !important;
+    }
+    html.hms-in-builder .hero-img {
+      flex: 0 0 55% !important;
+      height: auto !important;
+      min-height: 64vh !important;
+    }
+    html.hms-in-builder .hero-img img {
+      min-height: 64vh !important;
+    }
+    html.hms-in-builder .hero-content {
+      padding: 2rem 0 !important;
+    }
   }
 
   /* The Restaurant page opens on this: a plated photograph, what the kitchen is
@@ -2133,6 +2139,26 @@ function monthCells(year, month) {
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
+/* What each child costs per night under the hotel's child policy (Room Management
+   sets it). Mirrors HotelChildPolicy::price(); the server prices the stay again when
+   it is booked. capacity is what the room sleeps without extra beds, 0 for no limit. */
+function childLines(policy, ages, adults, capacity) {
+  const p = policy || { adultAge: 12, freeWithExistingBedding: false, bands: [] };
+  const lines = ages.map(age => {
+    if (age >= p.adultAge) return { age, rate: 0, label: 'Priced as adult (' + p.adultAge + '+), in the room rate' };
+    const band = (p.bands || []).find(b => age >= b.min_age && age <= b.max_age);
+    const rate = band ? Number(band.rate) || 0 : 0;
+    return { age, rate, label: (rate ? 'Child rate, ' : 'Free, ') + (band ? 'ages ' + band.min_age + '–' + band.max_age : 'no charge set for this age') };
+  });
+  if (p.freeWithExistingBedding) {
+    // Adults take the room's own beds first; the beds left go to the children who would cost most.
+    let spare = capacity ? capacity - adults - lines.filter(l => l.age >= p.adultAge).length : Infinity;
+    lines.map((l, i) => i).filter(i => lines[i].rate > 0).sort((a, b) => lines[b].rate - lines[a].rate)
+      .forEach(i => { if (spare-- > 0) lines[i] = { age: lines[i].age, rate: 0, label: 'Free, shares the existing beds' }; });
+  }
+  return lines;
+}
+
 function addonStepBtn(disabled) {
   return {
     width: 26, height: 26, borderRadius: 6, border: '1px solid var(--border)',
@@ -2230,7 +2256,7 @@ function RoomAvailabilityCalendar({ ranges, checkIn, checkOut, onPick }) {
   );
 }
 
-function RoomDetailModal({ room, addons, promos, chosenPromoId, capacity: roomCapacity, guest, onClose, onChangeStatus, canEditStatus, canReserve, onReserve, onToast, onRequireGuest, stayFrom, stayTo }) {
+function RoomDetailModal({ room, addons, promos, chosenPromoId, childPolicy, capacity: roomCapacity, guest, onClose, onChangeStatus, canEditStatus, canReserve, onReserve, onToast, onRequireGuest, stayFrom, stayTo }) {
   if (!room) return null;
   const status = normalizeRoomStatus(room.status);
   const [step, setStep] = useState('details');
@@ -2240,7 +2266,9 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, capacity: roomCa
     contactNo: '',
     email: '',
     idNumber: '',
-    guestCount: '1',
+    adults: '1',
+    // One entry per child: an age, or '' until it is picked.
+    childAges: [],
     // The stay the guest asked about on the Rooms page. They chose these dates
     // to find this room, so asking for them a second time is asking twice.
     checkIn: stayFrom || '',
@@ -2274,7 +2302,7 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, capacity: roomCa
 
   useEffect(() => {
     setStep('details');
-    setGuestForm({ fullName: '', contactNo: '', email: '', idNumber: '', guestCount: '1', checkIn: '', checkInTime: '', checkOut: '', promoId: chosenPromoId || '' });
+    setGuestForm({ fullName: '', contactNo: '', email: '', idNumber: '', adults: '1', childAges: [], checkIn: '', checkInTime: '', checkOut: '', promoId: chosenPromoId || '' });
     setPaymentForm({ type: 'full', amount: '', method: 'Cash', reference: '', payerName: '', notes: '' });
     setAddonLines([]);
     setShowAddons(false);
@@ -2291,7 +2319,19 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, capacity: roomCa
   const promoChoices = (promos || []).filter(p => guestForm.checkIn && p.start_date <= guestForm.checkIn && guestForm.checkIn <= p.end_date);
   const promo = promoChoices.find(p => String(p.dbId) === guestForm.promoId) || null;
   // A promo is a package price for the whole stay (HotelBooking::totalDue).
-  const totalDue = promo ? promo.promo_price : blocks * (Number(room.price) || 0);
+  const roomCharge = promo ? promo.promo_price : blocks * (Number(room.price) || 0);
+  // The party: the adults and every child, who counts toward the room's limit even when free.
+  const adultsIn = Math.max(1, parseInt(guestForm.adults, 10) || 1);
+  const childAges = guestForm.childAges || [];
+  const agesOk = childAges.every(a => a !== '');
+  const partySize = adultsIn + childAges.length;
+  const occupancy = adultsIn + (adultsIn === 1 ? ' Adult' : ' Adults')
+    + (childAges.length ? ' + ' + childAges.length + (childAges.length === 1 ? ' Child' : ' Children') : '');
+  // Each child at the policy's nightly rate, on top of the room or package price.
+  const children = agesOk ? childLines(childPolicy, childAges.map(Number), adultsIn, roomCapacity || 0) : [];
+  const childNights = Math.max(1, Math.ceil(blocks / 2));
+  const childTotal = children.reduce((sum, c) => sum + c.rate, 0) * childNights;
+  const totalDue = roomCharge + childTotal;
   // Check-out must be a later date than check-in — a same-day stay isn't a valid
   // booking here, so the day of check-in itself is not selectable on the calendar.
   const minCheckOut = addDays(guestForm.checkIn || today, 1);
@@ -2332,15 +2372,24 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, capacity: roomCa
     updateGuest('checkOut', day);
   };
 
+  const setChildCount = (value) => {
+    const n = Math.max(0, Math.min(10, parseInt(value, 10) || 0));
+    setGuestForm(prev => {
+      const ages = prev.childAges || [];
+      return Object.assign({}, prev, { childAges: n > ages.length ? ages.concat(Array(n - ages.length).fill('')) : ages.slice(0, n) });
+    });
+  };
+  const setChildAge = (i, value) => setGuestForm(prev => Object.assign({}, prev, {
+    childAges: (prev.childAges || []).map((a, j) => (j === i ? (value === '' ? '' : Number(value)) : a)),
+  }));
+
   const updatePayment = (field, value) => {
     setPaymentForm(prev => Object.assign({}, prev, { [field]: value }));
   };
 
   const addonList = Array.isArray(addons) ? addons : [];
-  /* Each extra bed taken with the stay sleeps one more guest (HotelAddon::isExtraBed).
-     Staff booking only: the published site's booking does not take add-ons
-     (PublicSiteController::book), so a bed picked there cannot raise the limit. */
-  const hasBedAddon = !window.__HMS_PUBLIC__ && addonList.some(a => a.extraBed);
+  // Each extra bed taken with the stay sleeps one more guest (HotelAddon::isExtraBed).
+  const hasBedAddon = addonList.some(a => a.extraBed);
   const extraBeds = !hasBedAddon ? 0 : addonLines.reduce((n, l) => n + (addonList.some(a => a.dbId === l.dbId && a.extraBed) ? l.qty : 0), 0);
   const capacity = roomCapacity ? roomCapacity + extraBeds : roomCapacity;
   const addonQty = (dbId) => {
@@ -2357,7 +2406,10 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, capacity: roomCa
       return rest.concat([{ dbId: addon.dbId, name: addon.name, price: addon.price, qty: next }]);
     });
   };
-  const addonsTotal = addonLines.reduce((sum, line) => sum + (Number(line.price) || 0) * line.qty, 0);
+  // An extra bed is charged per night of the stay (HotelBookingAddon::lineTotal).
+  const stayNights = Math.max(1, Math.ceil(blocks / 2));
+  const addonsTotal = addonLines.reduce((sum, line) => sum + (Number(line.price) || 0) * line.qty
+    * (addonList.some(a => a.dbId === line.dbId && a.extraBed) ? stayNights : 1), 0);
 
   const handleRegisterSubmit = (e) => {
     e.preventDefault();
@@ -2371,8 +2423,12 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, capacity: roomCa
       return;
     }
     // The server holds the same line; this just says so before the payment step.
-    if (capacity && Number(guestForm.guestCount) > capacity) {
-      if (onToast) onToast(`${room.name} sleeps ${capacity} guest${capacity === 1 ? '' : 's'}.`);
+    if (!agesOk) {
+      if (onToast) onToast('Enter the age of every child.');
+      return;
+    }
+    if (capacity && partySize > capacity) {
+      if (onToast) onToast(`${room.name} sleeps ${capacity} guest${capacity === 1 ? '' : 's'}, children included.`);
       return;
     }
     if (rangeHitsBooked(guestForm.checkIn, guestForm.checkOut, bookedSet)) {
@@ -2570,15 +2626,54 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, capacity: roomCa
                     )}
                   </div>
                   <div>
-                    <label style={fieldLabel}>Guests{capacity ? ` (sleeps ${capacity})` : ''}</label>
-                    <input type="number" className="booking-input" min="1" max={capacity || 99} value={guestForm.guestCount}
-                      onChange={e => updateGuest('guestCount', e.target.value)} required
-                      aria-invalid={!!(capacity && Number(guestForm.guestCount) > capacity)}
-                      style={capacity && Number(guestForm.guestCount) > capacity ? { borderColor: '#f08a99' } : undefined} />
+                    <label style={fieldLabel}>Guests{capacity ? ` (maximum occupancy ${capacity})` : ''}</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
+                      <div>
+                        <label style={fieldLabel} htmlFor={'hms-adults-' + room.id}>Adults</label>
+                        <input id={'hms-adults-' + room.id} type="number" className="booking-input" min="1" max="99" value={guestForm.adults}
+                          onChange={e => updateGuest('adults', e.target.value)} required
+                          aria-invalid={!!(capacity && partySize > capacity)}
+                          style={capacity && partySize > capacity ? { borderColor: '#f08a99' } : undefined} />
+                      </div>
+                      <div>
+                        <label style={fieldLabel} htmlFor={'hms-children-' + room.id}>Children</label>
+                        <input id={'hms-children-' + room.id} type="number" className="booking-input" min="0" max="10" value={childAges.length}
+                          onChange={e => setChildCount(e.target.value)}
+                          aria-invalid={!!(capacity && partySize > capacity)}
+                          style={capacity && partySize > capacity ? { borderColor: '#f08a99' } : undefined} />
+                      </div>
+                    </div>
+                    {/* One age per child: the child policy prices each child by age. */}
+                    {childAges.length > 0 && (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(8rem, 1fr))', gap: '0.6rem', marginTop: '0.6rem' }}>
+                        {childAges.map((age, i) => (
+                          <div key={i}>
+                            <label style={fieldLabel} htmlFor={'hms-child-age-' + room.id + '-' + i}>Child {i + 1}{"’"}s age</label>
+                            <select id={'hms-child-age-' + room.id + '-' + i} className="booking-input" required
+                              value={age === '' ? '' : String(age)} onChange={e => setChildAge(i, e.target.value)}>
+                              <option value="">Select age</option>
+                              {Array.from({ length: 18 }, (_, n) => (
+                                <option key={n} value={String(n)}>{n === 0 ? 'Under 1' : n + (n === 1 ? ' year' : ' years')}</option>
+                              ))}
+                            </select>
+                            {children[i] && (
+                              <p style={{ margin: '0.3rem 0 0', fontSize: '0.72rem', color: children[i].rate ? 'var(--fg)' : 'var(--accent)' }} title={children[i].label}>
+                                {children[i].rate ? `${formatPeso(children[i].rate)} / night` : 'Stays free'}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {childAges.length > 0 && agesOk && (
+                      <p style={{ margin: '0.5rem 0 0', fontSize: '0.75rem', color: 'var(--fg-muted)', lineHeight: 1.5 }}>
+                        {occupancy}: {childTotal ? `additional child charges of ${formatPeso(childTotal)} for the stay.` : 'the children stay free.'}
+                      </p>
+                    )}
                     {/* Said at the field, as soon as the number goes over, not only on Proceed. */}
-                    {capacity && Number(guestForm.guestCount) > capacity ? (
+                    {capacity && partySize > capacity ? (
                       <p role="alert" style={{ color: '#f08a99', fontSize: '0.78rem', margin: '0.4rem 0 0' }}>
-                        This room sleeps up to {capacity} guest{capacity === 1 ? '' : 's'}. Please enter {capacity} or fewer{hasBedAddon ? ', or add an extra bed under Add-ons' : ''}.
+                        This room sleeps up to {capacity} guest{capacity === 1 ? '' : 's'}, children included. Please enter {capacity} or fewer{hasBedAddon ? ', or add an extra bed under Add-ons' : ''}.
                       </p>
                     ) : null}
                   </div>
@@ -2652,7 +2747,7 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, capacity: roomCa
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--fg)' }}>{addon.name}</p>
                           <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--fg-muted)' }}>
-                            {formatPeso(addon.price)} · {addon.available} available
+                            {formatPeso(addon.price)}{addon.extraBed ? ' / night' : ''} · {addon.available} available
                           </p>
                         </div>
                         {addon.available > 0 ? (
@@ -2706,8 +2801,21 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, capacity: roomCa
                   <span style={{ color: 'var(--fg-muted)', fontSize: '0.8rem' }}>
                     {promo ? `${promo.name} package` : `${blocks} × ${BLOCK_HOURS} hrs × ${formatPeso(room.price)}`}
                   </span>
-                  <strong style={{ color: 'var(--accent)', fontFamily: 'Cormorant Garamond, serif', fontSize: '1.15rem' }}>{formatPeso(totalDue)}</strong>
+                  <strong style={{ color: 'var(--accent)', fontFamily: 'Cormorant Garamond, serif', fontSize: '1.15rem' }}>{formatPeso(roomCharge)}</strong>
                 </div>
+                {/* Each child as the child policy prices them, free ones too. */}
+                {children.map((c, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.35rem', fontSize: '0.8rem', color: 'var(--fg-muted)' }}>
+                    <span>Child, age {c.age}{c.rate ? ` · ${childNights} night${childNights === 1 ? '' : 's'} × ${formatPeso(c.rate)}` : ''}</span>
+                    <span style={{ color: c.rate ? 'var(--fg)' : 'var(--accent)' }}>{c.rate ? formatPeso(c.rate * childNights) : 'Free'}</span>
+                  </div>
+                ))}
+                {children.length > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', margin: '0.2rem 0 0.35rem', paddingTop: '0.35rem', borderTop: '1px dashed var(--border)', fontSize: '0.82rem' }}>
+                    <span style={{ color: 'var(--fg-muted)' }}>Total due · {occupancy}</span>
+                    <strong style={{ color: 'var(--fg)' }}>{formatPeso(totalDue)}</strong>
+                  </div>
+                )}
                 <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--fg-muted)' }}>
                   {formatCheckIn(guestForm.checkIn, guestForm.checkInTime)} — {guestForm.checkOut}
                 </p>
@@ -2905,6 +3013,8 @@ function MenuDetailModal({ item, onClose, canOrder, onAddToCart, onToast }) {
 function MyBookingsModal({ open, onClose }) {
   const [bookings, setBookings] = useState(null);
   const [error, setError] = useState('');
+  // The booking whose charges are spelled out.
+  const [openRef, setOpenRef] = useState(null);
 
   useEffect(() => {
     if (!open) return;
@@ -2967,7 +3077,7 @@ function MyBookingsModal({ open, onClose }) {
                   </div>
                   <p style={Object.assign({}, muted, { marginTop: '0.35rem' })}>
                     {formatCheckIn(b.checkIn, b.checkInTime)} — {b.checkOut || '—'}
-                    {b.guestCount ? ` · ${b.guestCount} guest${b.guestCount === 1 ? '' : 's'}` : ''}
+                    {b.occupancy ? ` · ${b.occupancy}` : b.guestCount ? ` · ${b.guestCount} guest${b.guestCount === 1 ? '' : 's'}` : ''}
                   </p>
                   {b.promoName && (
                     <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: 'var(--accent)' }}>{b.promoName} package</p>
@@ -2975,6 +3085,43 @@ function MyBookingsModal({ open, onClose }) {
                   <p style={Object.assign({}, muted, { marginTop: '0.5rem', color: 'var(--fg)' })}>
                     Total {formatPeso(b.total)} · Paid {formatPeso(b.amountPaid)} · Balance {formatPeso(b.balance)}
                   </p>
+                  {/* The whole bill: the room, every dish ordered to it, extras and other
+                      charges, and what has been paid - the same figures Front Desk settles. */}
+                  <button type="button" onClick={() => setOpenRef(openRef === b.reference ? null : b.reference)}
+                    aria-expanded={openRef === b.reference}
+                    style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: '0.75rem', padding: '0.45rem 0 0' }}>
+                    <i className={'fa-solid ' + (openRef === b.reference ? 'fa-chevron-up' : 'fa-receipt')} style={{ fontSize: '0.65rem', marginRight: 5 }}></i>
+                    {openRef === b.reference ? 'Hide charges' : 'See all charges'}
+                  </button>
+                  {openRef === b.reference && (
+                    <div style={{ marginTop: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '0.5rem' }}>
+                      {(b.charges || []).map((c, i) => (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', fontSize: '0.8rem', padding: '0.35rem 0', borderBottom: '1px solid var(--border)' }}>
+                          <span style={{ display: 'flex', gap: '0.45rem', minWidth: 0 }}>
+                            <i className={'fa-solid ' + ({ room: 'fa-bed', food: 'fa-utensils', addon: 'fa-bell-concierge' }[c.kind] || 'fa-receipt')}
+                              style={{ width: 16, color: 'var(--accent)', fontSize: '0.7rem', marginTop: '0.25rem', flexShrink: 0 }}></i>
+                            <span style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', minWidth: 0 }}>
+                              <span style={{ color: 'var(--fg)' }}>{c.label}</span>
+                              {c.detail && <span style={{ color: 'var(--fg-muted)', fontSize: '0.72rem' }}>{c.detail}</span>}
+                            </span>
+                          </span>
+                          <span style={{ color: 'var(--fg)', whiteSpace: 'nowrap' }}>{formatPeso(c.amount)}</span>
+                        </div>
+                      ))}
+                      {(b.payments || []).map((p, i) => (
+                        <div key={'p' + i} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.8rem', padding: '0.2rem 0' }}>
+                          <span style={{ color: 'var(--fg-muted)' }}>
+                            <i className="fa-solid fa-money-bill-wave" style={{ width: 16, color: 'var(--accent)', fontSize: '0.7rem' }}></i> {p.type} payment{p.method ? ' · ' + p.method : ''}
+                          </span>
+                          <span style={{ color: 'var(--fg)', whiteSpace: 'nowrap' }}>− {formatPeso(p.amount)}</span>
+                        </div>
+                      ))}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.85rem', padding: '0.4rem 0 0', marginTop: '0.3rem', borderTop: '1px dashed var(--border)', fontWeight: 600 }}>
+                        <span style={{ color: 'var(--fg)' }}>Balance</span>
+                        <span style={{ color: b.balance > 0 ? '#f08a99' : 'var(--accent)' }}>{formatPeso(b.balance)}</span>
+                      </div>
+                    </div>
+                  )}
                   <p style={Object.assign({}, muted, { fontSize: '0.72rem', marginTop: '0.25rem' })}>Booking #{b.reference}</p>
                 </div>
               ))}
@@ -5145,14 +5292,14 @@ function HomePage({ sitePromos, onNav, onToast, rooms, menus, canEditRooms, canE
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.85rem' }}>
           {bestSellerList(menuList).map(item => (
-            <div key={item.id || item.name} className="menu-item" data-hms-menu-card="1" style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center' }}>
+            <div key={item.id || item.name} className="menu-item" data-hms-menu-card="1" style={{ position: 'relative', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '1rem', alignItems: 'center' }}>
               {canEditMenuColor && (
                 <div style={{ position: 'absolute', top: 6, right: 6, zIndex: 3 }} data-hms-no-edit="1">
                   <CardColorButton kind="menu" label="Card colour (all menu cards)" />
                 </div>
               )}
               <img src={menuFoodImg(item)} alt={item.name} loading="lazy" style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ flex: 1, minWidth: '6rem' }}>
                 <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{item.name}</span>
                 <p style={{ fontSize: '0.72rem', color: 'var(--fg-muted)', margin: '0.3rem 0 0' }}>{item.sub}</p>
                 {item.category ? <p style={{ fontSize: '0.65rem', color: 'var(--warm)', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0.4rem 0 0' }}>{normalizeMenuCategory(item.category)}</p> : null}
@@ -5909,7 +6056,7 @@ function CategoryDetailModal({ open, name, detail, roomsIn, checkIn, checkOut, o
   );
 }
 
-function RoomsPage({ onNav, onToast, rooms, addons, categories, canEditRooms, canManageRooms, canReserveRooms, onAddRoom, onAddCategory, onRenameCategory, onUpdateCategory, categoryDetails, onEditRoom, onEditRoomPhotos, onRemoveRoom, onCreateBooking, onRefreshAddons, onOpenRoomManagement, onRequireGuest, guest, promos, chosenPromoId }) {
+function RoomsPage({ onNav, onToast, rooms, addons, categories, canEditRooms, canManageRooms, canReserveRooms, onAddRoom, onAddCategory, onRenameCategory, onUpdateCategory, categoryDetails, childPolicy, onEditRoom, onEditRoomPhotos, onRemoveRoom, onCreateBooking, onRefreshAddons, onOpenRoomManagement, onRequireGuest, guest, promos, chosenPromoId }) {
   const list = rooms && rooms.length ? rooms : [];
   // Front Desk lands on "All" so every room Room Management created is visible on
   // one screen; the category tabs stay for narrowing it down.
@@ -6360,6 +6507,7 @@ function RoomsPage({ onNav, onToast, rooms, addons, categories, canEditRooms, ca
         onRequireGuest={onRequireGuest}
         guest={guest}
         onReserve={handleReserve}
+        childPolicy={childPolicy}
         capacity={selectedRoom ? (selectedRoom.capacity || ((categoryDetails || []).find((c) => c && c.name === selectedRoom.category) || {}).capacity || null) : null}
         onToast={onToast}
       />
@@ -7140,14 +7288,14 @@ function RestaurantPage({ onNav, onToast, menus, canManageMenus, canEditMenuColo
           ) : null}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.85rem' }}>
             {bestSellerList(menuList).map(item => (
-              <div key={item.id || item.name} className="menu-item" data-hms-best-picked={item.bestSeller ? '1' : undefined} data-hms-menu-card="1" data-hms-menu-state={item.reviewState || undefined} onClick={() => setSelectedMenuId(item.id)} style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', gap: '1rem', cursor: 'pointer', alignItems: 'center' }}>
+              <div key={item.id || item.name} className="menu-item" data-hms-best-picked={item.bestSeller ? '1' : undefined} data-hms-menu-card="1" data-hms-menu-state={item.reviewState || undefined} onClick={() => setSelectedMenuId(item.id)} style={{ position: 'relative', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '1rem', cursor: 'pointer', alignItems: 'center' }}>
                 {canEditMenuColor && (
                   <div style={{ position: 'absolute', top: 6, right: 6, zIndex: 3 }} data-hms-no-edit="1" onClick={e => e.stopPropagation()}>
                     <CardColorButton kind="menu" label="Card colour (all menu cards)" />
                   </div>
                 )}
                 <img src={menuFoodImg(item)} alt={item.name} loading="lazy" style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ flex: 1, minWidth: '6rem' }}>
                   <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{item.name}</span>
                   <p style={{ fontSize: '0.72rem', color: 'var(--fg-muted)', margin: '0.3rem 0 0' }}>{item.sub}</p>
                   {item.category ? <p style={{ fontSize: '0.65rem', color: 'var(--warm)', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0.4rem 0 0' }}>{normalizeMenuCategory(item.category)}</p> : null}
@@ -8723,6 +8871,8 @@ function App() {
   // The same categories as records - rate, description, photo, inclusions, how
   // many rooms - which is what the category editor writes and reads back.
   const [categoryDetails, setCategoryDetails] = useState([]);
+  // How children are priced (HotelChildPolicy), read with the rooms.
+  const [childPolicy, setChildPolicy] = useState(null);
   // Restaurant menu lives in the DB and is shared by the whole team.
   const [menus, setMenus] = useState([]);
   const [canManageMenus, setCanManageMenus] = useState(false);
@@ -8832,6 +8982,7 @@ function App() {
           setRoomCategories(names);
           setCategoryDetails(data.categories);
         }
+        if (data.childPolicy) setChildPolicy(data.childPolicy);
         roomsHydrated.current = true;
       })
       .catch(() => {});
@@ -9321,7 +9472,9 @@ function App() {
         },
         check_in: guest.checkIn,
         check_in_time: guest.checkInTime || '',
-        guest_count: parseInt(guest.guestCount, 10) || null,
+        // The party; the server prices each child by the hotel's child policy.
+        adults: parseInt(guest.adults, 10) || 1,
+        child_ages: (guest.childAges || []).map(Number),
         check_out: guest.checkOut,
         promo_id: guest.promoId ? Number(guest.promoId) : null,
         payment: payment ? {
@@ -9676,6 +9829,7 @@ function App() {
         addons={addons}
         categories={roomCategories}
         categoryDetails={categoryDetails}
+        childPolicy={childPolicy}
         canEditRooms={canEditRooms && isDesignMode}
         canManageRooms={canManageRooms}
         canReserveRooms={canReserveRooms}

@@ -349,6 +349,8 @@
     // a pinned section is still the student's to place.
     if (!el || el.nodeType !== 1 || !el.hasAttribute) return false;
     if (el.hasAttribute('data-hms-no-move')) return true;
+    // A dish card is laid out by the template, see isSizeLocked.
+    if (isSizeLocked(el)) return true;
     const root = resolveEditableRoot(el);
     return !!(root && root !== el && root.hasAttribute && root.hasAttribute('data-hms-no-move'));
   }
@@ -359,6 +361,24 @@
      Styling still saves; the content is left to the card. */
   function isMenuContent(el) {
     return !!(el && el.closest && el.closest('[data-hms-menu-card]'));
+  }
+
+  /* A dish card keeps the template's layout. A photo resized inside one
+     squeezed the dish's name into a one-letter column, and a description
+     dragged out of it sat over the next card. Colours and fonts still save;
+     place and size do not, and any saved before are dropped on load. */
+  const SIZE_PROPS = ['width', 'height', 'max-width', 'min-width', 'min-height'];
+
+  function isSizeLocked(el) {
+    return isMenuContent(el);
+  }
+
+  function stripSize(entry) {
+    let had = false;
+    SIZE_PROPS.forEach((prop) => {
+      if (entry && entry[prop] != null) { delete entry[prop]; had = true; }
+    });
+    return had;
   }
 
   function isBackgroundLayer(el) {
@@ -580,10 +600,13 @@
     ].join('');
     document.body.appendChild(handlesEl);
 
+    /* Pointer events, not mouse events: a phone sends no mousemove while a
+       finger drags, so the handles never moved there. A mouse sends pointer
+       events too, so the desktop behaves as before. */
     handlesEl.querySelectorAll('.hms-handle').forEach((h) => {
-      h.addEventListener('mousedown', onResizeStart);
+      h.addEventListener('pointerdown', onResizeStart);
     });
-    handlesEl.querySelector('.hms-move-handle').addEventListener('mousedown', onMoveHandleDown);
+    handlesEl.querySelector('.hms-move-handle').addEventListener('pointerdown', onMoveHandleDown);
     return handlesEl;
   }
 
@@ -624,7 +647,7 @@
     Object.keys(corners).forEach((dir) => {
       const h = ui.querySelector('.hms-handle.' + dir);
       if (!h) return;
-      h.style.display = 'block';
+      h.style.display = isSizeLocked(el) ? 'none' : 'block';
       h.style.left = (corners[dir][0] - 5) + 'px';
       h.style.top = (corners[dir][1] - 5) + 'px';
     });
@@ -742,19 +765,19 @@
         decls.push('bottom:auto !important');
         decls.push('margin:0 !important');
       }
-      if (entry['font-size']) decls.push('font-size:' + entry['font-size'] + ' !important');
-      if (entry.width) decls.push('width:' + entry.width + ' !important');
-      if (entry.height) decls.push('height:' + entry.height + ' !important');
-      if (entry['max-width']) decls.push('max-width:' + entry['max-width'] + ' !important');
-      if (entry['z-index']) decls.push('z-index:' + entry['z-index'] + ' !important');
-      if (entry['white-space']) decls.push('white-space:' + entry['white-space'] + ' !important');
+      ['font-size', 'width', 'height', 'max-width', 'z-index', 'white-space'].forEach(function (prop) {
+        if (entry[prop] && !isTemplateOwnValue(id, prop, entry[prop])) decls.push(prop + ':' + entry[prop] + ' !important');
+      });
       if (!decls.length) return;
       // Never a locked block (a partner brand card) or anything in it: those
       // cannot be picked any more, so a rule for one is left over from before
       // the lock and would keep a card dragged or stretched over its
       // neighbours. Guarded in the selector, so it also holds after React
-      // re-renders the list into a different order.
-      const guard = ':not([data-hms-no-edit]):not([data-hms-no-edit] *)';
+      // re-renders the list into a different order. Dish cards too: a loose
+      // saved selector such as "div:nth-of-type(3) > div > p" also matched a
+      // dish's description and threw it out of its card.
+      const guard = ':not([data-hms-no-edit]):not([data-hms-no-edit] *)'
+        + ':not([data-hms-menu-card]):not([data-hms-menu-card] *)';
       parts.push(':is(' + sel + ')' + guard + '{' + decls.join(';') + '}');
     });
     sheet.textContent = parts.join('\n');
@@ -834,10 +857,15 @@
   }
 
   function clearSelection() {
+    const had = !!selectedEl;
     if (selectedEl) selectedEl.classList.remove('hms-edit-selected');
     selectedEl = null;
     document.querySelectorAll('.hms-edit-selected').forEach((n) => n.classList.remove('hms-edit-selected'));
     if (handlesEl) handlesEl.style.display = 'none';
+    // Every way a selection ends says so: changing page or mode cleared it in
+    // silence, and the panel and the phone toolbar went on naming a selection
+    // that was gone.
+    if (had) postToParent({ type: 'element-deselected' });
   }
 
   function selectElement(el) {
@@ -919,6 +947,20 @@
       src: el.tagName === 'IMG' ? el.getAttribute('src') : null,
       freePosition: el.getAttribute('data-hms-free-position'),
     });
+  }
+
+  /* Whether value is what the template itself wrote on the element's style
+     attribute. Saving an element records every inline style it carries, so a
+     heading that was only moved also stored the template's own font size and
+     width. Put back with !important, those beat the template's smaller phone
+     sizes, and the heading came out at its desktop size on a phone. Such a
+     value is not an edit, so it is left to the template. */
+  function isTemplateOwnValue(id, prop, value) {
+    const state = id ? originalStates.get(id) : null;
+    if (!state || !state.style || value == null) return false;
+    const probe = isTemplateOwnValue.probe || (isTemplateOwnValue.probe = document.createElement('div'));
+    probe.setAttribute('style', state.style);
+    return probe.style.getPropertyValue(prop) === String(value);
   }
 
   function restoreOriginalStates() {
@@ -1175,6 +1217,7 @@
     if (isMoveLocked(el)) {
       stripPlacement(entry);
     }
+    if (isSizeLocked(el)) stripSize(entry);
 
     // Images owned by the shared site-content store (e.g. the brand logo) keep
     // their src there so one change updates every place that renders it.
@@ -1298,9 +1341,11 @@
       el.style.display = 'none';
       return;
     }
+    const ownerId = el.getAttribute('data-edit-id');
     STYLE_PROPS.forEach((prop) => {
       if (entry[prop] != null && entry[prop] !== '') {
         const important = entry.freePosition === true;
+        if (important && isTemplateOwnValue(ownerId, prop, entry[prop])) return;
         el.style.setProperty(prop, entry[prop], important ? 'important' : '');
       }
     });
@@ -1598,6 +1643,9 @@
         clearPlacementStyles(el);
         migrated = true;
       }
+      // Only the entry: the inline width and height are the card's own
+      // thumbnail size, and clearing them showed the photo full size.
+      if (isSizeLocked(el) && stripSize(customizations[id])) migrated = true;
 
       /* A slide dragged out of place, or hidden, before the carousel's layers
          were left to the carousel. Kept, the hero jumps or goes blank when that
@@ -1756,6 +1804,7 @@
     selectedEl = el;
     const startRect = getVisualRect(el);
     dragState = {
+      pointerId: e.pointerId,
       el: el,
       startCss: el.style.cssText,
       alreadyCovering: coveredContent(el),
@@ -1830,7 +1879,8 @@
 
   function onResizeStart(e) {
     if (!designMode || !canEdit || !selectedEl) return;
-    if (isHeaderLocked(selectedEl)) return;
+    if (isHeaderLocked(selectedEl) || isSizeLocked(selectedEl)) return;
+    if (e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
     const el = resolveEditableRoot(selectedEl) || selectedEl;
@@ -1849,6 +1899,7 @@
       ? ((el.naturalWidth && el.naturalHeight) ? (el.naturalWidth / el.naturalHeight) : (r.width / Math.max(1, r.height)))
       : 0;
     resizeState = {
+      pointerId: e.pointerId,
       el: el,
       startCss: el.style.cssText,
       alreadyCovering: coveredContent(el),
@@ -1875,7 +1926,7 @@
      pulled back inside its card once, on drop. Clamping every pointer move
      instead pulled the element out from under the cursor the moment it met an
      edge, leaving the move handle behind. */
-  const DRAG_BOUNDS_SELECTOR = '.room-card, .menu-food-card, .menu-card';
+  const DRAG_BOUNDS_SELECTOR = '.room-card, .menu-food-card, .menu-card, .menu-item';
 
   /* What a dropped element must stay inside: its card, else its section. A
      heading dragged down into the next section, or past the page edge, read
@@ -1897,7 +1948,7 @@
      out - an element always sits inside some box - and so are the section
      backgrounds and hero slides, which are painted, not <img>. */
   const OBSTACLE_SELECTOR = 'img, h1, h2, h3, h4, h5, h6, p, button, a, li, input, textarea, [data-hms-user], '
-    + '.partner-card, .room-card, .menu-food-card, .menu-card, .team-card, .facility-card, .cat-card';
+    + '.partner-card, .room-card, .menu-food-card, .menu-card, .menu-item, .team-card, .facility-card, .cat-card';
 
   // Text claims its glyphs, not its whole line box, so a short heading does
   // not block the empty space beside it.
@@ -2014,7 +2065,14 @@
     setElementTranslate(el, t.x + dx, t.y + dy);
   }
 
+  // Only the finger or mouse that started a drag moves it; a second finger
+  // on the glass (a pinch) made the element jump between the two.
+  function isOtherPointer(state, e) {
+    return !!(state && e && e.pointerId != null && state.pointerId != null && e.pointerId !== state.pointerId);
+  }
+
   function onPointerMove(e) {
+    if (isOtherPointer(dragState || resizeState, e)) return;
     if (dragState) dragState.altKey = e.altKey;
     if (resizeState) resizeState.altKey = e.altKey;
     if (dragState) {
@@ -2215,7 +2273,8 @@
     rebuildFreePosSheet();
   }
 
-  function onPointerUp() {
+  function onPointerUp(e) {
+    if (isOtherPointer(dragState || resizeState, e)) return;
     if (dragState) {
       if (dragState.historyStarted) {
         const el = dragState.el;
@@ -2323,22 +2382,25 @@
     if (!designMode || !canEdit) return;
     // The header has its own click-to-edit dialogs; never open a caret in it.
     if (isHeaderLocked(e.target)) return;
-    const el = findEditableAtPoint(e);
+    if (startTextEdit(findEditableAtPoint(e), e.target)) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }
+
+  /* Opens a caret in el's text. Double-click calls it, and so does the Edit
+     Text button the builder shows on phones, where a double tap zooms or is
+     never sent. Returns false when el has no text to edit. */
+  function startTextEdit(el, target) {
     if (!canEditElement(el)) {
-      e.preventDefault();
-      e.stopPropagation();
       blockEditToast(sectionBlockMessage(el));
-      return;
+      return true;
     }
-    if (!el || ['IMG', 'I', 'SVG', 'INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) return;
+    if (!el || ['IMG', 'I', 'SVG', 'INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) return false;
     if (isMenuContent(el)) {
-      e.preventDefault();
-      e.stopPropagation();
       blockEditToast('Change a dish\'s name and details from its Edit Menu Item button.');
-      return;
+      return true;
     }
-    e.preventDefault();
-    e.stopPropagation();
     selectElement(el);
     beginHistoryStep();
     /* A lined heading is edited line by line, each line its own editing host.
@@ -2354,7 +2416,7 @@
       // An emptied line keeps a height, so the caret has somewhere to sit.
       if (lines) host.style.minHeight = '1em';
     });
-    const host = lines ? (lines.find((line) => line.contains(e.target)) || lines[0]) : el;
+    const host = lines ? (lines.find((line) => line.contains(target)) || lines[0]) : el;
     host.focus();
     /* A button takes focus without a caret, so what was typed went nowhere, or
        into the text edited before it. Select the text when the caret is not
@@ -2409,6 +2471,7 @@
     el.addEventListener('input', onInput);
     el.addEventListener('keydown', onKeyDown);
     el.addEventListener('focusout', onFocusOut);
+    return true;
   }
 
   /* A '\n' at the caret, inside the line it is on, shown by pre-line. A break
@@ -2498,9 +2561,19 @@
     return fileInput;
   }
 
+  // Words, not pictures: an upload while one of these was picked turned into
+  // a background image painted behind the heading or paragraph.
+  function isTextOnly(el) {
+    return !!el && /^(H[1-6]|P|SPAN|EM|STRONG|SMALL|LABEL|A|LI|I)$/.test(el.tagName) && !el.hasAttribute('data-hms-bg-target');
+  }
+
   function applyImageToSelected(url, recordHistory) {
     if (!selectedEl || !url) return;
     if (isHeaderLocked(selectedEl)) return;
+    if (isTextOnly(selectedEl)) {
+      postToParent({ type: 'toast', message: 'Pick the picture you want to replace first, then upload.' });
+      return;
+    }
     if (recordHistory !== false) beginHistoryStep();
 
     // Shared-content images (brand logo) persist through the site-content store
@@ -2605,7 +2678,15 @@
       if (selectedEl.tagName === 'INPUT' || selectedEl.tagName === 'TEXTAREA') {
         selectedEl.placeholder = data.text;
       } else {
-        writeEditableText(selectedEl, data.text);
+        /* One line typed in the panel means the other lines were deleted.
+           writeEditableText reads a single line as an old save that only ever
+           held the first line, and kept the rest: "Meets Comfort" stayed under
+           a heading the student had retyped as one line. */
+        const lines = textLines(selectedEl);
+        const text = lines && String(data.text).indexOf('\n') === -1
+          ? data.text + '\n'.repeat(lines.length - 1)
+          : data.text;
+        writeEditableText(selectedEl, text);
       }
     }
     if (data.src && !isMenuContent(selectedEl)) applyImageToSelected(data.src, false);
@@ -2844,6 +2925,44 @@
     return true;
   }
 
+  /* One step bigger or smaller, for the phone toolbar: a finger on a 10px
+     corner handle is guesswork. Text grows by its font size, anything else by
+     its box, and the step is put back if it lands on other content, the same
+     as a dragged resize. */
+  function resizeSelected(step) {
+    if (!selectedEl || !canEditCurrentPage()) return false;
+    if (isHeaderLocked(selectedEl) || isSizeLocked(selectedEl)) return false;
+    const el = resolveEditableRoot(selectedEl) || selectedEl;
+    selectedEl = el;
+    const factor = step > 0 ? 1.1 : 1 / 1.1;
+    const state = { el: el, startCss: el.style.cssText, alreadyCovering: coveredContent(el) };
+    beginHistoryStep();
+    const r = getVisualRect(el);
+    // Recorded the way a dragged resize is, so the new size is kept on reload.
+    if (el.hasAttribute('data-hms-user')) {
+      promoteToAbsolute(el);
+    } else {
+      normalizeToTransformMove(el);
+      el.setAttribute('data-hms-move-mode', 'transform');
+    }
+    if (isBlockTextTag(el.tagName) || isInlineTextTag(el.tagName) || el.getAttribute('data-hms-text') === '1') {
+      const size = parseFloat(window.getComputedStyle(el).fontSize) || 16;
+      // Forced like a dragged text resize, or the template's phone size wins.
+      setPosImportant(el, 'font-size', Math.max(8, Math.min(220, size * factor)).toFixed(2) + 'px');
+    } else {
+      setPosImportant(el, 'max-width', 'none');
+      setPosImportant(el, 'min-width', '0');
+      setPosImportant(el, 'min-height', '0');
+      setPosImportant(el, 'width', Math.max(16, Math.round(r.width * factor)) + 'px');
+      setPosImportant(el, 'height', Math.max(16, Math.round(r.height * factor)) + 'px');
+      if (!el.hasAttribute('data-hms-user')) clampSizeIntoBounds(el);
+    }
+    undoIfCovering(state, false);
+    saveElementState(el);
+    updateHandles();
+    return true;
+  }
+
   function alignSelected(direction) {
     if (!selectedEl || !canEditCurrentPage()) return;
     if (isHeaderLocked(selectedEl)) return;
@@ -3005,6 +3124,14 @@
       pointer-events: auto; cursor: grab; box-shadow: 0 4px 12px rgba(8,145,178,.35);
     }
     #hms-editor-ui .hms-move-handle:active { cursor: grabbing; }
+    /* A finger drag on a handle moves the element, never the page. */
+    #hms-editor-ui .hms-handle, #hms-editor-ui .hms-move-handle { touch-action: none; }
+    @media (pointer: coarse) {
+      #hms-editor-ui .hms-handle { width: 22px; height: 22px; margin: -6px 0 0 -6px; border-radius: 50%; }
+      #hms-editor-ui .hms-move-handle { height: 34px; padding: 0 14px; font-size: 12px; }
+      #hms-section-rail { max-width: calc(100vw - 16px); overflow-x: auto; }
+      #hms-section-rail button { padding: 10px 14px; white-space: nowrap; }
+    }
     .hms-smart-guide {
       display: none; position: fixed; z-index: 99997; pointer-events: none;
       background: #ec4899; box-shadow: 0 0 0 1px rgba(236,72,153,.35);
@@ -3133,8 +3260,10 @@
   document.addEventListener('click', onClick, true);
   document.addEventListener('submit', onSubmit, true);
   document.addEventListener('dblclick', onDblClick, true);
-  document.addEventListener('mousemove', onPointerMove, true);
-  document.addEventListener('mouseup', onPointerUp, true);
+  document.addEventListener('pointermove', onPointerMove, true);
+  document.addEventListener('pointerup', onPointerUp, true);
+  // The browser took the touch back (a system gesture, say): finish the drag where it is.
+  document.addEventListener('pointercancel', onPointerUp, true);
   window.addEventListener('scroll', updateHandles, true);
   window.addEventListener('resize', updateHandles);
 
@@ -3512,6 +3641,33 @@
         break;
       case 'select-parent':
         selectParentElement();
+        break;
+      // The builder's phone toolbar: buttons for what a desktop does with a
+      // double-click, the arrow keys and the resize handles.
+      case 'edit-text':
+        if (designMode && canEdit && selectedEl) startTextEdit(selectedEl, selectedEl);
+        break;
+      case 'nudge-element':
+        if (!canEditCurrentPage()) {
+          blockEditToast();
+          break;
+        }
+        if (selectedEl && isMoveLocked(selectedEl)) {
+          postToParent({ type: 'toast', message: 'This item stays in place; it cannot be moved.' });
+          break;
+        }
+        nudgeSelected(Number(data.dx) || 0, Number(data.dy) || 0);
+        break;
+      case 'resize-element':
+        if (!canEditCurrentPage()) {
+          blockEditToast();
+          break;
+        }
+        if (selectedEl && isSizeLocked(selectedEl)) {
+          postToParent({ type: 'toast', message: 'A dish card keeps its size; change its photo from Edit Menu Item.' });
+          break;
+        }
+        resizeSelected(Number(data.step) || 1);
         break;
       case 'align-element':
         alignSelected(data.direction || 'center');

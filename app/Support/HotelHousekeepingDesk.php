@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\ActivityLog;
 use App\Models\HotelBooking;
 use App\Models\HotelComplaint;
+use App\Models\HotelInspectionDamage;
 use App\Models\HotelRoom;
 use App\Models\HotelRoomInspection;
 use App\Models\User;
@@ -53,6 +54,118 @@ class HotelHousekeepingDesk
         ]);
 
         Notifier::roomAwaitingInspection($inspection);
+
+        return $inspection;
+    }
+
+    /**
+     * Front Desk started a check-out: the room is inspected while the stay is still
+     * open, so damage can go on the final bill. One pass per booking; asking again
+     * returns the one already open.
+     */
+    public static function openForCheckout(HotelBooking $booking): HotelRoomInspection
+    {
+        $existing = HotelRoomInspection::where('hotel_booking_id', $booking->hotel_booking_id)
+            ->whereIn('status', ['Pending', 'Inspecting', 'Reported'])
+            ->first();
+        if ($existing) {
+            return $existing;
+        }
+
+        $inspection = HotelRoomInspection::create([
+            'group_name'       => $booking->group_name,
+            'faculty_id'       => $booking->faculty_id,
+            'group_id'         => $booking->group_id,
+            'hotel_room_id'    => $booking->hotel_room_id,
+            'hotel_booking_id' => $booking->hotel_booking_id,
+            'room_name'        => $booking->room?->name ?? '',
+            'guest_name'       => $booking->guest?->full_name,
+            // Null until the guest actually leaves: that is what marks this pass as the
+            // one before check-out (HotelRoomInspection::isBeforeCheckout()).
+            'checked_out_at'   => null,
+            'status'           => 'Pending',
+        ]);
+
+        Notifier::roomCheckoutInspection($inspection);
+
+        return $inspection;
+    }
+
+    /**
+     * Housekeeping's report on a room before check-out: nothing wrong, or the broken
+     * and missing items, each with an optional photo. It goes to Front Desk; nothing
+     * here charges the guest.
+     *
+     * $damages lines: ['item' => string, 'description' => ?string, 'photo' => ?data-URL]
+     *
+     * @throws \RuntimeException when the report was already sent or the guest left
+     */
+    public static function submitReport(
+        HotelRoomInspection $inspection,
+        string $finding,
+        ?string $notes,
+        array $damages,
+        ?User $actor
+    ): HotelRoomInspection {
+        return DB::transaction(function () use ($inspection, $finding, $notes, $damages, $actor) {
+            // Locked and re-read, so a report sent twice at once is saved once.
+            $inspection = HotelRoomInspection::whereKey($inspection->getKey())->lockForUpdate()->first();
+            if (!in_array($inspection->status, ['Pending', 'Inspecting'], true) || !$inspection->isBeforeCheckout()) {
+                throw new \RuntimeException('This report was already sent to the Front Desk.');
+            }
+
+            $by = $actor?->name;
+            foreach ($damages as $line) {
+                $photo = (string) ($line['photo'] ?? '');
+                HotelInspectionDamage::create([
+                    'group_name'               => $inspection->group_name,
+                    'faculty_id'               => $inspection->faculty_id,
+                    'group_id'                 => $inspection->group_id,
+                    'hotel_room_inspection_id' => $inspection->hotel_room_inspection_id,
+                    'hotel_booking_id'         => $inspection->hotel_booking_id,
+                    'item'                     => trim((string) $line['item']),
+                    'description'              => self::clean($line['description'] ?? null),
+                    // Only a photo taken on the page; a typed-in address is not evidence.
+                    'evidence'                 => str_starts_with($photo, 'data:image')
+                        ? HotelImageStore::persist($photo, (int) $inspection->faculty_id, $inspection->group_name)
+                        : null,
+                    'status'                   => 'Pending Review',
+                    'reported_by'              => $by,
+                ]);
+            }
+
+            $inspection->finding = HotelRoomInspection::normalizeFinding($finding);
+            $inspection->notes = self::clean($notes);
+            $inspection->inspected_by = $by ?? $inspection->inspected_by;
+            $inspection->inspected_at = $inspection->inspected_at ?? now();
+            $inspection->reported_at = now();
+            $inspection->status = 'Reported';
+            $inspection->save();
+
+            Notifier::inspectionReported($actor, $inspection, count($damages));
+            ActivityLog::record(
+                $actor,
+                ActivityLog::ROOM_INSPECTED,
+                'Inspected room ' . $inspection->room_name . ' before check-out: '
+                    . ($damages ? count($damages) . ' damaged or missing item(s) reported.' : 'no damage found.')
+            );
+
+            return $inspection;
+        });
+    }
+
+    /**
+     * The guest checked out after the inspection. The same pass carries on as the room's
+     * cleaning: Housekeeping cleans it and marks it ready, or sends a repair to
+     * Maintenance first. Called inside HotelBookingDesk::checkOut()'s transaction.
+     */
+    public static function readyToClean(HotelRoomInspection $inspection, HotelBooking $booking): HotelRoomInspection
+    {
+        $inspection->status = 'Ready to Clean';
+        $inspection->checked_out_at = $booking->checked_out_at ?? now();
+        $inspection->save();
+
+        Notifier::roomReadyForCleaning($inspection);
 
         return $inspection;
     }

@@ -177,6 +177,33 @@
     .pf-photo .pf-btn { flex: 0 0 auto; cursor: pointer; }
     @media (max-width: 420px) { .pf-photo { flex-wrap: wrap; } .pf-photo .pf-btn { width: 100%; justify-content: center; } }
 
+    /* Change Password: a faint shield in the header, and two numbered steps
+       that turn green once filled in. */
+    .pf-mhead { overflow: hidden; }
+    .pf-mhead-mark { position: absolute; right: 3.25rem; top: 50%; transform: translateY(-50%) rotate(-12deg); display: flex; font-size: 5.5rem; color: #fff; opacity: .07; pointer-events: none; }
+    .pf-step { display: grid; gap: .9rem; padding: 1rem 1.1rem 1.1rem; border: 1px solid var(--line); border-radius: 1rem; background: #fff; transition: border-color .2s, box-shadow .2s; }
+    .pf-step:focus-within { border-color: #D9BFC6; box-shadow: 0 10px 24px -18px rgba(123, 23, 48, .45); }
+    .pf-step.is-done { border-color: #BBF7D0; }
+    .pf-step-head { display: flex; align-items: center; gap: .7rem; }
+    .pf-step-head b { display: block; font-size: .8125rem; font-weight: 800; }
+    .pf-step-head div span { display: block; font-size: .6875rem; color: var(--muted); margin-top: .1rem; line-height: 1.4; }
+    .pf-step-n { width: 1.75rem; height: 1.75rem; flex: 0 0 auto; border-radius: 9999px; display: inline-flex; align-items: center; justify-content: center;
+                 background: var(--wine) center / .85rem no-repeat; color: #fff; font-size: .75rem; font-weight: 800; transition: background-color .2s, color .2s; }
+    .pf-step.is-done .pf-step-n { background-color: #15803D; color: transparent;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7'/%3E%3C/svg%3E"); }
+
+    /* New-password strength: four bars, filled and coloured by level. */
+    .pf-meter { display: flex; align-items: center; gap: .75rem; margin-top: -.45rem; }
+    .pf-meter-bars { flex: 1 1 auto; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .3rem; }
+    .pf-meter-bars i { height: .3rem; border-radius: 9999px; background: var(--line); transition: background-color .25s; }
+    .pf-meter[data-level="1"] { --lv: #B42318; }
+    .pf-meter[data-level="2"] { --lv: #D97706; }
+    .pf-meter[data-level="3"] { --lv: #65A30D; }
+    .pf-meter[data-level="4"] { --lv: #15803D; }
+    .pf-meter[data-level="1"] i:nth-child(-n+1), .pf-meter[data-level="2"] i:nth-child(-n+2),
+    .pf-meter[data-level="3"] i:nth-child(-n+3), .pf-meter[data-level="4"] i { background: var(--lv); }
+    .pf-meter-label { min-width: 4.25rem; text-align: right; font-size: .6875rem; font-weight: 800; color: var(--lv, var(--muted)); }
+
     /* Password rules, ticked off as the student types. */
     .pf-rules { list-style: none; margin: 0; padding: .8rem .95rem; display: grid; gap: .45rem; border-radius: .9rem; background: var(--soft); }
     .pf-rules li { display: flex; align-items: center; gap: .55rem; font-size: .75rem; color: var(--muted); transition: color .2s; }

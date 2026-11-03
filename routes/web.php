@@ -184,6 +184,11 @@ Route::prefix('dean')->middleware(['auth', 'role:dean'])->name('dean.')->group(f
     Route::post('/users/bulk-upload', [DeanController::class, 'bulkUpload'])->name('users.bulk-upload');
     Route::put('/users/{user}', [DeanController::class, 'updateUser'])->name('users.update');
     Route::post('/users/{user}/approve', [DeanController::class, 'approveUser'])->name('users.approve');
+    Route::post('/users/{user}/restore', [DeanController::class, 'restoreStudent'])->name('users.restore');
+    // School terms: ending one archives that batch of students (AcademicTermDesk).
+    Route::post('/terms', [DeanController::class, 'startTerm'])->name('terms.start');
+    Route::put('/terms/current', [DeanController::class, 'updateTerm'])->name('terms.update');
+    Route::post('/terms/current/end', [DeanController::class, 'endTerm'])->name('terms.end');
     Route::get('/faculties', [DeanController::class, 'faculties'])->name('faculties');
     Route::post('/faculties', [DeanController::class, 'storeFaculty'])->name('faculties.store');
     Route::get('/reports', [DeanController::class, 'reports'])->name('reports');
@@ -1321,7 +1326,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
         // them. Also a no-op once written; teams from before renaming get theirs here.
         \App\Support\HotelRoomDefaults::ensureCategoriesFor($membership);
 
-        $rooms = HotelRoom::with(['activeBooking.guest', 'activeBooking.payments', 'activeBooking.foodOrders', 'activeBooking.charges', 'activeBooking.addons', 'openBookings'])
+        $rooms = HotelRoom::with(['activeBooking.guest', 'activeBooking.payments', 'activeBooking.foodOrders', 'activeBooking.charges', 'activeBooking.addons', 'openBookings.guest', 'openBookings.payments', 'openBookings.foodOrders', 'openBookings.charges', 'openBookings.addons'])
             ->where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
             ->orderBy('hotel_room_id')
@@ -1335,8 +1340,53 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
         return response()->json([
             'rooms' => $rooms,
             'categories' => \App\Support\HotelRoomDefaults::categoriesFor($membership),
+            // Every screen that books a room previews the children's charges from it.
+            'childPolicy' => \App\Models\HotelChildPolicy::forTeam($membership->group_name, (int) $membership->faculty_id)->toTemplateArray(),
         ]);
     })->name('hotel.rooms.index');
+
+    /**
+     * Room Management's child pricing: from what age a guest is an adult, the age
+     * ranges and what each pays per night, and whether children in the room's own
+     * beds stay free. Saved per team; a stay already booked keeps the prices it was
+     * sold at (HotelBooking::children).
+     */
+    Route::put('/hotel/child-policy', function (Request $request) {
+        $membership = \App\Support\HotelBookingDesk::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Group not found'], 404);
+        }
+        if (!\App\Support\HotelTemplateBuilder::canEdit(auth()->user(), $membership, 'room_management')) {
+            return response()->json(['message' => 'Only Room Management can set the child pricing policy.'], 403);
+        }
+
+        $data = $request->validate([
+            'adult_age'                  => 'required|integer|min:1|max:' . (\App\Models\HotelChildPolicy::MAX_CHILD_AGE + 1),
+            'free_with_existing_bedding' => 'required|boolean',
+            'bands'                      => 'present|array|max:10',
+            'bands.*.min_age'            => 'required|integer|min:0|max:17',
+            'bands.*.max_age'            => 'required|integer|min:0|max:17',
+            'bands.*.rate'               => 'required|integer|min:0|max:1000000',
+        ]);
+
+        try {
+            $bands = \App\Models\HotelChildPolicy::cleanBands($data['bands'], (int) $data['adult_age']);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        $policy = \App\Models\HotelChildPolicy::updateOrCreate(
+            ['group_name' => $membership->group_name, 'faculty_id' => $membership->faculty_id],
+            [
+                'group_id'                   => $membership->group_id,
+                'adult_age'                  => (int) $data['adult_age'],
+                'free_with_existing_bedding' => (bool) $data['free_with_existing_bedding'],
+                'bands'                      => $bands,
+            ]
+        );
+
+        return response()->json(['childPolicy' => $policy->toTemplateArray()]);
+    })->name('hotel.child-policy.update');
 
     /**
      * A category the team invented — "Executive", "Cabana" — on top of the five it
@@ -1402,7 +1452,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             return response()->json(['message' => 'That name is already taken, or that category is not one of yours.'], 422);
         }
 
-        $rooms = HotelRoom::with(['activeBooking.guest', 'activeBooking.payments', 'activeBooking.foodOrders', 'activeBooking.charges', 'activeBooking.addons', 'openBookings'])
+        $rooms = HotelRoom::with(['activeBooking.guest', 'activeBooking.payments', 'activeBooking.foodOrders', 'activeBooking.charges', 'activeBooking.addons', 'openBookings.guest', 'openBookings.payments', 'openBookings.foodOrders', 'openBookings.charges', 'openBookings.addons'])
             ->where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
             ->orderBy('hotel_room_id')
@@ -1641,7 +1691,12 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
         }
 
         if (array_key_exists('status', $data)) {
-            \App\Support\HotelBookingDesk::applyRoomStatus($room, $data['status']);
+            try {
+                \App\Support\HotelBookingDesk::applyRoomStatus($room, $data['status']);
+            } catch (\RuntimeException $e) {
+                // A guest still in the room: check-out goes through Front Desk.
+                return response()->json(['message' => $e->getMessage(), 'room' => $room->fresh()->toTemplateArray()], 422);
+            }
         }
 
         return response()->json([
@@ -1760,6 +1815,11 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             'rooms'                     => 'sometimes|array|min:1|max:10',
             'rooms.*.room_id'           => 'required|integer|distinct',
             'rooms.*.guest_count'       => 'nullable|integer|min:1|max:99',
+            // The party split into adults and each child's age, priced by the team's
+            // child policy (HotelBookingDesk::reserve). Replaces guest_count when sent.
+            'rooms.*.adults'            => 'nullable|integer|min:1|max:99',
+            'rooms.*.child_ages'        => 'nullable|array|max:20',
+            'rooms.*.child_ages.*'      => 'required|integer|min:0|max:17',
             'rooms.*.addons'            => 'nullable|array',
             'rooms.*.addons.*.addon_id' => 'required|integer',
             'rooms.*.addons.*.qty'      => 'required|integer|min:1|max:99',
@@ -1771,6 +1831,9 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             'check_in_time'      => 'required|string|max:10',
             'check_out'          => 'required|date|after:check_in',
             'guest_count'        => 'nullable|integer|min:1|max:99',
+            'adults'             => 'nullable|integer|min:1|max:99',
+            'child_ages'         => 'nullable|array|max:20',
+            'child_ages.*'       => 'required|integer|min:0|max:17',
             'notes'              => 'nullable|string|max:2000',
             'payment'            => 'nullable|array',
             'payment.type'       => 'nullable|string|max:20',
@@ -1794,6 +1857,8 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
         $stays = $data['rooms'] ?? [[
             'room_id'     => $data['room_id'],
             'guest_count' => $data['guest_count'] ?? null,
+            'adults'      => $data['adults'] ?? null,
+            'child_ages'  => $data['child_ages'] ?? [],
             'addons'      => $data['addons'] ?? [],
         ]];
 
@@ -1858,6 +1923,8 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
                             'check_in_time' => $data['check_in_time'],
                             'check_out'     => $data['check_out'],
                             'guest_count'   => $stay['guest_count'] ?? null,
+                            'adults'        => $stay['adults'] ?? null,
+                            'child_ages'    => $stay['child_ages'] ?? [],
                             'booked_by'     => auth()->user()?->name,
                             'notes'         => $data['notes'] ?? null,
                             // A promo is one stay's package: it goes on the first room.
@@ -1876,9 +1943,11 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
                 /* The money taken at the desk, room by room in the order they were
                    picked: each stay is paid up to its room charge, and whatever is left
                    lands on the last one, so a single room records exactly what was
-                   handed over, as it always has. */
+                   handed over, as it always has. One transaction_ref on every share:
+                   it is one payment, and Guest Information shows it once. */
                 if (!empty($data['payment'])) {
                     $left = (float) ($data['payment']['amount_paid'] ?? 0);
+                    $data['payment']['transaction_ref'] = (string) \Illuminate\Support\Str::uuid();
                     foreach ($bookings as $i => $booking) {
                         $last = $i === count($bookings) - 1;
                         $pay = $last ? $left : min($left, $booking->totalDue());
@@ -1936,17 +2005,88 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
         }
 
         $data = $request->validate([
-            'action'        => ['nullable', 'string', Rule::in(['arrive', 'check_in', 'check_out', 'cancel'])],
+            // request_inspection starts a check-out: Housekeeping inspects the room
+            // before check_out can close the stay.
+            'action'        => ['nullable', 'string', Rule::in(['arrive', 'check_in', 'request_inspection', 'check_out', 'cancel'])],
             'check_in'      => 'sometimes|date',
             'check_in_time' => 'sometimes|string|max:10',
             'check_out'     => 'sometimes|date',
             'notes'         => 'sometimes|nullable|string|max:2000',
+            // Change Room: move a stay not yet checked in, an upgrade at the desk.
+            'room_id'       => 'sometimes|integer',
+            // Correcting the party: the children are priced again, payments stay.
+            'adults'        => 'sometimes|integer|min:1|max:99',
+            'child_ages'    => 'sometimes|array|max:20',
+            'child_ages.*'  => 'integer|min:0|max:17',
         ]);
 
         $action = $data['action'] ?? null;
 
+        if (isset($data['adults']) || array_key_exists('child_ages', $data)) {
+            if (!\App\Support\HotelTableAccess::canAssign($membership)) {
+                return response()->json(['message' => 'Only Front Desk staff can change the guests on a stay.'], 403);
+            }
+            try {
+                \App\Support\HotelBookingDesk::updateOccupancy(
+                    $booking,
+                    (int) ($data['adults'] ?? $booking->adultCount() ?? 1),
+                    $data['child_ages'] ?? array_column($booking->childLines(), 'age')
+                );
+            } catch (\RuntimeException $e) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+
+            $booking = \App\Support\HotelBookingDesk::findBooking($membership, $id);
+
+            return response()->json([
+                'booking' => $booking->toReservationArray(),
+                'room'    => $booking->room?->fresh()->toTemplateArray(),
+                'bill'    => $booking->toBillArray(),
+            ]);
+        }
+
+        if (isset($data['room_id'])) {
+            if (!\App\Support\HotelTableAccess::canAssign($membership)) {
+                return response()->json(['message' => 'Only Front Desk staff can move a guest to another room.'], 403);
+            }
+            $room = HotelRoom::where('hotel_room_id', $data['room_id'])
+                ->where('group_name', $membership->group_name)
+                ->where('faculty_id', $membership->faculty_id)
+                ->first();
+            if (!$room) {
+                return response()->json(['message' => 'That room is not on your team\'s floor.'], 404);
+            }
+            $from = $booking->room?->name;
+            try {
+                \App\Support\HotelBookingDesk::changeRoom($booking, $room);
+            } catch (\App\Exceptions\BookingOverlapException $e) {
+                return response()->json(['message' => $e->getMessage()], 409);
+            } catch (\RuntimeException $e) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+            ActivityLog::record(
+                auth()->user(),
+                ActivityLog::GUEST_BOOKED,
+                'Moved ' . ($booking->guest?->full_name ?? 'a guest') . ' from ' . $from . ' to ' . $room->name . '.'
+            );
+
+            $booking = \App\Support\HotelBookingDesk::findBooking($membership, $id);
+
+            return response()->json([
+                'booking' => $booking->toReservationArray(),
+                'room'    => $booking->room?->fresh()->toTemplateArray(),
+                'bill'    => $booking->toBillArray(),
+            ]);
+        }
+
         if ($action !== null && !$booking->isOpen()) {
             return response()->json(['message' => 'That booking is already closed.'], 409);
+        }
+
+        // The room is inspected, and any damage reviewed, before the final bill closes
+        // the stay. Checked on the server so no screen can skip it.
+        if ($action === 'check_out' && ($blocker = $booking->checkOutBlocker())) {
+            return response()->json(['message' => $blocker], 422);
         }
 
         // Payment Completed is a real precondition for check-out, not just a browser
@@ -1963,6 +2103,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
         $actionTarget = [
             'arrive'    => 'Arrived',
             'check_in'  => 'Checked In',
+            'request_inspection' => 'Pending Room Inspection',
             'check_out' => 'Checked Out',
             'cancel'    => 'Cancelled',
         ][$action] ?? null;
@@ -1978,6 +2119,12 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
                 break;
             case 'check_in':
                 \App\Support\HotelBookingDesk::checkIn($booking);
+                break;
+            case 'request_inspection':
+                if ($booking->status !== 'Checked In') {
+                    return response()->json(['message' => 'Only a checked-in guest can start check-out.'], 422);
+                }
+                \App\Support\HotelBookingDesk::requestInspection($booking);
                 break;
             case 'check_out':
                 \App\Support\HotelBookingDesk::checkOut($booking);
@@ -2037,6 +2184,45 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             'room'    => $booking->room?->fresh()->toTemplateArray(),
         ]);
     })->name('hotel.bookings.update');
+
+    /** Housekeeping extras lent to a stay already booked: an extra bed asked for on arrival. */
+    Route::post('/hotel/bookings/{id}/addons', function (Request $request, $id) {
+        $membership = \App\Support\HotelBookingDesk::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Group not found'], 404);
+        }
+        if (!\App\Support\HotelTableAccess::canAssign($membership) && !\App\Support\HotelAddonAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Front Desk or Housekeeping staff can add extras to a stay.'], 403);
+        }
+
+        $booking = \App\Support\HotelBookingDesk::findBooking($membership, $id);
+        if (!$booking) {
+            return response()->json(['message' => 'Booking not found.'], 404);
+        }
+        if (!$booking->isOpen()) {
+            return response()->json(['message' => 'That stay is already closed.'], 409);
+        }
+
+        $data = $request->validate([
+            'addons'            => 'required|array|min:1',
+            'addons.*.addon_id' => 'required|integer',
+            'addons.*.qty'      => 'required|integer|min:1|max:99',
+        ]);
+
+        try {
+            \Illuminate\Support\Facades\DB::transaction(fn () => \App\Support\HotelAddonDesk::attachTo($booking, $data['addons']));
+        } catch (\RuntimeException $e) {
+            // Out of stock: nothing was attached.
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        $fresh = \App\Support\HotelBookingDesk::findBooking($membership, $id);
+
+        return response()->json([
+            'booking' => $fresh->toReservationArray(),
+            'bill'    => $fresh->toBillArray(),
+        ], 201);
+    })->name('hotel.bookings.addons.store');
 
     /** A later payment against an existing stay — settling a partial, say. */
     Route::post('/hotel/bookings/{id}/payments', function (Request $request, $id) {
@@ -4009,7 +4195,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             ]);
         }
 
-        $inspections = \App\Models\HotelRoomInspection::with(['room', 'complaints'])
+        $inspections = \App\Models\HotelRoomInspection::with(['room', 'complaints', 'damages'])
             ->where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
             ->orderByDesc('hotel_room_inspection_id')
@@ -4068,7 +4254,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        return response()->json(['inspection' => $inspection->fresh(['room', 'complaints'])->toTemplateArray()]);
+        return response()->json(['inspection' => $inspection->fresh(['room', 'complaints', 'damages'])->toTemplateArray()]);
     })->name('hotel.inspections.update');
 
     Route::post('/hotel/inspections/{id}/issues', function (Request $request, $id) {
@@ -4085,8 +4271,12 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             ->where('faculty_id', $membership->faculty_id)
             ->firstOrFail();
 
-        if (!in_array($inspection->status, ['Pending', 'Inspecting', 'Awaiting Re-inspection'], true)) {
+        if (!in_array($inspection->status, ['Pending', 'Inspecting', 'Ready to Clean', 'Awaiting Re-inspection'], true)) {
             return response()->json(['message' => 'This inspection already has an issue awaiting Maintenance.'], 409);
+        }
+        // Before check-out, damage goes to Front Desk in the report, not to Maintenance.
+        if ($inspection->isBeforeCheckout()) {
+            return response()->json(['message' => 'The guest has not checked out yet. Send your report to the Front Desk instead.'], 409);
         }
 
         $data = $request->validate([
@@ -4097,8 +4287,91 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
 
         \App\Support\HotelHousekeepingDesk::reportIssue($inspection, $data, auth()->user());
 
-        return response()->json(['inspection' => $inspection->fresh(['room', 'complaints'])->toTemplateArray()], 201);
+        return response()->json(['inspection' => $inspection->fresh(['room', 'complaints', 'damages'])->toTemplateArray()], 201);
     })->name('hotel.inspections.issues.store');
+
+    /**
+     * Housekeeping's report on a room before the guest checks out: nothing wrong, or the
+     * damaged and missing items. It goes to Front Desk, which decides what to charge.
+     */
+    Route::post('/hotel/inspections/{id}/report', function (Request $request, $id) {
+        $membership = \App\Support\HotelHousekeepingAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelHousekeepingAccess::canInspect($membership)) {
+            return response()->json(['message' => 'Only Housekeeping staff can send an inspection report.'], 403);
+        }
+
+        $inspection = \App\Models\HotelRoomInspection::where('hotel_room_inspection_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        $data = $request->validate([
+            'finding'               => ['required', 'string', Rule::in(array_keys(\App\Models\HotelRoomInspection::FINDINGS))],
+            'notes'                 => 'nullable|string|max:2000',
+            'damages'               => 'nullable|array|max:20',
+            'damages.*.item'        => 'required|string|max:120',
+            'damages.*.description' => 'nullable|string|max:2000',
+            // A data-URL from the phone camera; about 6 MB of picture at most.
+            'damages.*.photo'       => 'nullable|string|max:8000000',
+        ]);
+
+        $damages = $data['damages'] ?? [];
+        $damageFound = \App\Models\HotelRoomInspection::FINDINGS[$data['finding']] !== null;
+        if ($damageFound && !$damages) {
+            return response()->json(['message' => 'Add the damaged or missing item, so the Front Desk knows what to review.'], 422);
+        }
+        if (!$damageFound) {
+            $damages = [];
+        }
+
+        try {
+            \App\Support\HotelHousekeepingDesk::submitReport($inspection, $data['finding'], $data['notes'] ?? null, $damages, auth()->user());
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 409);
+        }
+
+        return response()->json(['inspection' => $inspection->fresh(['room', 'complaints', 'damages'])->toTemplateArray()], 201);
+    })->name('hotel.inspections.report');
+
+    /**
+     * Front Desk's review of one reported item: charge it to the stay, or waive it.
+     * Nothing Housekeeping reports reaches the bill without this.
+     */
+    Route::patch('/hotel/inspection-damages/{id}', function (Request $request, $id) {
+        $membership = \App\Support\HotelBookingDesk::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Group not found'], 404);
+        }
+        if (!\App\Support\HotelTableAccess::canAssign($membership)) {
+            return response()->json(['message' => 'Only Front Desk staff can review damage charges.'], 403);
+        }
+
+        $damage = \App\Models\HotelInspectionDamage::where('hotel_inspection_damage_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->firstOrFail();
+
+        $data = $request->validate([
+            'decision' => ['required', 'string', Rule::in(['charge', 'waive'])],
+            'amount'   => 'required_if:decision,charge|nullable|numeric|min:0.01|max:9999999',
+        ]);
+
+        try {
+            \App\Support\HotelBookingDesk::reviewDamage($damage, $data['decision'] === 'charge', $data['amount'] ?? null, auth()->user()?->name);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 409);
+        }
+
+        $booking = \App\Support\HotelBookingDesk::findBooking($membership, $damage->hotel_booking_id);
+
+        return response()->json([
+            'booking' => $booking->toReservationArray(),
+            'room'    => $booking->room?->fresh()->toTemplateArray(),
+        ]);
+    })->name('hotel.inspection-damages.update');
 
     // One page, five doors: each role opens it from its own module so the shell
     // keeps that role's theme, sidebar and Back target.

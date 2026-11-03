@@ -37,7 +37,42 @@ function formatWhen(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+  return d.toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: TZ });
+}
+
+/* Every time on this page is Philippine time, whatever clock the viewer's device
+   is set to: the hotel runs in Manila, and the server stores UTC. */
+const TZ = 'Asia/Manila';
+
+/* The Manila calendar day of an instant, as YYYY-MM-DD. */
+function manilaDay(date) {
+  const p = {};
+  new Intl.DateTimeFormat('en-US', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' })
+    .formatToParts(date).forEach(x => { p[x.type] = x.value; });
+  return `${p.year}-${p.month}-${p.day}`;
+}
+
+/* An instant as a Manila date with the time under it, for table cells. */
+function whenStamp(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return {
+    date: d.toLocaleDateString(undefined, { timeZone: TZ, month: 'short', day: 'numeric', year: 'numeric' }),
+    time: d.toLocaleTimeString([], { timeZone: TZ, hour: 'numeric', minute: '2-digit' }),
+  };
+}
+
+function StampCell({ label, stamp }) {
+  if (!stamp) return <td data-label={label}>—</td>;
+  return (
+    <td data-label={label}>
+      <div>
+        <div>{stamp.date}</div>
+        {stamp.time ? <div className="rp-time">{stamp.time}</div> : null}
+      </div>
+    </td>
+  );
 }
 
 function formatDate(value) {
@@ -66,10 +101,8 @@ function stayBlocks(checkIn, checkOut, checkInTime) {
   return Math.max(1, Math.ceil(hours / BLOCK_HOURS));
 }
 
-/* A local YYYY-MM-DD. Never toISOString(): that renders the UTC day, so in Manila
-   anything before 08:00 comes back as yesterday and "Today" quietly loses the whole
-   morning. Built from the local getters, which is what the staff's wall clock, the
-   date inputs on this page, and formatWhen() all already agree on. */
+/* A YYYY-MM-DD from a Date's own getters. Only used on calendar dates built here
+   (presetRange), never on an instant: those go through manilaDay(). */
 function ymd(date) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -85,7 +118,8 @@ function ymd(date) {
    start would split the weekend across two reports. getDay() returns 0 for Sunday,
    which is day 7 of the week that just ended, not day 1 of the next one. */
 function presetRange(preset, now = new Date()) {
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const [ty, tm, td] = manilaDay(now).split('-').map(Number);
+  const today = new Date(ty, tm - 1, td);
 
   if (preset === 'today') {
     return { from: ymd(today), to: ymd(today) };
@@ -111,7 +145,7 @@ function localDayKey(value) {
   if (!raw) return '';
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
   const d = new Date(raw);
-  return Number.isNaN(d.getTime()) ? '' : ymd(d);
+  return Number.isNaN(d.getTime()) ? '' : manilaDay(d);
 }
 
 /* Both bounds inclusive; a row with no usable date is out of every window. */
@@ -127,6 +161,91 @@ function itemsSummary(items) {
   const count = list.reduce((n, it) => n + (Number(it.qty) || 0), 0);
   const title = list.map(it => `${it.qty}× ${it.name}`).join(', ');
   return { count, title };
+}
+
+function ViewButton({ onClick }) {
+  return (
+    <button type="button" className="rp-view" onClick={onClick}>
+      <i className="fa-solid fa-eye"></i> View
+    </button>
+  );
+}
+
+/* Every detail of one row. The table keeps only what tells rows apart, so it fits
+   the pane without scrolling sideways; the rest is here. */
+function DetailModal({ title, sub, fields, items, onClose }) {
+  useEffect(() => {
+    const onKey = e => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const lines = Array.isArray(items) ? items : null;
+  return ReactDOM.createPortal(
+    <div className="rp-modal-back" onClick={onClose}>
+      <div className="rp-modal" role="dialog" aria-modal="true" aria-label={title} onClick={e => e.stopPropagation()}>
+        <div className="rp-modal-head">
+          <div>
+            <h2 className="font-display">{title}</h2>
+            {sub ? <p>{sub}</p> : null}
+          </div>
+          <button type="button" className="rp-modal-x" onClick={onClose} aria-label="Close">
+            <i className="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <dl className="rp-dl">
+          {fields.map(([label, value]) => (
+            <React.Fragment key={label}>
+              <dt>{label}</dt>
+              <dd>{value === null || value === undefined || value === '' ? '—' : value}</dd>
+            </React.Fragment>
+          ))}
+        </dl>
+        {lines && (
+          <>
+            <p className="rp-modal-sec">Items</p>
+            {lines.length === 0 ? (
+              <p className="rp-note">No items on this order.</p>
+            ) : (
+              <table className="rp-table">
+                <thead>
+                  <tr>
+                    <th>Item</th>
+                    <th className="rp-num">Qty</th>
+                    <th className="rp-num">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lines.map((it, i) => (
+                    <tr key={i}>
+                      <td>{it.name}</td>
+                      <td className="rp-num">{it.qty}</td>
+                      <td className="rp-num">{formatPeso((Number(it.price) || 0) * (Number(it.qty) || 0))}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </>
+        )}
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+/* The fields every food order shares; each table adds where it was served. */
+function orderFields(o, place) {
+  return [
+    ['Order #', '#' + o.id],
+    ...place,
+    ['Guest', o.guestName],
+    ['Items', itemsSummary(o.items).count],
+    ['Total', formatPeso(o.total)],
+    ['Placed By', o.placedBy],
+    ['Placed', formatWhen(o.placedAt)],
+    ['Completed', formatWhen(o.updatedAt)],
+  ];
 }
 
 function Tile({ label, value, sub, tone, grand }) {
@@ -309,7 +428,50 @@ function OverviewPanel({ totals, counts, rangeLabel }) {
   );
 }
 
+/* When a guest came in or left, as a date with the time under it so the column stays
+   narrow. The stamp the desk recorded wins; without one, the booked date and the
+   booked check-in clock (a stay is charged in blocks from that clock). */
+function stayStamp(at, day, clock) {
+  const recorded = whenStamp(at);
+  if (recorded) return recorded;
+  if (!day) return null;
+  if (!/^\d{1,2}:\d{2}/.test(String(clock || ''))) return { date: formatDate(day), time: '' };
+  const [h, mi] = String(clock).split(':').map(Number);
+  // The booked clock is already Manila wall time, so it is shown as is.
+  return { date: formatDate(day), time: new Date(2000, 0, 1, h, mi).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) };
+}
+
+const checkInStamp = (b) => stayStamp(b.checkedInAt, b.checkIn, b.checkInTime);
+const checkOutStamp = (b) => stayStamp(b.checkedOutAt, b.checkOut, b.checkInTime);
+const stampText = (s) => (s ? s.date + (s.time ? ` · ${s.time}` : '') : null);
+
+function stayFields(b) {
+  const service = Number(b.roomServiceTotal) || 0;
+  return [
+    ['Booking #', '#' + b.bookingId],
+    ['Guest', b.fullName],
+    ['Contact', b.contactNo],
+    ['Email', b.email],
+    ['Room', b.roomName],
+    ['Guests', b.guestCount],
+    ['Check-In', stampText(checkInStamp(b))],
+    ['Check-Out', stampText(checkOutStamp(b))],
+    ['Blocks', stayBlocks(b.checkIn, b.checkOut, b.checkInTime)],
+    ['Promo', b.promoName],
+    ['Room Charge', formatPeso(b.totalDue)],
+    ['Add-ons', formatPeso(b.addonsTotal)],
+    ['Other Charges', formatPeso(b.otherCharges)],
+    ['Room Revenue', formatPeso(b.revenue)],
+    // Billed to the stay, but counted under Room Service, not in Room Revenue.
+    ['Room Service', service > 0 ? `${formatPeso(service)} (not in Room Revenue)` : '—'],
+    ['Total Paid', formatPeso(b.amountPaid)],
+    ['Booked By', b.bookedBy],
+    ['Notes', b.notes],
+  ];
+}
+
 function RoomTable({ rows, totals, page, onPage, rangeLabel, noCloseCount }) {
+  const [viewing, setViewing] = useState(null);
   const totalPages = Math.max(1, Math.ceil(rows.length / PER_PAGE));
   const safePage = Math.min(page, totalPages);
   const pageRows = rows.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
@@ -321,62 +483,46 @@ function RoomTable({ rows, totals, page, onPage, rangeLabel, noCloseCount }) {
   return (
     <>
       <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid var(--border)' }}>
-        <table className="rp-table">
+        <table className="rp-table rp-stack">
           <thead>
             <tr>
               <th>Guest</th>
               <th>Room</th>
               <th>Check-In</th>
               <th>Check-Out</th>
-              <th className="rp-num">Blocks</th>
-              <th className="rp-num">Room Charge</th>
-              <th className="rp-num">Add-ons</th>
-              <th className="rp-num">Other</th>
-              <th className="rp-num">Room Revenue</th>
-              <th className="rp-num" title="Billed to the stay, counted under Room Service — not included in Room Revenue.">Room Svc (excl.)</th>
-              <th className="rp-num">Paid</th>
-              <th>Closed</th>
+              <th className="rp-num">Total Paid</th>
+              <th className="rp-act">Action</th>
             </tr>
           </thead>
           <tbody>
-            {pageRows.map(b => {
-              const roomCharge = Number(b.totalDue) || 0;
-              const addons = Number(b.addonsTotal) || 0;
-              const extras = Number(b.otherCharges) || 0;
-              const service = Number(b.roomServiceTotal) || 0;
-              const paid = Number(b.amountPaid) || 0;
-              return (
-                <tr key={b.bookingId}>
-                  <td className="rp-strong">{b.fullName || '—'}</td>
-                  <td>{b.roomName || '—'}</td>
-                  <td>{formatDate(b.checkIn)}{b.checkInTime ? ` · ${b.checkInTime}` : ''}</td>
-                  <td>{formatDate(b.checkOut)}</td>
-                  <td className="rp-num">{stayBlocks(b.checkIn, b.checkOut, b.checkInTime)}</td>
-                  <td className="rp-num">{formatPeso(roomCharge)}</td>
-                  <td className="rp-num">{addons > 0 ? formatPeso(addons) : '—'}</td>
-                  <td className="rp-num">{extras > 0 ? formatPeso(extras) : '—'}</td>
-                  <td className="rp-num rp-money">{formatPeso(b.revenue)}</td>
-                  <td className="rp-num rp-muted-money">{service > 0 ? formatPeso(service) : '—'}</td>
-                  <td className="rp-num">{formatPeso(paid)}</td>
-                  <td>{formatWhen(b.checkedOutAt)}</td>
-                </tr>
-              );
-            })}
+            {pageRows.map(b => (
+              <tr key={b.bookingId}>
+                <td className="rp-strong" data-label="Guest">{b.fullName || '—'}</td>
+                <td data-label="Room">{b.roomName || '—'}</td>
+                <StampCell label="Check-In" stamp={checkInStamp(b)} />
+                <StampCell label="Check-Out" stamp={checkOutStamp(b)} />
+                <td className="rp-num rp-money" data-label="Total Paid">{formatPeso(b.amountPaid)}</td>
+                <td className="rp-act"><ViewButton onClick={() => setViewing(b)} /></td>
+              </tr>
+            ))}
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={5}>{rows.length} stay{rows.length === 1 ? '' : 's'}</td>
-              <td className="rp-num">{formatPeso(totals.roomCharge)}</td>
-              <td className="rp-num">{formatPeso(totals.addons)}</td>
-              <td className="rp-num">{formatPeso(totals.extras)}</td>
-              <td className="rp-num rp-money">{formatPeso(totals.room)}</td>
-              <td className="rp-num"></td>
-              <td className="rp-num rp-money">{formatPeso(totals.collected)}</td>
+              <td colSpan={4}>{rows.length} stay{rows.length === 1 ? '' : 's'} · {formatPeso(totals.room)} room revenue</td>
+              <td className="rp-num rp-money" data-label="Total Paid">{formatPeso(totals.collected)}</td>
               <td></td>
             </tr>
           </tfoot>
         </table>
       </div>
+      {viewing && (
+        <DetailModal
+          title={viewing.fullName || 'Stay'}
+          sub={`Booking #${viewing.bookingId} · ${viewing.roomName || 'No room'}`}
+          fields={stayFields(viewing)}
+          onClose={() => setViewing(null)}
+        />
+      )}
       {noCloseCount > 0 && (
         <p className="rp-note">{noCloseCount} checked-out stay{noCloseCount === 1 ? '' : 's'} have no closing date and are not included in any range.</p>
       )}
@@ -386,9 +532,11 @@ function RoomTable({ rows, totals, page, onPage, rangeLabel, noCloseCount }) {
 }
 
 function DineInTable({ rows, total, page, onPage, rangeLabel, tableNameById }) {
+  const [viewing, setViewing] = useState(null);
   const totalPages = Math.max(1, Math.ceil(rows.length / PER_PAGE));
   const safePage = Math.min(page, totalPages);
   const pageRows = rows.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
+  const tableName = (o) => (o.tableId ? (tableNameById[o.tableId] || `#${o.tableId}`) : '—');
 
   if (rows.length === 0) {
     return <EmptyState icon="fa-utensils" message={`No dine-in orders were completed between ${rangeLabel}.`} />;
@@ -397,49 +545,52 @@ function DineInTable({ rows, total, page, onPage, rangeLabel, tableNameById }) {
   return (
     <>
       <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid var(--border)' }}>
-        <table className="rp-table">
+        <table className="rp-table rp-stack">
           <thead>
             <tr>
               <th>Order #</th>
               <th>Table</th>
-              <th>Guest</th>
-              <th className="rp-num">Items</th>
-              <th className="rp-num">Total</th>
-              <th>Placed By</th>
               <th>Placed</th>
+              <th className="rp-num">Total</th>
+              <th className="rp-act">Action</th>
             </tr>
           </thead>
           <tbody>
-            {pageRows.map(o => {
-              const { count, title } = itemsSummary(o.items);
-              return (
-                <tr key={o.id}>
-                  <td className="rp-strong">#{o.id}</td>
-                  <td>{o.tableId ? (tableNameById[o.tableId] || `#${o.tableId}`) : '—'}</td>
-                  <td>{o.guestName || '—'}</td>
-                  <td className="rp-num" title={title}>{count}</td>
-                  <td className="rp-num rp-money">{o.total > 0 ? formatPeso(o.total) : <span className="rp-zero">₱0</span>}</td>
-                  <td>{o.placedBy || '—'}</td>
-                  <td>{formatWhen(o.placedAt)}</td>
-                </tr>
-              );
-            })}
+            {pageRows.map(o => (
+              <tr key={o.id}>
+                <td className="rp-strong" data-label="Order #">#{o.id}</td>
+                <td data-label="Table">{tableName(o)}</td>
+                <StampCell label="Placed" stamp={whenStamp(o.placedAt)} />
+                <td className="rp-num rp-money" data-label="Total">{o.total > 0 ? formatPeso(o.total) : <span className="rp-zero">₱0</span>}</td>
+                <td className="rp-act"><ViewButton onClick={() => setViewing(o)} /></td>
+              </tr>
+            ))}
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={4}>{rows.length} order{rows.length === 1 ? '' : 's'}</td>
-              <td className="rp-num rp-money">{formatPeso(total)}</td>
-              <td colSpan={2}></td>
+              <td colSpan={3}>{rows.length} order{rows.length === 1 ? '' : 's'}</td>
+              <td className="rp-num rp-money" data-label="Total">{formatPeso(total)}</td>
+              <td></td>
             </tr>
           </tfoot>
         </table>
       </div>
+      {viewing && (
+        <DetailModal
+          title={`Dine-In Order #${viewing.id}`}
+          sub={tableName(viewing)}
+          fields={orderFields(viewing, [['Table', tableName(viewing)]])}
+          items={viewing.items}
+          onClose={() => setViewing(null)}
+        />
+      )}
       <Pager page={safePage} totalPages={totalPages} total={rows.length} perPage={PER_PAGE} onPage={onPage} />
     </>
   );
 }
 
 function RoomServiceTable({ rows, total, page, onPage, rangeLabel, openStayTotal }) {
+  const [viewing, setViewing] = useState(null);
   const totalPages = Math.max(1, Math.ceil(rows.length / PER_PAGE));
   const safePage = Math.min(page, totalPages);
   const pageRows = rows.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
@@ -451,48 +602,54 @@ function RoomServiceTable({ rows, total, page, onPage, rangeLabel, openStayTotal
   return (
     <>
       <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid var(--border)' }}>
-        <table className="rp-table">
+        <table className="rp-table rp-stack">
           <thead>
             <tr>
               <th>Order #</th>
               <th>Room</th>
-              <th>Booking #</th>
-              <th>Guest</th>
-              <th className="rp-num">Items</th>
-              <th className="rp-num">Total</th>
-              <th>Placed By</th>
               <th>Placed</th>
+              <th className="rp-num">Total</th>
+              <th className="rp-act">Action</th>
             </tr>
           </thead>
           <tbody>
-            {pageRows.map(o => {
-              const { count, title } = itemsSummary(o.items);
-              return (
-                <tr key={o.id}>
-                  <td className="rp-strong">#{o.id}</td>
-                  <td>{o.roomNumber || '—'}</td>
-                  <td>
-                    {o.bookingId ? `#${o.bookingId}` : '—'}
+            {pageRows.map(o => (
+              <tr key={o.id}>
+                <td className="rp-strong" data-label="Order #">#{o.id}</td>
+                <td data-label="Room">
+                  <span>
+                    {o.roomNumber || '—'}
                     {o.stayOpen && <span className="rp-badge rp-cat-room" style={{ marginLeft: '0.4rem' }}>Open stay</span>}
-                  </td>
-                  <td>{o.guestName || '—'}</td>
-                  <td className="rp-num" title={title}>{count}</td>
-                  <td className="rp-num rp-money">{o.total > 0 ? formatPeso(o.total) : <span className="rp-zero">₱0</span>}</td>
-                  <td>{o.placedBy || '—'}</td>
-                  <td>{formatWhen(o.placedAt)}</td>
-                </tr>
-              );
-            })}
+                  </span>
+                </td>
+                <StampCell label="Placed" stamp={whenStamp(o.placedAt)} />
+                <td className="rp-num rp-money" data-label="Total">{o.total > 0 ? formatPeso(o.total) : <span className="rp-zero">₱0</span>}</td>
+                <td className="rp-act"><ViewButton onClick={() => setViewing(o)} /></td>
+              </tr>
+            ))}
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={5}>{rows.length} order{rows.length === 1 ? '' : 's'}</td>
-              <td className="rp-num rp-money">{formatPeso(total)}</td>
-              <td colSpan={2}></td>
+              <td colSpan={3}>{rows.length} order{rows.length === 1 ? '' : 's'}</td>
+              <td className="rp-num rp-money" data-label="Total">{formatPeso(total)}</td>
+              <td></td>
             </tr>
           </tfoot>
         </table>
       </div>
+      {viewing && (
+        <DetailModal
+          title={`Room Service Order #${viewing.id}`}
+          sub={viewing.roomNumber || ''}
+          fields={orderFields(viewing, [
+            ['Room', viewing.roomNumber],
+            ['Booking #', viewing.bookingId ? `#${viewing.bookingId}` : null],
+            ['Stay', viewing.bookingId ? (viewing.stayOpen ? 'Still open' : 'Checked out') : null],
+          ])}
+          items={viewing.items}
+          onClose={() => setViewing(null)}
+        />
+      )}
       {openStayTotal > 0 && (
         <p className="rp-note">{formatPeso(openStayTotal)} of this is on stays that have not checked out yet.</p>
       )}
@@ -673,7 +830,7 @@ function App() {
   const dineLoaded = tab !== 'dinein' || loadedTables;
 
   return (
-    <div data-hms-no-edit="1" style={{ padding: '1.5rem' }}>
+    <div data-hms-no-edit="1" style={{ padding: 'clamp(0.75rem, 4vw, 1.5rem)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
         <div>
           <p style={{ color: 'var(--accent)', fontSize: '0.72rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Front Desk</p>

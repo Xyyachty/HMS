@@ -20,9 +20,8 @@
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px; background-color:#ffffff; border-radius:14px; overflow:hidden; border:1px solid #fecdd3;">
 
                     <tr>
-                        <td bgcolor="#e11d48" style="background-color:#e11d48; background-image:linear-gradient(135deg, #f43f5e 0%, #db2777 100%); padding:26px 28px;">
-                            <p style="margin:0; font-size:22px; font-weight:bold; color:#ffffff; letter-spacing:1px;">HMS</p>
-                            <p style="margin:5px 0 0; font-size:13px; color:#ffe4e6;">Hotel Management Simulation</p>
+                        <td bgcolor="#e11d48" style="background-color:#e11d48; background-image:linear-gradient(135deg, #f43f5e 0%, #db2777 100%); padding:22px 28px;">
+                            @include('emails.partials.brand-header')
                         </td>
                     </tr>
 
@@ -56,14 +55,20 @@
                                         <p style="margin:0 0 6px; font-size:11px; color:#9f1239; text-transform:uppercase; letter-spacing:1.2px; font-weight:bold;">Login Email</p>
                                         <p style="margin:0 0 16px; font-size:15px; color:#1f2937; font-family:'Courier New', Courier, monospace;">{{ $loginEmail }}</p>
 
-                                        <p style="margin:0 0 6px; font-size:11px; color:#9f1239; text-transform:uppercase; letter-spacing:1.2px; font-weight:bold;">Temporary Password</p>
-                                        <table role="presentation" cellpadding="0" cellspacing="0">
+                                        <p style="margin:0 0 8px; font-size:11px; color:#9f1239; text-transform:uppercase; letter-spacing:1.2px; font-weight:bold;">Temporary Password</p>
+                                        {{-- Email cannot run a copy button, so the password sits alone in its
+                                             own cell: one double-click or long-press selects all of it, and
+                                             user-select:all does it in one click where the client allows. --}}
+                                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                                             <tr>
-                                                <td style="background-color:#ffffff; border:1px dashed #fb7185; border-radius:8px; padding:10px 16px;">
-                                                    <span style="font-size:18px; color:#be123c; font-family:'Courier New', Courier, monospace; font-weight:bold; letter-spacing:1.5px;">{{ $plainPassword }}</span>
+                                                <td align="center" style="background-color:#ffffff; border:2px solid #fb7185; border-radius:10px; padding:16px 12px;">
+                                                    <span style="font-size:24px; line-height:30px; color:#be123c; font-family:'Courier New', Courier, monospace; font-weight:bold; letter-spacing:2px; -webkit-user-select:all; user-select:all;">{{ $plainPassword }}</span>
                                                 </td>
                                             </tr>
                                         </table>
+                                        <p style="margin:8px 0 0; font-size:12px; line-height:17px; color:#6b7280; text-align:center;">
+                                            Double-click the password (or tap and hold on your phone) to select it, then copy.
+                                        </p>
                                     </td>
                                 </tr>
                             </table>

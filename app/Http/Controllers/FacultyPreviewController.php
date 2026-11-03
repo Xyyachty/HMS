@@ -72,7 +72,7 @@ class FacultyPreviewController extends Controller
     {
         $membership = $this->team($group);
 
-        $rooms = HotelRoom::with(['activeBooking.guest', 'activeBooking.payments', 'activeBooking.foodOrders', 'activeBooking.charges', 'activeBooking.addons', 'openBookings'])
+        $rooms = HotelRoom::with(['activeBooking.guest', 'activeBooking.payments', 'activeBooking.foodOrders', 'activeBooking.charges', 'activeBooking.addons', 'openBookings.guest', 'openBookings.payments', 'openBookings.foodOrders', 'openBookings.charges', 'openBookings.addons'])
             ->where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
             ->orderBy('hotel_room_id')

@@ -22,10 +22,9 @@ class HotelSimulationAuth
     /**
      * "Remember me" on the guest sign-in.
      *
-     * The session cookie dies with the browser, which is right for a shared lab
-     * machine and wrong for the guest who ticked the box. This one carries the
-     * account the session would have held, for thirty days, and `restore()` reads
-     * it back when there is no session left. Laravel encrypts and signs it, so it
+     * Carries the account the session holds, for thirty days when the box is
+     * ticked and until the browser closes when it is not, and `restore()` reads it
+     * back whenever the server session is gone (see rememberCustomer). Laravel encrypts and signs it, so it
      * is no more forgeable than the session cookie beside it, and it holds an
      * account id rather than anything worth stealing on its own.
      */
@@ -286,6 +285,7 @@ class HotelSimulationAuth
         ];
 
         Session::put(self::SESSION_KEY, $auth);
+        self::rememberCustomer($customer->hotel_customer_id, false);
 
         return ['ok' => true, 'auth' => self::payload($auth)];
     }
@@ -323,19 +323,18 @@ class HotelSimulationAuth
         return ['ok' => true, 'auth' => self::payload($auth)];
     }
 
-    /** Write or clear the thirty-day cookie behind "remember me". */
+    /**
+     * Write the cookie that brings a guest back: thirty days with "remember me", else
+     * until the browser closes. The second matters because the server session can go
+     * while the tab stays open (the container restarting on a deploy, or a student's
+     * HMS session ending in the same browser), and a refresh must not sign the guest out.
+     */
     public static function rememberCustomer(int $customerId, bool $remember): void
     {
-        if (!$remember) {
-            Cookie::queue(Cookie::forget(self::REMEMBER_COOKIE));
-
-            return;
-        }
-
         Cookie::queue(Cookie::make(
             self::REMEMBER_COOKIE,
             (string) $customerId,
-            self::REMEMBER_DAYS * 24 * 60,
+            $remember ? self::REMEMBER_DAYS * 24 * 60 : 0,
             null,
             null,
             null,

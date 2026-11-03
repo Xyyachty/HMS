@@ -42,10 +42,10 @@
   :root[data-ops-theme="2"] .hk { --hk-fix: #7e22ce; }
 
   /* Page header */
-  .hk-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.4rem; }
-  .hk-eyebrow { color: var(--accent); font-size: 0.72rem; letter-spacing: 0.25em; text-transform: uppercase; margin: 0 0 0.5rem; }
-  .hk-head h1 { margin: 0; font-size: 1.85rem; line-height: 1.15; color: var(--fg); }
-  .hk-lead { margin: 0.45rem 0 0; color: var(--fg-muted); font-size: 0.92rem; max-width: 64ch; line-height: 1.5; }
+  .hk-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 0.75rem 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+  .hk-eyebrow { color: var(--accent); font-size: 0.72rem; letter-spacing: 0.25em; text-transform: uppercase; margin: 0 0 0.35rem; }
+  .hk-head h1 { margin: 0; font-size: 1.75rem; line-height: 1.15; color: var(--fg); }
+  .hk-lead { margin: 0.35rem 0 0; color: var(--fg-muted); font-size: 0.9rem; max-width: 60ch; line-height: 1.5; }
 
   .hk-btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem;
@@ -62,36 +62,37 @@
   .hk-btn.is-quiet:hover { color: var(--fg); background: var(--hk-soft); }
   .hk-btn.is-wide { width: 100%; }
   .hk-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; filter: none; }
-  .hk-btn:focus-visible, .hk-view:focus-visible, .hk-choice:focus-within, .hk-chip:focus-visible, .hk-link:focus-visible {
+  .hk-btn:focus-visible, .hk-view:focus-visible, .hk-choice:focus-within, .hk-chip:focus-visible, .hk-link:focus-visible, .hk-more:focus-visible {
     outline: 2px solid var(--accent); outline-offset: 2px;
   }
 
-  /* How it works */
-  .hk-how { list-style: none; margin: 0 0 1.25rem; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; }
-  .hk-how li { display: flex; gap: 0.7rem; align-items: flex-start; padding: 0.85rem 0.95rem; border-radius: 0.875rem; background: var(--hk-soft); border: 1px solid var(--hk-line); }
+  /* How it works: one slim strip */
+  .hk-how { list-style: none; margin: 0 0 1.75rem; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.5rem; }
+  .hk-how li { display: flex; gap: 0.6rem; align-items: center; padding: 0.6rem 0.75rem; border-radius: 0.75rem; background: var(--hk-soft); }
   .hk-how-num {
-    flex: none; width: 1.75rem; height: 1.75rem; border-radius: 50%;
+    flex: none; width: 1.5rem; height: 1.5rem; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    font-weight: 700; font-size: 0.82rem; background: var(--hk-tint); color: var(--accent);
+    font-weight: 700; font-size: 0.75rem; background: var(--hk-tint); color: var(--accent);
   }
-  .hk-how div b { display: block; font-size: 0.86rem; color: var(--fg); margin-bottom: 0.15rem; }
-  .hk-how div span { display: block; font-size: 0.78rem; color: var(--fg-muted); line-height: 1.4; }
+  .hk-how div b { display: block; font-size: 0.82rem; color: var(--fg); }
+  .hk-how div span { display: block; font-size: 0.74rem; color: var(--fg-muted); line-height: 1.35; }
 
   .hk-banner { display: flex; gap: 0.6rem; align-items: flex-start; margin: 0 0 1.25rem; padding: 0.85rem 1rem; border-radius: 0.875rem; border: 1px solid color-mix(in srgb, var(--hk-warn) 40%, transparent); background: color-mix(in srgb, var(--hk-warn) 10%, transparent); font-size: 0.86rem; color: var(--fg); }
   .hk-banner i { color: var(--hk-warn); margin-top: 0.15rem; }
 
-  /* Panels */
-  .hk-panel { background: var(--card); border: 1px solid var(--hk-line); border-radius: 0.875rem; padding: 1.2rem 1.3rem 1.4rem; margin-bottom: 1.25rem; }
-  .hk-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
-  .hk-panel-head h2 { margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--fg); }
-  .hk-panel-head p { margin: 0.2rem 0 0; font-size: 0.82rem; color: var(--fg-muted); }
+  /* Sections: a heading row, then content straight on the page (no outer box) */
+  .hk-section { margin-bottom: 1.75rem; }
+  .hk-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem 1rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+  .hk-section-head h2 { margin: 0; font-size: 1rem; font-weight: 700; color: var(--fg); }
+  .hk-section-head h2 small { margin-left: 0.5rem; font-size: 0.82rem; font-weight: 400; color: var(--fg-muted); }
 
   /* Rooms at a glance */
-  .hk-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; }
-  .hk-stat { display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 0.95rem; border-radius: 0.75rem; border: 1px solid var(--hk-line); background: var(--hk-soft); }
-  .hk-stat-icon { flex: none; width: 2.375rem; height: 2.375rem; border-radius: 0.625rem; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; }
-  .hk-stat div b { display: block; font-size: 1.35rem; line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--fg); }
-  .hk-stat div span { display: block; font-size: 0.78rem; color: var(--fg-muted); }
+  .hk-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.6rem; }
+  .hk-stat { display: flex; align-items: center; gap: 0.65rem; padding: 0.65rem 0.8rem; border-radius: 0.75rem; border: 1px solid var(--hk-line); background: var(--hk-soft); }
+  .hk-stat-icon { flex: none; width: 2rem; height: 2rem; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; }
+  .hk-stat div b { display: block; font-size: 1.2rem; line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--fg); }
+  .hk-stat div span { display: block; font-size: 0.76rem; color: var(--fg-muted); }
+  .hk-map { margin-top: 0.75rem; padding: 1rem 1.1rem; border-radius: 0.875rem; border: 1px solid var(--hk-line); background: var(--hk-soft); }
   .tone-ready  { background: color-mix(in srgb, var(--hk-ok) 16%, transparent);   color: var(--hk-ok); }
   .tone-guest  { background: var(--hk-tint); color: var(--accent); }
   .tone-clean  { background: color-mix(in srgb, var(--hk-warn) 16%, transparent); color: var(--hk-warn); }
@@ -102,7 +103,7 @@
   .hk-link { display: inline-flex; align-items: center; gap: 0.4rem; background: none; border: 0; padding: 0.3rem 0; cursor: pointer; color: var(--accent); font: 600 0.84rem/1 var(--font-body, 'Outfit', sans-serif); }
   .hk-link:hover { text-decoration: underline; }
 
-  .hk-legend { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; margin: 1rem 0 0.9rem; font-size: 0.78rem; color: var(--fg-muted); }
+  .hk-legend { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; margin: 0 0 0.5rem; font-size: 0.78rem; color: var(--fg-muted); }
   .hk-legend span { display: inline-flex; align-items: center; gap: 0.4rem; }
   .hk-legend i { width: 0.625rem; height: 0.625rem; border-radius: 0.1875rem; background: currentColor; }
   .hk-floor { margin-top: 0.85rem; }
@@ -117,12 +118,12 @@
   .hk-tile.tone-fix   { border-color: color-mix(in srgb, var(--hk-fix) 35%, transparent); }
 
   /* Toolbar */
-  .hk-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem 1rem; flex-wrap: wrap; margin-bottom: 0.9rem; }
-  .hk-views { box-sizing: border-box; max-width: 100%; display: inline-flex; flex-wrap: wrap; gap: 0.3rem; padding: 0.3rem; border-radius: 999px; background: var(--hk-soft); border: 1px solid var(--hk-line); }
+  .hk-toolbar { display: flex; align-items: center; gap: 0.6rem 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .hk-views { box-sizing: border-box; max-width: 100%; display: inline-flex; flex-wrap: wrap; gap: 0.25rem; padding: 0.25rem; border-radius: 999px; background: var(--hk-soft); border: 1px solid var(--hk-line); }
   .hk-view {
-    display: inline-flex; align-items: center; gap: 0.5rem;
-    font: 600 0.84rem/1 var(--font-body, 'Outfit', sans-serif);
-    padding: 0.6rem 0.95rem; border-radius: 999px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 0.45rem;
+    font: 600 0.82rem/1 var(--font-body, 'Outfit', sans-serif);
+    padding: 0.5rem 0.85rem; border-radius: 999px; cursor: pointer;
     border: 0; background: transparent; color: var(--fg-muted);
     transition: background 0.15s, color 0.15s;
   }
@@ -138,7 +139,7 @@
   .hk-live { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; color: var(--fg-muted); }
   .hk-live::before { content: ''; width: 0.4375rem; height: 0.4375rem; border-radius: 50%; background: var(--hk-ok); }
 
-  .hk-search { position: relative; margin-bottom: 1.1rem; }
+  .hk-search { position: relative; flex: 1 1 15rem; min-width: 0; }
   .hk-search i { position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%); color: var(--fg-muted); font-size: 0.8rem; pointer-events: none; }
 
   .hk-input {
@@ -154,11 +155,14 @@
   textarea.hk-input { resize: vertical; min-height: 4.2rem; }
 
   /* Room cards */
-  .hk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(360px, 100%), 1fr)); gap: 1rem; align-items: start; }
-  .hk-card { min-width: 0; border: 1px solid var(--hk-line); border-radius: 0.875rem; background: var(--hk-soft); padding: 1.05rem 1.1rem 1.1rem; display: flex; flex-direction: column; gap: 0.9rem; }
+  /* Cards stay small until the housekeeper opens one; an open card takes the
+     whole row so the inspection form has room to breathe. */
+  .hk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 0.85rem; align-items: start; }
+  .hk-card { container-type: inline-size; min-width: 0; border: 1px solid var(--hk-line); border-radius: 0.875rem; background: var(--hk-soft); padding: 1rem 1.05rem; display: flex; flex-direction: column; gap: 0.85rem; }
   .hk-card.is-mine { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
-  .hk-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; }
-  .hk-room { display: block; font-size: 1.15rem; font-weight: 700; color: var(--fg); line-height: 1.2; }
+  .hk-card.is-open { grid-column: 1 / -1; padding: 1.15rem 1.25rem 1.25rem; }
+  .hk-card-top { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem 0.75rem; }
+  .hk-room { display: block; font-size: 1.05rem; font-weight: 700; color: var(--fg); line-height: 1.25; }
   .hk-sub { display: block; font-size: 0.82rem; color: var(--fg-muted); margin-top: 0.25rem; line-height: 1.4; }
   .hk-pill { flex: none; display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.7rem; border-radius: 999px; font-size: 0.76rem; font-weight: 600; white-space: nowrap; }
 
@@ -176,34 +180,66 @@
   .hk-track li.is-now, .hk-track li.is-done { color: var(--fg); }
   .hk-track li.is-now { font-weight: 700; }
 
-  .hk-found { margin: 0; padding: 0.7rem 0.8rem; border-radius: 0.625rem; background: var(--card); border: 1px solid var(--hk-line); font-size: 0.85rem; color: var(--fg); line-height: 1.45; }
+  /* Details, shown on request */
+  .hk-more { align-self: flex-start; display: inline-flex; align-items: center; gap: 0.4rem; background: none; border: 0; padding: 0.2rem 0; cursor: pointer; color: var(--fg-muted); font: 600 0.78rem/1 var(--font-body, 'Outfit', sans-serif); }
+  .hk-more:hover { color: var(--fg); }
+  .hk-more i { font-size: 0.7rem; }
+  .hk-details { display: grid; gap: 0.85rem; }
+
+  .hk-found { margin: 0; font-size: 0.85rem; color: var(--fg); line-height: 1.45; }
   .hk-found small { display: block; font-size: 0.7rem; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.2rem; }
 
-  .hk-issues { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
-  .hk-issue { padding: 0.7rem 0.8rem; border-radius: 0.625rem; background: var(--card); border: 1px solid var(--hk-line); }
+  .hk-issues { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.55rem; }
+  .hk-issue { padding-top: 0.55rem; border-top: 1px solid var(--hk-line); }
   .hk-issue-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.6rem; }
   .hk-issue b { font-size: 0.85rem; color: var(--fg); }
   .hk-issue p { margin: 0.25rem 0 0; font-size: 0.82rem; color: var(--fg-muted); line-height: 1.4; }
   .hk-issue .hk-pill { font-size: 0.7rem; padding: 0.25rem 0.55rem; }
 
-  .hk-step { padding-top: 0.9rem; border-top: 1px dashed var(--hk-line); display: grid; gap: 0.75rem; }
-  .hk-step-title { margin: 0; font-size: 0.92rem; font-weight: 700; color: var(--fg); }
-  .hk-step-hint { margin: -0.45rem 0 0; font-size: 0.8rem; color: var(--fg-muted); line-height: 1.45; }
+  .hk-step { padding-top: 1rem; border-top: 1px solid var(--hk-line); display: grid; gap: 0.9rem; }
+  .hk-step-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+  .hk-step-head .hk-link { color: var(--fg-muted); }
+  .hk-step-title { margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--fg); }
+  .hk-damage { display: grid; gap: 0.6rem; padding: 0.85rem; border-radius: 0.625rem; border: 1px dashed var(--hk-line); }
+  .hk-damage .hk-input { height: 2.875rem; }
+  .hk-remove { justify-self: start; height: 2.875rem; padding: 0 1rem; }
+
+  /* Photo picker: looks like the other fields, not the browser's grey button */
+  .hk-file { position: relative; display: flex; align-items: center; gap: 0.6rem; cursor: pointer; padding-top: 0; padding-bottom: 0; }
+  .hk-file:hover, .hk-file:focus-within { border-color: var(--accent); }
+  .hk-file input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  .hk-file i { color: var(--accent); }
+  .hk-file span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg-muted); }
+  .hk-file.has-photo span { color: var(--fg); }
+  .hk-file img { flex: none; width: 2rem; height: 2rem; border-radius: 0.375rem; object-fit: cover; }
+  .hk-file em { flex: none; font-style: normal; font-size: 0.78rem; font-weight: 600; color: var(--accent); }
   .hk-label { display: block; font-size: 0.82rem; font-weight: 600; color: var(--fg); margin-bottom: 0.4rem; }
   .hk-label em { font-style: normal; font-weight: 400; color: var(--fg-muted); }
   .hk-error { margin: 0.4rem 0 0; color: var(--hk-bad); font-size: 0.8rem; }
   .hk-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
   .hk-actions .hk-btn { flex: 1 1 auto; }
 
-  /* What did you find? — four big choices */
-  .hk-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
-  .hk-choice { position: relative; display: flex; gap: 0.6rem; align-items: flex-start; padding: 0.7rem 0.75rem; border-radius: 0.625rem; border: 1px solid var(--hk-line); background: var(--card); cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+  /* What did you find? — four equal choices: 4 across in an open card, 2 or 1 when narrow */
+  .hk-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+  .hk-choice { position: relative; display: flex; flex-direction: column; gap: 0.55rem; padding: 0.85rem; border-radius: 0.75rem; border: 1px solid var(--hk-line); background: var(--card); cursor: pointer; transition: border-color 0.15s, background 0.15s; }
   .hk-choice:hover { border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
   .hk-choice input { position: absolute; opacity: 0; pointer-events: none; }
-  .hk-choice > i { flex: none; width: 1.875rem; height: 1.875rem; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; }
-  .hk-choice b { display: block; font-size: 0.84rem; color: var(--fg); line-height: 1.25; }
-  .hk-choice span { display: block; font-size: 0.74rem; color: var(--fg-muted); margin-top: 0.15rem; line-height: 1.35; }
+  .hk-choice > i { flex: none; width: 2rem; height: 2rem; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; }
+  .hk-choice b { display: block; font-size: 0.85rem; color: var(--fg); line-height: 1.25; }
+  .hk-choice span { display: block; font-size: 0.75rem; color: var(--fg-muted); margin-top: 0.2rem; line-height: 1.35; }
   .hk-choice.is-on { border-color: var(--accent); background: var(--hk-tint); }
+
+  @container (min-width: 720px) {
+    .hk-choices { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .hk-damage { grid-template-columns: 1fr 1.5fr 1fr auto; align-items: end; }
+    .hk-remove span { display: none; }
+    .hk-remove { padding: 0; width: 2.875rem; }
+    .hk-step .hk-actions { justify-content: flex-end; }
+    .hk-step .hk-actions .hk-btn { flex: 0 0 auto; min-width: 12rem; }
+  }
+  @container (max-width: 300px) {
+    .hk-choices { grid-template-columns: 1fr; }
+  }
 
   .hk-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
   .hk-chip { padding: 0.5rem 0.8rem; border-radius: 999px; border: 1px solid var(--hk-line); background: var(--card); color: var(--fg); cursor: pointer; font: 500 0.8rem/1.2 var(--font-body, 'Outfit', sans-serif); transition: border-color 0.15s, background 0.15s; }
@@ -212,12 +248,12 @@
   .hk-chip-group + .hk-chip-group { margin-top: 0.6rem; }
   .hk-chip-group small { display: block; font-size: 0.72rem; color: var(--fg-muted); margin-bottom: 0.35rem; }
 
-  .hk-note { margin: 0; padding: 0.75rem 0.85rem; border-radius: 0.625rem; font-size: 0.84rem; line-height: 1.45; display: flex; gap: 0.55rem; align-items: flex-start; }
-  .hk-note i { margin-top: 0.15rem; }
-  .hk-note.tone-fix, .hk-note.tone-done, .hk-note.tone-muted, .hk-note.tone-guest { color: var(--fg); }
-  .hk-note.tone-fix i { color: var(--hk-fix); }
-  .hk-note.tone-done i { color: var(--hk-ok); }
-  .hk-note.tone-guest i { color: var(--accent); }
+  /* One quiet line for rooms that wait on someone else */
+  .hk-note { margin: 0; font-size: 0.8rem; line-height: 1.45; color: var(--fg-muted); display: flex; gap: 0.5rem; align-items: flex-start; }
+  .hk-note i { margin-top: 0.2rem; }
+  .hk-note.is-fix i { color: var(--hk-fix); }
+  .hk-note.is-done i { color: var(--hk-ok); }
+  .hk-note.is-guest i { color: var(--accent); }
   .hk-meta { font-size: 0.76rem; color: var(--fg-muted); }
 
   /* Empty / loading */
@@ -225,7 +261,7 @@
   .hk-empty-icon { width: 3.5rem; height: 3.5rem; margin: 0 auto 0.9rem; border-radius: 1rem; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; background: var(--hk-tint); color: var(--accent); }
   .hk-empty h2 { margin: 0; font-size: 1.02rem; font-weight: 700; color: var(--fg); }
   .hk-empty p { margin: 0.4rem auto 0; max-width: 50ch; font-size: 0.86rem; line-height: 1.5; color: var(--fg-muted); }
-  .hk-skel { height: 13.75rem; border-radius: 0.875rem; border: 1px solid var(--hk-line); background: linear-gradient(90deg, var(--hk-soft) 0%, color-mix(in srgb, var(--fg) 8%, transparent) 50%, var(--hk-soft) 100%); background-size: 200% 100%; animation: hk-shimmer 1.4s ease-in-out infinite; }
+  .hk-skel { height: 8.5rem; border-radius: 0.875rem; border: 1px solid var(--hk-line); background: linear-gradient(90deg, var(--hk-soft) 0%, color-mix(in srgb, var(--fg) 8%, transparent) 50%, var(--hk-soft) 100%); background-size: 200% 100%; animation: hk-shimmer 1.4s ease-in-out infinite; }
   @keyframes hk-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
   @media (prefers-reduced-motion: reduce) { .hk-skel { animation: none; } }
 
@@ -234,8 +270,8 @@
   }
   @media (max-width: 560px) {
     .hk { padding: 1.1rem 1rem 2.5rem; }
-    .hk-how, .hk-stats, .hk-choices { grid-template-columns: 1fr; }
     .hk-views { width: 100%; border-radius: 0.875rem; }
+    .hk-card.is-open { padding: 1rem; }
   }
 </style>
 @endsection
@@ -262,20 +298,23 @@ const { useState, useEffect, useCallback, useMemo, useRef, useId } = React;
 
 const CFG = window.HMS_INSPECTIONS;
 const FINDINGS = CFG.findings;
-const OPEN_STATUSES = ['Pending', 'Inspecting', 'Awaiting Repair', 'Awaiting Re-inspection'];
+const OPEN_STATUSES = ['Pending', 'Inspecting', 'Reported', 'Ready to Clean', 'Awaiting Repair', 'Awaiting Re-inspection'];
 
 // Mirrors App\Models\HotelRoomInspection::STATUSES, each named for what the
 // housekeeper sees and does rather than for the stored status.
 const STAGES = {
   'Pending':                { label: 'Waiting to be checked',  icon: 'fa-hourglass-half', tone: 'tone-clean' },
   'Inspecting':             { label: 'Being checked',          icon: 'fa-magnifying-glass', tone: 'tone-guest' },
+  'Reported':               { label: 'Sent to Front Desk',     icon: 'fa-paper-plane', tone: 'tone-guest' },
+  'Ready to Clean':         { label: 'Guest left, clean it',   icon: 'fa-broom', tone: 'tone-clean' },
   'Awaiting Repair':        { label: 'With Maintenance',       icon: 'fa-screwdriver-wrench', tone: 'tone-fix' },
   'Awaiting Re-inspection': { label: 'Fixed, check it again',  icon: 'fa-rotate', tone: 'tone-clean' },
   'Completed':              { label: 'Ready for next guest',   icon: 'fa-circle-check', tone: 'tone-done' },
 };
 
 const TABS = [
-  { key: 'todo',     label: 'To do',            icon: 'fa-list-check', match: i => i.status === 'Pending' || i.status === 'Inspecting' || i.status === 'Awaiting Re-inspection' },
+  { key: 'todo',     label: 'To do',            icon: 'fa-list-check', match: i => i.status === 'Pending' || i.status === 'Inspecting' || i.status === 'Ready to Clean' || i.status === 'Awaiting Re-inspection' },
+  { key: 'desk',     label: 'With Front Desk',  icon: 'fa-paper-plane', match: i => i.status === 'Reported' },
   { key: 'repair',   label: 'With Maintenance', icon: 'fa-screwdriver-wrench', match: i => i.status === 'Awaiting Repair' },
   { key: 'done',     label: 'Done',             icon: 'fa-circle-check', match: i => i.status === 'Completed' },
   { key: 'all',      label: 'All rooms',        icon: 'fa-layer-group', match: () => true },
@@ -287,6 +326,13 @@ const FINDING_TEXT = {
   'Damaged Equipment': { title: 'Something is broken',            hint: 'TV, aircon, lamp, appliance.', icon: 'fa-plug-circle-xmark', tone: 'tone-fix' },
   'Needs Repair':      { title: 'Something needs fixing',         hint: 'Furniture, door, faucet, wall.', icon: 'fa-hammer', tone: 'tone-fix' },
   'Missing Items':     { title: 'Something is missing',           hint: 'A hotel item is gone from the room.', icon: 'fa-box-open', tone: 'tone-clean' },
+};
+
+// What Front Desk did with each item reported before check-out.
+const DAMAGE_STATUS = {
+  'Pending Review': { label: 'Front Desk reviewing', tone: 'tone-clean' },
+  'Charged':        { label: 'Charged to the guest', tone: 'tone-done' },
+  'Waived':         { label: 'Not charged',          tone: 'tone-muted' },
 };
 
 // What a complaint's stored status means to the housekeeper waiting on it.
@@ -310,7 +356,7 @@ const ROOM_STATE = {
 function roomState(room) {
   if (room.status === 'Maintenance') return 'fix';
   if (room.status === 'Cleaning') return 'clean';
-  if (room.reservation && room.reservation.status === 'Checked In') return 'guest';
+  if (room.reservation && (room.reservation.status === 'Checked In' || room.reservation.status === 'Pending Room Inspection')) return 'guest';
   return 'ready';
 }
 
@@ -369,12 +415,9 @@ function RoomsAtAGlance({ rooms }) {
   if (!rooms.length) return null;
 
   return (
-    <section className="hk-panel" aria-labelledby="hk-glance">
-      <div className="hk-panel-head">
-        <div>
-          <h2 id="hk-glance">All rooms right now</h2>
-          <p>{plural(rooms.length, 'room', 'rooms')} in the hotel.</p>
-        </div>
+    <section className="hk-section" aria-labelledby="hk-glance">
+      <div className="hk-section-head">
+        <h2 id="hk-glance">All rooms right now <small>{plural(rooms.length, 'room', 'rooms')} in the hotel</small></h2>
         <button type="button" className="hk-link" aria-expanded={showMap} onClick={() => setShowMap(v => !v)}>
           <i className={`fa-solid ${showMap ? 'fa-chevron-up' : 'fa-table-cells'}`}></i>
           {showMap ? 'Hide the room map' : 'Show every room'}
@@ -394,7 +437,7 @@ function RoomsAtAGlance({ rooms }) {
       </div>
 
       {showMap ? (
-        <div>
+        <div className="hk-map">
           <div className="hk-legend">
             {Object.values(ROOM_STATE).map(s => (
               <span key={s.label}><i className={s.tone}></i>{s.label}</span>
@@ -429,7 +472,7 @@ function Track({ inspection }) {
   const status = inspection.status;
   const hadRepairs = inspection.issues.length > 0;
   const steps = [
-    { key: 'wait',  label: 'Guest left' },
+    { key: 'wait',  label: inspection.beforeCheckout ? 'Guest checking out' : 'Guest left' },
     { key: 'check', label: 'Check room' },
     { key: 'fix',   label: 'Repairs' },
     { key: 'ready', label: 'Ready' },
@@ -437,6 +480,8 @@ function Track({ inspection }) {
   const nowIndex = {
     'Pending': 1,
     'Inspecting': 1,
+    'Reported': 1,
+    'Ready to Clean': 1,
     'Awaiting Repair': 2,
     'Awaiting Re-inspection': 3,
     'Completed': 4,
@@ -527,7 +572,18 @@ function IssueForm({ suggested, busy, title, onSubmit, onCancel }) {
   );
 }
 
-function CheckingStep({ inspection, busy, onRecord, onFinishClean, onReport }) {
+function StepHead({ title, onClose }) {
+  return (
+    <div className="hk-step-head">
+      <p className="hk-step-title">{title}</p>
+      <button type="button" className="hk-link" onClick={onClose}>
+        <i className="fa-solid fa-xmark"></i> Close
+      </button>
+    </div>
+  );
+}
+
+function CheckingStep({ inspection, busy, onClose, onRecord, onFinishClean, onReport }) {
   const [choice, setChoice] = useState(inspection.finding || '');
   const [notes, setNotes] = useState(inspection.notes || '');
   const [error, setError] = useState('');
@@ -543,7 +599,7 @@ function CheckingStep({ inspection, busy, onRecord, onFinishClean, onReport }) {
 
   return (
     <div className="hk-step">
-      <p className="hk-step-title">What did you find in the room?</p>
+      <StepHead title="What did you find in the room?" onClose={onClose} />
       <div className="hk-choices" role="radiogroup" aria-label="What did you find?">
         {Object.keys(FINDINGS).map(key => {
           const f = FINDING_TEXT[key] || { title: key, hint: '', icon: 'fa-circle', tone: 'tone-muted' };
@@ -584,107 +640,261 @@ function CheckingStep({ inspection, busy, onRecord, onFinishClean, onReport }) {
   );
 }
 
-function RoomCard({ inspection, canInspect, busy, onAction, onReportIssue }) {
-  const [reportingAgain, setReportingAgain] = useState(false);
+// The inspection before check-out: what is damaged or missing goes to the Front Desk,
+// which decides what the guest pays. Nothing is sent to Maintenance yet; the guest is
+// still in the room.
+function ReportStep({ inspection, busy, onClose, onSubmit }) {
+  const blank = { item: '', description: '', photo: '' };
+  const [choice, setChoice] = useState(inspection.finding || '');
+  const [notes, setNotes] = useState(inspection.notes || '');
+  const [items, setItems] = useState([blank]);
+  const [error, setError] = useState('');
+
+  const isProblem = choice && FINDINGS[choice] !== null;
+  const setItem = (i, patch) => setItems(prev => prev.map((it, n) => (n === i ? { ...it, ...patch } : it)));
+
+  const pickPhoto = (i, file) => {
+    if (!file) { setItem(i, { photo: '', photoName: '' }); return; }
+    if (file.size > 5 * 1024 * 1024) { setError('That photo is too big. Pick one under 5 MB.'); return; }
+    const reader = new FileReader();
+    reader.onload = () => setItem(i, { photo: String(reader.result || ''), photoName: file.name });
+    reader.readAsDataURL(file);
+  };
+
+  const submit = () => {
+    if (!choice) { setError('Pick what you found first.'); return; }
+    const damages = isProblem
+      ? items.filter(it => it.item.trim()).map(it => ({ item: it.item.trim(), description: it.description.trim(), photo: it.photo || null }))
+      : [];
+    if (isProblem && damages.length === 0) { setError('Write the name of the damaged or missing item.'); return; }
+    setError('');
+    onSubmit({ finding: choice, notes, damages });
+  };
+
+  return (
+    <div className="hk-step">
+      <StepHead title="Is anything damaged or missing?" onClose={onClose} />
+      <div className="hk-choices" role="radiogroup" aria-label="What did you find?">
+        {Object.keys(FINDINGS).map(key => {
+          const f = FINDING_TEXT[key] || { title: key, hint: '', icon: 'fa-circle', tone: 'tone-muted' };
+          const title = key === 'Cleaning Only' ? 'Nothing damaged or missing' : f.title;
+          return (
+            <label key={key} className={`hk-choice ${choice === key ? 'is-on' : ''}`}>
+              <input type="radio" name={`report-${inspection.id}`} value={key} checked={choice === key} onChange={() => { setChoice(key); setError(''); }} />
+              <i className={`fa-solid ${f.icon} ${f.tone}`}></i>
+              <div><b>{title}</b><span>{f.hint}</span></div>
+            </label>
+          );
+        })}
+      </div>
+
+      {isProblem ? items.map((it, i) => (
+        <div key={i} className="hk-damage">
+          <div>
+            <label className="hk-label" htmlFor={`hk-item-${inspection.id}-${i}`}>Item {items.length > 1 ? i + 1 : ''}</label>
+            <input id={`hk-item-${inspection.id}-${i}`} type="text" className="hk-input" maxLength={120} placeholder="Example: TV remote" value={it.item} onChange={e => setItem(i, { item: e.target.value })} />
+          </div>
+          <div>
+            <label className="hk-label" htmlFor={`hk-desc-${inspection.id}-${i}`}>What is wrong? <em>(optional)</em></label>
+            <input id={`hk-desc-${inspection.id}-${i}`} type="text" className="hk-input" placeholder="Example: Missing from the bedside table." value={it.description} onChange={e => setItem(i, { description: e.target.value })} />
+          </div>
+          <div>
+            <span className="hk-label">Photo <em>(optional)</em></span>
+            {/* The real file input is hidden; the label is the themed button. */}
+            <label className={`hk-input hk-file ${it.photo ? 'has-photo' : ''}`}>
+              <input type="file" accept="image/*" capture="environment" onChange={e => pickPhoto(i, e.target.files && e.target.files[0])} />
+              {it.photo
+                ? <img src={it.photo} alt={`Photo of ${it.item || 'the item'}`} />
+                : <i className="fa-solid fa-camera"></i>}
+              <span>{it.photo ? (it.photoName || 'Photo added') : 'Choose a photo'}</span>
+              {it.photo ? <em>Change</em> : null}
+            </label>
+          </div>
+          {items.length > 1 ? (
+            <button type="button" className="hk-btn is-quiet hk-remove" aria-label={`Remove item ${i + 1}`} title="Remove this item" onClick={() => setItems(prev => prev.filter((_, n) => n !== i))}>
+              <i className="fa-solid fa-trash-can"></i><span>Remove</span>
+            </button>
+          ) : null}
+        </div>
+      )) : null}
+      {isProblem ? (
+        <button type="button" className="hk-link" onClick={() => setItems(prev => [...prev, blank])}>
+          <i className="fa-solid fa-plus"></i> Add another item
+        </button>
+      ) : null}
+
+      <div>
+        <label className="hk-label" htmlFor={`hk-report-notes-${inspection.id}`}>Notes <em>(optional)</em></label>
+        <textarea id={`hk-report-notes-${inspection.id}`} className="hk-input" rows={2} placeholder="Anything the Front Desk should know." value={notes} onChange={e => setNotes(e.target.value)} />
+      </div>
+      {error ? <p className="hk-error">{error}</p> : null}
+
+      <div className="hk-actions">
+        <button type="button" className="hk-btn is-solid" disabled={busy} onClick={submit}>
+          <i className="fa-solid fa-paper-plane"></i>
+          {busy ? 'Sending…' : isProblem ? 'Send damage report to Front Desk' : 'Send report to Front Desk'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function RoomCard({ inspection, canInspect, busy, onAction, onReportIssue, onSendReport }) {
+  // The status the form was opened for. When the status moves on (report sent,
+  // room marked ready), the card folds back to its small view by itself.
+  const [openFor, setOpenFor] = useState(null);
+  const [showDetails, setShowDetails] = useState(false);
   const status = inspection.status;
+  const open = canInspect && openFor === status;
+  const close = () => setOpenFor(null);
   const stage = STAGES[status] || { label: status, icon: 'fa-circle', tone: 'tone-muted' };
   const finding = inspection.finding ? (FINDING_TEXT[inspection.finding] || { title: inspection.finding }) : null;
+  const damages = inspection.damages || [];
+  const sentCount = damages.length + inspection.issues.length;
 
   // Record the finding first, then do the next thing — so the card always
   // keeps what the housekeeper chose, even if the second call fails.
   const recordThen = (choice, notes, next) =>
     onAction(inspection.id, { action: 'record', finding: choice, notes }).then(ok => (ok && next ? next() : ok));
 
+  let body = null;
+  if (!canInspect) {
+    body = null;
+  } else if (status === 'Pending') {
+    body = (
+      <button type="button" className="hk-btn is-solid is-wide" disabled={busy} onClick={() => onAction(inspection.id, { action: 'start' }).then(ok => { if (ok) setOpenFor('Inspecting'); })}>
+        <i className="fa-solid fa-door-open"></i> Start Inspection
+      </button>
+    );
+  } else if (status === 'Inspecting') {
+    body = !open ? (
+      <button type="button" className="hk-btn is-solid is-wide" onClick={() => setOpenFor(status)}>
+        <i className="fa-solid fa-clipboard-check"></i> Continue Inspection
+      </button>
+    ) : inspection.beforeCheckout ? (
+      <ReportStep inspection={inspection} busy={busy} onClose={close} onSubmit={payload => onSendReport(inspection.id, payload)} />
+    ) : (
+      <CheckingStep
+        inspection={inspection}
+        busy={busy}
+        onClose={close}
+        onRecord={(choice, notes) => recordThen(choice, notes).then(ok => { if (ok) close(); return ok; })}
+        onFinishClean={(choice, notes) => recordThen(choice, notes, () => onAction(inspection.id, { action: 'complete' }))}
+        onReport={(choice, notes, payload) => recordThen(choice, notes, () => onReportIssue(inspection.id, payload))}
+      />
+    );
+  } else if (status === 'Reported') {
+    body = (
+      <p className="hk-note is-guest">
+        <i className="fa-solid fa-paper-plane"></i>
+        <span>Report sent. The Front Desk finishes the bill, then the room comes back here for cleaning.</span>
+      </p>
+    );
+  } else if (status === 'Ready to Clean' || status === 'Awaiting Re-inspection') {
+    const again = status === 'Awaiting Re-inspection';
+    body = open ? (
+      <IssueForm
+        title={again ? 'What is still wrong?' : 'What needs fixing?'}
+        suggested={!again && inspection.finding ? FINDINGS[inspection.finding] : null}
+        busy={busy}
+        onCancel={close}
+        onSubmit={payload => onReportIssue(inspection.id, payload).then(ok => { if (ok) close(); })}
+      />
+    ) : (
+      <div className="hk-actions">
+        <button type="button" className="hk-btn is-quiet" disabled={busy} onClick={() => setOpenFor(status)}>
+          <i className={`fa-solid ${again ? 'fa-triangle-exclamation' : 'fa-screwdriver-wrench'}`}></i> {again ? 'Still a problem' : 'Something needs fixing'}
+        </button>
+        <button type="button" className="hk-btn is-solid" disabled={busy} onClick={() => onAction(inspection.id, { action: 'complete' })}>
+          <i className="fa-solid fa-circle-check"></i> {again ? 'All fixed, mark it ready' : 'Room is clean, mark it ready'}
+        </button>
+      </div>
+    );
+  } else if (status === 'Awaiting Repair') {
+    body = (
+      <p className="hk-note is-fix">
+        <i className="fa-solid fa-screwdriver-wrench"></i>
+        <span>Maintenance is fixing this room. It comes back to your To do list when they finish.</span>
+      </p>
+    );
+  } else {
+    body = (
+      <p className="hk-note is-done">
+        <i className="fa-solid fa-circle-check"></i>
+        <span>Checked by {inspection.completedBy || 'Housekeeping'} on {formatWhen(inspection.completedAt)}.</span>
+      </p>
+    );
+  }
+
   return (
-    <article className={`hk-card ${canInspect && (status === 'Pending' || status === 'Inspecting' || status === 'Awaiting Re-inspection') ? 'is-mine' : ''}`}>
+    <article className={`hk-card ${canInspect && (status === 'Pending' || status === 'Inspecting' || status === 'Ready to Clean' || status === 'Awaiting Re-inspection') ? 'is-mine' : ''} ${open ? 'is-open' : ''}`}>
       <div className="hk-card-top">
         <div style={{ minWidth: 0 }}>
           <span className="hk-room">Room {inspection.roomName}</span>
           <span className="hk-sub">
-            {inspection.guestName ? <>Guest who left: {inspection.guestName}<br /></> : null}
-            Checked out {formatWhen(inspection.checkedOutAt)}
+            {inspection.beforeCheckout
+              ? <>Guest checking out: {inspection.guestName || 'Guest'}</>
+              : <>{inspection.guestName ? <>Guest who left: {inspection.guestName} · </> : null}Checked out {formatWhen(inspection.checkedOutAt)}</>}
           </span>
         </div>
         <Pill tone={stage.tone} icon={stage.icon}>{stage.label}</Pill>
       </div>
 
-      <Track inspection={inspection} />
+      {body}
 
-      {finding && status !== 'Inspecting' ? (
-        <p className="hk-found">
-          <small>What was found</small>
-          {finding.title}{inspection.notes ? `: ${inspection.notes}` : ''}
-        </p>
-      ) : null}
+      {showDetails ? (
+        <div className="hk-details">
+          <Track inspection={inspection} />
 
-      {inspection.issues.length > 0 ? (
-        <ul className="hk-issues" aria-label="Problems sent to other teams">
-          {inspection.issues.map(issue => {
-            const s = ISSUE_STATUS[issue.status] || { label: issue.status, tone: 'tone-muted' };
-            return (
-              <li key={issue.id} className="hk-issue">
-                <div className="hk-issue-top">
-                  <b>{issue.category}</b>
-                  <Pill tone={s.tone}>{s.label}</Pill>
-                </div>
-                <p>{issue.details}</p>
-                <p>Sent to {issue.departmentLabel}{issue.resolutionNote ? `. They wrote: ${issue.resolutionNote}` : ''}</p>
-              </li>
-            );
-          })}
-        </ul>
-      ) : null}
+          {finding && status !== 'Inspecting' ? (
+            <p className="hk-found">
+              <small>What was found</small>
+              {finding.title}{inspection.notes ? `: ${inspection.notes}` : ''}
+            </p>
+          ) : null}
 
-      {!canInspect ? null : status === 'Pending' ? (
-        <div className="hk-step">
-          <p className="hk-step-title">This room is waiting for you</p>
-          <p className="hk-step-hint">Press the button when you go into the room to look it over.</p>
-          <button type="button" className="hk-btn is-solid is-wide" disabled={busy} onClick={() => onAction(inspection.id, { action: 'start' })}>
-            <i className="fa-solid fa-door-open"></i> Start checking this room
-          </button>
+          {damages.length > 0 ? (
+            <ul className="hk-issues" aria-label="Damaged or missing items sent to the Front Desk">
+              {damages.map(d => {
+                const s = DAMAGE_STATUS[d.status] || { label: d.status, tone: 'tone-muted' };
+                return (
+                  <li key={d.id} className="hk-issue">
+                    <div className="hk-issue-top">
+                      <b>{d.item}</b>
+                      <Pill tone={s.tone}>{s.label}</Pill>
+                    </div>
+                    {d.description ? <p>{d.description}</p> : null}
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
+
+          {inspection.issues.length > 0 ? (
+            <ul className="hk-issues" aria-label="Problems sent to other teams">
+              {inspection.issues.map(issue => {
+                const s = ISSUE_STATUS[issue.status] || { label: issue.status, tone: 'tone-muted' };
+                return (
+                  <li key={issue.id} className="hk-issue">
+                    <div className="hk-issue-top">
+                      <b>{issue.category}</b>
+                      <Pill tone={s.tone}>{s.label}</Pill>
+                    </div>
+                    <p>{issue.details}</p>
+                    <p>Sent to {issue.departmentLabel}{issue.resolutionNote ? `. They wrote: ${issue.resolutionNote}` : ''}</p>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
         </div>
-      ) : status === 'Inspecting' ? (
-        <CheckingStep
-          inspection={inspection}
-          busy={busy}
-          onRecord={(choice, notes) => recordThen(choice, notes)}
-          onFinishClean={(choice, notes) => recordThen(choice, notes, () => onAction(inspection.id, { action: 'complete' }))}
-          onReport={(choice, notes, payload) => recordThen(choice, notes, () => onReportIssue(inspection.id, payload))}
-        />
-      ) : status === 'Awaiting Repair' ? (
-        <p className="hk-note tone-fix">
-          <i className="fa-solid fa-screwdriver-wrench"></i>
-          <span>Maintenance is fixing this room. You do not need to do anything yet. The room comes back to your To do list when they finish.</span>
-        </p>
-      ) : status === 'Awaiting Re-inspection' ? (
-        reportingAgain ? (
-          <IssueForm
-            title="What is still wrong?"
-            suggested={null}
-            busy={busy}
-            onCancel={() => setReportingAgain(false)}
-            onSubmit={payload => onReportIssue(inspection.id, payload).then(ok => { if (ok) setReportingAgain(false); })}
-          />
-        ) : (
-          <div className="hk-step">
-            <p className="hk-step-title">Maintenance says it is fixed</p>
-            <p className="hk-step-hint">Look at the room one more time before the next guest gets it.</p>
-            <div className="hk-actions">
-              <button type="button" className="hk-btn is-quiet" disabled={busy} onClick={() => setReportingAgain(true)}>
-                <i className="fa-solid fa-triangle-exclamation"></i> Still a problem
-              </button>
-              <button type="button" className="hk-btn is-solid" disabled={busy} onClick={() => onAction(inspection.id, { action: 'complete' })}>
-                <i className="fa-solid fa-circle-check"></i> All fixed, mark it ready
-              </button>
-            </div>
-          </div>
-        )
-      ) : (
-        <p className="hk-note tone-done">
-          <i className="fa-solid fa-circle-check"></i>
-          <span>Ready for the next guest. Checked by {inspection.completedBy || 'Housekeeping'} on {formatWhen(inspection.completedAt)}.</span>
-        </p>
-      )}
+      ) : null}
+
+      <button type="button" className="hk-more" aria-expanded={showDetails} onClick={() => setShowDetails(v => !v)}>
+        <i className={`fa-solid ${showDetails ? 'fa-chevron-up' : 'fa-chevron-down'}`}></i>
+        {showDetails ? 'Hide details' : 'Details'}
+        {!showDetails && sentCount > 0 ? <span className="hk-count">{sentCount}</span> : null}
+      </button>
     </article>
   );
 }
@@ -773,6 +983,10 @@ function App() {
     `${CFG.indexUrl}/${id}/issues`, 'POST', payload, 'Could not send this problem.', 'Problem sent. The team has been told.'
   );
 
+  const sendReport = (id, payload) => send(
+    `${CFG.indexUrl}/${id}/report`, 'POST', payload, 'Could not send the report.', 'Report sent to the Front Desk.'
+  );
+
   const current = TABS.find(t => t.key === tab) || TABS[0];
 
   const visible = useMemo(() => {
@@ -796,12 +1010,15 @@ function App() {
     emptyIcon = 'fa-magnifying-glass';
   } else if (inspections.length === 0) {
     emptyTitle = 'No guest has checked out';
-    emptyText = 'When the Front Desk checks a guest out, their room appears here so you can clean and check it.';
+    emptyText = "When the Front Desk starts a guest's check-out, their room appears here so you can check it.";
     emptyIcon = 'fa-broom';
   } else if (tab === 'todo') {
     emptyTitle = 'All caught up';
-    emptyText = 'No room is waiting for you. New rooms show up here on their own when a guest checks out.';
+    emptyText = 'No room is waiting for you. New rooms show up here on their own when a guest starts checking out.';
     emptyIcon = 'fa-mug-hot';
+  } else if (tab === 'desk') {
+    emptyTitle = 'No report waiting at the Front Desk';
+    emptyText = "Rooms you have reported on wait here while the Front Desk finishes the guest's bill.";
   } else if (tab === 'repair') {
     emptyTitle = 'No room is with Maintenance';
     emptyText = 'If you find something broken or missing while checking a room, it will wait here until Maintenance fixes it.';
@@ -816,19 +1033,16 @@ function App() {
         <div>
           <p className="hk-eyebrow">Housekeeping</p>
           <h1 className="font-display">Room Inspections</h1>
-          <p className="hk-lead">
-            When a guest checks out, their room shows up here. Go to the room, look it over,
-            and tell the system what you found. If everything is fine, mark it ready for the
-            next guest. If something is broken or missing, send it to Maintenance.
-          </p>
+          <p className="hk-lead">Check each room at check-out, report to the Front Desk, then get it ready for the next guest.</p>
         </div>
+        <span className="hk-live">Updates on its own</span>
       </header>
 
       <ol className="hk-how" aria-label="How it works">
-        <li><span className="hk-how-num">1</span><div><b>Guest checks out</b><span>The room appears in your To do list.</span></div></li>
-        <li><span className="hk-how-num">2</span><div><b>Check the room</b><span>Press Start, then look around the room.</span></div></li>
-        <li><span className="hk-how-num">3</span><div><b>Say what you found</b><span>All good, or send a problem to Maintenance.</span></div></li>
-        <li><span className="hk-how-num">4</span><div><b>Mark it ready</b><span>The room is free for the next guest.</span></div></li>
+        <li><span className="hk-how-num">1</span><div><b>Guest checks out</b><span>The room appears in To do.</span></div></li>
+        <li><span className="hk-how-num">2</span><div><b>Check the room</b><span>Look for damage or missing items.</span></div></li>
+        <li><span className="hk-how-num">3</span><div><b>Report to Front Desk</b><span>They decide what the guest pays.</span></div></li>
+        <li><span className="hk-how-num">4</span><div><b>Clean, mark it ready</b><span>Send repairs to Maintenance.</span></div></li>
       </ol>
 
       {loaded && !canInspect && !failed ? (
@@ -840,13 +1054,9 @@ function App() {
 
       <RoomsAtAGlance rooms={rooms} />
 
-      <section className="hk-panel" aria-labelledby="hk-list">
-        <div className="hk-panel-head">
-          <div>
-            <h2 id="hk-list">Rooms to inspect</h2>
-            <p>{todoCount === 0 ? 'Nothing waiting for you right now.' : `${plural(todoCount, 'room needs', 'rooms need')} you now.`}{openCount > todoCount ? ` ${plural(openCount - todoCount, 'room is', 'rooms are')} with Maintenance.` : ''}</p>
-          </div>
-          <span className="hk-live">Updates on its own</span>
+      <section className="hk-section" aria-labelledby="hk-list">
+        <div className="hk-section-head">
+          <h2 id="hk-list">Rooms to inspect <small>{todoCount === 0 ? 'Nothing waiting for you right now.' : `${plural(todoCount, 'room needs', 'rooms need')} you now.`}{openCount > todoCount ? ` ${plural(openCount - todoCount, 'room is', 'rooms are')} with Maintenance.` : ''}</small></h2>
         </div>
 
         <div className="hk-toolbar">
@@ -859,11 +1069,10 @@ function App() {
               </button>
             ))}
           </div>
-        </div>
-
-        <div className="hk-search">
-          <i className="fa-solid fa-magnifying-glass"></i>
-          <input type="text" className="hk-input" placeholder="Search a room number or guest name" aria-label="Search a room number or guest name" value={search} onChange={e => setSearch(e.target.value)} />
+          <div className="hk-search">
+            <i className="fa-solid fa-magnifying-glass"></i>
+            <input type="text" className="hk-input" placeholder="Search a room number or guest name" aria-label="Search a room number or guest name" value={search} onChange={e => setSearch(e.target.value)} />
+          </div>
         </div>
 
         {!loaded ? (
@@ -892,6 +1101,7 @@ function App() {
                 busy={busy}
                 onAction={runAction}
                 onReportIssue={reportIssue}
+                onSendReport={sendReport}
               />
             ))}
           </div>

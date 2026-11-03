@@ -2,10 +2,14 @@
 
 namespace App\Support;
 
+use App\Exceptions\BookingOverlapException;
 use App\Models\HotelAddon;
 use App\Models\HotelBooking;
+use App\Models\HotelBookingCharge;
 use App\Models\HotelBookingPayment;
+use App\Models\HotelChildPolicy;
 use App\Models\HotelGuest;
+use App\Models\HotelInspectionDamage;
 use App\Models\HotelPromo;
 use App\Models\HotelRoom;
 use App\Models\HotelRoomCategory;
@@ -63,7 +67,9 @@ class HotelBookingDesk
      *
      * $guest keys: full_name, contact_no, email, id_number.
      * $stay  keys: check_in, check_in_time, check_out, guest_count, booked_by, notes,
-     *        promo_id (optional: books the stay at that promo's price).
+     *        promo_id (optional: books the stay at that promo's price),
+     *        adults + child_ages (optional: the party split; replaces guest_count and
+     *        prices each child by the team's HotelChildPolicy).
      * $payment (optional) keys: type, amount_paid, method, reference, payer_name, notes.
      * $addons (optional) lines: [['addon_id' => int, 'qty' => int], ...]. Attaching them
      * here rather than in a second request means a folding bed that ran out takes the
@@ -78,16 +84,13 @@ class HotelBookingDesk
         array $addons = []
     ): HotelBooking {
         $scope = self::scope($membership);
-        $guestCount = isset($stay['guest_count']) ? max(1, (int) $stay['guest_count']) : null;
+        [$guestCount, $adults, $ages] = self::party($stay);
+        $capacity = self::capacityOf($room);
 
         // The room's own limit, else its category's "Sleeps N", plus one per extra bed
         // taken with the stay. Neither set takes any party, the same as before the
-        // fields existed.
+        // fields existed. Children count here even when they stay free.
         if ($guestCount !== null) {
-            $capacity = (int) ($room->capacity ?: HotelRoomCategory::where('group_name', $room->group_name)
-                ->where('faculty_id', $room->faculty_id)
-                ->where('name', $room->category)
-                ->value('capacity'));
             $beds = $capacity ? HotelAddon::extraBedsIn($addons) : 0;
 
             if ($capacity && $guestCount > $capacity + $beds) {
@@ -99,6 +102,10 @@ class HotelBookingDesk
             }
         }
 
+        $children = $ages
+            ? HotelChildPolicy::forTeam($room->group_name, (int) $room->faculty_id)->price($ages, $adults, $capacity)
+            : null;
+
         $promo = empty($stay['promo_id']) ? null : HotelPromo::bookable(
             $membership->group_name,
             (int) $membership->faculty_id,
@@ -106,7 +113,7 @@ class HotelBookingDesk
             (string) ($stay['check_in'] ?? '')
         );
 
-        return DB::transaction(function () use ($scope, $room, $guest, $stay, $payment, $addons, $guestCount, $promo) {
+        return DB::transaction(function () use ($scope, $room, $guest, $stay, $payment, $addons, $guestCount, $children, $promo) {
             $guestModel = HotelGuest::findOrCreateFor($scope, $guest);
 
             $booking = new HotelBooking($scope + [
@@ -117,6 +124,8 @@ class HotelBookingDesk
                 'check_in_time'  => $stay['check_in_time'] ?? null,
                 'check_out'      => $stay['check_out'] ?? null,
                 'guest_count'    => $guestCount,
+                // Snapshot, like room_rate: a policy changed later must not move a sold stay.
+                'children'       => $children,
                 // Snapshot: repricing the room later must not move a sold stay.
                 'room_rate'      => (int) $room->price,
                 'reserved_at'    => now(),
@@ -138,8 +147,8 @@ class HotelBookingDesk
             }
 
             // After the add-ons, and deliberately: addPayment() prices the receipt off
-            // totalDue(), which is the room alone. Add-ons settle at check-out the same
-            // way room service does.
+            // totalDue(), which is the room and the children. Add-ons settle at
+            // check-out the same way room service does.
             if ($payment !== null) {
                 self::addPayment($booking, $payment);
             }
@@ -156,32 +165,56 @@ class HotelBookingDesk
      * Records money against a booking. total_due and balance are computed from the
      * booking rather than trusted from the caller, and balance counts every earlier
      * payment so a second partial settles correctly.
+     *
+     * $payment['transaction_ref'] ties together the rows one payment was split into
+     * across several rooms; left out, the payment is its own transaction.
      */
     public static function addPayment(HotelBooking $booking, array $payment): HotelBookingPayment
     {
-        $totalDue = $booking->totalDue();
-        $amount   = round(max(0, (float) ($payment['amount_paid'] ?? 0)), 2);
-        $alreadyPaid = $booking->payments()->sum('amount_paid');
+        return DB::transaction(function () use ($booking, $payment) {
+            // Locked so two copies of the same request cannot both pass the check below.
+            HotelBooking::whereKey($booking->hotel_booking_id)->lockForUpdate()->first();
 
-        $record = HotelBookingPayment::create([
-            'group_name'       => $booking->group_name,
-            'faculty_id'       => $booking->faculty_id,
-            'group_id'         => $booking->group_id,
-            'hotel_booking_id' => $booking->hotel_booking_id,
-            'type'             => HotelBookingPayment::normalizeType($payment['type'] ?? null),
-            'amount_paid'      => $amount,
-            'total_due'        => $totalDue,
-            'balance'          => round(max(0, $totalDue - ($alreadyPaid + $amount)), 2),
-            'method'           => trim((string) ($payment['method'] ?? '')) ?: 'Cash',
-            'reference'        => self::clean($payment['reference'] ?? null),
-            'payer_name'       => self::clean($payment['payer_name'] ?? null),
-            'notes'            => self::clean($payment['notes'] ?? null),
-            'paid_at'          => now(),
-        ]);
+            $totalDue = $booking->totalDue();
+            $amount   = round(max(0, (float) ($payment['amount_paid'] ?? 0)), 2);
+            $method   = trim((string) ($payment['method'] ?? '')) ?: 'Cash';
+            $reference = self::clean($payment['reference'] ?? null);
 
-        $booking->load('payments');
+            // A double-clicked Pay, or a retried request, sends the same payment twice a
+            // moment apart. The second is the first one again, not more money.
+            $repeat = $booking->payments()
+                ->where('amount_paid', $amount)
+                ->where('method', $method)
+                ->where('reference', $reference)
+                ->where('paid_at', '>=', now()->subSeconds(15))
+                ->first();
+            if ($repeat) {
+                return $repeat;
+            }
 
-        return $record;
+            $alreadyPaid = $booking->payments()->sum('amount_paid');
+
+            $record = HotelBookingPayment::create([
+                'group_name'       => $booking->group_name,
+                'faculty_id'       => $booking->faculty_id,
+                'group_id'         => $booking->group_id,
+                'hotel_booking_id' => $booking->hotel_booking_id,
+                'transaction_ref'  => $payment['transaction_ref'] ?? (string) \Illuminate\Support\Str::uuid(),
+                'type'             => HotelBookingPayment::normalizeType($payment['type'] ?? null),
+                'amount_paid'      => $amount,
+                'total_due'        => $totalDue,
+                'balance'          => round(max(0, $totalDue - ($alreadyPaid + $amount)), 2),
+                'method'           => $method,
+                'reference'        => $reference,
+                'payer_name'       => self::clean($payment['payer_name'] ?? null),
+                'notes'            => self::clean($payment['notes'] ?? null),
+                'paid_at'          => now(),
+            ]);
+
+            $booking->load('payments');
+
+            return $record;
+        });
     }
 
     /** Front Desk confirmed the guest at the desk. The room does not move yet. */
@@ -217,6 +250,63 @@ class HotelBookingDesk
     }
 
     /**
+     * Front Desk starts the guest's check-out. The stay stays open: Housekeeping
+     * inspects the room first, so damage can still go on the final bill.
+     */
+    public static function requestInspection(HotelBooking $booking): HotelBooking
+    {
+        return DB::transaction(function () use ($booking) {
+            $booking->status = 'Pending Room Inspection';
+            $booking->save();
+
+            HotelHousekeepingDesk::openForCheckout($booking);
+
+            return $booking;
+        });
+    }
+
+    /**
+     * Front Desk's decision on one damaged or missing item. Charged adds it to the bill
+     * at $amount; Waived adds nothing. An item already decided is refused, so a double
+     * click or a second desk cannot bill it twice.
+     *
+     * @throws \RuntimeException when the item was already reviewed or the stay is closed
+     */
+    public static function reviewDamage(HotelInspectionDamage $damage, bool $charge, ?float $amount, ?string $by): HotelInspectionDamage
+    {
+        return DB::transaction(function () use ($damage, $charge, $amount, $by) {
+            $damage = HotelInspectionDamage::whereKey($damage->getKey())->lockForUpdate()->first();
+            if ($damage->status !== 'Pending Review') {
+                throw new \RuntimeException('This item was already reviewed (' . $damage->status . ').');
+            }
+            if ($damage->booking?->status !== 'Pending Room Inspection') {
+                throw new \RuntimeException('This guest is not being checked out any more.');
+            }
+
+            if ($charge) {
+                $line = HotelBookingCharge::create([
+                    'group_name'       => $damage->group_name,
+                    'faculty_id'       => $damage->faculty_id,
+                    'group_id'         => $damage->group_id,
+                    'hotel_booking_id' => $damage->hotel_booking_id,
+                    'description'      => 'Damage: ' . $damage->item,
+                    'amount'           => round((float) $amount, 2),
+                    'added_by'         => $by,
+                ]);
+                $damage->hotel_booking_charge_id = $line->hotel_booking_charge_id;
+                $damage->amount = round((float) $amount, 2);
+            }
+
+            $damage->status = $charge ? 'Charged' : 'Waived';
+            $damage->reviewed_by = $by;
+            $damage->reviewed_at = now();
+            $damage->save();
+
+            return $damage;
+        });
+    }
+
+    /**
      * Ends the stay. This is what the old JSON blob could never do: the booking becomes
      * history instead of lingering on the room, so a checked-out guest stops showing up
      * as orderable in room service.
@@ -230,10 +320,17 @@ class HotelBookingDesk
 
             self::setRoomStatus($booking->room, $roomStatus ?? self::ROOM_STATUS_ON['check_out']);
 
-            // Housekeeping's pass starts the moment the stay ends, in the same
-            // transaction, so a freed room can never exist without a queue entry for
-            // it. openInspection() no-ops if one is already open for this room.
-            HotelHousekeepingDesk::openInspection($booking);
+            // The room was inspected before the bill was settled: that same pass now
+            // turns into cleaning. A stay closed without one (a guest who never took the
+            // key, released from the room status picker) gets the old after-checkout
+            // pass, in the same transaction, so a freed room always has a queue entry.
+            // openInspection() no-ops if one is already open for this room.
+            $inspection = $booking->inspection()->first();
+            if ($inspection && $inspection->status === 'Reported') {
+                HotelHousekeepingDesk::readyToClean($inspection, $booking);
+            } else {
+                HotelHousekeepingDesk::openInspection($booking);
+            }
 
             return $booking;
         });
@@ -253,6 +350,132 @@ class HotelBookingDesk
     }
 
     /**
+     * Moves a stay that has not been handed a key yet to another room: an upgrade at
+     * the desk, say. The stay is repriced at the new room's rate, and a promo comes off
+     * because its package was for the room it was booked in. Payments stay as they are,
+     * so an upgrade leaves the difference owing.
+     *
+     * @throws BookingOverlapException when the new room is taken for those dates
+     * @throws \RuntimeException when the stay or the room cannot take the move
+     */
+    public static function changeRoom(HotelBooking $booking, HotelRoom $room): HotelBooking
+    {
+        if (!in_array($booking->status, HotelBooking::AWAITING_CHECK_IN_STATUSES, true)) {
+            throw new \RuntimeException('Only a guest who is not checked in yet can change rooms.');
+        }
+        if ($room->hotel_room_id === $booking->hotel_room_id) {
+            throw new \RuntimeException('The guest is already booked in ' . $room->name . '.');
+        }
+        // A guest at the desk walks into the new room now; one still on the way only
+        // needs a room that is not out of order.
+        if ($room->status === 'Maintenance' || ($booking->status === 'Arrived' && $room->status !== 'Available')) {
+            throw new \RuntimeException($room->name . ' is not ready (' . $room->status . '). Pick another room.');
+        }
+
+        $capacity = self::capacityOf($room);
+        $beds = $booking->addons->filter->isPerNight()->sum('qty');
+        if ($capacity && $booking->guest_count && $booking->guest_count > $capacity + $beds) {
+            throw new \RuntimeException($room->name . ' sleeps ' . $capacity . ' — too small for '
+                . $booking->guest_count . ' guests.');
+        }
+
+        // Priced again for the new room, like the room rate: which children fit in its
+        // own beds can change with it.
+        $ages = array_column($booking->childLines(), 'age');
+        $children = $ages
+            ? HotelChildPolicy::forTeam($room->group_name, (int) $room->faculty_id)->price($ages, (int) $booking->adultCount(), $capacity)
+            : $booking->children;
+
+        return DB::transaction(function () use ($booking, $room, $children) {
+            // The same lock and overlap test a new booking takes.
+            HotelRoom::whereKey($room->hotel_room_id)->lockForUpdate()->first();
+            $taken = HotelBooking::open()
+                ->where('hotel_room_id', $room->hotel_room_id)
+                ->where('check_in', '<', $booking->check_out)
+                ->where('check_out', '>', $booking->check_in)
+                ->exists();
+            if ($taken) {
+                throw new BookingOverlapException($room->name);
+            }
+
+            $booking->forceFill([
+                'hotel_room_id' => $room->hotel_room_id,
+                'room_rate'     => (int) $room->price,
+                'children'      => $children,
+                'promo_name'    => null,
+                'promo_price'   => null,
+                'promo_blocks'  => null,
+            ])->save();
+
+            return $booking->setRelation('room', $room);
+        });
+    }
+
+    /**
+     * Front Desk correcting who is in the party: a child who was not mentioned at
+     * booking, an age given wrong. The children are priced again under the team's
+     * policy as it stands now. Payments are left as they were, so the balance is
+     * simply the new total less what was already paid.
+     *
+     * @throws \RuntimeException when the stay is closed or the room is too small
+     */
+    public static function updateOccupancy(HotelBooking $booking, int $adults, array $ages): HotelBooking
+    {
+        if (!in_array($booking->status, ['Booked', 'Arrived', 'Checked In'], true)) {
+            throw new \RuntimeException('The party can only be changed before check-out starts.');
+        }
+
+        $room = $booking->room;
+        $capacity = self::capacityOf($room);
+        $beds = $booking->addons->filter->isPerNight()->sum('qty');
+        [$guestCount, $adults, $ages] = self::party(['adults' => $adults, 'child_ages' => $ages]);
+        if ($capacity && $guestCount > $capacity + $beds) {
+            throw new \RuntimeException($room->name . ' sleeps ' . $capacity
+                . ($beds ? ' and ' . $beds . ' on extra beds' : '') . ' — too small for ' . $guestCount . ' guests.');
+        }
+
+        $booking->forceFill([
+            'guest_count' => $guestCount,
+            'children'    => $ages
+                ? HotelChildPolicy::forTeam($room->group_name, (int) $room->faculty_id)->price($ages, $adults, $capacity)
+                : null,
+        ])->save();
+
+        return $booking;
+    }
+
+    /**
+     * The party from a stay's keys: [guest_count, adults, child ages]. adults and
+     * child_ages win when sent; a caller sending only guest_count (an older screen)
+     * books that many adults, as before.
+     */
+    private static function party(array $stay): array
+    {
+        if (isset($stay['adults']) || !empty($stay['child_ages'])) {
+            $ages = array_map(
+                fn ($age) => max(0, min(HotelChildPolicy::MAX_CHILD_AGE, (int) $age)),
+                array_values((array) ($stay['child_ages'] ?? []))
+            );
+            $adults = max(1, (int) ($stay['adults'] ?? 1));
+
+            return [$adults + count($ages), $adults, $ages];
+        }
+
+        $count = isset($stay['guest_count']) ? max(1, (int) $stay['guest_count']) : null;
+
+        return [$count, $count, []];
+    }
+
+    /** What the room sleeps without extra beds: its own limit, else its category's. 0 = no limit. */
+    private static function capacityOf(HotelRoom $room): int
+    {
+        return (int) ($room->capacity ?: HotelRoomCategory::where('group_name', $room->group_name)
+            ->where('faculty_id', $room->faculty_id)
+            ->where('name', $room->category)
+            ->value('capacity'));
+    }
+
+    /**
      * Applies a room status change coming from the status picker, closing the open
      * booking when the room is released. Room Management resetting a room to Available
      * used to leave the reservation blob behind for the next guest to inherit.
@@ -263,6 +486,15 @@ class HotelBookingDesk
         $booking = $room->activeBooking()->with(['guest', 'payments'])->first();
 
         if ($booking && in_array($status, ['Available', 'Cleaning', 'Maintenance'], true)) {
+            // A guest who has the key leaves through Front Desk's check-out, so the room
+            // is inspected and the damage billed before the stay closes.
+            if (in_array($booking->status, ['Checked In', 'Pending Room Inspection'], true)) {
+                throw new \RuntimeException(
+                    ($booking->guest?->full_name ?? 'A guest') . ' is still in ' . $room->name
+                    . '. Front Desk checks them out after Housekeeping inspects the room.'
+                );
+            }
+
             // Nobody ever arrived: the booking was called off, not completed.
             if ($booking->arrivalStatus() === 'Booked') {
                 self::cancel($booking);

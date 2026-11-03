@@ -790,6 +790,19 @@
       box-shadow: 0 12px 28px rgba(94, 16, 36, .26);
     }
     .btn--submit:hover { transform: translateY(-1px); background: var(--gold-500); }
+    .btn--submit:disabled { cursor: wait; transform: none; opacity: .85; }
+    .btn__spinner { display: none; }
+    .btn--submit.is-loading .btn__spinner {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      border: 2.5px solid rgba(0, 0, 0, .2);
+      border-top-color: #000;
+      border-radius: 50%;
+      animation: btnSpin .7s linear infinite;
+    }
+    .btn--submit.is-loading .btn__icon { display: none; }
+    @keyframes btnSpin { to { transform: rotate(360deg); } }
 
     .form-error {
       margin-bottom: 16px;
@@ -822,11 +835,11 @@
       flex-wrap: wrap;
     }
     .footer__brand { display: flex; align-items: center; gap: 12px; }
-    .footer__brand img { height: 36px; width: auto; object-fit: contain; }
-    .footer__brand p { margin: 0; font-size: .68rem; font-weight: 700; color: var(--wine-800); }
-    .footer__brand span { display: block; margin-top: 2px; font-size: .64rem; font-weight: 500; color: var(--ink-muted); }
-    .footer__meta { margin: 0; font-size: .66rem; line-height: 1.7; color: var(--ink-muted); }
-    .footer__note { margin: 0; font-size: .66rem; font-weight: 700; color: var(--ink-soft); }
+    .footer__brand img { height: 52px; width: auto; object-fit: contain; }
+    .footer__brand p { margin: 0; font-size: 1rem; font-weight: 700; color: var(--wine-800); }
+    .footer__brand span { display: block; margin-top: 2px; font-size: .92rem; font-weight: 500; color: var(--ink-muted); }
+    .footer__meta { margin: 0; font-size: .95rem; line-height: 1.7; color: var(--ink-muted); }
+    .footer__note { margin: 0; font-size: .95rem; font-weight: 700; color: var(--ink-soft); }
 
     /* ---------- Responsive ------------------------------------------------ */
     /* 901-1200px had no hero rule: columns stayed 1fr 1fr while the title was
@@ -1098,7 +1111,7 @@
     </div>
 
     <div class="login-drawer__body">
-      <form method="POST" action="{{ route('login.submit') }}">
+      <form id="landingLoginForm" method="POST" action="{{ route('login.submit') }}">
         @csrf
 
         @if ($errors->any())
@@ -1136,9 +1149,12 @@
           <span>Keep me logged in</span>
         </label>
 
-        <button type="submit" class="btn btn--submit">
-          <span class="iconify" style="font-size:1.1rem" data-icon="mdi:login"></span>
-          Log In
+        {{-- CSS ring, not an Iconify icon: Iconify fetches icons over the
+             network, and a page that is already navigating may never paint it. --}}
+        <button type="submit" id="landingLoginBtn" class="btn btn--submit">
+          <span class="btn__spinner" aria-hidden="true"></span>
+          <span class="iconify btn__icon" style="font-size:1.1rem" data-icon="mdi:login"></span>
+          <span id="landingLoginBtnText">Log In</span>
         </button>
       </form>
 
@@ -1155,11 +1171,11 @@
         <img src="{{ asset('new_logo_in_chtm....png') }}" alt="College of Hospitality and Tourism Management logo" />
         <div>
           <p>College of Hospitality &amp; Tourism Management</p>
-          <span>SPC Hotel Simulation System</span>
+          <span>SPC Hotel Customization and Simulation System</span>
         </div>
       </div>
       <p class="footer__meta">
-        &copy; {{ date('Y') }} Southern de Oro Philippines College. All rights reserved.<br />
+        &copy; {{ date('Y') }} Southern de Oro Philippines College. All rights reserved. Capstone Project.<br />
         Developed by: Jun Alexes Orao and Xyron Sandigan
       </p>
       <p class="footer__note">For educational purposes only</p>
@@ -1181,6 +1197,13 @@
 
   <script>
     // ---------- Login slide panel ----------
+    // Sign-in can take a few seconds on a cold server; show it is working.
+    document.getElementById('landingLoginForm').addEventListener('submit', function () {
+      const btn = document.getElementById('landingLoginBtn');
+      btn.classList.add('is-loading');
+      btn.disabled = true;
+      document.getElementById('landingLoginBtnText').textContent = 'Logging in…';
+    });
     const loginOverlay = document.getElementById('loginOverlay');
     const loginDrawer = document.getElementById('loginDrawer');
 

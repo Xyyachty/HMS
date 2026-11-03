@@ -62,12 +62,24 @@
     @media (max-width: 767px) {
         .rp-stat-grid { grid-template-columns: minmax(0, 1fr); }
     }
-    /* Export Report prints every tab, one after another, with each team's
-       details written out, since paper has no tabs or pop-ups to open. */
+    /* Export Report prints the open tab only, with each team's details written
+       out on Team Reports, since paper has no pop-ups to open. */
     .rp-print-only { display: none; }
+
+    /* Noted by, printed only: a name over a signature line, one each for
+       faculty and dean. */
+    .rp-noted { display: none; }
+    .rp-noted-sign { display: flex; flex-direction: column; width: 16rem; max-width: 100%; }
+    .rp-noted-label { font-size: .75rem; font-weight: 700; color: #181818; margin-bottom: 2rem; }
+    .rp-noted-name {
+        min-height: 1.75rem; border-bottom: 1px solid #181818; padding: .25rem 0;
+        text-align: center; font-size: .875rem; font-weight: 800; color: #181818; text-transform: uppercase;
+    }
+    .rp-noted-role { text-align: center; font-size: .75rem; font-weight: 600; color: #181818; margin-top: .25rem; }
     @media print {
         .app-sidebar, .glass-header, .rp-tabs, .rp-no-print, #teamReportModal { display: none !important; }
-        .rp-panel { display: block !important; margin-top: 1.5rem; }
+        .rp-noted { display: flex; flex-wrap: wrap; gap: 2rem 4rem; margin-top: 3rem; break-inside: avoid; }
+        .rp-panel.active { margin-top: 1.5rem; }
         .rp-panel::before { content: attr(data-print-title); display: block; margin-bottom: .75rem; font-size: 1.125rem; font-weight: 800; color: #181818; }
         .rp-print-only { display: block; }
         /* The layout scrolls inside a screen-tall box; on paper that box cut
@@ -150,6 +162,12 @@
         <button type="button" class="rp-tab" data-report-tab="activity" onclick="switchReportTab('activity')">
             <span class="iconify text-base" data-icon="mdi:clipboard-text-clock-outline"></span> Activity Reports
         </button>
+        {{-- Only once the dean has ended a term. --}}
+        @if(!empty($termOptions))
+            <button type="button" class="rp-tab" data-report-tab="archived" onclick="switchReportTab('archived')">
+                <span class="iconify text-base" data-icon="mdi:archive-outline"></span> Archived Students
+            </button>
+        @endif
     </div>
 
     <div class="flex items-center gap-3">
@@ -175,6 +193,15 @@
     <span class="inline-flex items-center gap-1.5 text-[0.75rem] font-bold text-slate-500">
         <span class="iconify text-base" data-icon="mdi:filter-variant"></span> Filter by
     </span>
+    {{-- Ended terms only appear once the dean has archived a batch. --}}
+    @if(!empty($termOptions))
+        <select name="term" class="rp-filter {{ $filters['term'] ? 'is-set' : '' }}" onchange="this.form.submit()" aria-label="Filter by term">
+            <option value="">Current batch</option>
+            @foreach($termOptions as $value => $label)
+                <option value="{{ $value }}" @selected($filters['term'] === (int) $value)>{{ $label }} (archived)</option>
+            @endforeach
+        </select>
+    @endif
     <select name="team" class="rp-filter {{ $filters['team'] ? 'is-set' : '' }}" onchange="this.form.submit()" aria-label="Filter by team">
         <option value="">All Teams</option>
         @foreach($teamOptions as $value => $label)
@@ -615,6 +642,118 @@
             </table>
         </div>
     </div>
+</div>
+
+{{-- ═══════════════ ARCHIVED STUDENTS ═══════════════
+     Students End term archived: the term, and the block, team and faculty they
+     had then. The term filter above narrows it to one term. Only the dean can
+     Restore one into the current batch. --}}
+@if(!empty($termOptions))
+@php $rpCanRestore = auth()->user()?->role === 'dean'; @endphp
+<div id="report-panel-archived" class="rp-panel" data-print-title="Archived Students">
+    @if(session('success'))
+        <div class="mb-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 rp-no-print">{{ session('success') }}</div>
+    @endif
+    @if($errors->has('status'))
+        <div class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 rp-no-print">{{ $errors->first('status') }}</div>
+    @endif
+    <div class="rounded-2xl border border-slate-100 bg-white overflow-hidden">
+        <div class="px-5 pt-5 pb-3 flex items-start justify-between gap-3">
+            <div class="min-w-0">
+                <p class="text-[0.9375rem] font-bold text-slate-800">Archived Students</p>
+                <p class="text-[0.75rem] text-slate-400">Students from ended terms. They can no longer sign in.</p>
+            </div>
+            <span class="text-[0.75rem] font-bold text-brand shrink-0">{{ $archivedStudents->count() }} students</span>
+        </div>
+        <div class="overflow-x-auto rp-scroll">
+            <table class="rp-table w-full text-left">
+                <thead>
+                    <tr class="border-b border-slate-100 bg-slate-50/60">
+                        <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500 w-10">#</th>
+                        <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500">Student Name</th>
+                        <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500">ID Number</th>
+                        <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500">Term</th>
+                        <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500">Block</th>
+                        <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500">Team</th>
+                        @if($showFaculty)
+                            <th class="px-4 py-2.5 text-[0.75rem] font-bold text-slate-500">Faculty</th>
+                        @endif
+                        @if($rpCanRestore)
+                            <th class="rp-no-print px-4 py-2.5 text-[0.75rem] font-bold text-slate-500 text-center">Action</th>
+                        @endif
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($archivedStudents as $row)
+                        <tr class="border-b border-slate-100">
+                            <td class="px-4 py-3 text-[0.8125rem] font-semibold text-slate-400">{{ $loop->iteration }}</td>
+                            <td class="px-4 py-3">
+                                <div class="flex items-center gap-2.5 min-w-0">
+                                    @include('partials.user-avatar', [
+                                        'user'         => $row['user'],
+                                        'name'         => $row['name'],
+                                        'size'         => 'w-8 h-8',
+                                        'rounded'      => 'rounded-full',
+                                        'extraClasses' => 'bg-brand-soft text-brand text-[0.6875rem] font-bold',
+                                    ])
+                                    <span class="text-[0.8125rem] font-semibold text-slate-700 leading-snug">{{ $row['name'] }}</span>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3 text-[0.8125rem] text-slate-500">{{ $row['student_number'] }}</td>
+                            <td class="px-4 py-3 text-[0.8125rem] text-slate-500">{{ $row['term'] }}</td>
+                            <td class="px-4 py-3 text-[0.8125rem] text-slate-500 whitespace-nowrap">{{ $row['block'] }}</td>
+                            <td class="px-4 py-3 text-[0.8125rem] text-slate-500">{{ $row['team'] }}</td>
+                            @if($showFaculty)
+                                <td class="px-4 py-3 text-[0.8125rem] text-slate-500">{{ $row['faculty'] }}</td>
+                            @endif
+                            @if($rpCanRestore)
+                                <td class="rp-no-print px-4 py-3 text-center">
+                                    @if($row['user_id'])
+                                        <form method="POST" action="{{ route('dean.users.restore', $row['user_id']) }}"
+                                              data-name="{{ $row['name'] }}"
+                                              onsubmit="return confirm('Restore ' + this.dataset.name + ' to the current batch? They can sign in again and get a seat in the open block of their faculty.')">
+                                            @csrf
+                                            <button type="submit" class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-brand bg-brand-soft hover:bg-brand/10 transition">
+                                                <span class="iconify text-sm" data-icon="mdi:backup-restore"></span>
+                                                Restore
+                                            </button>
+                                        </form>
+                                    @endif
+                                </td>
+                            @endif
+                        </tr>
+                    @empty
+                        <tr><td colspan="8" class="px-4 py-10 text-center text-[0.8125rem] text-slate-400 font-semibold">No archived students.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+@endif
+
+{{-- ═══════════════ NOTED BY ═══════════════
+     Signature lines at the foot of the exported report, never on screen: the
+     faculty signed in (or, for the dean, the filtered team's faculty; blank
+     over all teams) and the dean. --}}
+@php
+    $rpSignName = fn ($user) => $user ? (trim($user->first_name . ' ' . $user->last_name) ?: (string) $user->name) : '';
+    $rpNotedFaculty = '';
+    if (!$showFaculty) {
+        $rpNotedFaculty = $rpSignName(auth()->user());
+    } elseif ($filters['team']) {
+        $rpNotedFaculty = $rpSignName(\App\Models\Faculty::with('user')->find((int) explode('|', $filters['team'])[0])?->user);
+    }
+    $rpNotedDean = $rpSignName(\App\Models\User::where('role', 'dean')->orderBy('user_id')->first());
+@endphp
+<div class="rp-noted mt-8">
+    @foreach([['Faculty', $rpNotedFaculty], ['Dean', $rpNotedDean]] as [$rpSignRole, $rpSignValue])
+        <div class="rp-noted-sign">
+            <span class="rp-noted-label">Noted by:</span>
+            <span class="rp-noted-name">{{ $rpSignValue }}</span>
+            <span class="rp-noted-role">{{ $rpSignRole }}</span>
+        </div>
+    @endforeach
 </div>
 
 <!-- Team Report Modal -->

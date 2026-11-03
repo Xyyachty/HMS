@@ -25,6 +25,18 @@
     $tint = fn($role, $key) => $roleTints[$role][$key] ?? ($key === 'text' ? 'text-slate-400' : 'bg-slate-100');
 @endphp
 
+{{-- The term's end date is near or past: End term lives on Teams Overview. --}}
+@if ($currentTerm?->isDueToEnd())
+    <a href="{{ route('dean.faculties') }}#termCard"
+        class="mb-4 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 hover:bg-amber-100 transition">
+        <span class="iconify text-base shrink-0" data-icon="mdi:calendar-alert"></span>
+        <span>
+            {{ $currentTerm->name }} {{ $currentTerm->ends_on->isPast() ? 'ended on' : 'ends on' }} {{ $currentTerm->ends_on->format('M j, Y') }}.
+            When grades are in, end the term to archive this batch.
+        </span>
+    </a>
+@endif
+
 {{-- ink-all, like the faculty dashboard: row icons take the black text
      colour instead of the gold tint, so the two dashboards' icons match. --}}
 <div class="ink-all">

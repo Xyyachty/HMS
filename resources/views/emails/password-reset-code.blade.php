@@ -18,9 +18,8 @@
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px; background-color:#ffffff; border-radius:14px; overflow:hidden; border:1px solid #fecdd3;">
 
                     <tr>
-                        <td bgcolor="#e11d48" style="background-color:#e11d48; background-image:linear-gradient(135deg, #f43f5e 0%, #db2777 100%); padding:26px 28px;">
-                            <p style="margin:0; font-size:22px; font-weight:bold; color:#ffffff; letter-spacing:1px;">HMS</p>
-                            <p style="margin:5px 0 0; font-size:13px; color:#ffe4e6;">Hotel Management Simulation</p>
+                        <td bgcolor="#e11d48" style="background-color:#e11d48; background-image:linear-gradient(135deg, #f43f5e 0%, #db2777 100%); padding:22px 28px;">
+                            @include('emails.partials.brand-header')
                         </td>
                     </tr>
 

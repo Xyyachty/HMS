@@ -43,12 +43,18 @@ class HotelBookingAddon extends Model
         return $this->belongsTo(HotelAddon::class, 'hotel_addon_id', 'hotel_addon_id');
     }
 
-    public function lineTotal(): int
+    /** An extra bed is charged per night of the stay; anything else once per stay. */
+    public function isPerNight(): bool
     {
-        return (int) $this->unit_price * (int) $this->qty;
+        return HotelAddon::namesExtraBed($this->name);
     }
 
-    public function toTemplateArray(): array
+    public function lineTotal(int $nights = 1): int
+    {
+        return (int) $this->unit_price * (int) $this->qty * ($this->isPerNight() ? max(1, $nights) : 1);
+    }
+
+    public function toTemplateArray(int $nights = 1): array
     {
         return [
             'id'        => $this->hotel_booking_addon_id,
@@ -56,7 +62,9 @@ class HotelBookingAddon extends Model
             'name'      => $this->name,
             'qty'       => (int) $this->qty,
             'unitPrice' => (int) $this->unit_price,
-            'line'      => $this->lineTotal(),
+            'perNight'  => $this->isPerNight(),
+            'nights'    => $this->isPerNight() ? max(1, $nights) : 1,
+            'line'      => $this->lineTotal($nights),
         ];
     }
 }

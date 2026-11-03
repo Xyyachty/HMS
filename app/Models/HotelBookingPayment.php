@@ -27,6 +27,9 @@ class HotelBookingPayment extends Model
         'faculty_id',
         'group_id',
         'hotel_booking_id',
+        // Shared by the rows one payment was split into — a party paying for three rooms
+        // at once is one transaction, recorded against each room it covered.
+        'transaction_ref',
         'type',
         'amount_paid',
         'total_due',
@@ -60,6 +63,7 @@ class HotelBookingPayment extends Model
     {
         return [
             'id'         => $this->hotel_booking_payment_id,
+            'transactionRef' => $this->transaction_ref ?? '',
             'type'       => $this->type,
             'amountPaid' => (float) $this->amount_paid,
             'totalDue'   => (float) $this->total_due,

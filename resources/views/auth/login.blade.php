@@ -191,10 +191,37 @@
     .spinner {
       animation: spin 0.7s linear infinite;
     }
+
+    /* Covers the page from submit until the dashboard replaces it */
+    .login-loading {
+      position: fixed;
+      inset: 0;
+      z-index: 300;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      background: rgba(255, 255, 255, 0.88);
+    }
+    body.is-logging-in .login-loading { display: flex; }
+    .login-loading-ring {
+      width: 52px;
+      height: 52px;
+      border: 4px solid #FCE7F3;
+      border-top-color: #DB2777;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
   </style>
 @include('partials.no-horizontal-scroll')
 </head>
 <body class="bg-white">
+
+  <div class="login-loading" role="status" aria-live="polite">
+    <div class="login-loading-ring"></div>
+    <p class="text-sm font-semibold text-slate-600">Logging you in, please wait…</p>
+  </div>
 
   <div class="auth-shell">
   <!-- ==================== TOAST ==================== -->
@@ -410,6 +437,23 @@
         toast.classList.add('toast-out');
         setTimeout(() => toast.remove(), 300);
       }, 4000);
+    }
+
+    // Fires only after the browser's required/email checks pass.
+    document.getElementById('loginForm').addEventListener('submit', function () {
+      setLoggingIn(true);
+    });
+
+    // Back button can restore this page from cache with the overlay still up.
+    window.addEventListener('pageshow', function (e) {
+      if (e.persisted) setLoggingIn(false);
+    });
+
+    function setLoggingIn(on) {
+      document.body.classList.toggle('is-logging-in', on);
+      document.getElementById('loginBtn').disabled = on;
+      document.getElementById('loginBtnText').textContent = on ? 'Logging in…' : 'Log In';
+      document.getElementById('loginSpinner').classList.toggle('hidden', !on);
     }
 
     function handleForgot(e) {

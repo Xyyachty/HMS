@@ -45,8 +45,14 @@ class HotelAddon extends Model
      */
     public function isExtraBed(): bool
     {
-        return (bool) preg_match('/\b(beds?|cots?|cribs?)\b/i', (string) $this->name)
-            && !preg_match('/sheet|linen|cover|spread/i', (string) $this->name);
+        return self::namesExtraBed($this->name);
+    }
+
+    /** The rule behind isExtraBed(), for a name already copied onto a stay's add-on line. */
+    public static function namesExtraBed(?string $name): bool
+    {
+        return (bool) preg_match('/\b(beds?|cots?|cribs?)\b/i', (string) $name)
+            && !preg_match('/sheet|linen|cover|spread/i', (string) $name);
     }
 
     /**

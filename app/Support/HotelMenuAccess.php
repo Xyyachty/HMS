@@ -244,7 +244,7 @@ class HotelMenuAccess
             ['name' => 'Lamb Tagine', 'category' => 'Main Dishes', 'price' => 3300, 'description' => 'apricots, almonds, warm Moroccan spice', 'image' => 'https://www.themealdb.com/images/media/meals/yuwtuu1511295751.jpg'],
             ['name' => 'Lancashire Hotpot', 'category' => 'Main Dishes', 'price' => 2400, 'description' => 'lamb shoulder, sliced potato crust', 'image' => 'https://www.themealdb.com/images/media/meals/uttrxw1511637813.jpg'],
             ['name' => 'Baked Salmon & Fennel', 'category' => 'Main Dishes', 'price' => 3100, 'description' => 'roast fennel, blistered tomatoes, dill', 'image' => 'https://www.themealdb.com/images/media/meals/1548772327.jpg'],
-            ['name' => 'Cayman-Style Lobster', 'category' => 'Main Dishes', 'price' => 4600, 'description' => 'butter-poached tail, island pepper sauce', 'image' => 'https://www.themealdb.com/images/media/meals/wkhwqr1782774765.jpg'],
+            ['name' => 'Cayman-Style Lobster', 'category' => 'Main Dishes', 'price' => 4600, 'description' => 'butter-poached tail, island pepper sauce', 'image' => 'https://images.unsplash.com/photo-1590759668628-05b0fc34bb70?auto=format&fit=crop&w=800&h=600&q=80'],
             ['name' => 'Chicken Alfredo Primavera', 'category' => 'Main Dishes', 'price' => 2200, 'description' => 'parmesan cream, spring vegetables', 'image' => 'https://www.themealdb.com/images/media/meals/syqypv1486981727.jpg'],
             ['name' => 'Chicken Basquaise', 'category' => 'Main Dishes', 'price' => 2300, 'description' => 'peppers, chorizo, basque tomato stew', 'image' => 'https://www.themealdb.com/images/media/meals/wruvqv1511880994.jpg'],
 
@@ -281,7 +281,7 @@ class HotelMenuAccess
             ['name' => 'Bread & Butter Pudding', 'category' => 'Desserts', 'price' => 760, 'description' => 'vanilla custard, sultanas, nutmeg', 'image' => 'https://www.themealdb.com/images/media/meals/xqwwpy1483908697.jpg'],
             ['name' => 'Apple Frangipane Tart', 'category' => 'Desserts', 'price' => 840, 'description' => 'almond cream, thin-sliced apple', 'image' => 'https://www.themealdb.com/images/media/meals/wxywrq1468235067.jpg'],
             ['name' => 'Chocolate Avocado Mousse', 'category' => 'Desserts', 'price' => 700, 'description' => 'dark chocolate, sea salt, olive oil', 'image' => 'https://www.themealdb.com/images/media/meals/uttuxy1511382180.jpg'],
-            ['name' => 'Honey Yoghurt Cheesecake', 'category' => 'Desserts', 'price' => 900, 'description' => 'wildflower honey, pistachio', 'image' => 'https://www.themealdb.com/images/media/meals/y2irzl1585563479.jpg'],
+            ['name' => 'Honey Yoghurt Cheesecake', 'category' => 'Desserts', 'price' => 900, 'description' => 'wildflower honey, pistachio', 'image' => 'https://images.unsplash.com/photo-1524351199678-941a58a3df50?auto=format&fit=crop&w=800&h=600&q=80'],
             ['name' => 'Carrot Cake', 'category' => 'Desserts', 'price' => 680, 'description' => 'cream cheese frosting, toasted walnut', 'image' => 'https://www.themealdb.com/images/media/meals/vrspxv1511722107.jpg'],
 
             // Beverages

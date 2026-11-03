@@ -1140,7 +1140,8 @@ class FacultyController extends Controller
                 $errors[] = 'invalid email format';
             }
 
-            if ($studentId !== '' && Student::where('student_number', $studentId)->exists()) {
+            // Archived students too: the number is still theirs, and the dean restores them.
+            if ($studentId !== '' && Student::withoutGlobalScope(Student::CURRENT_SCOPE)->where('student_number', $studentId)->exists()) {
                 $errors[] = "student_id '{$studentId}' already exists";
             }
 
@@ -3048,7 +3049,7 @@ class FacultyController extends Controller
 
         ActivityLog::recordFor(ActivityLog::REPORT_GENERATED, 'Generated the faculty performance report.');
 
-        return view('faculty.reports', \App\Support\ReportDesk::build((int) $facultyId, $request->only(['team', 'task', 'role'])));
+        return view('faculty.reports', \App\Support\ReportDesk::build((int) $facultyId, $request->only(['team', 'task', 'role', 'term'])));
     }
 
     public function activityLogs(Request $request)

@@ -19,17 +19,23 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class HotelRoomInspection extends Model
 {
-    /** Where the room is in the post-checkout pass. */
+    /**
+     * Where the room is in the pass. Front Desk starting a check-out opens it while the
+     * guest is still in the hotel (checked_out_at null); the first three statuses are
+     * that inspection, before the bill is finished.
+     */
     public const STATUSES = [
-        'Pending',                // room just came free; nobody has looked at it
+        'Pending',                // nobody has looked at the room yet
         'Inspecting',             // a housekeeper opened it
+        'Reported',               // report sent to Front Desk; the guest is settling the bill
+        'Ready to Clean',         // the guest left after the inspection; clean, then mark ready
         'Awaiting Repair',        // an issue was handed to Maintenance
         'Awaiting Re-inspection', // Maintenance closed every issue; final pass due
         'Completed',              // room is sellable again
     ];
 
     /** Everything short of Completed still needs Housekeeping's attention. */
-    public const OPEN_STATUSES = ['Pending', 'Inspecting', 'Awaiting Repair', 'Awaiting Re-inspection'];
+    public const OPEN_STATUSES = ['Pending', 'Inspecting', 'Reported', 'Ready to Clean', 'Awaiting Repair', 'Awaiting Re-inspection'];
 
     /**
      * What the inspector found, and the complaint category each one suggests. Null
@@ -62,12 +68,14 @@ class HotelRoomInspection extends Model
         'completed_by',
         'inspected_at',
         'completed_at',
+        'reported_at',
     ];
 
     protected $casts = [
         'checked_out_at' => 'datetime',
         'inspected_at'   => 'datetime',
         'completed_at'   => 'datetime',
+        'reported_at'    => 'datetime',
     ];
 
     public function room(): BelongsTo
@@ -85,6 +93,19 @@ class HotelRoomInspection extends Model
     {
         return $this->hasMany(HotelComplaint::class, 'hotel_room_inspection_id', 'hotel_room_inspection_id')
             ->orderBy('hotel_complaint_id');
+    }
+
+    /** Broken or missing items reported before check-out, for Front Desk to review. */
+    public function damages(): HasMany
+    {
+        return $this->hasMany(HotelInspectionDamage::class, 'hotel_room_inspection_id', 'hotel_room_inspection_id')
+            ->orderBy('hotel_inspection_damage_id');
+    }
+
+    /** The guest has not checked out yet: this is the inspection before the final bill. */
+    public function isBeforeCheckout(): bool
+    {
+        return $this->checked_out_at === null;
     }
 
     public function scopeOpen(Builder $query): Builder
@@ -147,6 +168,9 @@ class HotelRoomInspection extends Model
             'completedBy'    => $this->completed_by ?? '',
             'inspectedAt'    => optional($this->inspected_at)->toIso8601String(),
             'completedAt'    => optional($this->completed_at)->toIso8601String(),
+            'reportedAt'     => optional($this->reported_at)->toIso8601String(),
+            'beforeCheckout' => $this->isBeforeCheckout(),
+            'damages'        => $this->damages->map->toTemplateArray()->values()->all(),
             'issues'         => $issues->map(fn (HotelComplaint $c) => $c->toTemplateArray())->values()->all(),
             'openIssueCount' => $issues->whereNotIn('status', ['Resolved', 'Closed', 'Cancelled'])->count(),
         ];
