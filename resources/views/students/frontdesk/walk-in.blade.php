@@ -698,6 +698,8 @@ function RoomWalkIn() {
      their own child charge (HotelBooking::discountShare). The first problem found is
      what the desk sees under that person. */
   const claiming = claimAny === 'Yes';
+  // Latest birth date that is 60 on check-in: the date picker stops there.
+  const seniorBornBy = (Number(checkIn.slice(0, 4)) - SENIOR_AGE) + checkIn.slice(4);
   const placedClaims = (claiming ? claims : []).map((c, n) => {
     const isChild = c.slot.indexOf('child:') === 0;
     const kid = isChild ? Number(c.slot.slice(6)) : -1;
@@ -1200,8 +1202,9 @@ function RoomWalkIn() {
                       </Field>
                       {c.type === 'Senior Citizen' && (
                         <Field id={'wi-c-dob-' + c.key} label="Date of birth" bad={show('birthDate')}
-                          help={c.age !== null && !c.bad.birthDate ? 'Age ' + c.age + ' on check-in' : ''}>
-                          <input id={'wi-c-dob-' + c.key} type="date" max={checkIn} className={'wi-input' + (show('birthDate') ? ' is-bad' : '')}
+                          help={c.age !== null && !c.bad.birthDate ? 'Age ' + c.age + ' on check-in'
+                            : 'Born on or before ' + new Date(seniorBornBy + 'T00:00').toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' }) + ' (age ' + SENIOR_AGE + '+).'}>
+                          <input id={'wi-c-dob-' + c.key} type="date" min="1900-01-01" max={seniorBornBy} className={'wi-input' + (show('birthDate') ? ' is-bad' : '')}
                             value={c.birthDate} onChange={e => set({ birthDate: e.target.value })} />
                         </Field>
                       )}
