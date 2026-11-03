@@ -179,7 +179,7 @@
 
   .vg-actions {
     display: grid; grid-template-columns: 7.2rem 7.2rem 4.8rem; gap: 0.4rem;
-    justify-content: end; align-items: center;
+    justify-content: center; align-items: center;
   }
   .vg-btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; white-space: nowrap; cursor: pointer;
@@ -1838,7 +1838,7 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
                     <th>Stay</th>
                     <th>Time left</th>
                     <th>Status</th>
-                    <th style={{ textAlign: 'right' }}>Actions</th>
+                    <th style={{ textAlign: 'center' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
