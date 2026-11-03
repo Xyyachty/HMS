@@ -1326,7 +1326,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
         // them. Also a no-op once written; teams from before renaming get theirs here.
         \App\Support\HotelRoomDefaults::ensureCategoriesFor($membership);
 
-        $rooms = HotelRoom::with(['activeBooking.guest', 'activeBooking.payments', 'activeBooking.foodOrders', 'activeBooking.charges', 'activeBooking.addons', 'openBookings'])
+        $rooms = HotelRoom::with(['activeBooking.guest', 'activeBooking.payments', 'activeBooking.foodOrders', 'activeBooking.charges', 'activeBooking.addons', 'openBookings.guest', 'openBookings.payments', 'openBookings.foodOrders', 'openBookings.charges', 'openBookings.addons'])
             ->where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
             ->orderBy('hotel_room_id')
@@ -1452,7 +1452,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             return response()->json(['message' => 'That name is already taken, or that category is not one of yours.'], 422);
         }
 
-        $rooms = HotelRoom::with(['activeBooking.guest', 'activeBooking.payments', 'activeBooking.foodOrders', 'activeBooking.charges', 'activeBooking.addons', 'openBookings'])
+        $rooms = HotelRoom::with(['activeBooking.guest', 'activeBooking.payments', 'activeBooking.foodOrders', 'activeBooking.charges', 'activeBooking.addons', 'openBookings.guest', 'openBookings.payments', 'openBookings.foodOrders', 'openBookings.charges', 'openBookings.addons'])
             ->where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
             ->orderBy('hotel_room_id')

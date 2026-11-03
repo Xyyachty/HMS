@@ -172,6 +172,9 @@ class HotelRoom extends Model
             // places that only ever draw one.
             'imgs'         => $this->imageUrls(),
             'reservation'  => $booking?->toReservationArray(),
+            // Every open stay on the room, earliest first. Guest Information lists each
+            // as its own booking; `reservation` above stays the one the desk is on today.
+            'reservations' => $openBookings->map->toReservationArray()->values()->all(),
             'bookedRanges' => $openBookings
                 ->filter(fn (HotelBooking $b) => $b->check_in && $b->check_out)
                 ->map(fn (HotelBooking $b) => [
