@@ -157,6 +157,16 @@ Route::prefix('hotel')->name('public.hotel')->group(function () {
     Route::post('/{slug}/api/table-reservations', [PublicSiteController::class, 'reserveTable'])
         ->middleware('throttle:10,1')
         ->name('.table-reservations');
+    // The guest's own table reservation and the menu, behind the private link the
+    // reservation returned. View-only; see PublicSiteController::reservation().
+    Route::get('/{slug}/reservation/{token}', [PublicSiteController::class, 'reservation'])
+        ->middleware('throttle:60,1')
+        ->where('token', '[A-Za-z0-9]{1,100}')
+        ->name('.reservation');
+    Route::get('/{slug}/api/reservation/{token}', [PublicSiteController::class, 'reservationData'])
+        ->middleware('throttle:60,1')
+        ->where('token', '[A-Za-z0-9]{1,100}')
+        ->name('.reservation.data');
 
     // Food, ordered by the guest reading the menu. Same reason as the two above:
     // the staff endpoint sits behind the students login a visitor does not have.
@@ -4580,6 +4590,8 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             // A walk-in: they are here now, so the table goes straight to Occupied
             // instead of being held as Reserved until they "arrive".
             'seat_now'    => 'sometimes|boolean',
+            // Front Desk moving a reservation that has not been seated to another table.
+            'move_to'     => 'sometimes|integer',
         ]);
 
         /* A guest signed into the hotel's website reserves a table for themselves.
@@ -4596,14 +4608,39 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
                 return response()->json(['message' => 'Choose a date, a time and how many are coming.'], 422);
             }
             try {
-                $table = \App\Support\HotelTableDesk::reserveForGuest(
+                [$table, $reservation, $token] = \App\Support\HotelTableDesk::reserveForGuest(
                     $table, $guestAuth, (int) $data['party_size'], (string) $data['reserved_for']
                 );
             } catch (\RuntimeException $e) {
                 return response()->json(['message' => $e->getMessage()], $e->getCode() === 409 ? 409 : 422);
             }
 
-            return response()->json(['table' => $table->toTemplateArray()]);
+            return response()->json([
+                'table'       => $table->toTemplateArray(),
+                'reservation' => \App\Http\Controllers\PublicSiteController::guestReservationLink(
+                    $reservation, $token, \App\Models\Group::slugForTeam($membership->group_name, (int) $membership->faculty_id), $table
+                ),
+            ]);
+        }
+
+        if ($request->has('move_to')) {
+            if (!$assigns) {
+                return response()->json(['message' => 'Only Front Desk staff can move a reservation.'], 403);
+            }
+            $target = HotelDineInTable::where('hotel_dine_in_table_id', $data['move_to'])
+                ->where('group_name', $membership->group_name)
+                ->where('faculty_id', $membership->faculty_id)
+                ->first();
+            if (!$target) {
+                return response()->json(['message' => 'That table was not found.'], 404);
+            }
+            try {
+                $target = \App\Support\HotelTableDesk::move($table, $target, auth()->user());
+            } catch (\RuntimeException $e) {
+                return response()->json(['message' => $e->getMessage()], $e->getCode() === 409 ? 409 : 422);
+            }
+
+            return response()->json(['table' => $target->toTemplateArray(), 'from' => $table->fresh()->toTemplateArray()]);
         }
 
         $closedNow = false;
@@ -4622,6 +4659,10 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
                     'message' => 'This table still has an order in the kitchen — mark it Ready or Cancelled first.',
                 ], 422);
             }
+
+            // Closing a table nobody was seated at cancels the reservation; closing one
+            // somebody ate at ends the visit.
+            \App\Support\HotelTableDesk::endReservation($table, $table->status === 'Reserved' ? 'Cancelled' : 'Completed');
 
             $table->status = 'Available';
             $table->guest_name = null;
@@ -4789,6 +4830,8 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
                 'collected_by'           => auth()->user()?->name,
                 'paid_at'                => now(),
             ]);
+
+            \App\Support\HotelTableDesk::endReservation($table, 'Completed');
 
             $table->status = 'Available';
             $table->guest_name = null;

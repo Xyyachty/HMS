@@ -3145,6 +3145,8 @@ function TableReserveModal({ open, onClose, guest, onToast }) {
   const [tableId, setTableId] = useState(null);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  // The reservation just made, with the guest's private link to follow it.
+  const [done, setDone] = useState(null);
 
   const loadTables = useCallback(() => {
     fetch(hmsApi('tables', '/students/hotel/tables'), { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
@@ -3155,7 +3157,7 @@ function TableReserveModal({ open, onClose, guest, onToast }) {
 
   useEffect(() => {
     if (!open) return;
-    setDate(today); setTime('19:00'); setParty('2'); setTableId(null); setError(''); setTables(null);
+    setDate(today); setTime('19:00'); setParty('2'); setTableId(null); setError(''); setTables(null); setDone(null);
     loadTables();
     // Tables Restaurant Management adds, removes or resizes, and ones another guest
     // takes, show up while the dialog is open, not only the next time it opens.
@@ -3194,7 +3196,8 @@ function TableReserveModal({ open, onClose, guest, onToast }) {
       body: JSON.stringify({ table_id: picked.id, party_size: partySize, reserved_for: date + ' ' + time + ':00', as_guest: true }),
     })
       .then(r => r.json().catch(() => ({})).then(data => (r.ok ? data : Promise.reject(Object.assign({ status: r.status }, data)))))
-      .then(() => {
+      .then((data) => {
+        if (data && data.reservation && data.reservation.link) { setDone(data.reservation); return; }
         const when = new Date(date + 'T' + time).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
         if (onToast) onToast(`${picked.name} is reserved for you on ${when}. Give your name at the restaurant.`);
         onClose();
@@ -3214,7 +3217,7 @@ function TableReserveModal({ open, onClose, guest, onToast }) {
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1.1rem' }}>
             <div>
               <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Restaurant</p>
-              <h2 className="font-display" style={{ fontSize: '1.55rem', margin: 0 }}>Reserve a Table</h2>
+              <h2 className="font-display" style={{ fontSize: '1.55rem', margin: 0 }}>{done ? 'Reservation Confirmed' : 'Reserve a Table'}</h2>
             </div>
             <button type="button" onClick={onClose} aria-label="Close"
               style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)', cursor: 'pointer', flexShrink: 0 }}>
@@ -3222,6 +3225,33 @@ function TableReserveModal({ open, onClose, guest, onToast }) {
             </button>
           </div>
 
+          {done ? (
+            <div>
+              <dl style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.85rem 1rem', margin: 0 }}>
+                {[
+                  ['Reference', done.reference],
+                  ['Reserved table', done.tableName],
+                  ['Date', new Date(done.reservedFor).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'long', day: 'numeric', year: 'numeric' })],
+                  ['Time', new Date(done.reservedFor).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit' })],
+                  ['Guests', done.partySize + (done.partySize === 1 ? ' person' : ' persons')],
+                  ['Status', done.status],
+                ].map(([label, value]) => (
+                  <div key={label}>
+                    <dt style={fieldLabel}>{label}</dt>
+                    <dd style={{ margin: 0, fontWeight: 600, fontSize: '0.92rem' }}>{value}</dd>
+                  </div>
+                ))}
+              </dl>
+              <p style={{ margin: '1.1rem 0 0', color: 'var(--fg-muted)', fontSize: '0.78rem', lineHeight: 1.5 }}>
+                Your reservation page shows your table, its live status and the restaurant menu.
+                Bookmark it: the link is private to you.
+              </p>
+              <a href={done.link} target="_blank" rel="noopener noreferrer" className="btn-primary"
+                style={{ width: '100%', justifyContent: 'center', marginTop: '1.1rem', textDecoration: 'none' }}>
+                View My Reservation <i className="fa-solid fa-arrow-up-right-from-square" style={{ fontSize: '0.7rem' }}></i>
+              </a>
+            </div>
+          ) : (
           <form onSubmit={submit}>
             <div style={{ display: 'grid', gap: '0.85rem' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
@@ -3279,6 +3309,7 @@ function TableReserveModal({ open, onClose, guest, onToast }) {
               {saving ? 'Reserving…' : (picked ? 'Reserve ' + picked.name : 'Reserve a Table')} <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
             </button>
           </form>
+          )}
         </div>
       </div>
     </div>

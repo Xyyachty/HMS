@@ -5,11 +5,13 @@ namespace App\Support;
 use App\Models\ActivityLog;
 use App\Models\Group;
 use App\Models\HotelCustomer;
+use App\Models\HotelDineInReservation;
 use App\Models\HotelDineInTable;
 use App\Models\StudentGroup;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
@@ -197,6 +199,7 @@ class HotelTableDesk
                 if (!$freed) {
                     return;
                 }
+                self::endReservation($table, 'No-Show');
 
                 DB::table('hotel_dine_in_no_shows')->insert([
                     'group_name'             => $table->group_name,
@@ -244,18 +247,112 @@ class HotelTableDesk
      * comes off their account, never off the request, and they can only book ahead:
      * a table for a time already gone is refused, and nobody is seated from home.
      *
+     * Also writes the guest's own record and private link. The token is returned
+     * once, here, and only its hash is kept.
+     *
      * $auth is HotelSimulationAuth::current() for a customer.
+     *
+     * @return array{0: HotelDineInTable, 1: ?HotelDineInReservation, 2: ?string}
      */
-    public static function reserveForGuest(HotelDineInTable $table, array $auth, int $partySize, string $reservedFor): HotelDineInTable
+    public static function reserveForGuest(HotelDineInTable $table, array $auth, int $partySize, string $reservedFor): array
     {
         $name = trim((string) ($auth['name'] ?? '')) ?: 'Guest';
+        $customer = HotelCustomer::find($auth['customer_id'] ?? null);
 
-        return self::reserve($table, [
-            'guest_name'   => $name,
-            'contact_no'   => HotelCustomer::find($auth['customer_id'] ?? null)?->contact_number,
-            'party_size'   => $partySize,
-            // reserve() refuses a time already gone.
-            'reserved_for' => $reservedFor,
-        ], null, 'Online · ' . $name);
+        return DB::transaction(function () use ($table, $name, $customer, $partySize, $reservedFor) {
+            $table = self::reserve($table, [
+                'guest_name'   => $name,
+                'contact_no'   => $customer?->contact_number,
+                'party_size'   => $partySize,
+                // reserve() refuses a time already gone.
+                'reserved_for' => $reservedFor,
+            ], null, 'Online · ' . $name);
+
+            if (!HotelDineInReservation::supported()) {
+                return [$table, null, null];
+            }
+
+            $token = Str::random(48);
+            $reservation = HotelDineInReservation::create([
+                'group_name'             => $table->group_name,
+                'faculty_id'             => $table->faculty_id,
+                'group_id'               => $table->group_id,
+                'hotel_dine_in_table_id' => $table->hotel_dine_in_table_id,
+                'table_name'             => $table->name,
+                'hotel_customer_id'      => $customer?->getKey(),
+                'guest_name'             => $table->guest_name,
+                'party_size'             => $table->party_size,
+                'reserved_for'           => $table->reserved_for,
+                'token_hash'             => HotelDineInReservation::hashToken($token),
+            ]);
+
+            return [$table, $reservation, $token];
+        });
+    }
+
+    /**
+     * Records how a guest's reservation ended, just before (or as) its table is
+     * freed: Completed, Cancelled or No-Show. A table reserved at the desk has no
+     * guest record, so there is nothing to write for it.
+     */
+    public static function endReservation(HotelDineInTable $table, string $outcome): void
+    {
+        if (!HotelDineInReservation::supported()) {
+            return;
+        }
+
+        HotelDineInReservation::where('hotel_dine_in_table_id', $table->hotel_dine_in_table_id)
+            ->whereNull('outcome')
+            ->update(['outcome' => $outcome, 'ended_at' => now(), 'updated_at' => now()]);
+    }
+
+    /**
+     * Moves a reservation that has not been seated yet to another free table, with
+     * the guest's record following it. Front Desk only; a seated table has orders
+     * and a bill on it, so it stays where it is.
+     */
+    public static function move(HotelDineInTable $from, HotelDineInTable $to, ?User $actor): HotelDineInTable
+    {
+        if ($from->status !== 'Reserved') {
+            throw new RuntimeException('Only a reservation that has not been seated yet can be moved.', 422);
+        }
+        if ($to->is($from)) {
+            throw new RuntimeException('Pick a different table.', 422);
+        }
+        if ($to->status !== 'Available') {
+            throw new RuntimeException($to->name . ' is not free.', 409);
+        }
+        if ((int) $from->party_size > (int) $to->capacity) {
+            throw new RuntimeException("{$to->name} seats {$to->capacity} — the party of {$from->party_size} will not fit.", 422);
+        }
+
+        $fields = ['guest_name', 'contact_no', 'party_size', 'reserved_for', 'assigned_by', 'assigned_at'];
+
+        return DB::transaction(function () use ($from, $to, $fields, $actor) {
+            // Same guard as reserve(): written only if each table is still what it was.
+            $taken = HotelDineInTable::whereKey($to->getKey())->where('status', 'Available')
+                ->update(['status' => 'Reserved', 'updated_at' => now()]
+                    + collect($fields)->mapWithKeys(fn ($f) => [$f => $from->getRawOriginal($f)])->all());
+            $freed = HotelDineInTable::whereKey($from->getKey())->where('status', 'Reserved')
+                ->update(['status' => 'Available', 'updated_at' => now()]
+                    + array_fill_keys($fields, null));
+            if (!$taken || !$freed) {
+                throw new RuntimeException('One of these tables just changed at another desk. Refresh and try again.', 409);
+            }
+
+            if (HotelDineInReservation::supported()) {
+                HotelDineInReservation::where('hotel_dine_in_table_id', $from->getKey())
+                    ->whereNull('outcome')
+                    ->update(['hotel_dine_in_table_id' => $to->getKey(), 'table_name' => $to->name, 'updated_at' => now()]);
+            }
+
+            ActivityLog::record(
+                $actor,
+                ActivityLog::TABLE_ASSIGNED,
+                'Moved ' . ($from->guest_name ?: 'a guest') . "'s reservation from {$from->name} to {$to->name}."
+            );
+
+            return $to->fresh();
+        });
     }
 }
