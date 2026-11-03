@@ -1525,6 +1525,8 @@ function canMarkArrived(reservation) {
 function formatPeso(amount) {
   const n = Number(amount);
   if (!Number.isFinite(n)) return '\u20B10';
+  // A Senior Citizen / PWD discount line on My Bookings is negative.
+  if (n < 0) return '\u2212\u20B1' + (-n).toLocaleString();
   return '\u20B1' + n.toLocaleString();
 }
 

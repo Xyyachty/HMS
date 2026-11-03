@@ -233,6 +233,27 @@
   .wi-bill dt small { display: block; font-size: 0.72rem; }
   .wi-bill dd { margin: 0; color: var(--fg); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
+  /* Senior Citizen / PWD: one block per eligible guest, split by a hairline, no extra boxes */
+  .wi-claim { display: grid; gap: 0.7rem; padding: 0.85rem 0 0.9rem; border-top: 1px solid var(--wi-line); animation: wi-rise 0.32s cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: calc(var(--i, 0) * 45ms); }
+  .wi-claim:first-child { border-top: 0; padding-top: 0; }
+  .wi-claim-head { display: flex; align-items: center; gap: 0.5rem 0.8rem; flex-wrap: wrap; }
+  .wi-claim-head b { font-size: 0.88rem; color: var(--fg); }
+  .wi-claim-head .wi-spacer { flex: 1; }
+  .wi-claim-x {
+    width: 2rem; height: 2rem; border-radius: 0.5rem; cursor: pointer; flex: none;
+    border: 1px solid var(--wi-line); background: transparent; color: var(--fg-muted);
+  }
+  .wi-claim-x:hover { color: var(--wi-danger); border-color: var(--wi-danger); }
+  .wi-claim-x:focus-visible, .wi-check input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .wi-claim-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: 0.75rem; }
+  .wi-claim-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem 1rem; flex-wrap: wrap; }
+  .wi-check { display: inline-flex; align-items: center; gap: 0.55rem; font-size: 0.84rem; color: var(--fg); cursor: pointer; }
+  .wi-check input { width: 1.1rem; height: 1.1rem; accent-color: var(--accent); flex: none; }
+  .wi-how { border-top: 1px dashed var(--wi-line); padding-top: 0.6rem; }
+  .wi-how summary { cursor: pointer; font-size: 0.8rem; font-weight: 600; color: var(--accent); }
+  .wi-how .wi-note { margin: 0.5rem 0; }
+  @media (prefers-reduced-motion: reduce) { .wi-claim { animation: none; } }
+
   /* Booked */
   .wi-done { max-width: 35rem; margin: 0 auto; background: var(--card); border: 1px solid var(--wi-line); border-radius: 0.875rem; padding: 1.6rem 1.5rem 1.5rem; text-align: center; }
   .wi-done-icon {
@@ -366,6 +387,32 @@ function policyText(policy) {
   const bands = (p.bands || []).map(b => 'ages ' + b.min_age + '–' + b.max_age + ': ' + (Number(b.rate) ? peso(b.rate) + ' a night' : 'free'));
   return [bands.join(' · ') || 'Children stay free', 'from ' + p.adultAge + ': priced as adult']
     .concat(p.freeWithExistingBedding ? ['children in the room’s own beds stay free'] : []).join(' · ') + '.';
+}
+
+/* Senior Citizen / PWD (RA 9994, RA 10754, BIR RR 7-2010). Mirrors
+   HotelBookingDiscount::compute(): the share is VAT-inclusive, so the 12% VAT comes off
+   first and the 20% is taken from the VAT-exempt price. The server prices it again. */
+const SENIOR_AGE = 60;
+const VAT_RATE = 0.12;
+const DISCOUNT_TYPES = [['Senior Citizen', 'Senior Citizen', 'fa-person-cane'], ['PWD', 'PWD', 'fa-wheelchair']];
+function r2(n) { return Math.round((Number(n) || 0) * 100) / 100; }
+function statutory(share) {
+  const eligible = r2(Math.max(0, share));
+  const vatExemptPrice = r2(eligible / (1 + VAT_RATE));
+  const vat = r2(eligible - vatExemptPrice);
+  const discount = r2(vatExemptPrice * 0.2);
+  return { eligible, vatExemptPrice, vat, discount, payable: r2(vatExemptPrice - discount), less: r2(vat + discount) };
+}
+/* Whole years between a birth date and the stay's date, both 'YYYY-MM-DD'. */
+function ageOn(birth, onDate) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(birth || '')) return null;
+  const [by, bm, bd] = birth.split('-').map(Number);
+  const [y, m, d] = onDate.split('-').map(Number);
+  return y - by - (m < bm || (m === bm && d < bd) ? 1 : 0);
+}
+let claimSeq = 0;
+function newClaim(slot) {
+  return { key: ++claimSeq, slot, type: 'Senior Citizen', fullName: '', birthDate: '', idNumber: '', verified: false, roomId: null };
 }
 
 function partyText(adults, kids) {
@@ -534,6 +581,10 @@ function RoomWalkIn() {
   const [addons, setAddons] = useState([]);
   // Housekeeping add-on id to how many the guest takes.
   const [addonQty, setAddonQty] = useState({});
+  // Senior Citizen / PWD: 'No' until the desk says someone qualifies, then one entry
+  // per eligible person. slot is 'primary', 'adult' (a companion) or 'child:N'.
+  const [claimAny, setClaimAny] = useState('No');
+  const [claims, setClaims] = useState([]);
   const [payType, setPayType] = useState('Full');
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('Cash');
@@ -628,19 +679,76 @@ function RoomWalkIn() {
      (HotelBooking::totalDue), so it prices the first room. */
   let kidCursor = 0;
   const priced = stays.map((p, i) => {
+    const kidStart = kidCursor;
     const ages = childAges.slice(kidCursor, kidCursor + p.kids).map(Number);
     kidCursor += p.kids;
     const children = agesOk ? childLines(childPolicy, ages, p.adults, sleepsIn(p.room)) : [];
     return Object.assign({}, p, {
       ages,
+      kidStart,
       children,
       roomCost: i === 0 && promo ? promo.promo_price : p.room.price * nights * BLOCKS_PER_NIGHT,
       childCost: children.reduce((sum, c) => sum + c.rate, 0) * nights,
     });
   });
   const childTotal = priced.reduce((sum, p) => sum + p.childCost, 0);
-  // What is due at booking: the rooms and the children, the server's totalDue().
-  const total = priced.reduce((sum, p) => sum + p.roomCost + p.childCost, 0);
+
+  /* Each eligible person, placed in their room and priced on their own share: an adult
+     shares the room charge with the other adults in that room, a child is discounted on
+     their own child charge (HotelBooking::discountShare). The first problem found is
+     what the desk sees under that person. */
+  const claiming = claimAny === 'Yes';
+  const placedClaims = (claiming ? claims : []).map((c, n) => {
+    const isChild = c.slot.indexOf('child:') === 0;
+    const kid = isChild ? Number(c.slot.slice(6)) : -1;
+    const p = isChild
+      ? priced.find(x => kid >= x.kidStart && kid < x.kidStart + x.kids)
+      : (priced.find(x => x.id === c.roomId) || priced[0]);
+    const local = p && isChild ? kid - p.kidStart : null;
+    const share = !p ? 0 : isChild
+      ? ((p.children[local] || { rate: 0 }).rate * nights)
+      : p.roomCost / Math.max(1, p.adults);
+    const name = c.slot === 'primary' ? fullName.trim() : c.fullName.trim();
+    const age = c.type === 'Senior Citizen' ? ageOn(c.birthDate, checkIn) : null;
+    const bad = {};
+    if (!name) bad.fullName = c.slot === 'primary' ? 'Enter the guest’s name in step 1.' : 'Enter their full name.';
+    if (!c.idNumber.trim()) bad.idNumber = 'Enter the ' + c.type + ' ID number.';
+    if (c.type === 'Senior Citizen') {
+      if (isChild) bad.slot = 'A child cannot hold a Senior Citizen ID. Choose PWD.';
+      if (!c.birthDate) bad.birthDate = 'Enter their date of birth.';
+      else if (age === null || age < SENIOR_AGE) bad.birthDate = 'Age ' + Math.max(0, age || 0) + ' on check-in. The Senior Citizen discount starts at ' + SENIOR_AGE + '.';
+    }
+    if (isChild && kid >= kids) bad.slot = 'Pick who this is.';
+    else if (!p) bad.slot = bad.slot || 'Pick a room first.';
+    return Object.assign({}, c, { n, name, age, isChild, local, room: p, money: statutory(share), bad });
+  });
+  // Problems that span people: the same slot twice, more claims than adults in a room.
+  placedClaims.forEach((c, i) => {
+    // Several companions are fine; the booker or one child only once.
+    if (c.slot !== 'adult' && placedClaims.findIndex(o => o.slot === c.slot) < i) c.bad.slot = 'This person is already listed above.';
+  });
+  // One of the adults is the booker, so companions are at most the other adults.
+  placedClaims.filter(c => c.slot === 'adult').slice(Math.max(0, adults - 1)).forEach(c => {
+    c.bad.slot = c.bad.slot || (adults === 1
+      ? 'The only adult is the primary guest. Choose “Primary guest”, or add an adult in step 3.'
+      : 'Only ' + plural(adults - 1, 'adult') + ' came with the primary guest.');
+  });
+  priced.forEach(p => {
+    const adultsHere = placedClaims.filter(c => !c.isChild && c.room === p);
+    if (adultsHere.length > p.adults) adultsHere.slice(p.adults).forEach(c => { c.bad.slot = c.bad.slot || p.room.name + ' has only ' + plural(p.adults, 'adult') + '.'; });
+  });
+  const idKeys = placedClaims.map(c => c.type + '|' + c.idNumber.replace(/[\s-]+/g, '').toUpperCase());
+  placedClaims.forEach((c, i) => { if (c.idNumber.trim() && idKeys.indexOf(idKeys[i]) < i) c.bad.idNumber = 'This ID is already listed.'; });
+  const promoClash = claiming && claims.length > 0 && !!promo;
+  const claimsOk = !claiming || (claims.length > 0 && !promoClash && placedClaims.every(c => Object.keys(c.bad).length === 0));
+  // Only verified, complete entries come off the bill; the rest are estimates.
+  const applied = placedClaims.filter(c => c.verified && Object.keys(c.bad).length === 0 && !promoClash);
+  const pending = placedClaims.filter(c => !c.verified);
+  const discountTotal = r2(applied.reduce((sum, c) => sum + c.money.less, 0));
+  const pendingTotal = r2(pending.reduce((sum, c) => sum + c.money.less, 0));
+  // What is due at booking: the rooms and the children, less the verified Senior
+  // Citizen / PWD discounts — the server's totalDue().
+  const total = r2(priced.reduce((sum, p) => sum + p.roomCost + p.childCost, 0) - discountTotal);
   const paidNow = payType === 'Full' ? total : payType === 'Partial' ? Number(amount) || 0 : 0;
   /* Housekeeping's add-ons go on the stay's bill and are settled at check-out, the
      same as when a room is booked from the hotel site (HotelBookingDesk::reserve). */
@@ -711,7 +819,7 @@ function RoomWalkIn() {
   const reset = () => {
     setFullName(''); setContactNo(''); setEmail(''); setIdNumber('');
     setNights(1); setCheckInTime(nowClock()); setPicks([]); setPromoId(''); setAddonQty({});
-    setAdults(1); setChildAges([]);
+    setAdults(1); setChildAges([]); setClaimAny('No'); setClaims([]);
     setPayType('Full'); setAmount(''); setMethod('Cash'); setNotes('');
     setError(''); setTried(false); setDone(null); load(); loadAddons();
   };
@@ -725,6 +833,10 @@ function RoomWalkIn() {
     if (!agesOk) return setError('Enter the age of every child. The child policy prices each child by age.');
     if (!hasRooms) return setError('Pick a room for the guest.');
     if (!placedOk) return setError(placeProblem);
+    if (claiming && claims.length === 0) return setError('Add the guest who qualifies for the discount, or answer No.');
+    if (promoClash) return setError('A promo and a Senior Citizen / PWD discount cannot be combined. Remove one: the guest gets whichever saves more.');
+    const badClaim = placedClaims.find(c => Object.keys(c.bad).length > 0);
+    if (badClaim) return setError('Eligible guest ' + (badClaim.n + 1) + ': ' + Object.values(badClaim.bad)[0]);
     let payment = null;
     if (payType !== 'None') {
       const paid = payType === 'Full' ? total : Number(amount);
@@ -744,6 +856,16 @@ function RoomWalkIn() {
           child_ages: p.ages,
           addons: (i === 0 ? addonPicks.map(a => ({ addon_id: a.dbId, qty: a.qty })) : [])
             .concat(p.beds ? [{ addon_id: bedAddon.dbId, qty: p.beds }] : []),
+          discounts: placedClaims.filter(c => c.room === p).map(c => ({
+            type: c.type,
+            occupant: c.isChild ? 'child' : 'adult',
+            child_index: c.isChild ? c.local : null,
+            is_primary: c.slot === 'primary',
+            full_name: c.name,
+            birth_date: c.type === 'Senior Citizen' ? c.birthDate : null,
+            id_number: c.idNumber.trim(),
+            verified: c.verified,
+          })),
         })),
         guest: {
           full_name: fullName.trim(),
@@ -759,7 +881,7 @@ function RoomWalkIn() {
         payment,
         arrived: true,
       });
-      setDone({ booking: data.booking, stays, roomsText, partyLabel: partyText(adults, kids), childTotal, promo, extrasText, total: total + addonsTotal, paid: payment ? payment.amount_paid : 0 });
+      setDone({ booking: data.booking, stays, roomsText, partyLabel: partyText(adults, kids), childTotal, promo, extrasText, total: total + addonsTotal, paid: payment ? payment.amount_paid : 0, discountTotal, applied, pending });
       if (window.toast) window.toast('Booked ' + fullName.trim() + ' into ' + roomsText);
     } catch (err) {
       setError(err.message);
@@ -786,12 +908,16 @@ function RoomWalkIn() {
           ['Check-out', niceDate(checkOut)],
           ['Length of stay', plural(nights, 'night')],
           ['Promo / package', done.promo ? done.promo.name : 'None'],
+          ['Senior Citizen / PWD', done.applied.length + done.pending.length === 0 ? 'None'
+            : [done.applied.length ? done.applied.map(c => c.name).join(', ') + ' (−' + peso(done.discountTotal) + ')' : '',
+               done.pending.length ? done.pending.map(c => c.name).join(', ') + ' (pending ID check)' : ''].filter(Boolean).join(' · ')],
           ['Extras', done.extrasText],
           ['Status', 'Arrived'],
           ['Paid now', peso(done.paid)],
           ['Still to pay', peso(balance)],
         ]}
-        note="Room Management will give the guest the room key and check them in. Each room is its own stay in Guest Information. Any amount still unpaid is collected at check-out in Guest Information."
+        note={'Room Management will give the guest the room key and check them in. Each room is its own stay in Guest Information. Any amount still unpaid is collected at check-out in Guest Information.'
+          + (done.pending.length ? ' Pending discounts come off the bill once you verify the ID under Guest Information → Details.' : '')}
         primary={{ href: CFG.guestInfoUrl, label: 'Go to Guest Information' }}
         onAgain={reset}
       />
@@ -806,6 +932,16 @@ function RoomWalkIn() {
     bill.push([p.room.name, i === 0 && promo ? promo.name + ' package' : peso(p.room.price * BLOCKS_PER_NIGHT) + ' × ' + nightsText, peso(p.roomCost)]);
     p.children.forEach(c => bill.push(['Child, age ' + c.age, c.rate ? peso(c.rate) + ' × ' + nightsText : c.label, c.rate ? peso(c.rate * nights) : 'Free']));
     if (p.beds && bedAddon) bill.push([bedAddon.name + ' × ' + p.beds, peso(bedAddon.price) + ' / night, paid at check-out', peso(bedAddon.price * p.beds * nights)]);
+    // The room line above stays at full price; each eligible person's adjustment is
+    // its own pair of lines, as the law asks the receipt to show.
+    placedClaims.filter(c => c.room === p).forEach(c => {
+      if (applied.includes(c)) {
+        bill.push(['VAT exemption · ' + c.name, '12% VAT on their ' + peso(c.money.eligible) + ' share', '−' + peso(c.money.vat)]);
+        bill.push([c.type + ' discount · ' + c.name, '20% of ' + peso(c.money.vatExemptPrice), '−' + peso(c.money.discount)]);
+      } else if (!c.verified) {
+        bill.push([c.type + ' · ' + (c.name || 'eligible guest'), 'Pending ID verification. Estimated −' + peso(c.money.less) + ', not applied', '—']);
+      }
+    });
   });
   addonPicks.forEach(a => bill.push([a.name + ' × ' + a.qty, 'Paid at check-out', peso(a.price * a.qty)]));
 
@@ -1007,7 +1143,111 @@ function RoomWalkIn() {
           )}
         </Section>
 
-        <Section n={5} title="Extras" className="wi-wide"
+        <Section n={5} title="Senior Citizen / PWD discount" className="wi-wide"
+          hint="Does any guest qualify for a Senior Citizen or PWD discount? The booker or anyone staying with them."
+          done={claiming ? claimsOk && claims.length > 0 : true}
+          aside={(
+            <Chips label="Does any guest qualify for a Senior Citizen or PWD discount?" value={claimAny}
+              onChange={v => { setClaimAny(v); if (v === 'Yes' && claims.length === 0) setClaims([newClaim('adult')]); }}
+              options={[['No', 'No'], ['Yes', 'Yes']]} />
+          )}>
+          {!claiming ? (
+            <p className="wi-note" style={{ margin: 0 }}>No discount. The guest pays the regular rate.</p>
+          ) : (
+            <div className="wi-fields">
+              {promoClash && (
+                <p className="wi-alert" role="alert"><i className="fa-solid fa-circle-exclamation" style={{ marginTop: 2 }}></i>
+                  A promo and a Senior Citizen / PWD discount cannot be combined. Remove the promo in step 2, or answer No here. The guest gets whichever saves more.</p>
+              )}
+              {placedClaims.map((c, i) => {
+                const set = (change) => setClaims(prev => prev.map(x => (x.key === c.key ? Object.assign({}, x, change) : x)));
+                const show = (k) => (tried || (k === 'birthDate' && c.birthDate) || (k === 'slot' && hasRooms)) ? c.bad[k] : '';
+                const adultRooms = priced.length > 1 && !c.isChild;
+                return (
+                  <div key={c.key} className="wi-claim" style={{ '--i': i }}>
+                    <div className="wi-claim-head">
+                      <b>Eligible guest {i + 1}</b>
+                      <Chips label={'Discount type for eligible guest ' + (i + 1)} value={c.type}
+                        onChange={type => set({ type, slot: type === 'Senior Citizen' && c.isChild ? 'adult' : c.slot })}
+                        options={DISCOUNT_TYPES} />
+                      <span className="wi-spacer"></span>
+                      <button type="button" className="wi-claim-x" aria-label={'Remove eligible guest ' + (i + 1)}
+                        onClick={() => setClaims(prev => prev.filter(x => x.key !== c.key))}><i className="fa-solid fa-xmark"></i></button>
+                    </div>
+                    <div className="wi-claim-grid">
+                      <Field id={'wi-c-slot-' + c.key} label="Who is this?" bad={show('slot')}>
+                        <select id={'wi-c-slot-' + c.key} className={'wi-input' + (show('slot') ? ' is-bad' : '')} value={c.slot}
+                          onChange={e => set({ slot: e.target.value })}>
+                          <option value="primary">Primary guest{fullName.trim() ? ' (' + fullName.trim() + ')' : ''}</option>
+                          <option value="adult">Accompanying adult</option>
+                          {c.type === 'PWD' && childAges.map((age, k) => (
+                            <option key={k} value={'child:' + k}>Child {k + 1}{age !== '' ? ', age ' + age : ''}</option>
+                          ))}
+                        </select>
+                      </Field>
+                      {adultRooms && (
+                        <Field id={'wi-c-room-' + c.key} label="Staying in">
+                          <select id={'wi-c-room-' + c.key} className="wi-input" value={c.room ? String(c.room.id) : ''}
+                            onChange={e => set({ roomId: Number(e.target.value) })}>
+                            {priced.map(p => <option key={p.id} value={String(p.id)}>{p.room.name}</option>)}
+                          </select>
+                        </Field>
+                      )}
+                      <Field id={'wi-c-name-' + c.key} label="Full name" bad={show('fullName')}>
+                        <input id={'wi-c-name-' + c.key} className={'wi-input' + (show('fullName') ? ' is-bad' : '')}
+                          value={c.slot === 'primary' ? fullName : c.fullName} readOnly={c.slot === 'primary'}
+                          onChange={e => set({ fullName: e.target.value })} placeholder="As shown on the ID" autoComplete="off" />
+                      </Field>
+                      {c.type === 'Senior Citizen' && (
+                        <Field id={'wi-c-dob-' + c.key} label="Date of birth" bad={show('birthDate')}
+                          help={c.age !== null && !c.bad.birthDate ? 'Age ' + c.age + ' on check-in' : ''}>
+                          <input id={'wi-c-dob-' + c.key} type="date" max={checkIn} className={'wi-input' + (show('birthDate') ? ' is-bad' : '')}
+                            value={c.birthDate} onChange={e => set({ birthDate: e.target.value })} />
+                        </Field>
+                      )}
+                      <Field id={'wi-c-id-' + c.key} label={c.type === 'PWD' ? 'PWD ID number' : 'Senior Citizen ID number'} bad={show('idNumber')}>
+                        <input id={'wi-c-id-' + c.key} className={'wi-input' + (show('idNumber') ? ' is-bad' : '')}
+                          value={c.idNumber} onChange={e => set({ idNumber: e.target.value })} placeholder="As printed on the card" autoComplete="off" />
+                      </Field>
+                    </div>
+                    <div className="wi-claim-foot">
+                      <label className="wi-check">
+                        <input type="checkbox" checked={c.verified} onChange={e => set({ verified: e.target.checked })} />
+                        <span>I have verified the guest’s valid identification.</span>
+                      </label>
+                      <span className={'wi-tag ' + (c.verified ? 'is-free' : 'is-charge')}>
+                        {c.verified ? 'Verified · −' + peso(c.money.less) : 'Pending Verification · est. −' + peso(c.money.less)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap' }}>
+                <button type="button" className="wi-btn wi-btn-ghost" disabled={claims.length >= party}
+                  onClick={() => setClaims(prev => prev.concat([newClaim('adult')]))}>
+                  <i className="fa-solid fa-plus"></i> Add another eligible guest
+                </button>
+                {claims.length >= party && <span className="wi-note">Everyone in the party is listed.</span>}
+              </div>
+              {applied.length + pending.length > 0 && hasRooms && (
+                <details className="wi-how">
+                  <summary>How the discount is worked out</summary>
+                  <p className="wi-note">The discount belongs to the eligible person, so it is taken from their own share only: an adult’s share is the room charge divided by the adults in that room, a child’s is their own child charge. Room prices include 12% VAT. A Senior Citizen or PWD is exempt from VAT, so the VAT comes off first, then 20% of what is left.</p>
+                  <dl className="wi-bill">
+                    {placedClaims.map(c => (
+                      <div key={c.key}>
+                        <dt>{c.name || 'Eligible guest ' + (c.n + 1)}<small>{peso(c.money.eligible)} ÷ 1.12 = {peso(c.money.vatExemptPrice)} · 20% = {peso(c.money.discount)} · pays {peso(c.money.payable)}</small></dt>
+                        <dd>−{peso(c.money.less)}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </details>
+              )}
+            </div>
+          )}
+        </Section>
+
+        <Section n={6} title="Extras" className="wi-wide"
           hint={'Pillows, towels and more from Housekeeping' + (stays.length > 1 ? ', on ' + stays[0].room.name + '’s bill' : '') + '. Paid at check-out.'}
           done={addonPicks.length > 0}>
           {otherAddons.length === 0 ? (
@@ -1042,23 +1282,27 @@ function RoomWalkIn() {
           ['Guests', partyText(adults, kids)],
           ['Stay', plural(nights, 'night') + ', until ' + niceDate(checkOut)],
           ['Promo', promo ? promo.name : 'None'],
+          ['Senior Citizen / PWD', !claiming || claims.length === 0 ? 'None'
+            : plural(applied.length, 'guest') + ' applied' + (pending.length ? ', ' + pending.length + ' pending (est. −' + peso(pendingTotal) + ')' : '')],
+          ...(applied.length ? [['Eligible accommodation', peso(applied.reduce((s, c) => s + c.money.eligible, 0))]] : []),
           ['Extras', extrasText],
           ['Pay now', hasRooms ? (payType === 'None' ? 'Nothing yet' : peso(paidNow) + ' by ' + method) : ''],
         ]}
         bill={bill}
-        total={['Room & child charges', peso(total)]}
+        total={[discountTotal ? 'Amount to pay' : 'Room & child charges', peso(total)]}
         todo={[
           ['Guest name', nameOk],
           ['Contact number', contactOk],
           ['Children’s ages', agesOk],
           ['Room', placedOk],
+          ...(claiming ? [['Discount details', claimsOk && claims.length > 0]] : []),
           ['Payment', hasRooms && payOk],
         ]}
         error={error}
         busy={busy}
         button={[stays.length > 1 ? 'Book ' + stays.length + ' rooms & mark arrived' : 'Book room & mark arrived', 'fa-key']}
         note="The guest is marked as arrived right away. Room Management then gives them the key.">
-        <Section n={6} title="Payment" hint="How much does the guest pay now?" className="wi-section-bare" done={hasRooms && payOk}>
+        <Section n={7} title="Payment" hint="How much does the guest pay now?" className="wi-section-bare" done={hasRooms && payOk}>
           <div className="wi-fields">
             <Chips label="Payment now" value={payType} onChange={setPayType} cols={3} stack options={[
               ['Full', 'Pay in full', 'fa-check-double'],

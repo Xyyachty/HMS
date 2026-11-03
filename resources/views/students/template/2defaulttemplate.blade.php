@@ -1644,6 +1644,8 @@ function canMarkArrived(reservation) {
 function formatPeso(amount) {
   const n = Number(amount);
   if (!Number.isFinite(n)) return '₱0';
+  // A Senior Citizen / PWD discount line on My Bookings is negative.
+  if (n < 0) return '−₱' + (-n).toLocaleString();
   return '₱' + n.toLocaleString();
 }
 /* A dish with no photo must look like it has none. This used to hand back a random
