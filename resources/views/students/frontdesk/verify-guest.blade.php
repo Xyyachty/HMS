@@ -188,6 +188,7 @@
   }
   /* A guest with several bookings has one button, its own size, centred. */
   .vg-actions.is-one { display: flex; justify-content: center; }
+  .vg-actions.is-one > .vg-btn:not(.vg-lifecycle-btn) { width: auto; }
   .vg-actions .vg-lifecycle-btn { width: 100%; box-sizing: border-box; }
   .vg-actions > .vg-btn:not(.vg-lifecycle-btn) { width: 100%; box-sizing: border-box; }
   .vg-btn i { font-size: 0.72rem; }
