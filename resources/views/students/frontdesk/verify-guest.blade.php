@@ -211,6 +211,11 @@
   .vg-bk-top b { color: var(--accent); }
   .vg-bk-name { color: var(--fg); font-weight: 600; font-size: 0.85rem; overflow-wrap: anywhere; }
   .vg-bk-sub { overflow-wrap: anywhere; }
+  .vg-bk-section { margin-top: 1.4rem; padding-top: 1rem; border-top: 1px solid var(--border); scroll-margin-top: 1rem; }
+  .vg-bk-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap; }
+  .vg-bk-head h3 { margin: 0; font-size: 1.05rem; color: var(--fg); }
+  .vg-bk-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.75rem; }
+  .vg-status-list { display: flex; flex-wrap: wrap; gap: 0.3rem; }
 
   .vg-empty { border: 1.5px dashed var(--border); border-radius: 0.875rem; padding: 2rem 1rem; text-align: center; color: var(--fg-muted); font-size: 0.86rem; line-height: 1.5; }
   .vg-empty i.vg-empty-icon { display: block; font-size: 1.5rem; margin-bottom: 0.6rem; color: var(--accent); }
@@ -1167,42 +1172,38 @@ function stayRange(reservation) {
 }
 
 /*
- * Read-only view of one booking. A room can hold several open bookings (today's guest
- * and later stays), so when it does, a switcher at the top lists them all, each with its
- * own number, dates and guest, and shows one at a time. The guest's bookings in other
- * rooms are linked underneath, so nothing is merged into one record.
+ * Everything recorded for one guest. The table lists the guest once, however many
+ * bookings they hold; here each booking is its own numbered section (room, dates,
+ * charges, payments) with its own buttons, so several bookings stay apart instead of
+ * being merged into one record. The cards at the top jump to each section.
  */
-function BookingDetailsModal({ bookingId, stays, onClose }) {
-  const [selectedId, setSelectedId] = useState(bookingId);
-  useEffect(() => { setSelectedId(bookingId); }, [bookingId]);
-
+function GuestDetailsModal({ stays, renderActions, onClose }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  // A booking that just closed drops out of the poll; fall back to the one opened.
-  const current = stays.find(s => s.reservation.bookingId === selectedId)
-    || stays.find(s => s.reservation.bookingId === bookingId);
-  if (!current) return null;
+  if (!stays || stays.length === 0) return null;
 
-  const { room, reservation: guest } = current;
-  const roomStays = stays.filter(s => s.room.id === room.id);
-  const guestStays = guest.guestId != null
-    ? stays.filter(s => s.reservation.guestId === guest.guestId)
-    : [current];
-  const otherGuestStays = guestStays.filter(s => s.reservation.bookingId !== guest.bookingId);
+  const guest = stays[0].reservation;
+  const many = stays.length > 1;
 
   // One payment split over several rooms carries one transactionRef on every share:
   // each booking still lists its own share, with a note naming the whole payment.
   const transactions = {};
-  guestStays.forEach(({ room: r, reservation }) => (reservation.payments || []).forEach(p => {
+  stays.forEach(({ room, reservation }) => (reservation.payments || []).forEach(p => {
     if (!p.transactionRef) return;
     const t = transactions[p.transactionRef] || (transactions[p.transactionRef] = { total: 0, rooms: [] });
     t.total += Number(p.amountPaid) || 0;
-    t.rooms.push(r ? r.name : 'a room');
+    t.rooms.push(room ? room.name : 'a room');
   }));
+
+  const sum = (key) => stays.reduce((n, { reservation }) => n + (Number(reservation[key]) || 0), 0);
+  const jumpTo = (id) => {
+    const el = document.getElementById('vg-bk-' + id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   return (
     <div className="bill-overlay" onClick={onClose} role="dialog" aria-modal="true">
@@ -1210,14 +1211,16 @@ function BookingDetailsModal({ bookingId, stays, onClose }) {
         <div className="bill-head">
           <div>
             <p style={{ margin: 0, color: 'var(--accent)', fontSize: '0.62rem', letterSpacing: '0.14em', textTransform: 'uppercase' }}>
-              Booking #{guest.bookingId} · {room.name}
+              {many ? `${stays.length} bookings` : `Booking #${guest.bookingId}`}
             </p>
             <h2 className="font-display" style={{ margin: '0.25rem 0 0.4rem', fontSize: '1.35rem', color: 'var(--fg)' }}>
               {guest.fullName || 'Guest'}
             </h2>
-            <span className={`room-status-badge ${bookingStatusClass(guest.status)}`} style={{ position: 'static' }}>
-              {guest.status}
-            </span>
+            {!many && (
+              <span className={`room-status-badge ${bookingStatusClass(guest.status)}`} style={{ position: 'static' }}>
+                {guest.status}
+              </span>
+            )}
           </div>
           <button
             type="button"
@@ -1230,25 +1233,7 @@ function BookingDetailsModal({ bookingId, stays, onClose }) {
         </div>
 
         <div className="bill-body">
-          {roomStays.length > 1 && (
-            <>
-              <p className="bill-section-title" style={{ marginTop: 0 }}>{roomStays.length} bookings for {room.name}</p>
-              <div className="vg-bk-list" role="tablist" aria-label={`Bookings for ${room.name}`}>
-                {roomStays.map(({ reservation: r }, i) => (
-                  <button key={r.bookingId} type="button" role="tab"
-                    aria-selected={r.bookingId === guest.bookingId}
-                    className={'vg-bk' + (r.bookingId === guest.bookingId ? ' is-on' : '')}
-                    onClick={() => setSelectedId(r.bookingId)}>
-                    <span className="vg-bk-top"><b>#{r.bookingId}</b> · {i + 1} of {roomStays.length}</span>
-                    <span className="vg-bk-name">{r.fullName || 'Guest'}</span>
-                    <span className="vg-bk-sub">{stayRange(r)} · {r.status}</span>
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-
-          <p className="bill-section-title" style={roomStays.length > 1 ? undefined : { marginTop: 0 }}>Guest</p>
+          <p className="bill-section-title" style={{ marginTop: 0 }}>Guest</p>
           <dl className="bill-meta is-four">
             <div><dt>Full name</dt><dd>{guest.fullName || '—'}</dd></div>
             <div><dt>Contact no.</dt><dd>{guest.contactNo || '—'}</dd></div>
@@ -1256,19 +1241,43 @@ function BookingDetailsModal({ bookingId, stays, onClose }) {
             <div><dt>ID number</dt><dd>{guest.idNumber || '—'}</dd></div>
           </dl>
 
-          <StayDetails key={guest.bookingId} room={room} reservation={guest} transactions={transactions} />
-
-          {otherGuestStays.length > 0 && (
+          {many && (
             <>
-              <p className="bill-section-title">This guest's other bookings</p>
+              <p className="bill-section-title">Bookings</p>
               <div className="vg-bk-list">
-                {otherGuestStays.map(({ room: r, reservation: b }) => (
-                  <button key={b.bookingId} type="button" className="vg-bk" onClick={() => setSelectedId(b.bookingId)}>
-                    <span className="vg-bk-top"><b>#{b.bookingId}</b> · {r.name}</span>
-                    <span className="vg-bk-sub">{stayRange(b)} · {b.status}</span>
-                    <span className="vg-bk-sub">Balance {formatPeso(b.outstanding)}</span>
+                {stays.map(({ room, reservation: r }, i) => (
+                  <button key={r.bookingId} type="button" className="vg-bk" onClick={() => jumpTo(r.bookingId)}>
+                    <span className="vg-bk-top"><b>{i + 1}.</b> Booking #{r.bookingId}</span>
+                    <span className="vg-bk-name">{room.name}</span>
+                    <span className="vg-bk-sub">{stayRange(r)} · {r.status}</span>
                   </button>
                 ))}
+              </div>
+            </>
+          )}
+
+          {stays.map(({ room, reservation }, i) => (
+            <section key={reservation.bookingId} id={'vg-bk-' + reservation.bookingId} className={many ? 'vg-bk-section' : undefined}>
+              {many && (
+                <div className="vg-bk-head">
+                  <h3 className="font-display">{i + 1}. Booking #{reservation.bookingId} · {room.name}</h3>
+                  <span className={`room-status-badge ${bookingStatusClass(reservation.status)}`} style={{ position: 'static' }}>
+                    {reservation.status}
+                  </span>
+                </div>
+              )}
+              {renderActions && <div className="vg-bk-actions">{renderActions(room, reservation)}</div>}
+              <StayDetails room={room} reservation={reservation} transactions={transactions} />
+            </section>
+          ))}
+
+          {many && (
+            <>
+              <p className="bill-section-title">All {stays.length} bookings</p>
+              <div className="bill-line is-total"><span>Total</span><span className="bill-amt">{formatPeso(sum('grandTotal'))}</span></div>
+              <div className="bill-line is-subtotal"><span>Paid</span><span className="bill-amt">{formatPeso(sum('amountPaid'))}</span></div>
+              <div className={`bill-line${sum('outstanding') > 0 ? ' is-balance' : ''}`}>
+                <span>Balance</span><span className="bill-amt">{formatPeso(sum('outstanding'))}</span>
               </div>
             </>
           )}
@@ -1278,7 +1287,7 @@ function BookingDetailsModal({ bookingId, stays, onClose }) {
   );
 }
 
-/* One booking inside BookingDetailsModal: its room, dates, charges and payments. */
+/* One booking inside GuestDetailsModal: its room, dates, charges and payments. */
 function StayDetails({ room, reservation, transactions }) {
   const childCharges = Number(reservation.childCharges) || 0;
   const roomTotal = (Number(reservation.totalDue) || 0) - childCharges;
@@ -1536,7 +1545,7 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
   const [billLoading, setBillLoading] = useState(false);
   const [billError, setBillError] = useState('');
 
-  // The Details action: the booking id it opens on. Read-only, so it needs
+  // The Details action: the key of the guest whose bookings it shows. It needs
   // no fetch: the rooms already hold the whole reservation payload the modal renders.
   const [detailsFor, setDetailsFor] = useState(null);
 
@@ -1642,38 +1651,126 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
     });
   };
 
-  // One entry per booking. A room can hold several open bookings (today's guest and
-  // later stays), each its own row, numbered "1 of 2" within its room, earliest first.
+  // Every open booking, a room's several stays included (today's guest and later ones).
   const allReservations = (rooms || []).reduce((acc, room) => {
     if (!room) return acc;
     const list = Array.isArray(room.reservations) ? room.reservations : (room.reservation ? [room.reservation] : []);
-    list.forEach((reservation, i) => acc.push({ room, reservation, roomIndex: i, roomCount: list.length }));
+    list.forEach(reservation => acc.push({ room, reservation }));
     return acc;
   }, []);
 
+  // One row per guest, however many bookings they hold, so the table never repeats a
+  // person. Their bookings stay separate records, earliest first, and Details shows
+  // each one on its own with its own buttons.
+  const guests = (() => {
+    const groups = [];
+    const index = {};
+    allReservations.forEach(stay => {
+      const r = stay.reservation;
+      const key = r.guestId != null ? 'g' + r.guestId : 'b' + r.bookingId;
+      if (!index[key]) groups.push(index[key] = { key, stays: [] });
+      index[key].stays.push(stay);
+    });
+    groups.forEach(g => g.stays.sort((a, b) =>
+      String(a.reservation.checkIn || '').localeCompare(String(b.reservation.checkIn || ''))
+      || a.reservation.bookingId - b.reservation.bookingId));
+    return groups;
+  })();
+
   const q = search.trim().toLowerCase();
-  const filtered = allReservations.filter(({ room, reservation }) =>
-    (statusFilter === 'All' || reservation.status === statusFilter) && (!q ||
-      (reservation.fullName || '').toLowerCase().includes(q) ||
-      (room.name || '').toLowerCase().includes(q) ||
-      String(reservation.bookingId).includes(q.replace(/^#/, '')) ||
-      (reservation.email || '').toLowerCase().includes(q) ||
-      (reservation.contactNo || '').toLowerCase().includes(q) ||
-      (reservation.idNumber || '').toLowerCase().includes(q))
-  );
+  const stayMatches = ({ room, reservation }) => !q ||
+    (reservation.fullName || '').toLowerCase().includes(q) ||
+    (room.name || '').toLowerCase().includes(q) ||
+    String(reservation.bookingId).includes(q.replace(/^#/, '')) ||
+    (reservation.email || '').toLowerCase().includes(q) ||
+    (reservation.contactNo || '').toLowerCase().includes(q) ||
+    (reservation.idNumber || '').toLowerCase().includes(q);
+  const hasStatus = (g, key) => key === 'All' || g.stays.some(s => s.reservation.status === key);
+  const filtered = guests.filter(g => hasStatus(g, statusFilter) && g.stays.some(stayMatches));
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const safePage = Math.min(page, totalPages);
-  const pageStays = filtered.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
+  const pageGuests = filtered.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
 
-  // Details reads the booking live from the rooms, so a booking moved on another screen
+  // Details and Review read live from the rooms, so a booking moved on another screen
   // shows in the open window on the next poll.
   const reviewStay = reviewFor ? allReservations.find(({ reservation }) => reservation.bookingId === reviewFor) : null;
+  const detailsStays = detailsFor ? (guests.find(g => g.key === detailsFor) || {}).stays : null;
 
   const statusTabs = [['All', 'All'], ['Booked', 'Booked'], ['Arrived', 'Arrived'], ['Checked In', 'Checked in'], ['Pending Room Inspection', 'Checking out']];
-  const countFor = (key) => (key === 'All'
-    ? allReservations
-    : allReservations.filter(({ reservation }) => reservation.status === key)).length;
+  const countFor = (key) => guests.filter(g => hasStatus(g, key)).length;
+
+  // One booking's next-step buttons: on the row when the guest has a single booking,
+  // and on each booking's own section in Details when they have several.
+  const renderActions = (room, reservation) => {
+    const status = reservation.status;
+    return (
+      <>
+        {/* Extend sits first so the lifecycle and Details buttons line up
+            in the same columns on every row; other rows keep the slot empty. */}
+        {status === 'Checked In' ? (
+          <button type="button" className="vg-btn vg-btn-line"
+            onClick={() => setExtendFor({ room, reservation })}
+            title="The guest wants to stay more nights">
+            <i className="fa-solid fa-calendar-plus"></i> Extend stay
+          </button>
+        ) : status === 'Pending Room Inspection' ? (
+          checkoutStage(reservation) === 'waiting' ? (
+            <button type="button" className="vg-btn vg-btn-line" disabled
+              title="Housekeeping is inspecting the room. Their report shows up here.">
+              <i className="fa-solid fa-hourglass-half"></i> Inspecting
+            </button>
+          ) : checkoutStage(reservation) === 'review' ? (
+            <button type="button" className="vg-btn vg-btn-main"
+              onClick={() => setReviewFor(reservation.bookingId)}
+              title="Charge or waive each item Housekeeping found">
+              <i className="fa-solid fa-triangle-exclamation"></i> Review damage
+            </button>
+          ) : (
+            <button type="button" className="vg-btn vg-btn-main"
+              onClick={() => openBill(room, reservation)}
+              title="Show the final bill and check the guest out">
+              <i className="fa-solid fa-right-from-bracket"></i> Check out
+            </button>
+          )
+        ) : (
+          <button type="button" className="vg-btn vg-btn-line"
+            onClick={() => setChangeFor({ room, reservation })}
+            title="Move the guest to another room, an upgrade say">
+            <i className="fa-solid fa-right-left"></i> Change room
+          </button>
+        )}
+        {status === 'Booked' && (
+          <button type="button" className="vg-btn vg-lifecycle-btn vg-btn-line"
+            onClick={() => onBookingAction(reservation.bookingId, 'arrive')}
+            title="The guest is here at the desk">
+            <i className="fa-solid fa-door-open"></i> Mark arrived
+          </button>
+        )}
+        {status === 'Arrived' && (
+          <button type="button" className="vg-btn vg-btn-main"
+            onClick={() => checkInGuest(room, reservation)}
+            title="Give the guest the key and start their stay">
+            <i className="fa-solid fa-key"></i> Check in
+          </button>
+        )}
+        {status === 'Checked In' && (
+          <button type="button" className="vg-btn vg-lifecycle-btn vg-btn-main"
+            onClick={() => startCheckOut(room, reservation)}
+            title="Housekeeping inspects the room, then you finish the final bill">
+            <i className="fa-solid fa-right-from-bracket"></i> Check out
+          </button>
+        )}
+        {status !== 'Checked In' && (
+          <button type="button" className="vg-btn"
+            onClick={() => openBill(room, reservation)}
+            title="Charges, extras and payments so far: a deposit, an upgrade difference">
+            <i className="fa-solid fa-receipt"></i> Bill
+          </button>
+        )}
+      </>
+    );
+  };
   const clearFilters = () => { setSearch(''); setStatusFilter('All'); setPage(1); };
 
   return (
@@ -1745,23 +1842,34 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
                   </tr>
                 </thead>
                 <tbody>
-                  {pageStays.map(({ room, reservation, roomIndex, roomCount }) => {
-                    const status = reservation.status;
-                    const remaining = remainingStay(reservation, now);
+                  {pageGuests.map(({ key, stays }) => {
+                    const first = stays[0];
+                    const guest = first.reservation;
+                    const many = stays.length > 1;
+                    // The stay with a running clock leads; otherwise the earliest booking.
+                    const clocks = stays.map(s => remainingStay(s.reservation, now));
+                    const remaining = clocks.find(c => c.tone !== 'idle') || clocks[0];
+                    const lastOut = stays.reduce((m, s) => (String(s.reservation.checkOut || '') > m ? String(s.reservation.checkOut) : m), '');
+                    const roomNames = [...new Set(stays.map(s => s.room.name))];
+                    const statusCounts = stays.reduce((acc, s) => { acc[s.reservation.status] = (acc[s.reservation.status] || 0) + 1; return acc; }, {});
                     return (
-                      <tr key={reservation.bookingId}>
+                      <tr key={key}>
                         <td className="vg-wide vg-guest">
-                          <span className="vg-main">{reservation.fullName || '—'}</span>
-                          <span className="vg-sub">Booking #{reservation.bookingId}{reservation.contactNo ? ` · ${reservation.contactNo}` : ''}</span>
+                          <span className="vg-main">{guest.fullName || '—'}</span>
+                          {guest.contactNo && <span className="vg-sub">{guest.contactNo}</span>}
+                          {many && <span className="vg-sub vg-bk-tag">{stays.length} bookings</span>}
                         </td>
-                        <td data-label="Room">
-                          <span className="vg-main">{room.name}</span>
-                          <span className="vg-sub">{room.label || room.category} · {formatPeso(reservation.roomRate || room.price)} / 12 hrs</span>
-                          {roomCount > 1 && <span className="vg-sub vg-bk-tag">Booking {roomIndex + 1} of {roomCount} for this room</span>}
+                        <td data-label={many ? 'Rooms' : 'Room'}>
+                          <span className="vg-main">{roomNames.join(', ')}</span>
+                          {many ? (
+                            <span className="vg-sub">{stays.map(s => '#' + s.reservation.bookingId).join(', ')}</span>
+                          ) : (
+                            <span className="vg-sub">Booking #{guest.bookingId} · {formatPeso(guest.roomRate || first.room.price)} / 12 hrs</span>
+                          )}
                         </td>
                         <td data-label="Stay">
-                          <span className="vg-num" style={{ color: 'var(--fg)' }}>In {formatShortDateTime(reservation.checkIn, reservation.checkInTime)}</span>
-                          <span className="vg-sub vg-num">Out {formatShortDate(reservation.checkOut) || '—'}</span>
+                          <span className="vg-num" style={{ color: 'var(--fg)' }}>In {formatShortDateTime(guest.checkIn, guest.checkInTime)}</span>
+                          <span className="vg-sub vg-num">Out {formatShortDate(lastOut) || '—'}</span>
                         </td>
                         <td data-label="Time left" className="vg-num" style={{
                           color: STAY_TONE_COLORS[remaining.tone],
@@ -1771,78 +1879,33 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
                           {remaining.text}
                         </td>
                         <td data-label="Status">
-                          <span className={`room-status-badge vg-status ${bookingStatusClass(status)}`}>{status}</span>
-                          {statusHint(reservation) && <span className="vg-sub">{statusHint(reservation)}</span>}
+                          <span className="vg-status-list">
+                            {Object.keys(statusCounts).map(s => (
+                              <span key={s} className={`room-status-badge vg-status ${bookingStatusClass(s)}`}>
+                                {many && statusCounts[s] > 1 ? `${statusCounts[s]} ${s}` : s}
+                              </span>
+                            ))}
+                          </span>
+                          {!many && statusHint(guest) && <span className="vg-sub">{statusHint(guest)}</span>}
                         </td>
                         <td className="vg-wide">
                           <div className="vg-actions">
-                            {/* Extend sits first so the lifecycle and Details buttons line up
-                                in the same columns on every row; other rows keep the slot empty. */}
-                            {status === 'Checked In' ? (
-                              <button type="button" className="vg-btn vg-btn-line"
-                                onClick={() => setExtendFor({ room, reservation })}
-                                title="The guest wants to stay more nights">
-                                <i className="fa-solid fa-calendar-plus"></i> Extend stay
+                            {many ? (
+                              <button type="button" className="vg-btn vg-btn-main" style={{ gridColumn: '1 / -1' }}
+                                onClick={() => setDetailsFor(key)}
+                                title="Open each booking on its own, with its own buttons">
+                                <i className="fa-solid fa-layer-group"></i> View {stays.length} bookings
                               </button>
-                            ) : status === 'Pending Room Inspection' ? (
-                              checkoutStage(reservation) === 'waiting' ? (
-                                <button type="button" className="vg-btn vg-btn-line" disabled
-                                  title="Housekeeping is inspecting the room. Their report shows up here.">
-                                  <i className="fa-solid fa-hourglass-half"></i> Inspecting
-                                </button>
-                              ) : checkoutStage(reservation) === 'review' ? (
-                                <button type="button" className="vg-btn vg-btn-main"
-                                  onClick={() => setReviewFor(reservation.bookingId)}
-                                  title="Charge or waive each item Housekeeping found">
-                                  <i className="fa-solid fa-triangle-exclamation"></i> Review damage
-                                </button>
-                              ) : (
-                                <button type="button" className="vg-btn vg-btn-main"
-                                  onClick={() => openBill(room, reservation)}
-                                  title="Show the final bill and check the guest out">
-                                  <i className="fa-solid fa-right-from-bracket"></i> Check out
-                                </button>
-                              )
                             ) : (
-                              <button type="button" className="vg-btn vg-btn-line"
-                                onClick={() => setChangeFor({ room, reservation })}
-                                title="Move the guest to another room, an upgrade say">
-                                <i className="fa-solid fa-right-left"></i> Change room
-                              </button>
+                              <>
+                                {renderActions(first.room, guest)}
+                                <button type="button" className="vg-btn"
+                                  onClick={() => setDetailsFor(key)}
+                                  title="See everything recorded for this booking">
+                                  <i className="fa-solid fa-eye"></i> Details
+                                </button>
+                              </>
                             )}
-                            {status === 'Booked' && (
-                              <button type="button" className="vg-btn vg-lifecycle-btn vg-btn-line"
-                                onClick={() => onBookingAction(reservation.bookingId, 'arrive')}
-                                title="The guest is here at the desk">
-                                <i className="fa-solid fa-door-open"></i> Mark arrived
-                              </button>
-                            )}
-                            {status === 'Arrived' && (
-                              <button type="button" className="vg-btn vg-btn-main"
-                                onClick={() => checkInGuest(room, reservation)}
-                                title="Give the guest the key and start their stay">
-                                <i className="fa-solid fa-key"></i> Check in
-                              </button>
-                            )}
-                            {status === 'Checked In' && (
-                              <button type="button" className="vg-btn vg-lifecycle-btn vg-btn-main"
-                                onClick={() => startCheckOut(room, reservation)}
-                                title="Housekeeping inspects the room, then you finish the final bill">
-                                <i className="fa-solid fa-right-from-bracket"></i> Check out
-                              </button>
-                            )}
-                            {status !== 'Checked In' && (
-                              <button type="button" className="vg-btn"
-                                onClick={() => openBill(room, reservation)}
-                                title="Charges, extras and payments so far: a deposit, an upgrade difference">
-                                <i className="fa-solid fa-receipt"></i> Bill
-                              </button>
-                            )}
-                            <button type="button" className="vg-btn"
-                              onClick={() => setDetailsFor(reservation.bookingId)}
-                              title="See everything recorded for this booking">
-                              <i className="fa-solid fa-eye"></i> Details
-                            </button>
                           </div>
                         </td>
                       </tr>
@@ -1877,6 +1940,15 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
         )}
       </div>
 
+      {/* Details sits under the bill, change-room and other windows its buttons open. */}
+      {detailsStays && (
+        <GuestDetailsModal
+          stays={detailsStays}
+          renderActions={renderActions}
+          onClose={() => setDetailsFor(null)}
+        />
+      )}
+
       <FinalBillModal
         open={!!billFor}
         bill={bill}
@@ -1894,14 +1966,6 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
       />
 
       <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />
-
-      {detailsFor != null && (
-        <BookingDetailsModal
-          bookingId={detailsFor}
-          stays={allReservations}
-          onClose={() => setDetailsFor(null)}
-        />
-      )}
 
       {reviewStay && (
         <DamageReviewModal
