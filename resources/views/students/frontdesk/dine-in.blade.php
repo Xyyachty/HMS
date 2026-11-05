@@ -286,7 +286,7 @@ function ReserveModal({ table, freeTables, onReserve, onClose, busy }) {
     if (!contactNo.trim()) { setError('Enter a contact number for the customer.'); return; }
     if (!onDate || !atTime) { setError('Pick the date and time they are booked for.'); return; }
     if (partySize < 1 || partySize > seats) {
-      setError(`Party size must be between 1 and ${seats}.`);
+      setError(`Number of guests must be between 1 and ${seats}.`);
       return;
     }
     if (partySize < 1 + withTables.length) {
@@ -370,7 +370,7 @@ function ReserveModal({ table, freeTables, onReserve, onClose, busy }) {
             )}
 
             <div>
-              <label className="dn-field-label">Party size · seats {seats}</label>
+              <label className="dn-field-label">Number of guests · seats {seats}</label>
               {/* Stepper rather than a number input, so it cannot be typed past
                   the tables' own capacity. */}
               <div className="dn-party">
@@ -427,18 +427,18 @@ function TableCard({ table, partyWith, canReserve, onOpenReserve, onSeat, onMove
                 the desk wrote it down, for a table reserved before that was kept. */}
             <dt>Booked</dt>
             <dd className="is-when">{formatWhen(table.reservedFor || table.assignedAt)}</dd>
-            <dt>Party</dt><dd>{table.partySize || '—'}</dd>
+            <dt>Guests</dt><dd>{table.partySize || '—'}</dd>
           </dl>
           <p className="dn-card-note">
             {reserved ? 'Reserved' : 'Seated'} {formatClock(table.assignedAt)}{table.assignedBy ? ` by ${table.assignedBy}` : ''}
           </p>
           {reserved && partyWith.length > 0 && (
-            <p className="dn-card-note">Customer Arrived seats every table of the party.</p>
+            <p className="dn-card-note">Customer Arrived seats every table of the group.</p>
           )}
           {partyWith.length > 0 && (
             <p className="dn-card-note" style={{ color: 'var(--accent)' }}>
               <i className="fa-solid fa-link" style={{ fontSize: '0.65rem', marginRight: 5 }}></i>
-              Same party as {partyWith.join(', ')} · one bill
+              Same group as {partyWith.join(', ')} · one bill
             </p>
           )}
         </>
@@ -458,7 +458,7 @@ function TableCard({ table, partyWith, canReserve, onOpenReserve, onSeat, onMove
             disabled={busy || moveTargets.length === 0} value=""
             onChange={e => { if (e.target.value) onMove(table, moveTargets.find(t => String(t.id) === e.target.value)); }}
             style={{ marginTop: '0.5rem', fontSize: '0.75rem', padding: '0.45rem 0.6rem' }}>
-            <option value="">{moveTargets.length ? 'Move to another table…' : 'No free table fits this party'}</option>
+            <option value="">{moveTargets.length ? 'Move to another table…' : 'No free table fits this many guests'}</option>
             {moveTargets.map(t => <option key={t.id} value={t.id}>{t.name} · seats {t.capacity}</option>)}
           </select>
         </div>
@@ -490,7 +490,7 @@ function NoShowCard({ entry }) {
         <dt>Guest</dt><dd>{entry.guestName || 'Guest'}</dd>
         {entry.contactNo ? (<><dt>Contact</dt><dd>{entry.contactNo}</dd></>) : null}
         <dt>Booked</dt><dd className="is-when">{formatWhen(entry.reservedFor)}</dd>
-        <dt>Party</dt><dd>{entry.partySize || '—'}</dd>
+        <dt>Guests</dt><dd>{entry.partySize || '—'}</dd>
       </dl>
       <p className="dn-card-note">
         Released {formatWhen(entry.markedAt)}{entry.assignedBy ? ` · reserved by ${entry.assignedBy}` : ''}

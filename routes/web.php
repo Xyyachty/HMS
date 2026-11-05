@@ -1927,7 +1927,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             $companions = $claims->filter(fn ($c) => empty($c['is_primary']) && ($c['occupant'] ?? 'adult') === 'adult')->count();
             if ($companions > max(0, $adultsInParty - 1)) {
                 return response()->json(['message' => $adultsInParty === 1
-                    ? 'The only adult is the primary guest. Mark the discount as the primary guest’s, or add the companion to the party.'
+                    ? 'The only adult is the primary guest. Mark the discount as the primary guest’s, or add the companion to the guests.'
                     : 'More companions are claiming a discount than came with the primary guest.'], 422);
             }
         }
@@ -4935,7 +4935,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
         $notSeated = $party->where('status', '!=', 'Occupied');
         if ($notSeated->isNotEmpty()) {
             return response()->json([
-                'message' => HotelDineInTable::joinNames($notSeated) . ' of this party ' . ($notSeated->count() === 1 ? 'is' : 'are')
+                'message' => HotelDineInTable::joinNames($notSeated) . ' of this group ' . ($notSeated->count() === 1 ? 'is' : 'are')
                     . ' not seated. Seat the customer there, or close that table, before billing.',
             ], 422);
         }

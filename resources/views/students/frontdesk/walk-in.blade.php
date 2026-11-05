@@ -817,7 +817,7 @@ function RoomWalkIn() {
         adults > adultsPlaced ? plural(adults - adultsPlaced, 'adult') : '',
         kids > kidsPlaced ? (kids - kidsPlaced === 1 ? '1 child' : (kids - kidsPlaced) + ' children') : '',
       ].filter(Boolean).join(' and ') + ' without a room yet. Add a room or an extra bed.'
-    : adultsPlaced !== adults || kidsPlaced !== kids ? 'The rooms hold a different party from the one entered under Guests.' : '';
+    : adultsPlaced !== adults || kidsPlaced !== kids ? 'The rooms hold a different number of guests from the one entered under Guests.' : '';
   const payOk = payType !== 'Partial' || (Number(amount) > 0 && Number(amount) <= total);
 
   const reset = () => {
@@ -1065,7 +1065,7 @@ function RoomWalkIn() {
         <Section n={4} title="Choose rooms" className="wi-wide"
           hint={!loaded ? 'Looking for clean rooms…'
             : free.length === 0 ? 'No clean room is free for this stay.'
-            : splitting ? 'No single room sleeps ' + plural(party, 'guest') + '. Pick several rooms and split the party.'
+            : splitting ? 'No single room sleeps ' + plural(party, 'guest') + '. Pick several rooms and split the group.'
             : (fitting.length === 1 ? '1 clean room takes ' : fitting.length + ' clean rooms take ') + partyText(adults, kids) + ' for this stay.'}
           done={placedOk}
           aside={categories.length > 2 && (
@@ -1232,7 +1232,7 @@ function RoomWalkIn() {
                   onClick={() => setClaims(prev => prev.concat([newClaim('adult')]))}>
                   <i className="fa-solid fa-plus"></i> Add another eligible guest
                 </button>
-                {claims.length >= party && <span className="wi-note">Everyone in the party is listed.</span>}
+                {claims.length >= party && <span className="wi-note">Every guest is listed.</span>}
               </div>
               {applied.length + pending.length > 0 && hasRooms && (
                 <details className="wi-how">

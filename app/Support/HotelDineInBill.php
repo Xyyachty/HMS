@@ -78,7 +78,7 @@ class HotelDineInBill
             $claims[] = ['type' => $type, 'fullName' => mb_substr($name, 0, 120), 'idNumber' => mb_substr($id, 0, 60)];
         }
         if (count($claims) > max(1, $partySize)) {
-            throw new \RuntimeException('There are more discounted guests than the party of ' . $partySize . '.');
+            throw new \RuntimeException('There are more discounted guests than the ' . $partySize . ' guests at the table.');
         }
 
         return $claims;

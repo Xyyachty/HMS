@@ -1098,7 +1098,7 @@ function DineInBillModal({ table, onFetchBill, onSettle, onClose, onToast, onRec
             <p style={{ color: 'var(--accent)', fontSize: '0.65rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: '0 0 0.35rem' }}>Dine-in</p>
             <h2 className="font-display" style={{ fontSize: '1.4rem', margin: 0, color: 'var(--fg)' }}>Final Bill · {names}</h2>
             <p style={{ margin: '0.3rem 0 0', color: 'var(--fg-muted)', fontSize: '0.78rem' }}>
-              {table.guestName || 'Guest'} · party of {(bill && bill.partySize) || table.partySize || '—'}
+              {table.guestName || 'Guest'} · {(bill && bill.partySize) || table.partySize || '—'} guests
               {table.contactNo ? ` · ${table.contactNo}` : ''}
             </p>
             {isParty && (
@@ -1171,7 +1171,7 @@ function DineInBillModal({ table, onFetchBill, onSettle, onClose, onToast, onRec
                         </button>
                       )}
                       <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.7rem', lineHeight: 1.45 }}>
-                        Each one's share is the food total split over the party of {(bill && bill.partySize) || '—'}; that share is VAT-exempt, then 20% off. Check the ID before giving it.
+                        Each one's share is the food total split over all {(bill && bill.partySize) || '—'} guests; that share is VAT-exempt, then 20% off. Check the ID before giving it.
                       </p>
                     </div>
                   )}
@@ -1358,7 +1358,7 @@ function DineInBillSheet({ bill, payment, tendered, change }) {
         <dl>
           <dt>Bill No.</dt><dd>:</dd><dd>{billNo}</dd>
           <dt>Guest Name</dt><dd>:</dd><dd>{src.guestName || 'Guest'}</dd>
-          <dt>Party Size</dt><dd>:</dd><dd>{src.partySize ? src.partySize + (Number(src.partySize) === 1 ? ' Guest' : ' Guests') : '—'}</dd>
+          <dt>No. of Guests</dt><dd>:</dd><dd>{src.partySize ? src.partySize + (Number(src.partySize) === 1 ? ' Guest' : ' Guests') : '—'}</dd>
           <dt>{multi ? 'Tables' : 'Table'}</dt><dd>:</dd><dd>{tableLabel || '—'}</dd>
         </dl>
         <span className="printed">Date Printed: {longDay(printed)}</span>
@@ -1398,7 +1398,7 @@ function DineInBillSheet({ bill, payment, tendered, change }) {
           {serviceCharge > 0 && (
             <div className="adj"><span>Service charge ({src.serviceChargeRate}%)</span><span className="num">{money(serviceCharge)}</span></div>
           )}
-          <div className="sum"><span>TOTAL AMOUNT DUE</span><b>₱{money(totalDue)}</b></div>
+          <div className="sum"><span>TOTAL AMOUNT</span><b>₱{money(totalDue)}</b></div>
         </>
       )}
 
@@ -1409,16 +1409,22 @@ function DineInBillSheet({ bill, payment, tendered, change }) {
             <span>{day(payment.paidAt)} &nbsp; {payment.method}{payment.reference ? ' · ' + payment.reference : ''}</span>
             <span className="num">-{money(paid)}</span>
           </div>
-          {payment.method === 'Cash' && tendered > 0 ? (
-            <div className="pay muted"><span>Cash received ₱{money(tendered)}{change > 0 ? ' · Change ₱' + money(change) : ''}</span><span></span></div>
-          ) : null}
         </>
       ) : (
         <div className="pay muted"><span>None yet</span><span className="num">0.00</span></div>
       )}
       <div className="pay"><span>Payment Method</span><span>{payment ? payment.method : '—'}</span></div>
+      {/* What the guest handed over and what went back. Cash only: card and e-wallet
+          payments are for the exact amount. tendered is known only right after
+          paying, so a receipt opened later shows the amount paid. */}
+      {payment && payment.method === 'Cash' && (
+        <>
+          <div className="pay"><span>Cash Received</span><span className="num">₱{money(tendered > 0 ? tendered : paid)}</span></div>
+          <div className="pay"><span>Change</span><span className="num">₱{money(tendered > 0 ? change : 0)}</span></div>
+        </>
+      )}
 
-      <div className={'due' + (balance > 0 ? ' is-owed' : '')}><span>TOTAL BALANCE DUE</span><b>{money(balance)}</b></div>
+      <div className={'due' + (balance > 0 ? ' is-owed' : '')}><span>TOTAL BALANCE</span><b>{money(balance)}</b></div>
 
       <div className="sign"><span>Guest Signature:</span><span></span></div>
       <p className="sign-name">{src.guestName || 'Guest'}</p>
@@ -1619,13 +1625,13 @@ function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable,
                     <div style={{ minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.3rem', flexWrap: 'wrap' }}>
                         <span style={{ color: 'var(--accent)', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-                          <i className="fa-solid fa-link" style={{ fontSize: '0.6rem', marginRight: 5 }}></i>Dine-In Party
+                          <i className="fa-solid fa-link" style={{ fontSize: '0.6rem', marginRight: 5 }}></i>Dine-In Group
                         </span>
                         {sameStatus && <span className={`tb-badge tb-${lead.status.toLowerCase()}`}>{lead.status}</span>}
                       </div>
                       <p style={{ margin: 0, color: 'var(--fg)', fontWeight: 700 }}>{lead.guestName || 'Guest'}</p>
                       <p style={{ margin: '0.15rem 0 0', color: 'var(--fg-muted)', fontSize: '0.76rem' }}>
-                        Party of {guests || '—'} · {members.length} tables · one bill
+                        {guests || '—'} guests · {members.length} tables · one bill
                       </p>
                       {(lead.contactNo || lead.reservedFor) && (
                         <p style={{ margin: '0.2rem 0 0', color: 'var(--fg-muted)', fontSize: '0.72rem' }}>
@@ -1654,7 +1660,7 @@ function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable,
                               onClick={() => seatTable(Object.assign({}, members.find(t => t.status === 'Reserved'), { name: names }))}>
                               <i className="fa-solid fa-chair" style={{ fontSize: '0.66rem' }}></i> Seat
                             </button>
-                            <button type="button" title="Cancel the party's reservation and free its tables"
+                            <button type="button" title="Cancel the group's reservation and free its tables"
                               onClick={() => closeTable(lead)} style={toolBtnStyle('danger')}>
                               <i className="fa-solid fa-door-closed" style={{ fontSize: 11 }}></i>
                             </button>
@@ -1663,7 +1669,7 @@ function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable,
                           <>
                             {/* Billing is in Orders > Dine-In. */}
                             <span style={{ alignSelf: 'center', color: 'var(--fg-muted)', fontSize: '0.7rem' }}>Bill in Orders</span>
-                            <button type="button" title="Close the party's tables without billing" disabled={members.some(hasOpenOrder)}
+                            <button type="button" title="Close the group's tables without billing" disabled={members.some(hasOpenOrder)}
                               onClick={() => closeTable(lead)} style={toolBtnStyle('danger')}>
                               <i className="fa-solid fa-door-closed" style={{ fontSize: 11 }}></i>
                             </button>
@@ -1708,7 +1714,7 @@ function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable,
                       </div>
                       <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.76rem' }}>
                         Seats {table.capacity}
-                        {taken && table.guestName ? ` · ${table.guestName}, party of ${table.partySize || '—'}` : ''}
+                        {taken && table.guestName ? ` · ${table.guestName}, ${table.partySize || '—'} guests` : ''}
                       </p>
                       {taken && table.partyRef && list.some(t => t.partyRef === table.partyRef && t.id !== table.id) && (
                         <p style={{ margin: '0.2rem 0 0', color: 'var(--accent)', fontSize: '0.72rem' }}>
@@ -2305,7 +2311,7 @@ function DineInBillsSection({ tables, orders, canBill, onFetchBill, onSettle, on
           <div>
             <h2 id="ord-bills">Bills to settle</h2>
             <p>{groups.length
-              ? `${groups.length} seated ${groups.length === 1 ? 'party' : 'parties'}. Bill them once every order is served.`
+              ? `${groups.length} seated ${groups.length === 1 ? 'table or group' : 'tables or groups'}. Bill them once every order is served.`
               : 'Seated dine-in tables show here, ready to bill.'}</p>
           </div>
         </div>
@@ -2321,12 +2327,12 @@ function DineInBillsSection({ tables, orders, canBill, onFetchBill, onSettle, on
                 <div key={g.key} className="mn-panel" style={{ padding: '0.9rem 1rem', border: party ? '1px solid var(--accent)' : undefined }}>
                   {party && (
                     <p style={{ margin: '0 0 0.3rem', color: 'var(--accent)', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-                      <i className="fa-solid fa-link" style={{ fontSize: '0.6rem', marginRight: 5 }}></i>Dine-In Party · one bill
+                      <i className="fa-solid fa-link" style={{ fontSize: '0.6rem', marginRight: 5 }}></i>Dine-In Group · one bill
                     </p>
                   )}
                   <p style={{ margin: 0, color: 'var(--fg)', fontWeight: 700 }}>{lead.guestName || 'Guest'}</p>
                   <p style={{ margin: '0.15rem 0 0', color: 'var(--fg-muted)', fontSize: '0.78rem' }}>
-                    {g.tables.map(t => t.name).join(' + ')} · party of {g.tables.reduce((n, t) => n + (Number(t.partySize) || 0), 0) || '—'}
+                    {g.tables.map(t => t.name).join(' + ')} · {g.tables.reduce((n, t) => n + (Number(t.partySize) || 0), 0) || '—'} guests
                   </p>
                   {party && (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.45rem' }}>
@@ -2349,7 +2355,7 @@ function DineInBillsSection({ tables, orders, canBill, onFetchBill, onSettle, on
                   {canBill && (
                     <button type="button" className="mn-btn is-small is-solid" style={{ marginTop: '0.7rem', width: '100%', justifyContent: 'center' }}
                       onClick={() => setBillingId(lead.id)}>
-                      <i className="fa-solid fa-receipt"></i> {party ? 'Bill the party' : 'Bill ' + lead.name}
+                      <i className="fa-solid fa-receipt"></i> {party ? 'Bill the group' : 'Bill ' + lead.name}
                     </button>
                   )}
                 </div>

@@ -112,10 +112,10 @@ class HotelTableDesk
         }
         $partySize = (int) ($data['party_size'] ?? 0);
         if ($partySize < 1) {
-            throw new RuntimeException('Enter how many guests are in the party.', 422);
+            throw new RuntimeException('Enter how many guests are coming.', 422);
         }
         if ($partySize > $table->capacity) {
-            throw new RuntimeException("This table seats {$table->capacity} — the party is too large for it.", 422);
+            throw new RuntimeException("This table seats {$table->capacity} — there are too many guests for it.", 422);
         }
 
         // reserved_for is the Manila wall-clock time the customer is due (the app runs
@@ -160,7 +160,7 @@ class HotelTableDesk
             $actor,
             ActivityLog::TABLE_ASSIGNED,
             ($table->status === 'Occupied' ? 'Seated walk-in ' : 'Reserved ' . $table->name . ' for ')
-                . ($table->guest_name ?: 'a guest') . ' (party of ' . $table->party_size . ')'
+                . ($table->guest_name ?: 'a guest') . ' (' . $table->party_size . ' guests)'
                 . ($table->status === 'Occupied' ? ' at ' . $table->name : '') . '.'
         );
 
@@ -194,14 +194,14 @@ class HotelTableDesk
 
         $party = (int) ($data['party_size'] ?? 0);
         if ($party < 1) {
-            throw new RuntimeException('Enter how many guests are in the party.', 422);
+            throw new RuntimeException('Enter how many guests are coming.', 422);
         }
         if ($party < count($tables)) {
             throw new RuntimeException('There are more tables than guests. Pick fewer tables.', 422);
         }
         $seats = array_sum(array_map(fn (HotelDineInTable $t) => (int) $t->capacity, $tables));
         if ($party > $seats) {
-            throw new RuntimeException("These tables seat {$seats} — the party of {$party} is too large for them.", 422);
+            throw new RuntimeException("These tables seat {$seats} — {$party} guests is too many for them.", 422);
         }
 
         $ref = (string) Str::uuid();
@@ -385,7 +385,7 @@ class HotelTableDesk
             throw new RuntimeException($to->name . ' is not free.', 409);
         }
         if ((int) $from->party_size > (int) $to->capacity) {
-            throw new RuntimeException("{$to->name} seats {$to->capacity} — the party of {$from->party_size} will not fit.", 422);
+            throw new RuntimeException("{$to->name} seats {$to->capacity} — {$from->party_size} guests will not fit.", 422);
         }
 
         $fields = ['guest_name', 'contact_no', 'party_size', 'reserved_for', 'assigned_by', 'assigned_at'];
