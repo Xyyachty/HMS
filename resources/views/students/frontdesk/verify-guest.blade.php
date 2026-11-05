@@ -1,6 +1,6 @@
 @extends('students.builder.ops-shell')
 
-@section('page-title', 'Guest Information')
+@section('page-title', 'Guest Folio')
 
 @section('head-extra')
 <style>
@@ -218,6 +218,9 @@
   .vg-bk-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap; }
   .vg-bk-head h3 { margin: 0; font-size: 1.05rem; color: var(--fg); }
   .vg-bk-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.75rem; }
+  /* Senior Citizen / PWD entries in Details: hairline-separated, no boxes */
+  .vg-disc { padding: 0.55rem 0; border-bottom: 1px solid var(--border); }
+  .vg-disc-foot { display: flex; align-items: center; gap: 0.4rem 0.7rem; flex-wrap: wrap; }
   .vg-status-list { display: flex; flex-wrap: wrap; gap: 0.3rem; }
 
   .vg-empty { border: 1.5px dashed var(--border); border-radius: 0.875rem; padding: 2rem 1rem; text-align: center; color: var(--fg-muted); font-size: 0.86rem; line-height: 1.5; }
@@ -283,6 +286,28 @@
   .rc-strong { font-weight: 700; margin-top: 0.25rem; }
   .rc-due { color: #c81e3a; }
   .rc-thanks { margin: 0.9rem 0 0; text-align: center; color: #5f5a55; font-size: 0.8rem; }
+  /* Folio layout (the client's statement-of-account format). */
+  .rc-title { font-weight: 700; color: #1a1a1a !important; letter-spacing: 0.06em; text-transform: uppercase; }
+  .rc-info { display: grid; grid-template-columns: 1fr 1fr; gap: 0.2rem 1.2rem; margin: 0; font-size: 0.78rem; }
+  .rc-info div { display: flex; gap: 0.4rem; min-width: 0; }
+  .rc-info dt { flex: none; width: 5.4rem; color: #5f5a55; }
+  .rc-info dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+  .rc-table { width: 100%; border-collapse: collapse; font-size: 0.76rem; }
+  .rc-table th { text-align: left; font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; color: #5f5a55; padding: 0 0.35rem 0.35rem; border-bottom: 1px solid #c9c3ba; }
+  .rc-table td { padding: 0.3rem 0.35rem; vertical-align: top; }
+  .rc-table th:first-child, .rc-table td:first-child { padding-left: 0; }
+  .rc-table th:last-child, .rc-table td:last-child { padding-right: 0; }
+  .rc-table .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .rc-table .rc-date { white-space: nowrap; color: #5f5a55; }
+  .rc-sum .rc-line { padding-left: 35%; }
+  .receipt-print .rc-line { font-size: 0.8rem; }
+  .rc-sign { margin: 1.4rem 0 0; display: flex; flex-direction: column; align-items: flex-start; font-size: 0.78rem; color: #5f5a55; }
+  .rc-sign span:first-child { width: 14rem; max-width: 100%; border-bottom: 1px solid #1a1a1a; height: 1.4rem; }
+  @media (max-width: 480px) {
+    .rc-info { grid-template-columns: 1fr; }
+    .rc-table .rc-unitcol { display: none; }
+    .rc-sum .rc-line { padding-left: 0; }
+  }
   @media print {
     body * { visibility: hidden !important; }
     .receipt-print, .receipt-print * { visibility: visible !important; }
@@ -301,6 +326,16 @@
   window.HMS_WALKIN_URL = @json(route('students.frontdesk.walk-in'));
   // The name printed at the top of the guest's receipt: the team's approved hotel.
   window.HMS_HOTEL_NAME = @json(\App\Support\HotelTemplateBuilder::hotelDefaults($groupName ?? null, isset($facultyId) ? (int) $facultyId : null)['name']);
+  @php
+    // Address and contact for the folio header: what the team typed in the site's
+    // hotel info (Customize). Left out of the folio when the team has not set them.
+    $folioHotelInfo = !empty($groupName) && !empty($facultyId)
+        ? (array) data_get(\App\Support\HotelTemplateBuilder::mergeTeamCustomizations((string) $groupName, (int) $facultyId), '__hotelInfo.items.0', [])
+        : [];
+    $folioPick = fn ($key) => is_scalar($folioHotelInfo[$key] ?? null) ? trim((string) $folioHotelInfo[$key]) : '';
+    $folioHotelInfo = ['address' => $folioPick('address'), 'phone' => $folioPick('phone'), 'email' => $folioPick('email')];
+  @endphp
+  window.HMS_HOTEL_INFO = @json($folioHotelInfo);
 </script>
 @verbatim
 <script type="text/babel">
@@ -334,6 +369,8 @@ function bookingStatusClass(status) {
 function formatPeso(amount) {
   const n = Number(amount);
   if (!Number.isFinite(n)) return '₱0';
+  // A refund is stored as a negative payment.
+  if (n < 0) return '−₱' + (-n).toLocaleString();
   return '₱' + n.toLocaleString();
 }
 
@@ -491,9 +528,209 @@ function useNow(intervalMs) {
 
 const PAYMENT_METHODS = ['Cash', 'GCash', 'Card', 'Other'];
 
-/* The guest's receipt, shown once the stay is checked out. Built from the closed
-   stay's final bill, so it lists the payment just taken with the earlier ones.
-   Print prints the receipt alone (see .receipt-print in the styles). */
+/* The guest's folio on paper, in the client's statement-of-account layout. Built
+   only from the bill the server priced (HotelBooking::toBillArray()), so it shows
+   the same charges, discounts and payments as the Guest Bill and never adds any.
+   official: the receipt handed over at check-out (receipt number, cash received
+   and change, payment method). Otherwise the running Statement of Account. Print
+   prints this sheet alone (see .receipt-print in the styles). */
+/* The folio sheet on its own page: the page's styles, white paper, and the sheet in
+   normal flow so a long folio runs onto a second page instead of being cut off. */
+function folioPrintHtml(sheet) {
+  const styles = [...document.querySelectorAll('style, link[rel="stylesheet"]')].map(n => n.outerHTML).join('');
+  const theme = document.documentElement.getAttribute('data-ops-theme');
+  return `<!doctype html><html${theme ? ` data-ops-theme="${theme}"` : ''}><head><meta charset="utf-8"><title>Guest Folio</title>${styles}`
+    + '<style>@page { margin: 12mm; } html, body { background: #fff !important; margin: 0; font-family: var(--font-body, "Outfit", sans-serif); }'
+    + ' .receipt-print { position: static !important; border: 0 !important; border-radius: 0 !important; padding: 0 !important; }</style>'
+    + `</head><body>${sheet.outerHTML}</body></html>`;
+}
+
+// Prints the folio next to the button, alone, from a hidden frame.
+function printFolio(e) {
+  const sheet = e.currentTarget.closest('.bill-body').querySelector('.receipt-print');
+  const frame = document.createElement('iframe');
+  frame.setAttribute('aria-hidden', 'true');
+  frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+  document.body.appendChild(frame);
+  // Set after appending: the empty frame's own load has already fired by then.
+  frame.onload = () => {
+    frame.contentWindow.focus();
+    frame.contentWindow.print();
+    setTimeout(() => frame.remove(), 1000);
+  };
+  frame.contentDocument.open();
+  frame.contentDocument.write(folioPrintHtml(sheet));
+  frame.contentDocument.close();
+}
+
+function GuestFolio({ bill, cash, official }) {
+  const hotel = window.HMS_HOTEL_INFO || {};
+  const issued = official && bill.checkedOutAt ? new Date(bill.checkedOutAt) : new Date();
+  const ymd = issued.getFullYear() + String(issued.getMonth() + 1).padStart(2, '0') + String(issued.getDate()).padStart(2, '0');
+  const number = 'OR-' + ymd + '-' + String(bill.bookingId || '').padStart(5, '0');
+  const service = bill.roomService || { orders: [], subtotal: 0 };
+  const addons = bill.addons || { items: [], subtotal: 0 };
+  const extras = bill.otherCharges || { items: [], subtotal: 0 };
+  const balance = Number(bill.balance) || 0;
+  const refundDue = Number(bill.refundDue) || 0;
+  const room = bill.room;
+  const nights = Math.max(1, Math.ceil((Number(room.blocks) || 1) / 2));
+  const methods = [...new Set(bill.payments.filter(p => p.amountPaid > 0).map(p => p.method).filter(Boolean))];
+  const line = (label, amount, key, cls, unit) => (
+    <div className={'rc-line' + (cls ? ' ' + cls : '')} key={key}>
+      <span>{label}{unit && <span className="rc-unit">{unit}</span>}</span><span className="rc-amt">{amount}</span>
+    </div>
+  );
+
+  // Folio format: "06 Nov 2026" in the header, "04/11/2026" on each line.
+  const peso = (n) => (Number(n) < 0 ? '−₱' : '₱') + Math.abs(Number(n) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const toDate = (v) => {
+    if (!v) return null;
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+    const d = m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(v);
+    return isNaN(d) ? null : d;
+  };
+  const longDay = (d) => d ? String(d.getDate()).padStart(2, '0') + ' ' + d.toLocaleString('en-US', { month: 'short' }) + ' ' + d.getFullYear() : '—';
+  const shortDay = (v) => { const d = toDate(v); return d ? String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear() : ''; };
+  const hhmm = (d) => d ? String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') : '';
+  const checkInDay = toDate(bill.checkIn);
+  const checkOutAt = bill.checkedOutAt ? new Date(bill.checkedOutAt) : null;
+  const checkInText = longDay(checkInDay) + (bill.checkInTime ? ` (${String(bill.checkInTime).slice(0, 5)})` : '');
+  const checkOutText = checkOutAt ? `${longDay(checkOutAt)} (${hhmm(checkOutAt)})` : longDay(toDate(bill.checkOut));
+
+  // One row per charge, labelled by the department it came from.
+  const rows = [];
+  rows.push(room.promo
+    ? { key: 'room', date: bill.checkIn, desc: `Front Office - ${room.promo} package`, qty: 1, unit: room.subtotal, amount: room.subtotal }
+    : { key: 'room', date: bill.checkIn, desc: 'Front Office - ' + (bill.roomCategory || 'Room') + ' Room', sub: `per ${room.blockHours} hrs`, qty: room.blocks, unit: room.rate, amount: room.subtotal });
+  ((bill.children && bill.children.items) || []).forEach((c, i) => rows.push(
+    { key: 'ch' + i, date: bill.checkIn, desc: `Front Office - Child, age ${c.age}`, sub: c.rate ? 'per night' : c.label, qty: c.rate ? c.nights : 1, unit: c.rate || 0, amount: c.line || 0 }));
+  service.orders.forEach(order => order.items.forEach((item, i) => rows.push(
+    { key: 'rs' + order.orderId + '-' + i, date: order.placedAt, desc: `F&B - In-Room Dining (${item.name})`, qty: item.qty, unit: item.price, amount: item.line })));
+  addons.items.forEach(a => rows.push(
+    { key: 'ad' + a.id, date: bill.checkIn, desc: `Housekeeping - ${a.name}`, sub: a.perNight ? `× ${a.nights} night${a.nights === 1 ? '' : 's'}` : '', qty: a.qty, unit: a.unitPrice, amount: a.line }));
+  extras.items.forEach(c => rows.push({ key: 'ex' + c.id, date: c.addedAt, desc: `Front Office - ${c.description}`, qty: 1, unit: c.amount, amount: c.amount }));
+
+  // Senior Citizen / PWD is the only deduction the bill makes; there are no taxes
+  // or service charges on it. The VAT exemption comes off with the 20%, so both
+  // are shown or the totals would not add up.
+  const discounts = discountBillLines(bill);
+  const discountVat = discounts.reduce((s, d) => s + (Number(d.vat) || 0), 0);
+  const discount20 = discounts.reduce((s, d) => s + (Number(d.discount) || 0), 0);
+  const serviceCharge = (bill.serviceCharge && Number(bill.serviceCharge.amount)) || 0;
+  const subtotal = (Number(bill.total) || 0) - serviceCharge + discountVat + discount20;
+  const payments = bill.payments.filter(p => Number(p.amountPaid) !== 0);
+  const folioNo = 'FL-' + String(bill.bookingId || '').padStart(6, '0');
+  const contactLine = [hotel.phone && 'Tel: ' + hotel.phone, hotel.email].filter(Boolean).join(' | ');
+
+  return (
+    <div className="receipt-print">
+      <div className="rc-top">
+        <h3>{window.HMS_HOTEL_NAME || 'Hotel'}</h3>
+        {hotel.address && <p>{hotel.address}</p>}
+        {contactLine && <p>{contactLine}</p>}
+        {official ? (
+          <>
+            <p className="rc-title">Guest Statement of Account / Folio</p>
+            <p>(Official Receipt)</p>
+          </>
+        ) : (
+          <p className="rc-title">Statement of Account (Guest Folio)</p>
+        )}
+      </div>
+
+      <div className="rc-block">
+        <dl className="rc-info">
+          {official && <div><dt>Receipt No.</dt><dd>{number}</dd></div>}
+          {official ? <div><dt>Date Issued</dt><dd>{longDay(issued)}</dd></div> : null}
+          <div><dt>Folio No.</dt><dd>{folioNo}</dd></div>
+          {!official && <div><dt>Date Printed</dt><dd>{longDay(issued)}</dd></div>}
+          <div><dt>Room No.</dt><dd>{(bill.roomName || '—') + (bill.roomCategory ? ` (${bill.roomCategory})` : '')}</dd></div>
+          <div><dt>Check-In</dt><dd>{checkInText}</dd></div>
+          <div><dt>Guest Name</dt><dd>{bill.guestName || '—'}</dd></div>
+          <div><dt>Check-Out</dt><dd>{checkOutText}</dd></div>
+          <div><dt>Contact No.</dt><dd>{bill.contactNo || '—'}</dd></div>
+          <div><dt>Nights</dt><dd>{nights} Night{nights === 1 ? '' : 's'}</dd></div>
+          <div><dt>ID No.</dt><dd>{bill.idNumber || '—'}</dd></div>
+          <div><dt>Email</dt><dd>{bill.email || '—'}</dd></div>
+        </dl>
+      </div>
+
+      <div className="rc-block">
+        <table className="rc-table">
+          <thead>
+            <tr>
+              <th>Date</th><th>Department / Description</th><th className="num">Qty</th>
+              <th className="num rc-unitcol">Unit Price</th><th className="num">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(r => (
+              <tr key={r.key}>
+                <td className="rc-date">{shortDay(r.date)}</td>
+                <td>{r.desc}{r.sub && <span className="rc-unit">{r.sub}</span>}</td>
+                <td className="num">{r.qty}</td>
+                <td className="num rc-unitcol">{peso(r.unit)}</td>
+                <td className="num">{r.amount ? peso(r.amount) : 'Free'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="rc-block rc-sum">
+        {line('Subtotal', peso(subtotal), 'sub', 'rc-strong')}
+        {discounts.length > 0 && line('Less: Senior Citizen / PWD VAT exemption', peso(-discountVat), 'lv')}
+        {discounts.length > 0 && line('Less: Senior Citizen / PWD discount (20%)', peso(-discount20), 'ld')}
+        {serviceCharge > 0 && line(`Service Charge (${bill.serviceCharge.rate}%)`, peso(serviceCharge), 'svc', '', `On ${peso(bill.serviceCharge.base)}, after discounts`)}
+        {line('Total Charges', peso(bill.total), 'total', 'rc-strong')}
+      </div>
+
+      <div className="rc-block">
+        <p className="rc-head">{official ? 'Payments / Deposits' : 'Payments & Credits Applied'}</p>
+        {payments.length === 0 && line('None', peso(0), 'nopay')}
+        <table className="rc-table">
+          <tbody>
+            {payments.map(p => (
+              <tr key={p.id}>
+                <td className="rc-date">{shortDay(p.paidAt)}</td>
+                <td>{(Number(p.amountPaid) < 0 ? 'Refund' : p.type === 'Full' ? 'Full payment' : 'Payment')} ({p.method}{p.reference ? ' · ' + p.reference : ''})</td>
+                <td className="num">{peso(-p.amountPaid)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {cash && line('Cash received', peso(cash.tendered), 'cash')}
+        {cash && line('Change', peso(cash.change), 'change')}
+      </div>
+
+      <div className="rc-block rc-sum">
+        {line('Total Paid', peso(bill.amountPaid), 'paid', 'rc-strong')}
+        {line(official ? 'Balance Due' : 'Total Balance Due', peso(balance), 'bal', 'rc-strong' + (balance > 0 ? ' rc-due' : ''))}
+        {refundDue > 0 && line('Refund Due to Guest', peso(refundDue), 'refund', 'rc-strong')}
+      </div>
+
+      <div className="rc-block">
+        <p className="rc-head">Senior Citizen / PWD Discount</p>
+        {discounts.length
+          ? discounts.map(d => line(`${d.type} — ${d.fullName}`, peso(d.discount), 'sc' + d.id, '', `ID No: ${d.idNumber || 'N/A'} · 20% of ${peso(d.vatExemptPrice)}`))
+          : line('Senior Citizen / PWD Discount', peso(0) + ' (ID No: N/A)', 'sc0')}
+        {official && line('Payment Method', methods.join(', ') || '—', 'method')}
+      </div>
+
+      <p className="rc-sign">
+        <span></span>
+        <span>Guest Signature — {bill.guestName || 'Guest'}</span>
+      </p>
+
+      {official && <p className="rc-thanks">Thank you for staying with us! Mabuhay!</p>}
+    </div>
+  );
+}
+
+/* The guest's receipt, shown once the stay is checked out. receipt.cash, set when
+   the check-out was paid in cash, carries the cash handed over and the change; it
+   is not stored, so only this receipt has it. */
 function ReceiptModal({ receipt, onClose }) {
   useEffect(() => {
     if (!receipt) return;
@@ -503,19 +740,6 @@ function ReceiptModal({ receipt, onClose }) {
   }, [receipt, onClose]);
 
   if (!receipt) return null;
-  const bill = receipt.bill;
-  const issued = bill.checkedOutAt ? new Date(bill.checkedOutAt) : new Date();
-  const ymd = issued.getFullYear() + String(issued.getMonth() + 1).padStart(2, '0') + String(issued.getDate()).padStart(2, '0');
-  const number = 'OR-' + ymd + '-' + String(bill.bookingId || '').padStart(5, '0');
-  const service = bill.roomService || { orders: [], subtotal: 0 };
-  const addons = bill.addons || { items: [], subtotal: 0 };
-  const extras = bill.otherCharges || { items: [], subtotal: 0 };
-  const balance = Number(bill.balance) || 0;
-  const line = (label, amount, key, cls, unit) => (
-    <div className={'rc-line' + (cls ? ' ' + cls : '')} key={key}>
-      <span>{label}{unit && <span className="rc-unit">{unit}</span>}</span><span className="rc-amt">{amount}</span>
-    </div>
-  );
 
   return (
     <div className="bill-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label="Receipt">
@@ -534,55 +758,47 @@ function ReceiptModal({ receipt, onClose }) {
         </div>
 
         <div className="bill-body">
-          <div className="receipt-print">
-            <div className="rc-top">
-              <h3>{window.HMS_HOTEL_NAME || 'Hotel'}</h3>
-              <p>Official Receipt</p>
-              <p className="rc-no">{number}</p>
-              <p>{issued.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' })}, {issued.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</p>
-            </div>
-
-            <div className="rc-block">
-              {line('Guest', bill.guestName || '—', 'g')}
-              {line('Room', bill.roomName || '—', 'r')}
-              {line('Check-in', formatBillDateTime(bill.checkIn, bill.checkInTime), 'ci')}
-              {line('Check-out', formatBillStamp(bill.checkedOutAt) || formatBillDate(bill.checkOut) || '—', 'co')}
-            </div>
-
-            <div className="rc-block">
-              <p className="rc-head">Charges</p>
-              {line('Room ' + (bill.roomName || ''), formatPeso(bill.room.subtotal), 'room', '', roomUnit(bill.room))}
-              {((bill.children && bill.children.items) || []).map((c, i) => (
-                line(`Child, age ${c.age}`, c.line ? formatPeso(c.line) : 'Free', 'ch' + i, '', c.rate ? `${c.nights} × ${formatPeso(c.rate)}` : c.label)
-              ))}
-              {service.orders.map(order => order.items.map((item, i) => (
-                line(`Room service — ${item.name}`, formatPeso(item.line), 'rs' + order.orderId + '-' + i, '', `${item.qty} × ${formatPeso(item.price)}`)
-              )))}
-              {addons.items.map(a => line(`Add-on — ${a.name}`, formatPeso(a.line), 'ad' + a.id, '', addonUnit(a)))}
-              {extras.items.map(c => line(c.description, formatPeso(c.amount), 'ex' + c.id))}
-              {line('Total', formatPeso(bill.total), 'total', 'rc-strong')}
-            </div>
-
-            <div className="rc-block">
-              <p className="rc-head">Payments</p>
-              {bill.payments.length === 0
-                ? line('None', formatPeso(0), 'none')
-                : bill.payments.map(pay => line(
-                    `${pay.type} — ${[pay.method, formatBillStamp(pay.paidAt)].filter(Boolean).join(', ')}`,
-                    formatPeso(pay.amountPaid),
-                    'p' + pay.id
-                  ))}
-              {line('Total paid', formatPeso(bill.amountPaid), 'paid', 'rc-strong')}
-              {balance > 0
-                ? line('Unpaid balance', formatPeso(balance), 'bal', 'rc-strong rc-due')
-                : line('Balance', formatPeso(0), 'bal', 'rc-strong')}
-            </div>
-
-            <p className="rc-thanks">Thank you for staying with us.</p>
-          </div>
+          <GuestFolio bill={receipt.bill} cash={receipt.cash} official />
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', marginTop: '1.2rem' }}>
-            <button type="button" className="btn-outline" onClick={() => window.print()}>
+            <button type="button" className="btn-outline" onClick={printFolio}>
+              <i className="fa-solid fa-print" style={{ marginRight: 6 }}></i>Print
+            </button>
+            <button type="button" className="btn-solid" onClick={onClose}>Done</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* The Statement of Account for a stay still open, opened from the Guest Bill. */
+function FolioModal({ bill, onClose }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <div className="bill-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label="Guest folio">
+      <div className="bill-modal" onClick={e => e.stopPropagation()}>
+        <div className="bill-head">
+          <div>
+            <p style={{ color: 'var(--accent)', fontSize: '0.65rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: '0 0 0.35rem' }}>Front Desk</p>
+            <h2 className="font-display" style={{ fontSize: '1.5rem', margin: 0, color: 'var(--fg)' }}>Guest Folio</h2>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close"
+            style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)', cursor: 'pointer', flexShrink: 0 }}>
+            <i className="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <div className="bill-body">
+          <GuestFolio bill={bill} />
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', marginTop: '1.2rem' }}>
+            <button type="button" className="btn-outline" onClick={printFolio}>
               <i className="fa-solid fa-print" style={{ marginRight: 6 }}></i>Print
             </button>
             <button type="button" className="btn-solid" onClick={onClose}>Done</button>
@@ -612,8 +828,10 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
   const [addonQty, setAddonQty] = useState('1');
   const [showAddonForm, setShowAddonForm] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [showFolio, setShowFolio] = useState(false);
 
   const balance = bill ? Number(bill.balance) || 0 : 0;
+  const refundDue = bill ? Number(bill.refundDue) || 0 : 0;
 
   // Opening the bill pre-fills the balance: settling it in full is the common case,
   // and the field stays editable for a guest paying part of it.
@@ -627,6 +845,7 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
     setAddonId('');
     setAddonQty('1');
     setShowAddonForm(false);
+    setShowFolio(false);
   }, [open]);
 
   // Re-filled whenever the balance moves (a charge added, a payment taken).
@@ -635,15 +854,21 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
   }, [open, bill && bill.bookingId, balance]);
 
   useEffect(() => {
-    if (!open) return;
+    // While the folio is open on top, Escape closes only the folio.
+    if (!open || showFolio) return;
     const onKey = (e) => { if (e.key === 'Escape' && !busy) onClose(); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [open, onClose, busy]);
+  }, [open, onClose, busy, showFolio]);
 
   if (!open) return null;
 
-  const paid = Math.max(0, parseFloat(amount) || 0);
+  // Cash: the field is what the guest hands over. Only the balance is recorded as
+  // paid; the rest goes back as change. Other methods record the amount as typed.
+  const entered = Math.max(0, parseFloat(amount) || 0);
+  const isCash = method === 'Cash';
+  const paid = isCash ? Math.min(entered, Math.max(0, balance)) : entered;
+  const change = isCash ? Math.max(0, entered - Math.max(0, balance)) : 0;
   const remainingAfter = Math.max(0, balance - paid);
 
   const submitCharge = (e) => {
@@ -675,8 +900,18 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
     if (!(paid > 0)) { if (onToast) onToast('Enter the amount received.'); return; }
     setBusy(true);
     Promise.resolve(onPay({ amount: paid, method, reference: reference.trim(), full: remainingAfter <= 0 }))
-      .then(() => { setReference(''); if (onToast) onToast(formatPeso(paid) + ' received by ' + method + '.'); })
+      .then(() => { setReference(''); if (onToast) onToast(formatPeso(paid) + ' received by ' + method + '.' + (change > 0 ? ' Change: ' + formatPeso(change) + '.' : '')); })
       .catch(err => { if (onToast) onToast((err && err.message) || 'Could not record that payment.'); })
+      .finally(() => setBusy(false));
+  };
+
+  // Hands back what the guest overpaid, by the method chosen below.
+  const refund = () => {
+    if (!window.confirm(`Give ${formatPeso(refundDue)} back to the guest by ${method}?`)) return;
+    setBusy(true);
+    Promise.resolve(onPay({ type: 'Refund', amount: refundDue, method, reference: reference.trim() }))
+      .then(() => { if (onToast) onToast(formatPeso(refundDue) + ' refunded by ' + method + '.'); })
+      .catch(err => { if (onToast) onToast((err && err.message) || 'Could not record that refund.'); })
       .finally(() => setBusy(false));
   };
 
@@ -689,7 +924,7 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
       `${formatPeso(remainingAfter)} will still be unpaid after this. Check out anyway?`
     )) return;
     setBusy(true);
-    Promise.resolve(onSettle({ amount: paid, method, reference: reference.trim() }))
+    Promise.resolve(onSettle({ amount: paid, method, reference: reference.trim(), tendered: entered, change }))
       .catch(err => { if (onToast) onToast((err && err.message) || 'Could not complete check-out.'); })
       .finally(() => setBusy(false));
   };
@@ -705,13 +940,23 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
         <div className="bill-head">
           <div>
             <p style={{ color: 'var(--accent)', fontSize: '0.65rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: '0 0 0.35rem' }}>Front Desk</p>
-            <h2 className="font-display" style={{ fontSize: '1.5rem', margin: 0, color: 'var(--fg)' }}>{canCheckOut ? 'Final Bill' : 'Bill'}</h2>
+            <h2 className="font-display" style={{ fontSize: '1.5rem', margin: 0, color: 'var(--fg)' }}>{canCheckOut ? 'Final Guest Bill' : 'Guest Bill'}</h2>
           </div>
-          <button type="button" onClick={onClose} disabled={busy} aria-label="Close"
-            style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)', cursor: busy ? 'not-allowed' : 'pointer', flexShrink: 0 }}>
-            <i className="fa-solid fa-xmark"></i>
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+            {bill && !loading && !error && (
+              <button type="button" className="btn-outline" onClick={() => setShowFolio(true)} disabled={busy}
+                title="Statement of Account (Guest Folio), ready to print"
+                style={{ padding: '0.45rem 0.8rem', fontSize: '0.66rem' }}>
+                <i className="fa-solid fa-print" style={{ marginRight: 6 }}></i>Guest Folio
+              </button>
+            )}
+            <button type="button" onClick={onClose} disabled={busy} aria-label="Close"
+              style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)', cursor: busy ? 'not-allowed' : 'pointer', flexShrink: 0 }}>
+              <i className="fa-solid fa-xmark"></i>
+            </button>
+          </div>
         </div>
+        {showFolio && bill && <FolioModal bill={bill} onClose={() => setShowFolio(false)} />}
 
         <div className="bill-body">
           {loading ? (
@@ -742,6 +987,19 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
                 <BillItem key={'ch' + i} name={`Child, age ${c.age}`}
                   detail={c.rate ? `${c.nights} night${c.nights === 1 ? '' : 's'} × ${formatPeso(c.rate)}` : c.label}
                   amount={c.line ? formatPeso(c.line) : 'Free'} />
+              ))}
+              {/* Senior Citizen / PWD, applied at booking: shown, never applied again here.
+                  The room line above stays at full price. */}
+              {((bill.discounts && bill.discounts.items) || []).map(d => (
+                d.verified ? (
+                  <React.Fragment key={'d' + d.id}>
+                    <BillItem name={'VAT exemption · ' + d.fullName} detail={`${d.type} · 12% VAT on their ${formatPeso(d.eligible)} share`} amount={formatPeso(-d.vat)} />
+                    <BillItem name={d.type + ' discount · ' + d.fullName} detail={`20% of ${formatPeso(d.vatExemptPrice)}`} amount={formatPeso(-d.discount)} />
+                  </React.Fragment>
+                ) : (
+                  <BillItem key={'d' + d.id} name={d.type + ' · ' + d.fullName}
+                    detail="Pending ID verification. Verify it under Details to apply." amount="Not applied" />
+                )
               ))}
 
               {service.orders.length > 0 && (
@@ -840,6 +1098,17 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
                   )}
                 </div>
               )}
+
+              {/* On every charge above, after the Senior Citizen / PWD discounts. Priced
+                  by the server; a stay booked before there was one shows none. */}
+              {bill.serviceCharge && bill.serviceCharge.amount > 0 && (
+                <>
+                  <p className="bill-section-title">Service Charge</p>
+                  <BillItem name={`Service charge (${bill.serviceCharge.rate}%)`}
+                    detail={`On ${formatPeso(bill.serviceCharge.base)}, after discounts`}
+                    amount={formatPeso(bill.serviceCharge.amount)} />
+                </>
+              )}
               </div>
 
               <div>
@@ -854,8 +1123,8 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
                 bill.payments.map(p => (
                   <div key={p.id}>
                     <div className="bill-line">
-                      <span>{p.type} payment</span>
-                      <span className="bill-amt">− {formatPeso(p.amountPaid)}</span>
+                      <span>{p.type === 'Refund' ? 'Refund to guest' : p.type + ' payment'}</span>
+                      <span className="bill-amt">{p.amountPaid < 0 ? '+ ' + formatPeso(-p.amountPaid) : '− ' + formatPeso(p.amountPaid)}</span>
                     </div>
                     <p className="bill-subnote">{[p.method, formatBillStamp(p.paidAt)].filter(Boolean).join(' · ')}</p>
                   </div>
@@ -873,6 +1142,20 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
                   {formatPeso(balance)}
                 </span>
               </div>
+              {/* A discount verified after the guest paid full price leaves money to give
+                  back. Recorded as its own refund line; the earlier payment stays as taken. */}
+              {refundDue > 0 && (
+                <div className="bill-line is-subtotal is-balance">
+                  <span>
+                    Refund Due to Guest
+                    <button type="button" className="btn-outline" disabled={busy} onClick={refund}
+                      style={{ marginLeft: '0.6rem', padding: '0.3rem 0.7rem', fontSize: '0.66rem' }}>
+                      Record refund
+                    </button>
+                  </span>
+                  <span className="bill-amt">{formatPeso(refundDue)}</span>
+                </div>
+              )}
 
               <div className="bill-line is-total">
                 <span>Total Bill</span>
@@ -889,7 +1172,7 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
                     </select>
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.35rem' }}>Amount Received</label>
+                    <label style={{ fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.35rem' }}>{isCash ? 'Cash Received' : 'Amount Received'}</label>
                     <input type="number" className="booking-input" min="0" step="0.01" value={amount}
                       onChange={e => setAmount(e.target.value)} />
                   </div>
@@ -906,6 +1189,11 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
                     ? `${formatPeso(remainingAfter)} will still be unpaid.`
                     : 'This pays the bill in full.'}
                 </p>
+                {change > 0 && (
+                  <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', fontWeight: 700, color: 'var(--fg)' }}>
+                    Change: {formatPeso(change)}
+                  </p>
+                )}
                 <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1rem', flexWrap: 'wrap' }}>
                   <button type="button" className={canCheckOut ? 'btn-outline' : 'btn-solid'} disabled={busy || paid <= 0} onClick={payOnly}
                     style={{ flex: '1 1 10rem' }} title="Record the money without checking the guest out">
@@ -928,6 +1216,65 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
       </div>
     </div>
   );
+}
+
+/* The Senior Citizens and PWDs on a stay, the booker or companions, each with their
+   ID check. Verifying a pending one takes their discount off the bill from then on. */
+function DiscountList({ discounts, open, onVerify }) {
+  const [busyId, setBusyId] = useState(null);
+  const verify = (d) => {
+    const go = () => {
+      setBusyId(d.id);
+      Promise.resolve(onVerify(d)).finally(() => setBusyId(null));
+    };
+    const text = `Confirm you have seen ${d.fullName}'s valid ${d.type} ID (${d.idNumber}). The discount comes off the bill from now on.`;
+    if (!window.Swal) { if (window.confirm(text)) go(); return; }
+    window.Swal.fire({
+      title: 'Verify ID?', text, icon: 'question', showCancelButton: true,
+      confirmButtonText: 'Yes, ID verified', cancelButtonText: 'Not yet',
+      background: fdThemeColor('--card', '#181714'), color: fdThemeColor('--fg', '#f5f0e8'),
+      confirmButtonColor: fdThemeColor('--accent', '#c9a84c'), cancelButtonColor: '#71717a', heightAuto: false,
+    }).then(r => { if (r.isConfirmed) go(); });
+  };
+  return (
+    <>
+      <p className="bill-section-title">Senior Citizen / PWD</p>
+      {discounts.map(d => (
+        <div key={d.id} className="vg-disc">
+          <div className="bill-line" style={{ padding: 0 }}>
+            <span style={{ color: 'var(--fg)' }}>{d.fullName} <small style={{ color: 'var(--fg-muted)' }}>· {d.who}</small></span>
+            <span className="bill-amt">{d.verified ? '− ' + formatPeso(d.less) : '—'}</span>
+          </div>
+          <p className="bill-subnote">
+            {d.type} · ID {d.idNumber}{d.birthDate ? ' · born ' + formatBillDate(d.birthDate) : ''} · share {formatPeso(d.eligible)}
+          </p>
+          <div className="vg-disc-foot">
+            <span className={'room-status-badge ' + (d.verified ? 'status-available' : 'status-cleaning')} style={{ position: 'static' }}>
+              {d.status}
+            </span>
+            {d.verified ? (
+              <span className="bill-subnote" style={{ margin: 0 }}>
+                VAT exemption {formatPeso(d.vat)} + 20% {formatPeso(d.discount)}{d.verifiedBy ? ' · checked by ' + d.verifiedBy : ''}
+              </span>
+            ) : open && onVerify ? (
+              <button type="button" className="vg-btn vg-btn-line" disabled={busyId === d.id} onClick={() => verify(d)}
+                title="You have seen the guest's valid ID">
+                <i className="fa-solid fa-id-card"></i> {busyId === d.id ? 'Saving…' : 'Mark ID verified'}
+              </button>
+            ) : (
+              <span className="bill-subnote" style={{ margin: 0 }}>Not applied: the ID was never verified.</span>
+            )}
+          </div>
+        </div>
+      ))}
+    </>
+  );
+}
+
+/* Applied Senior Citizen / PWD adjustments on a bill: the VAT removed and the 20%,
+   each its own line under the full-price room, as the receipt must show them. */
+function discountBillLines(bill) {
+  return ((bill.discounts && bill.discounts.items) || []).filter(d => d.verified);
 }
 
 /* One bill line: the name, its unit price under it, the amount on the right. */
@@ -1180,7 +1527,7 @@ function stayRange(reservation) {
  * charges, payments) with its own buttons, so several bookings stay apart instead of
  * being merged into one record. The cards at the top jump to each section.
  */
-function GuestDetailsModal({ stays, renderActions, onClose }) {
+function GuestDetailsModal({ stays, renderActions, onVerifyDiscount, onClose }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
@@ -1270,7 +1617,7 @@ function GuestDetailsModal({ stays, renderActions, onClose }) {
                 </div>
               )}
               {renderActions && <div className="vg-bk-actions">{renderActions(room, reservation)}</div>}
-              <StayDetails room={room} reservation={reservation} transactions={transactions} />
+              <StayDetails room={room} reservation={reservation} transactions={transactions} onVerifyDiscount={onVerifyDiscount} />
             </section>
           ))}
 
@@ -1291,15 +1638,20 @@ function GuestDetailsModal({ stays, renderActions, onClose }) {
 }
 
 /* One booking inside GuestDetailsModal: its room, dates, charges and payments. */
-function StayDetails({ room, reservation, transactions }) {
+function StayDetails({ room, reservation, transactions, onVerifyDiscount }) {
   const childCharges = Number(reservation.childCharges) || 0;
-  const roomTotal = (Number(reservation.totalDue) || 0) - childCharges;
+  // totalDue is after the verified Senior Citizen / PWD discounts; the room line shows
+  // the full price and the discount sits under it as its own line.
+  const statutoryDiscount = Number(reservation.statutoryDiscount) || 0;
+  const discounts = reservation.discounts || [];
+  const refundDue = Number(reservation.refundDue) || 0;
+  const roomTotal = (Number(reservation.totalDue) || 0) - childCharges + statutoryDiscount;
   const foodTotal = Number(reservation.roomServiceTotal) || 0;
   const foodCount = Number(reservation.roomServiceCount) || 0;
   const extras = Number(reservation.otherCharges) || 0;
   const addonsTotal = Number(reservation.addonsTotal) || 0;
   const addonsCount = Number(reservation.addonsCount) || 0;
-  const grandTotal = Number(reservation.grandTotal) || (roomTotal + childCharges + foodTotal + addonsTotal + extras);
+  const grandTotal = Number(reservation.grandTotal) || (roomTotal + childCharges - statutoryDiscount + foodTotal + addonsTotal + extras);
   const paid = Number(reservation.amountPaid) || 0;
   const outstanding = reservation.outstanding != null
     ? Number(reservation.outstanding)
@@ -1339,6 +1691,11 @@ function StayDetails({ room, reservation, transactions }) {
         </>
       )}
 
+      {discounts.length > 0 && (
+        <DiscountList discounts={discounts} open={['Booked', 'Arrived', 'Checked In', 'Pending Room Inspection'].includes(reservation.status)}
+          onVerify={onVerifyDiscount ? (d) => onVerifyDiscount(reservation, d) : null} />
+      )}
+
       {reservation.inspection && (
         <>
           <p className="bill-section-title">Room inspection</p>
@@ -1362,6 +1719,12 @@ function StayDetails({ room, reservation, transactions }) {
           <span className="bill-amt">{formatPeso(childCharges)}</span>
         </div>
       )}
+      {statutoryDiscount > 0 && (
+        <div className="bill-line">
+          <span>Senior Citizen / PWD discount <small style={{ color: 'var(--fg-muted)' }}>(VAT exemption + 20%)</small></span>
+          <span className="bill-amt">− {formatPeso(statutoryDiscount)}</span>
+        </div>
+      )}
       <div className="bill-line">
         <span>Room service{foodCount > 0 ? ` (${foodCount} order${foodCount === 1 ? '' : 's'})` : ''}</span>
         <span className="bill-amt">{formatPeso(foodTotal)}</span>
@@ -1378,6 +1741,12 @@ function StayDetails({ room, reservation, transactions }) {
       <div className={`bill-line${outstanding > 0 ? ' is-balance' : ''}`}>
         <span>Balance</span><span className="bill-amt">{formatPeso(outstanding)}</span>
       </div>
+      {refundDue > 0 && (
+        <div className="bill-line is-balance">
+          <span>Refund due to guest <small style={{ color: 'var(--fg-muted)' }}>(record it under Bill)</small></span>
+          <span className="bill-amt">{formatPeso(refundDue)}</span>
+        </div>
+      )}
 
       <p className="bill-section-title">Payments</p>
       {payments.length === 0 ? (
@@ -1534,7 +1903,7 @@ function fdThemeColor(name, fallback) {
   return value || fallback;
 }
 
-function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast, onFetchBill, onAddCharge, onRemoveCharge, onAddAddon, onPay, onSettleAndCheckOut, onExtendStay, onChangeRoom, onRequestInspection, onReviewDamage }) {
+function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast, onFetchBill, onAddCharge, onRemoveCharge, onAddAddon, onPay, onSettleAndCheckOut, onExtendStay, onChangeRoom, onRequestInspection, onReviewDamage, onVerifyDiscount }) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [page, setPage] = useState(1);
@@ -1585,6 +1954,15 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
       if (onToast) onToast(`${reservation.fullName || 'Guest'} moved from ${room.name} to ${newRoom.name}.`);
     });
   };
+  const verifyDiscount = (reservation, discount) => (
+    Promise.resolve(onVerifyDiscount(reservation.bookingId, discount.id))
+      .then(data => {
+        const refund = data && data.booking ? Number(data.booking.refundDue) || 0 : 0;
+        if (onToast) onToast(`${discount.fullName}'s ${discount.type} discount is applied.`
+          + (refund > 0 ? ` The guest has overpaid: refund ${formatPeso(refund)} from the Bill.` : ''));
+      })
+      .catch(err => { if (onToast) onToast((err && err.message) || 'Could not verify that ID.'); })
+  );
   const extendStay = (checkOut) => {
     const { room, reservation } = extendFor;
     return Promise.resolve(onExtendStay(reservation.bookingId, checkOut)).then(() => {
@@ -1643,14 +2021,17 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
   const settleAndCheckOut = (payment) => {
     const bookingId = billFor.reservation.bookingId;
     const lastBill = bill;
+    const cash = payment.method === 'Cash' && payment.amount > 0
+      ? { tendered: payment.tendered, change: payment.change, paidNow: payment.amount }
+      : null;
     return Promise.resolve(onSettleAndCheckOut(bookingId, payment)).then(() => {
       if (onToast) {
         onToast(`${billFor.reservation.fullName || 'Guest'} checked out of ${billFor.room.name}.`);
       }
       closeBill();
       return Promise.resolve(onFetchBill(bookingId))
-        .then(finalBill => setReceipt({ bill: finalBill || lastBill }))
-        .catch(() => { if (lastBill) setReceipt({ bill: lastBill }); });
+        .then(finalBill => setReceipt({ bill: finalBill || lastBill, cash }))
+        .catch(() => { if (lastBill) setReceipt({ bill: lastBill, cash }); });
     });
   };
 
@@ -1780,7 +2161,7 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
     <div className="vg" data-hms-no-edit="1">
       <header className="vg-head">
         <div>
-          <h1 className="font-display">Guest Information</h1>
+          <h1 className="font-display">Guest Folio</h1>
           <p>Everyone booked or staying right now. Use the button on each row for the next step.</p>
         </div>
         {window.HMS_WALKIN_URL && (
@@ -1948,6 +2329,7 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
         <GuestDetailsModal
           stays={detailsStays}
           renderActions={renderActions}
+          onVerifyDiscount={verifyDiscount}
           onClose={() => setDetailsFor(null)}
         />
       )}
@@ -2074,10 +2456,16 @@ function App() {
       .then(d => { fetchAddons(); return d.bill; })
   ), [billRequest, fetchAddons]);
 
-  // Money taken during the stay, without checking out.
+  // A pending Senior Citizen / PWD discount whose ID the desk has now seen.
+  const verifyDiscount = useCallback((bookingId, discountId) => (
+    billRequest('/students/hotel/bookings/' + bookingId + '/discounts/' + discountId, 'PATCH', { verified: true })
+      .then(data => { putRoom(data); fetchRooms(); return data; })
+  ), [billRequest, fetchRooms]);
+
+  // Money taken during the stay, without checking out. A refund is money handed back.
   const pay = useCallback((bookingId, payment) => (
     billRequest('/students/hotel/bookings/' + bookingId + '/payments', 'POST', {
-      type: payment.full ? 'Full' : 'Partial',
+      type: payment.type || (payment.full ? 'Full' : 'Partial'),
       amount_paid: payment.amount,
       method: payment.method,
       reference: payment.reference,
@@ -2163,6 +2551,7 @@ function App() {
       onChangeRoom={changeRoom}
       onRequestInspection={requestInspection}
       onReviewDamage={reviewDamage}
+      onVerifyDiscount={verifyDiscount}
       onToast={(msg) => window.toast && window.toast(msg)}
     />
   );

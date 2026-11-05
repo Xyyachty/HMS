@@ -1952,10 +1952,21 @@
         // unchanged a moment before the report lands.
         const reportedStartedTaskIds = new Set();
         let pendingTaskStart = Promise.resolve();
+        let warnedNoTaskPicked = false;
 
         function markAssignedTaskStarted() {
             const task = assignedTasks.find(function (t) { return t.id === activeAssignedTaskId; });
-            if (!task || task.is_concept || task.status === 'in_progress' || task.status === 'completed') return;
+            // Nothing picked: the change belongs to no task, and Submit would later
+            // say nothing was done. Said once a visit, while it can still be fixed.
+            if (!task) {
+                const open = assignedTasks.some(function (t) { return !t.is_concept && t.status !== 'completed'; });
+                if (open && !warnedNoTaskPicked && typeof toast === 'function') {
+                    warnedNoTaskPicked = true;
+                    toast('Saved. Click the task you are working on in the sidebar so your changes count towards it.');
+                }
+                return;
+            }
+            if (task.is_concept || task.status === 'in_progress' || task.status === 'completed') return;
             if (reportedStartedTaskIds.has(task.id)) return;
             reportedStartedTaskIds.add(task.id);
             // A sent-back task keeps its Revision Required label; the change only

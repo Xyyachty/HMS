@@ -237,8 +237,8 @@
 
     .nav__burger {
       display: none;
-      width: 42px;
-      height: 42px;
+      width: 44px;
+      height: 44px;
       align-items: center;
       justify-content: center;
       border: 1px solid rgba(228, 201, 126, .4);
@@ -259,15 +259,19 @@
       padding: 26px;
       display: flex;
       flex-direction: column;
+      /* A landscape phone is barely taller than the menu itself. */
+      overflow-y: auto;
       background: var(--surface);
-      box-shadow: -20px 0 60px rgba(42, 17, 24, .24);
       transform: translateX(100%);
-      transition: transform .38s var(--ease);
+      transition: transform .38s var(--ease), box-shadow .38s ease;
     }
-    .mobile-menu.open { transform: translateX(0); }
+    /* Shadow only while open: parked off-screen, it bled a grey band onto the
+       right edge of the page. */
+    .mobile-menu.open { transform: translateX(0); box-shadow: -20px 0 60px rgba(42, 17, 24, .24); }
     .mobile-menu__close {
+      flex: 0 0 auto;
       align-self: flex-end;
-      width: 42px; height: 42px;
+      width: 44px; height: 44px;
       margin-bottom: 26px;
       display: flex; align-items: center; justify-content: center;
       border: 0;
@@ -649,12 +653,16 @@
       max-width: 27rem;
       display: flex;
       flex-direction: column;
+      /* On a landscape phone the form is taller than the screen; without this
+         the Log In button sat below the fold with no way to scroll to it. */
+      overflow-y: auto;
+      overscroll-behavior: contain;
       background: var(--surface);
-      box-shadow: -24px 0 70px rgba(42, 17, 24, .3);
       transform: translateX(100%);
-      transition: transform .45s var(--ease);
+      transition: transform .45s var(--ease), box-shadow .45s ease;
     }
-    .login-drawer.open { transform: translateX(0); }
+    /* Shadow only while open, for the same reason as .mobile-menu. */
+    .login-drawer.open { transform: translateX(0); box-shadow: -24px 0 70px rgba(42, 17, 24, .3); }
     body.login-open { overflow: hidden; }
 
     .login-drawer__head {
@@ -752,7 +760,9 @@
       transform: translateY(-50%);
       display: grid;
       place-items: center;
-      width: 28px; height: 28px;
+      /* Same eye icon, a thumb-sized hit area. */
+      width: 40px; height: 40px;
+      margin-right: -6px;
       border: 0;
       background: none;
       color: var(--ink-muted);
@@ -864,7 +874,9 @@
       .hero__grid { grid-template-columns: 1fr; min-height: 0; }
       .hero__copy {
         order: 2;
-        padding: 40px var(--gutter) 108px;
+        /* Was 108px at the bottom, room for value cards that overlapped the hero
+           on desktop. Stacked they do not, so it was just an empty band. */
+        padding: 40px var(--gutter) 56px;
         text-align: left;
       }
       /* Already edge to edge on one column, so no negative margin to undo a
@@ -904,6 +916,25 @@
       .btn--primary { width: 100%; }
       .footer__inner { justify-content: center; text-align: center; }
     }
+
+    /* Phone on its side: keep the photo from filling the whole short screen,
+       so the heading shows without scrolling past a wall of picture. */
+    @media (max-width: 900px) and (orientation: landscape) and (max-height: 520px) {
+      .hero__figure { min-height: 62vh; }
+    }
+
+    /* Short screens: the drawer photo is decoration; the form needs the room. */
+    @media (max-height: 560px) {
+      .login-drawer__photo { display: none; }
+    }
+
+    /* Touch screens (a tablet in landscape still gets the desktop nav): links
+       and the Login button grow to a 44px tap target. */
+    @media (pointer: coarse) {
+      .nav__link { padding: 13px 14px; }
+      .btn--login { padding: 12px 20px 12px 16px; }
+      .mobile-link { padding: 14px; }
+    }
   </style>
 @include('partials.no-horizontal-scroll')
 </head>
@@ -929,7 +960,7 @@
         </button>
       </div>
 
-      <button id="menuToggle" class="nav__burger" aria-label="Open menu">
+      <button id="menuToggle" class="nav__burger" aria-label="Open menu" aria-controls="mobileMenu" aria-expanded="false">
         <span class="iconify" style="font-size:1.5rem" data-icon="mdi:menu"></span>
       </button>
     </div>
@@ -1250,11 +1281,21 @@
     function openMobileMenu() {
       mobileMenu.classList.add('open');
       menuOverlay.hidden = false;
+      menuToggle.setAttribute('aria-expanded', 'true');
     }
     function closeMobileMenu() {
       mobileMenu.classList.remove('open');
       menuOverlay.hidden = true;
+      menuToggle.setAttribute('aria-expanded', 'false');
     }
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && mobileMenu.classList.contains('open')) closeMobileMenu();
+    });
+    // Turning a phone or tablet past 900px swaps in the desktop nav; do not
+    // leave the drawer and its dark overlay open behind it.
+    window.matchMedia('(min-width: 901px)').addEventListener('change', (e) => {
+      if (e.matches) closeMobileMenu();
+    });
     menuToggle.addEventListener('click', openMobileMenu);
     menuClose.addEventListener('click', closeMobileMenu);
     menuOverlay.addEventListener('click', closeMobileMenu);

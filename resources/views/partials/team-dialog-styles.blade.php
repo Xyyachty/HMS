@@ -16,7 +16,16 @@
     }
     #taskReviewModal .review-modal-box { width: min(95vw, 85rem); height: min(90vh, 55rem); }
     @media (max-width: 640px) {
-        .tm-box, #taskReviewModal .review-modal-box { width: 96vw; height: 92vh; }
+        /* dvh: phone browsers (and Messenger's) count the toolbar in vh. */
+        .tm-box, #taskReviewModal .review-modal-box { width: 96vw; height: 92vh; height: 92dvh; }
+        /* One row: title beside an icon-only Close, so the section list and
+           its content keep the height. */
+        #teamInfoModal .tm-head { flex-wrap: nowrap; padding: .75rem 1rem; gap: .6rem; }
+        #teamInfoModal .tm-head-icon { display: none; }
+        #teamInfoModal .tm-title { font-size: 1.05rem; }
+        #teamInfoModal .tm-close { font-size: 0; padding: 0 .7rem; }
+        #teamInfoModal .tm-close > * { font-size: 1.15rem; }
+        .tm-content { padding: 1rem; }
     }
 
     .tm-head {
@@ -76,10 +85,17 @@
 
     @media (max-width: 860px) {
         .tm-body { flex-direction: column; }
-        .tm-nav { width: 100%; flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid #E4E2E0; padding: .6rem; }
-        .tm-tab { min-width: 13rem; }
+        /* Sections in a grid above the content: four across on a tablet, two
+           on a phone. A wrapping 13rem-wide row stacked them one per line and
+           left the content a sliver at the bottom. */
+        .tm-nav { width: 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); border-right: 0; border-bottom: 1px solid #E4E2E0; padding: .6rem; }
+        .tm-tab { padding: .55rem .6rem; gap: .5rem; align-items: center; }
+        .tm-tab-icon { width: 1.9rem; height: 1.9rem; font-size: 1rem; }
+        .tm-tab-title { font-size: 0.8125rem; line-height: 1.25; }
+        .tm-tab-count { margin-top: .25rem; white-space: normal; }
         .tm-tab-desc { display: none; }
     }
+    @media (max-width: 640px) { .tm-tab-icon { display: none; } }
 
     /* Shared pieces */
     .tm-btn {
@@ -224,6 +240,34 @@
     .tm-pager { padding: .65rem 1rem; border-top: 1px solid #EFEFEF; background: #FAFAFA; }
     .tm-pager-label { font-size: 0.7812rem; font-weight: 700; color: #5F5A55; }
     @media (max-width: 900px) { .tm-stats { grid-template-columns: minmax(0, 1fr); } }
+
+    /* The four fixed columns take 35.5rem, so where the table is narrower
+       than 46rem (phones, tablets, a 1024px laptop with the section list
+       beside it) Task got the leftover few pixels, one letter per line. There
+       each task becomes a card: the name on top, a labelled line per column,
+       the button full width. Measured on the card, not the window, because
+       the section list takes width on wide screens only. */
+    .tm-card:has(> .tm-table) { container-type: inline-size; }
+    @container (max-width: 46rem) {
+        .tm-table, .tm-table > tbody, .tm-table > tbody > tr, .tm-table > tbody > tr > td { display: block; width: 100%; }
+        .tm-table > colgroup, .tm-table > thead { display: none; }
+        .tm-table > tbody > tr:not(.tm-group-row) { padding: .75rem 1rem; border-top: 1px solid #EFEFEF; }
+        .tm-table > tbody > tr:first-child { border-top: 0; }
+        .tm-table > tbody > tr > td { padding: .2rem 0; border-top: 0; }
+        .tm-table > tbody > tr.tm-group-row > td { padding: .7rem 1rem; }
+        .tm-table > tbody > tr > td:not([colspan]):is(:nth-child(2), :nth-child(3), :nth-child(4)) {
+            display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .25rem .75rem; text-align: right;
+        }
+        .tm-table > tbody > tr > td:not([colspan]):is(:nth-child(2), :nth-child(3), :nth-child(4))::before {
+            font-size: .625rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #8A817A;
+        }
+        .tm-table > tbody > tr > td:not([colspan]):nth-child(2)::before { content: "Due date"; }
+        .tm-table > tbody > tr > td:not([colspan]):nth-child(3)::before { content: "Status"; }
+        .tm-table > tbody > tr > td:not([colspan]):nth-child(4)::before { content: "Handed in"; }
+        .tm-table > tbody > tr > td:not([colspan]):first-child { padding-bottom: .4rem; }
+        .tm-table > tbody > tr > td:not([colspan]):nth-child(5) { padding-top: .5rem; }
+        .tm-table .tm-ellipsis { white-space: normal; }
+    }
 
     /* Student task dialog: the work on the left, notes and decision on the right. */
     .rv-meta { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .4rem; }

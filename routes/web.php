@@ -157,6 +157,25 @@ Route::prefix('hotel')->name('public.hotel')->group(function () {
     Route::post('/{slug}/api/table-reservations', [PublicSiteController::class, 'reserveTable'])
         ->middleware('throttle:10,1')
         ->name('.table-reservations');
+    // The guest's own table reservation and the menu, behind the private link the
+    // reservation returned. View-only; see PublicSiteController::reservation().
+    Route::get('/{slug}/reservation/{token}', [PublicSiteController::class, 'reservation'])
+        ->middleware('throttle:60,1')
+        ->where('token', '[A-Za-z0-9]{1,100}')
+        ->name('.reservation');
+    Route::get('/{slug}/api/reservation/{token}', [PublicSiteController::class, 'reservationData'])
+        ->middleware('throttle:60,1')
+        ->where('token', '[A-Za-z0-9]{1,100}')
+        ->name('.reservation.data');
+    // The same page opened from My Bookings: the signed-in account is the access check.
+    Route::get('/{slug}/my-reservation/{id}', [PublicSiteController::class, 'myReservation'])
+        ->middleware('throttle:60,1')
+        ->whereNumber('id')
+        ->name('.my-reservation');
+    Route::get('/{slug}/api/my-reservation/{id}', [PublicSiteController::class, 'myReservationData'])
+        ->middleware('throttle:60,1')
+        ->whereNumber('id')
+        ->name('.my-reservation.data');
 
     // Food, ordered by the guest reading the menu. Same reason as the two above:
     // the staff endpoint sits behind the students login a visitor does not have.
@@ -1823,6 +1842,17 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             'rooms.*.addons'            => 'nullable|array',
             'rooms.*.addons.*.addon_id' => 'required|integer',
             'rooms.*.addons.*.qty'      => 'required|integer|min:1|max:99',
+            // Senior Citizens and PWDs staying in that room, the booker or a companion.
+            // Checked in full by HotelBookingDesk::checkDiscounts().
+            'rooms.*.discounts'               => 'nullable|array|max:20',
+            'rooms.*.discounts.*.type'        => ['required', 'string', Rule::in(\App\Models\HotelBookingDiscount::TYPES)],
+            'rooms.*.discounts.*.occupant'    => ['required', 'string', Rule::in(['adult', 'child'])],
+            'rooms.*.discounts.*.child_index' => 'nullable|integer|min:0|max:19',
+            'rooms.*.discounts.*.is_primary'  => 'sometimes|boolean',
+            'rooms.*.discounts.*.full_name'   => 'nullable|string|max:255',
+            'rooms.*.discounts.*.birth_date'  => 'nullable|date|before_or_equal:today',
+            'rooms.*.discounts.*.id_number'   => 'required|string|max:100',
+            'rooms.*.discounts.*.verified'    => 'sometimes|boolean',
             'guest.full_name'    => 'required|string|max:255',
             'guest.contact_no'   => 'nullable|string|max:100',
             'guest.email'        => 'nullable|string|email|max:255',
@@ -1873,6 +1903,33 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
 
         if ($walkIn && !\App\Support\HotelTableAccess::canAssign($membership)) {
             return response()->json(['message' => 'Only Front Desk staff can book a walk-in guest.'], 403);
+        }
+
+        // Across the rooms, not just within one: a person sleeps in one room, so the
+        // same ID cannot earn a discount twice, and only one of them made the booking.
+        $claims = collect($stays)->flatMap(fn ($stay) => $stay['discounts'] ?? []);
+        if ($claims->isNotEmpty()) {
+            if (!\App\Support\HotelTableAccess::canAssign($membership)) {
+                return response()->json(['message' => 'Only Front Desk staff can apply a Senior Citizen or PWD discount.'], 403);
+            }
+            $ids = $claims->map(fn ($c) => \App\Models\HotelBookingDiscount::hashId(
+                (string) \App\Models\HotelBookingDiscount::normalizeType($c['type'] ?? ''),
+                (string) ($c['id_number'] ?? '')
+            ));
+            if ($ids->unique()->count() !== $ids->count()) {
+                return response()->json(['message' => 'The same Senior Citizen / PWD ID is listed in two rooms. Each person claims once.'], 422);
+            }
+            if ($claims->filter(fn ($c) => !empty($c['is_primary']))->count() > 1) {
+                return response()->json(['message' => 'Only one person is the primary guest.'], 422);
+            }
+            // One adult in the party is the booker; companions are the rest.
+            $adultsInParty = collect($stays)->sum(fn ($s) => (int) ($s['adults'] ?? $s['guest_count'] ?? 1));
+            $companions = $claims->filter(fn ($c) => empty($c['is_primary']) && ($c['occupant'] ?? 'adult') === 'adult')->count();
+            if ($companions > max(0, $adultsInParty - 1)) {
+                return response()->json(['message' => $adultsInParty === 1
+                    ? 'The only adult is the primary guest. Mark the discount as the primary guest’s, or add the companion to the party.'
+                    : 'More companions are claiming a discount than came with the primary guest.'], 422);
+            }
         }
         if ($walkIn) {
             // The guest is here now, so the stay starts today and the room has to be
@@ -1925,6 +1982,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
                             'guest_count'   => $stay['guest_count'] ?? null,
                             'adults'        => $stay['adults'] ?? null,
                             'child_ages'    => $stay['child_ages'] ?? [],
+                            'discounts'     => $stay['discounts'] ?? [],
                             'booked_by'     => auth()->user()?->name,
                             'notes'         => $data['notes'] ?? null,
                             // A promo is one stay's package: it goes on the first room.
@@ -2245,7 +2303,25 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             'notes'       => 'nullable|string|max:2000',
         ]);
 
-        \App\Support\HotelBookingDesk::addPayment($booking, $data);
+        $refund = \App\Models\HotelBookingPayment::normalizeType($data['type'] ?? null) === 'Refund';
+        if ($refund && !\App\Support\HotelTableAccess::canAssign($membership)) {
+            return response()->json(['message' => 'Only Front Desk staff can record a refund.'], 403);
+        }
+
+        try {
+            \App\Support\HotelBookingDesk::addPayment($booking, $data);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        if ($refund) {
+            ActivityLog::record(
+                auth()->user(),
+                ActivityLog::GUEST_BOOKED,
+                'Refunded PHP ' . number_format((float) $data['amount_paid'], 2) . ' to '
+                    . ($booking->guest?->full_name ?? 'a guest') . ' (booking #' . $booking->hotel_booking_id . ').'
+            );
+        }
 
         $fresh = \App\Support\HotelBookingDesk::findBooking($membership, $id);
 
@@ -2254,6 +2330,48 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             'bill'    => $fresh->toBillArray(),
         ], 201);
     })->name('hotel.bookings.payments.store');
+
+    /**
+     * Front Desk saw the Senior Citizen / PWD ID of a guest whose discount was left
+     * pending at booking. The discount comes off the bill from now on.
+     */
+    Route::patch('/hotel/bookings/{id}/discounts/{discountId}', function (Request $request, $id, $discountId) {
+        $membership = \App\Support\HotelBookingDesk::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Group not found'], 404);
+        }
+        if (!\App\Support\HotelTableAccess::canAssign($membership)) {
+            return response()->json(['message' => 'Only Front Desk staff can verify a Senior Citizen or PWD ID.'], 403);
+        }
+
+        $booking = \App\Support\HotelBookingDesk::findBooking($membership, $id);
+        if (!$booking) {
+            return response()->json(['message' => 'Booking not found.'], 404);
+        }
+
+        $request->validate(['verified' => 'required|accepted']);
+
+        try {
+            $discount = \App\Support\HotelBookingDesk::verifyDiscount($booking, (int) $discountId, auth()->user()?->name);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        ActivityLog::record(
+            auth()->user(),
+            ActivityLog::GUEST_BOOKED,
+            'Verified the ' . $discount->type . ' ID of ' . $discount->full_name
+                . ' on booking #' . $booking->hotel_booking_id . '.'
+        );
+
+        $fresh = \App\Support\HotelBookingDesk::findBooking($membership, $id);
+
+        return response()->json([
+            'booking' => $fresh->toReservationArray(),
+            'room'    => $fresh->room?->fresh()->toTemplateArray(),
+            'bill'    => $fresh->toBillArray(),
+        ]);
+    })->name('hotel.bookings.discounts.verify');
 
     /*
     |--------------------------------------------------------------------------
@@ -3985,25 +4103,59 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
         if (!$membership) {
             return response()->json(['message' => 'Join a hotel team first.'], 404);
         }
-        if (!\App\Support\HotelComplaintAccess::canFile($membership)) {
-            return response()->json(['message' => 'Only Front Desk staff can record a guest complaint.'], 403);
-        }
-
         $data = $request->validate([
             'room_number' => 'nullable|string|max:100',
             'guest_name'  => 'nullable|string|max:255',
             'category'    => ['required', 'string', Rule::in(array_keys(HotelComplaint::CATEGORY_DEPARTMENTS))],
             'details'     => 'required|string|max:2000',
+            'source'      => ['nullable', 'string', Rule::in(HotelComplaint::SOURCES)],
+            'table_name'  => 'nullable|string|max:255',
         ]);
 
         // The category decides the department, so a complaint always lands with the
         // team that owns that kind of problem.
         $department = HotelComplaint::departmentForCategory($data['category']);
+        $owned = in_array($department, HotelComplaint::DEPARTMENT_OWNED, true);
+
+        // Restaurant Services records its own complaints; the Front Desk records the rest.
+        if ($owned) {
+            if (!\App\Support\HotelComplaintAccess::canHandle($membership, $department)) {
+                return response()->json(['message' => 'Only ' . HotelComplaint::DEPARTMENTS[$department] . ' staff can record a restaurant complaint.'], 403);
+            }
+        } elseif (!\App\Support\HotelComplaintAccess::canFile($membership)) {
+            return response()->json(['message' => 'Only Front Desk staff can record a guest complaint.'], 403);
+        }
+
         $room = trim((string) ($data['room_number'] ?? ''));
         $guest = trim((string) ($data['guest_name'] ?? ''));
+        $source = $owned ? ($data['source'] ?? null) : null;
+        $table = '';
 
-        // A dirty room or a broken aircon is always in a room. Room Management and the
-        // restaurant also hear from guests who are not staying in one.
+        if ($owned) {
+            // A Dine-In guest is at a table, a Room Service guest is in a room.
+            if ($source === null) {
+                return response()->json(['message' => 'Choose whether the guest was served Dine-In or by Room Service.'], 422);
+            }
+            if ($source === 'Dine-In') {
+                $room = '';
+                $table = trim((string) ($data['table_name'] ?? ''));
+                $tableExists = $table !== '' && HotelDineInTable::where('group_name', $membership->group_name)
+                    ->where('faculty_id', $membership->faculty_id)
+                    ->where('name', $table)
+                    ->exists();
+                if (!$tableExists) {
+                    return response()->json(['message' => 'Choose the table the guest was seated at.'], 422);
+                }
+                if ($guest === '') {
+                    return response()->json(['message' => 'Enter the guest name.'], 422);
+                }
+            } elseif ($room === '') {
+                return response()->json(['message' => 'Choose the room the order was delivered to.'], 422);
+            }
+        }
+
+        // A dirty room or a broken aircon is always in a room. Room Management also
+        // hears from guests who are not staying in one.
         if ($room === '' && in_array($department, ['housekeeping', 'maintenance'], true)) {
             return response()->json(['message' => 'Choose the room this ' . HotelComplaint::DEPARTMENTS[$department] . ' problem is in.'], 422);
         }
@@ -4017,6 +4169,8 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             'group_id'    => $membership->group_id,
             // The column is not nullable; an empty string is "no room".
             'room_number' => $room,
+            'source'      => $source,
+            'table_name'  => $table !== '' ? $table : null,
             'guest_name'  => $guest !== '' ? $guest : null,
             'category'    => $data['category'],
             'department'  => $department,
@@ -4024,7 +4178,12 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             'status'      => 'Pending',
             'filed_by'    => auth()->user()?->name,
         ]);
-        $complaint->logHistory('Received and sent to ' . $complaint->departmentLabel(), $complaint->filed_by);
+        $complaint->logHistory(
+            $owned
+                ? 'Recorded by ' . $complaint->departmentLabel() . ' (' . $source . ')'
+                : 'Received and sent to ' . $complaint->departmentLabel(),
+            $complaint->filed_by
+        );
         $complaint->save();
 
         \App\Support\Notifier::complaintFiled(auth()->user(), $complaint);
@@ -4033,7 +4192,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             auth()->user(),
             ActivityLog::COMPLAINT_FILED,
             'Recorded a ' . $complaint->departmentLabel() . ' complaint'
-                . ($room !== '' ? ' for room ' . $room : ' from ' . $guest)
+                . ($room !== '' ? ' for room ' . $room : ($table !== '' ? ' for table ' . $table : ' from ' . $guest))
                 . ' (' . $complaint->category . ').'
         );
 
@@ -4055,12 +4214,15 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             'status'          => 'sometimes|string|max:50',
             'department'      => ['sometimes', 'string', Rule::in(array_keys(HotelComplaint::DEPARTMENTS))],
             'resolution_note' => 'sometimes|nullable|string|max:2000',
+            'action_taken'    => 'sometimes|string|max:2000',
         ]);
 
         // Authorised against the department the complaint sits in *now* — that is
         // also what lets a department hand a mis-routed one to another.
         $handles = \App\Support\HotelComplaintAccess::canHandle($membership, $complaint->department);
         $isFrontDesk = \App\Support\HotelComplaintAccess::canFile($membership);
+        // Restaurant complaints: the Front Desk records and forwards them, then only watches.
+        $owned = $complaint->isDepartmentOwned();
         $by = auth()->user()?->name;
 
         $reassignedFrom = null;
@@ -4071,8 +4233,9 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
                 ], 403);
             }
             // Once resolved there is nothing left to hand over — reassigning would
-            // reopen it, the same backward move the status flow forbids.
-            if (in_array($complaint->status, ['Resolved', 'Closed', 'Cancelled'], true)) {
+            // reopen it, the same backward move the status flow forbids. An escalated
+            // one is already with a manager.
+            if (in_array($complaint->status, ['Escalated', 'Resolved', 'Closed', 'Cancelled'], true)) {
                 return response()->json([
                     'message' => 'This complaint is already ' . $complaint->status . ' and cannot be reassigned.',
                 ], 422);
@@ -4100,12 +4263,18 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
                 if ($complaint->isInternal()) {
                     return response()->json(['message' => 'This issue was raised by staff, not a guest. It is finished once Resolved.'], 422);
                 }
+                if ($owned) {
+                    return response()->json(['message' => $complaint->departmentLabel() . ' complaints are finished once Resolved.'], 422);
+                }
                 $maySet = $isFrontDesk;
                 $who = 'Front Desk';
-            } elseif ($next === 'Cancelled') {
+            } elseif ($next === 'Cancelled' && !$owned) {
                 $maySet = $handles || $isFrontDesk;
                 $who = $complaint->departmentLabel() . ' or Front Desk';
             } else {
+                if ($next === 'Escalated' && !$owned) {
+                    return response()->json(['message' => 'Only restaurant complaints can be escalated.'], 422);
+                }
                 $maySet = $handles;
                 $who = $complaint->departmentLabel();
             }
@@ -4139,6 +4308,27 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             if ($note !== $complaint->resolution_note) {
                 $complaint->resolution_note = $note;
                 $complaint->logHistory('Resolution note updated', $by, $note);
+            }
+        }
+
+        // One history entry per step the department took; the card lists them as
+        // "Actions taken" for the Front Desk to follow.
+        if (array_key_exists('action_taken', $data)) {
+            if (!$handles) {
+                return response()->json([
+                    'message' => 'Only ' . $complaint->departmentLabel() . ' staff can record an action on this complaint.',
+                ], 403);
+            }
+            if (in_array($complaint->status, HotelComplaint::FINAL_STATUSES, true)) {
+                return response()->json(['message' => 'This complaint is already ' . $complaint->status . '.'], 422);
+            }
+            $action = trim($data['action_taken']);
+            if ($action === '') {
+                return response()->json(['message' => 'Write what was done.'], 422);
+            }
+            $complaint->logHistory('Action taken', $by, $action);
+            if ($complaint->handled_by === null) {
+                $complaint->handled_by = $by;
             }
         }
 
@@ -4481,6 +4671,8 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             // A walk-in: they are here now, so the table goes straight to Occupied
             // instead of being held as Reserved until they "arrive".
             'seat_now'    => 'sometimes|boolean',
+            // Front Desk moving a reservation that has not been seated to another table.
+            'move_to'     => 'sometimes|integer',
         ]);
 
         /* A guest signed into the hotel's website reserves a table for themselves.
@@ -4497,14 +4689,39 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
                 return response()->json(['message' => 'Choose a date, a time and how many are coming.'], 422);
             }
             try {
-                $table = \App\Support\HotelTableDesk::reserveForGuest(
+                [$table, $reservation, $token] = \App\Support\HotelTableDesk::reserveForGuest(
                     $table, $guestAuth, (int) $data['party_size'], (string) $data['reserved_for']
                 );
             } catch (\RuntimeException $e) {
                 return response()->json(['message' => $e->getMessage()], $e->getCode() === 409 ? 409 : 422);
             }
 
-            return response()->json(['table' => $table->toTemplateArray()]);
+            return response()->json([
+                'table'       => $table->toTemplateArray(),
+                'reservation' => \App\Http\Controllers\PublicSiteController::guestReservationLink(
+                    $reservation, $token, \App\Models\Group::slugForTeam($membership->group_name, (int) $membership->faculty_id), $table
+                ),
+            ]);
+        }
+
+        if ($request->has('move_to')) {
+            if (!$assigns) {
+                return response()->json(['message' => 'Only Front Desk staff can move a reservation.'], 403);
+            }
+            $target = HotelDineInTable::where('hotel_dine_in_table_id', $data['move_to'])
+                ->where('group_name', $membership->group_name)
+                ->where('faculty_id', $membership->faculty_id)
+                ->first();
+            if (!$target) {
+                return response()->json(['message' => 'That table was not found.'], 404);
+            }
+            try {
+                $target = \App\Support\HotelTableDesk::move($table, $target, auth()->user());
+            } catch (\RuntimeException $e) {
+                return response()->json(['message' => $e->getMessage()], $e->getCode() === 409 ? 409 : 422);
+            }
+
+            return response()->json(['table' => $target->toTemplateArray(), 'from' => $table->fresh()->toTemplateArray()]);
         }
 
         $closedNow = false;
@@ -4523,6 +4740,10 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
                     'message' => 'This table still has an order in the kitchen — mark it Ready or Cancelled first.',
                 ], 422);
             }
+
+            // Closing a table nobody was seated at cancels the reservation; closing one
+            // somebody ate at ends the visit.
+            \App\Support\HotelTableDesk::endReservation($table, $table->status === 'Reserved' ? 'Cancelled' : 'Completed');
 
             $table->status = 'Available';
             $table->guest_name = null;
@@ -4690,6 +4911,8 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
                 'collected_by'           => auth()->user()?->name,
                 'paid_at'                => now(),
             ]);
+
+            \App\Support\HotelTableDesk::endReservation($table, 'Completed');
 
             $table->status = 'Available';
             $table->guest_name = null;

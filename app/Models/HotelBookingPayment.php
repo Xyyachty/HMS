@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class HotelBookingPayment extends Model
 {
-    public const TYPES = ['Full', 'Partial'];
+    public const TYPES = ['Full', 'Partial', 'Refund'];
 
     /**
      * What the desk can take. 'Other' is the catch-all the final-bill screen offers for
@@ -55,7 +55,12 @@ class HotelBookingPayment extends Model
 
     public static function normalizeType(?string $value): string
     {
-        return strtolower(trim((string) $value)) === 'partial' ? 'Partial' : 'Full';
+        return match (strtolower(trim((string) $value))) {
+            'partial' => 'Partial',
+            // Money given back to the guest; stored as a negative amount_paid.
+            'refund'  => 'Refund',
+            default   => 'Full',
+        };
     }
 
     /** Shape the booking/room front-end reads — same keys the old payment blob used. */

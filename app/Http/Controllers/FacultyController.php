@@ -29,6 +29,9 @@ use Illuminate\Validation\Rule;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 class FacultyController extends Controller
 {
+    /** Set Task's refusal when no team in the block has an approved hotel concept. */
+    private const NO_ELIGIBLE_TEAMS = 'No eligible teams available. Teams must have an approved hotel concept before tasks can be assigned.';
+
     public function dashboard()
     {
         $facultyId = auth()->user()?->faculty?->user_information_id;
@@ -1441,6 +1444,27 @@ class FacultyController extends Controller
             fn ($members) => $members->contains(fn ($member) => $member->student !== null)
         );
 
+        // The hotel concepts, so the teams list names what each team proposed. Grouped
+        // rather than keyed: a team has two, and keyBy would silently keep one. The
+        // full text and the edit histories stay in the Team Details modal. Once a
+        // team has decided, only the winner is listed — the same rule payload()
+        // applies, kept in step so the table and the modal never disagree.
+        $conceptsByGroup = \App\Models\HotelConcept::where('faculty_id', $facultyId)
+            ->orderBy('slot')
+            ->get()
+            ->groupBy('group_name')
+            ->map(fn ($concepts) => \App\Support\HotelConceptDesk::visibleConcepts($concepts));
+
+        /* Set Task only sends work to a team whose hotel concept faculty has
+           approved: the customization is built on that concept. storeTask
+           refuses the rest too. The concept task itself needs no Set Task - it
+           is given the moment the team is created (storeGroup). */
+        $eligibleTeams = $teamsWithStudents->filter(
+            fn ($members, $groupName) => \App\Support\HotelConceptDesk::approvedConcept(
+                $conceptsByGroup->get($groupName, collect())
+            ) !== null
+        );
+
         /* Set Task is per block, but a block with nothing to set work on must not
            lock out the faculty's other blocks. Block A filling up opens Block B,
            and the page lands on the open block - so a faculty whose new Block B
@@ -1449,8 +1473,11 @@ class FacultyController extends Controller
            a team instead. */
         $setTaskClass = $activeClass;
         if ($teamsWithStudents->isEmpty()) {
+            // A block whose teams all wait on a concept approval is no better a
+            // place to send faculty than this one.
             $staffedClassIds = $allGroups
-                ->filter(fn ($members) => $members->contains(fn ($member) => $member->student !== null))
+                ->filter(fn ($members, $groupName) => $members->contains(fn ($member) => $member->student !== null)
+                    && \App\Support\HotelConceptDesk::approvedConcept($conceptsByGroup->get($groupName, collect())) !== null)
                 ->keys()
                 ->map(fn ($groupName) => $teamClassIdByName[$groupName] ?? null)
                 ->filter()
@@ -1473,8 +1500,18 @@ class FacultyController extends Controller
                 $setTaskBlockReason = 'No students are available. Please add students before setting tasks.';
             } elseif ($teamsWithStudents->isEmpty()) {
                 $setTaskBlockReason = 'No teams are available. Please create a team and assign students before setting tasks.';
+            } elseif ($eligibleTeams->isEmpty()) {
+                $setTaskBlockReason = self::NO_ELIGIBLE_TEAMS;
             }
         }
+
+        /* Create Team builds teams only out of students not on one yet, in this
+           block ($students above). With none left there is nothing to build;
+           storeGroup refuses such a post on its own (newMemberError). */
+        $createTeamBlockReason = $students->isNotEmpty() ? null
+            : ((int) ($activeClass->seats_taken ?? 0) === 0
+                ? 'No available students. Add students under Manage Students before creating teams.'
+                : 'No available students. All eligible students have already been assigned to teams.');
 
         /* Typing the address of the Set Task tab is not a way around the above.
            Sent back to the team list with the same sentence the button carries,
@@ -1576,17 +1613,6 @@ class FacultyController extends Controller
                 ->values()
                 ->all());
 
-        // The hotel concepts, so the teams list names what each team proposed. Grouped
-        // rather than keyed: a team has two, and keyBy would silently keep one. The
-        // full text and the edit histories stay in the Team Details modal. Once a
-        // team has decided, only the winner is listed — the same rule payload()
-        // applies, kept in step so the table and the modal never disagree.
-        $conceptsByGroup = \App\Models\HotelConcept::where('faculty_id', $facultyId)
-            ->orderBy('slot')
-            ->get()
-            ->groupBy('group_name')
-            ->map(fn ($concepts) => \App\Support\HotelConceptDesk::visibleConcepts($concepts));
-
         // The site template each team chose. Front Desk makes the pick for the
         // whole team, so its row is the one that counts.
         $teamTemplateByGroup = \App\Models\TeamRoleTemplate::where('faculty_id', $facultyId)
@@ -1610,6 +1636,7 @@ class FacultyController extends Controller
             'classCapacity',
             'teamCountsByClass',
             'setTaskBlockReason',
+            'createTeamBlockReason',
             'setTaskClassLetter',
             'intakeLock',
             'rolesMeta',
@@ -2248,39 +2275,24 @@ class FacultyController extends Controller
             ])->withInput();
         }
 
-        /* The hotel concept comes first: until Front Desk has handed one in, the
-           rest of the customization has no brief, so anything other than the
-           concept itself - including the rest of TASK 01 - is refused. Once it is
-           submitted, faculty may line the work up while reviewing it; students
-           still cannot start it until a concept is approved
-           (HotelConceptDesk::hasApprovedConcept). Refused for the whole post
-           rather than quietly dropped per team - a Set Task that reports success
-           and creates nothing is exactly the failure this screen has already
-           been fixed for once. */
-        $setsCustomization = collect($validated['tasks'] ?? [])
-            ->filter(fn ($indices) => is_array($indices))
-            ->contains(function ($indices, $role) use ($validated) {
-                foreach ($indices as $index) {
-                    $title = (string) ($validated['task_titles'][$role][$index] ?? '');
-                    if ($title !== '' && !TaskChecklist::isConceptTitle($title)) {
-                        return true;
-                    }
-                }
+        /* Only a team whose hotel concept faculty has approved can be given
+           tasks - the same rule that keeps the others off the Set Task form
+           (role()). The concept task needs no Set Task: it is given the moment
+           the team exists (storeGroup). Refused for the whole post rather than
+           quietly dropped per team - a Set Task that reports success and
+           creates nothing is exactly the failure this screen has already been
+           fixed for once. */
+        $unapprovedTeams = $membersByTeam->keys()->reject(
+            fn ($groupName) => HotelConceptDesk::hasApprovedConcept((string) $groupName, (int) $facultyId)
+        );
 
-                return false;
-            });
-
-        if ($setsCustomization) {
-            $lockedTeams = $membersByTeam->keys()->reject(
-                fn ($groupName) => HotelConceptDesk::hasSubmittedConcept((string) $groupName, (int) $facultyId)
-            );
-
-            if ($lockedTeams->isNotEmpty()) {
-                return back()->withErrors([
-                    'group_name' => 'Customization tasks stay locked until Front Desk submits the hotel concept for '
-                        . $lockedTeams->implode(', ') . '.',
-                ])->withInput();
-            }
+        if ($unapprovedTeams->isNotEmpty()) {
+            return back()->withErrors([
+                'group_name' => $unapprovedTeams->count() === $membersByTeam->count()
+                    ? self::NO_ELIGIBLE_TEAMS
+                    : 'Tasks can only be set for teams with an approved hotel concept. Not approved yet: '
+                        . $unapprovedTeams->implode(', ') . '.',
+            ])->withInput();
         }
 
         /* What each team already holds, by title, so the same work is never handed

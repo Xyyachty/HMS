@@ -10,7 +10,10 @@ use App\Models\StudentGroup;
  *
  * Front Desk takes the complaint from the guest and closes it once the guest
  * confirms the fix; Housekeeping, Maintenance, Room Management or Restaurant
- * Services works it, and only for the department it was routed to. Everyone else
+ * Services works it, and only for the department it was routed to. Restaurant
+ * complaints (HotelComplaint::DEPARTMENT_OWNED) are the exception: Front Desk records
+ * and forwards them but only watches; Restaurant Services alone updates, escalates,
+ * resolves or cancels them. Everyone else
  * on the team may read the list but not change it — the same shape as
  * HotelOrderAccess.
  */

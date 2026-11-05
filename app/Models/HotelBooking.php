@@ -71,6 +71,7 @@ class HotelBooking extends Model
         'promo_price',
         'promo_blocks',
         'children',
+        'service_charge_rate',
     ];
 
     protected $casts = [
@@ -82,12 +83,43 @@ class HotelBooking extends Model
         'guest_count'    => 'integer',
         // [{age, rate, label}] per child, priced by HotelChildPolicy when booked.
         'children'       => 'array',
+        'service_charge_rate' => 'float',
         'reserved_at'    => 'datetime',
         'arrived_at'     => 'datetime',
         'checked_in_at'  => 'datetime',
         'checked_out_at' => 'datetime',
         'cancelled_at'   => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        // Every screen that prices a stay needs its Senior Citizen / PWD rows, so they
+        // ride along with each booking query rather than costing a query per stay.
+        static::addGlobalScope('discounts', function (Builder $query) {
+            if (HotelBookingDiscount::supported()) {
+                $query->with('discounts');
+            }
+        });
+
+        // Extend Stay, Change Room and a corrected party all move a person's share;
+        // the stored amounts follow, so the record matches the bill.
+        static::saved(fn (HotelBooking $booking) => $booking->recordDiscountAmounts());
+
+        // A new stay is billed at today's service charge rate, and keeps it.
+        static::creating(function (HotelBooking $booking) {
+            if ($booking->service_charge_rate === null && self::serviceChargeSupported()) {
+                $booking->service_charge_rate = (float) config('hms.service_charge_rate', 0);
+            }
+        });
+    }
+
+    /** False until the service_charge_rate migration has run. */
+    public static function serviceChargeSupported(): bool
+    {
+        static $has = null;
+
+        return $has ??= \Illuminate\Support\Facades\Schema::hasColumn('hotel_bookings', 'service_charge_rate');
+    }
 
     public function room(): BelongsTo
     {
@@ -130,6 +162,68 @@ class HotelBooking extends Model
     {
         return $this->hasMany(HotelBookingAddon::class, 'hotel_booking_id', 'hotel_booking_id')
             ->orderBy('hotel_booking_addon_id');
+    }
+
+    /** Senior Citizens and PWDs on this stay, booker and companions alike. */
+    public function discounts(): HasMany
+    {
+        return $this->hasMany(HotelBookingDiscount::class, 'hotel_booking_id', 'hotel_booking_id')
+            ->orderBy('hotel_booking_discount_id');
+    }
+
+    /** The discount rows, or none on a database the migration has not reached yet. */
+    public function discountRows(): \Illuminate\Support\Collection
+    {
+        return HotelBookingDiscount::supported() ? $this->discounts : collect();
+    }
+
+    /**
+     * One eligible person's VAT-inclusive share of the accommodation.
+     *
+     * A child is discounted on their own child charge, which the child policy already
+     * prices per child. An adult's share is the room charge split evenly between the
+     * adults: the child policy bills children separately, so the room rate is the
+     * adults' price.
+     * ponytail: even split, because RA 9994, RA 10754 and RR 7-2010 set no shared-room
+     * formula, only "the portion exclusively enjoyed"; swap here if the faculty adopts one.
+     */
+    public function discountShare(HotelBookingDiscount $discount): float
+    {
+        if ($discount->occupant === 'child') {
+            $line = $this->childLines()[(int) $discount->child_index] ?? null;
+
+            return $line ? round((float) $line['rate'] * $this->nights(), 2) : 0.0;
+        }
+
+        return round($this->roomCharge() / max(1, (int) ($this->adultCount() ?: 1)), 2);
+    }
+
+    /** What the verified Senior Citizen / PWD discounts take off: VAT removed + 20%. */
+    public function statutoryDiscountTotal(): float
+    {
+        return round((float) $this->discountRows()
+            ->filter->isVerified()
+            ->sum(fn (HotelBookingDiscount $d) => HotelBookingDiscount::compute($this->discountShare($d))['less']), 2);
+    }
+
+    /** Keeps each row's stored amounts equal to what the bill takes off. */
+    public function recordDiscountAmounts(): void
+    {
+        if (!HotelBookingDiscount::supported()) {
+            return;
+        }
+        $this->unsetRelation('discounts');
+        foreach ($this->discounts as $discount) {
+            $money = HotelBookingDiscount::compute($this->discountShare($discount));
+            $discount->forceFill([
+                'eligible_amount'   => $money['eligible'],
+                'vat_exempt_amount' => $money['vat'],
+                'discount_amount'   => $money['discount'],
+            ]);
+            if ($discount->isDirty()) {
+                $discount->save();
+            }
+        }
     }
 
     /** Bookings that still hold their room. */
@@ -256,7 +350,10 @@ class HotelBooking extends Model
      */
     public function totalDue(): float
     {
-        return $this->roomCharge() + $this->childChargesTotal();
+        // Less the verified Senior Citizen / PWD discounts: they are taken at booking,
+        // so the payment taken then is already against the discounted figure, and the
+        // final bill reads the same number instead of applying them a second time.
+        return round($this->roomCharge() + $this->childChargesTotal() - $this->statutoryDiscountTotal(), 2);
     }
 
     /** The room at its rate or package price, without the children's charges. */
@@ -324,8 +421,8 @@ class HotelBooking extends Model
         return (float) $this->addons->sum(fn (HotelBookingAddon $addon) => $addon->lineTotal($this->nights()));
     }
 
-    /** Room + room service + add-ons + extras — the figure the guest actually settles. */
-    public function grandTotal(): float
+    /** Room + room service + add-ons + extras, before the service charge. */
+    public function chargesBeforeServiceCharge(): float
     {
         return $this->totalDue()
             + $this->roomServiceTotal()
@@ -333,10 +430,42 @@ class HotelBooking extends Model
             + $this->otherChargesTotal();
     }
 
+    /**
+     * Service charge on every charge, after the Senior Citizen / PWD discounts (they
+     * are already out of totalDue()). Collected with the final bill. A stay booked
+     * before there was a service charge has no rate and pays none.
+     */
+    public function serviceCharge(): float
+    {
+        $rate = (float) ($this->service_charge_rate ?? 0);
+
+        return $rate > 0 ? round($this->chargesBeforeServiceCharge() * $rate / 100, 2) : 0.0;
+    }
+
+    /** Everything above plus the service charge — the figure the guest actually settles. */
+    public function grandTotal(): float
+    {
+        return round($this->chargesBeforeServiceCharge() + $this->serviceCharge(), 2);
+    }
+
     /** Still owed once everything paid so far is counted against the full bill. */
     public function outstanding(): float
     {
         return max(0, $this->grandTotal() - $this->amountPaid());
+    }
+
+    /**
+     * Paid more than the bill: a discount verified after the guest had already paid
+     * the full price. Front Desk records the refund; nothing is changed silently.
+     */
+    public function refundDue(): float
+    {
+        return round(max(0, $this->amountPaid() - $this->grandTotal()), 2);
+    }
+
+    private function discountArrays(): array
+    {
+        return $this->discountRows()->map(fn (HotelBookingDiscount $d) => $d->toTemplateArray($this))->values()->all();
     }
 
     /**
@@ -369,6 +498,11 @@ class HotelBooking extends Model
             'promoName'     => $this->promo_name ?? '',
             'promoPrice'    => $this->promo_price,
             'totalDue'      => $this->totalDue(),
+            // Senior Citizen / PWD: every claim, verified or pending, and what the
+            // verified ones take off totalDue. ID numbers arrive masked.
+            'discounts'         => $this->discountArrays(),
+            'statutoryDiscount' => $this->statutoryDiscountTotal(),
+            'refundDue'         => $this->refundDue(),
             'amountPaid'    => $this->amountPaid(),
             'balance'       => max(0, $this->totalDue() - $this->amountPaid()),
             // The final bill: room charge + room service + add-ons + hand-added extras.
@@ -483,6 +617,17 @@ class HotelBooking extends Model
                 'amount' => (float) $child['line'],
             ];
         }
+        foreach ($bill['discounts']['items'] as $discount) {
+            if ($discount['verified']) {
+                $lines[] = [
+                    'kind'   => 'discount',
+                    'label'  => $discount['type'] . ' discount · ' . $discount['fullName'],
+                    'detail' => 'VAT exemption ₱' . number_format($discount['vat'], 2)
+                        . ' + 20% discount ₱' . number_format($discount['discount'], 2),
+                    'amount' => -(float) $discount['less'],
+                ];
+            }
+        }
         foreach ($bill['roomService']['orders'] as $order) {
             foreach ($order['items'] as $item) {
                 $lines[] = [
@@ -504,6 +649,14 @@ class HotelBooking extends Model
         }
         foreach ($bill['otherCharges']['items'] as $charge) {
             $lines[] = ['kind' => 'charge', 'label' => $charge['description'], 'detail' => '', 'amount' => (float) $charge['amount']];
+        }
+        if ($bill['serviceCharge']['amount'] > 0) {
+            $lines[] = [
+                'kind'   => 'service',
+                'label'  => 'Service charge (' . rtrim(rtrim(number_format($bill['serviceCharge']['rate'], 2), '0'), '.') . '%)',
+                'detail' => 'On ₱' . number_format($bill['serviceCharge']['base'], 2) . ', after discounts',
+                'amount' => (float) $bill['serviceCharge']['amount'],
+            ];
         }
 
         return $lines;
@@ -558,6 +711,14 @@ class HotelBooking extends Model
                 'subtotal' => $this->childChargesTotal(),
             ],
 
+            // Senior Citizen / PWD, applied at booking. The room and child lines above
+            // stay at full price; these are the separate adjustment the law asks the
+            // receipt to show. Pending claims are listed but take nothing off.
+            'discounts' => [
+                'items'    => $this->discountArrays(),
+                'subtotal' => $this->statutoryDiscountTotal(),
+            ],
+
             // One line per dish across every billable order, so the guest sees what they
             // ordered rather than an opaque per-order total.
             'roomService' => [
@@ -587,10 +748,18 @@ class HotelBooking extends Model
                 'subtotal' => $this->otherChargesTotal(),
             ],
 
+            // On every charge above, after the Senior Citizen / PWD discounts.
+            'serviceCharge' => [
+                'rate'   => (float) ($this->service_charge_rate ?? 0),
+                'base'   => round($this->chargesBeforeServiceCharge(), 2),
+                'amount' => $this->serviceCharge(),
+            ],
+
             'total'       => $this->grandTotal(),
             'payments'    => $this->payments->sortBy('paid_at')->map->toTemplateArray()->values()->all(),
             'amountPaid'  => $this->amountPaid(),
             'balance'     => $this->outstanding(),
+            'refundDue'   => $this->refundDue(),
         ];
     }
 }

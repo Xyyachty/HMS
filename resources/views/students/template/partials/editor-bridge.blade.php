@@ -154,13 +154,17 @@
 </script>
 @if (!$hmsPublicSlug && !$hmsPreviewGroup && $hmsCanEdit)
 <script>
-    /* Rooms, menu items, amenities and add-ons save through their own endpoints,
-       not the template save. Tell the builder when one lands, so the task picked
-       in its sidebar moves to In Progress the same as a template save does. */
+    /* Rooms, room categories (their details and slider photos too), menu items,
+       menu courses, amenities and add-ons save through their own endpoints, not
+       the template save. Tell the builder when one lands, so the task picked in
+       its sidebar moves to In Progress the same as a template save does. A
+       category endpoint missing here left Room Management's category, details and
+       slider tasks Not Started however much was done, so they could not be
+       submitted. */
     (function () {
         if (!window.__HMS_CAN_EDIT__ || !window.fetch) return;
         const nativeFetch = window.fetch.bind(window);
-        const CATALOGUE = /^(?:https?:\/\/[^/]+)?\/students\/hotel\/(?:rooms|menus|amenities|addons)\b/;
+        const CATALOGUE = /^(?:https?:\/\/[^/]+)?\/students\/hotel\/(?:rooms|room-categories|menus|menu-categories|amenities|addons)\b/;
         window.fetch = function (input, init) {
             const url = typeof input === 'string' ? input : (input && input.url) || '';
             const method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();

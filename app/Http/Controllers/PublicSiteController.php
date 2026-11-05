@@ -6,6 +6,8 @@ use App\Models\Group;
 use App\Models\GroupSettings;
 use App\Models\HotelAddon;
 use App\Models\HotelAmenity;
+use App\Models\HotelDineInReservation;
+use App\Models\HotelDineInTable;
 use App\Models\HotelMenuItem;
 use App\Models\HotelRoom;
 use App\Models\StudentGroup;
@@ -126,6 +128,11 @@ class PublicSiteController extends Controller
     {
         [$groupName, $facultyId] = $this->publishedTeam($slug);
 
+        return response()->json($this->menuPayload($groupName, $facultyId));
+    }
+
+    private function menuPayload(string $groupName, int $facultyId): array
+    {
         $items = HotelMenuItem::where('group_name', $groupName)
             ->where('faculty_id', $facultyId)
             ->orderBy('category')
@@ -136,11 +143,11 @@ class PublicSiteController extends Controller
         // can_manage is always false: it drives the staff menu-editing tools, and there is
         // no one to grant it to here. The courses are the team's own, so a visitor sees
         // the menu under the headings the team wrote rather than the five it started with.
-        return response()->json([
+        return [
             'items' => $items,
             'can_manage' => false,
             'categories' => \App\Support\HotelMenuDefaults::categoriesForTeam($groupName, $facultyId),
-        ]);
+        ];
     }
 
     public function amenities(string $slug)
@@ -367,19 +374,237 @@ class PublicSiteController extends Controller
             ->firstOrFail();
 
         try {
-            $table = \App\Support\HotelTableDesk::reserveForGuest(
+            [$table, $reservation, $token] = \App\Support\HotelTableDesk::reserveForGuest(
                 $table, $auth, (int) $data['party_size'], (string) $data['reserved_for']
             );
         } catch (\RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], $e->getCode() === 409 ? 409 : 422);
         }
 
-        return response()->json(['table' => [
-            'id'       => $table->hotel_dine_in_table_id,
-            'name'     => $table->name,
-            'capacity' => (int) $table->capacity,
-            'status'   => $table->status,
-        ]], 201);
+        return response()->json([
+            'table' => [
+                'id'       => $table->hotel_dine_in_table_id,
+                'name'     => $table->name,
+                'capacity' => (int) $table->capacity,
+                'status'   => $table->status,
+            ],
+            'reservation' => self::guestReservationLink($reservation, $token, $slug, $table),
+        ], 201);
+    }
+
+    /**
+     * What the confirmation shows right after a guest reserves: the reference, the
+     * reservation itself and the private link to follow it. Null if the guest
+     * record could not be written (the migration has not run yet).
+     */
+    public static function guestReservationLink(?HotelDineInReservation $reservation, ?string $token, ?string $slug, HotelDineInTable $table): ?array
+    {
+        if (!$reservation || !$token || !$slug) {
+            return null;
+        }
+
+        // Root-relative, like the site's API map: APP_URL is wrong behind a proxy.
+        return $reservation->toGuestArray($table) + [
+            'link' => '/hotel/' . rawurlencode($slug) . '/reservation/' . $token,
+        ];
+    }
+
+    /**
+     * The guest's own reservation and the restaurant's menu, behind the private link.
+     *
+     * The token is the whole of the access check, so this works for a team still
+     * testing in the Simulation as well as a published site: it is long, random and
+     * stored only as a hash, and it opens exactly one reservation. Read-only; the
+     * one thing a read does is the same no-show release every table read does.
+     */
+    public function reservation(string $slug, string $token)
+    {
+        return $this->reservationPage($slug, $this->guestReservation($slug, $token), '/api/reservation/' . $token);
+    }
+
+    public function reservationData(string $slug, string $token)
+    {
+        return $this->reservationJson($this->guestReservation($slug, $token));
+    }
+
+    /**
+     * The same page, opened from My Bookings by the signed-in guest who made the
+     * reservation. The account is the access check here instead of the token, so a
+     * guest who lost the private link still has a way back to the status and menu.
+     */
+    public function myReservation(string $slug, int $id)
+    {
+        return $this->reservationPage($slug, $this->accountReservation($slug, $id), '/api/my-reservation/' . $id);
+    }
+
+    public function myReservationData(string $slug, int $id)
+    {
+        return $this->reservationJson($this->accountReservation($slug, $id));
+    }
+
+    /** @param array{0: ?HotelDineInReservation, 1: ?string, 2: int} $found */
+    private function reservationPage(string $slug, array $found, string $dataPath)
+    {
+        [$reservation, $error, $code] = $found;
+
+        // Dressed as the team's own site, the not-found page too: the slug is in the
+        // URL already, so this tells nobody anything the address does not.
+        $team = Group::resolveSlug($slug);
+        $groupName = $team ? (string) $team['group_name'] : '';
+        $facultyId = $team ? (int) $team['faculty_id'] : 0;
+        $custom = $team ? HotelTemplateBuilder::mergeTeamCustomizations($groupName, $facultyId) : [];
+
+        return response()
+            ->view('hotel.reservation', [
+                'error'     => $error,
+                'dataUrl'   => $reservation ? '/hotel/' . rawurlencode($slug) . $dataPath : null,
+                'template'  => $team ? $this->templateFor($groupName, $facultyId) : '1',
+                'brandName' => $team ? $this->brandName($custom, $groupName, $facultyId) : HotelTemplateBuilder::DEFAULT_BRAND_NAME,
+                'theme'     => $this->siteTheme($custom),
+                'siteUrl'   => '/hotel/' . rawurlencode($slug),
+            ], $code)
+            // The token is in the URL: never send it on to an image host or a cache.
+            ->header('Referrer-Policy', 'no-referrer')
+            ->header('Cache-Control', 'no-store')
+            ->header('X-Robots-Tag', 'noindex');
+    }
+
+    /** @param array{0: ?HotelDineInReservation, 1: ?string, 2: int} $found */
+    private function reservationJson(array $found)
+    {
+        [$reservation, $error, $code] = $found;
+        if (!$reservation) {
+            return response()->json(['message' => $error], $code);
+        }
+
+        \App\Support\HotelTableDesk::releaseNoShows($reservation->group_name, (int) $reservation->faculty_id);
+        $reservation->refresh();
+
+        $table = $reservation->outcome === null && $reservation->hotel_dine_in_table_id
+            ? HotelDineInTable::where('hotel_dine_in_table_id', $reservation->hotel_dine_in_table_id)
+                ->where('group_name', $reservation->group_name)
+                ->where('faculty_id', $reservation->faculty_id)
+                ->first()
+            : null;
+
+        return response()->json([
+            'reservation' => $reservation->toGuestArray($table),
+            'menu'        => $this->menuPayload($reservation->group_name, (int) $reservation->faculty_id),
+        ])->header('Cache-Control', 'no-store')->header('Referrer-Policy', 'no-referrer');
+    }
+
+    /**
+     * @return array{0: ?HotelDineInReservation, 1: ?string, 2: int}
+     */
+    private function guestReservation(string $slug, string $token): array
+    {
+        $team = Group::resolveSlug($slug);
+        $reservation = $team ? HotelDineInReservation::findByToken($token) : null;
+
+        // Same answer for a wrong token and a token for another hotel, so a link
+        // cannot be used to learn which hotel a reservation belongs to.
+        if (!$reservation
+            || strcasecmp($reservation->group_name, (string) $team['group_name']) !== 0
+            || (int) $reservation->faculty_id !== (int) $team['faculty_id']) {
+            return [null, 'We could not find this reservation. Check that you opened the full link from your confirmation.', 404];
+        }
+        if ($reservation->linkExpired()) {
+            return [null, 'This reservation link has expired. Please contact the hotel if you need your reservation details.', 410];
+        }
+
+        return [$reservation, null, 200];
+    }
+
+    /**
+     * A reservation of the guest signed into this hotel, by id. Another guest's id,
+     * another hotel's, or nobody signed in all get the same 404.
+     *
+     * @return array{0: ?HotelDineInReservation, 1: ?string, 2: int}
+     */
+    private function accountReservation(string $slug, int $id): array
+    {
+        $context = \App\Support\HotelSimulationAuth::teamContextForSlug($slug);
+        if ($context) {
+            // A "remember me" guest opening the page in a new tab is signed back in first.
+            \App\Support\HotelSimulationAuth::restore(request()->user(), $context);
+        }
+        $auth = \App\Support\HotelSimulationAuth::current();
+
+        $reservation = $context && HotelDineInReservation::supported()
+            && is_array($auth) && ($auth['type'] ?? null) === 'customer'
+            ? HotelDineInReservation::where('hotel_dine_in_reservation_id', $id)
+                ->where('group_name', $context['group_name'])
+                ->where('faculty_id', $context['faculty_id'])
+                ->where('hotel_customer_id', (int) ($auth['customer_id'] ?? 0))
+                ->first()
+            : null;
+
+        if (!$reservation) {
+            return [null, 'Sign in to the hotel website with the account that made this reservation, then open it from My Bookings.', 404];
+        }
+
+        return [$reservation, null, 200];
+    }
+
+    private function templateFor(string $groupName, int $facultyId): string
+    {
+        $selected = (string) GroupSettings::where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
+            ->value('selected_template');
+
+        return $selected === '2' ? '2' : '1';
+    }
+
+    /** The name the team gave its site, else the approved concept's: what the site's header shows. */
+    private function brandName(array $custom, string $groupName, int $facultyId): string
+    {
+        $label = trim((string) data_get($custom, HotelTemplateBuilder::BRAND_NAME_KEY . '.items.0.label', ''));
+
+        return $label !== ''
+            ? $label
+            : HotelTemplateBuilder::hotelDefaults($groupName, $facultyId)['name'];
+    }
+
+    /**
+     * The parts of the team's design the reservation page wears: the site and header
+     * colours, the menu card colour, the site-wide type and the logo. Raw strings as
+     * the builder saved them; the page turns colours into a palette the same way the
+     * templates' SiteTheme does, and ignores anything that does not parse.
+     */
+    private function siteTheme(array $custom): array
+    {
+        $str = fn ($value) => is_string($value) ? trim($value) : '';
+
+        $colors = [];
+        foreach ((array) data_get($custom, HotelTemplateBuilder::SITE_COLORS_KEY . '.items', []) as $item) {
+            if (is_array($item) && is_string($item['id'] ?? null)) {
+                $colors[$item['id']] = $str($item['bg'] ?? null);
+            }
+        }
+
+        $type = (array) data_get($custom, HotelTemplateBuilder::TYPOGRAPHY_KEY . '.items.0', []);
+
+        // The shared logo, then the per-section ones older sites still carry (the
+        // templates' resolveLogo() reads them in this order), then the default.
+        $images = (array) data_get($custom, HotelTemplateBuilder::CARD_IMAGES_KEY . '.map', []);
+        $logo = '';
+        foreach (['logo', 'logo-home', 'logo-rooms', 'logo-restaurant'] as $id) {
+            if (($logo = $str($images['brand:' . $id] ?? null)) !== '') {
+                break;
+            }
+        }
+
+        return [
+            'site'         => $colors['site'] ?? '',
+            'header'       => $colors['header'] ?? '',
+            'menuCard'     => $str(data_get($custom, HotelTemplateBuilder::MENU_CARD_STYLE_KEY . '.items.0.bg')),
+            'family'       => $str($type['family'] ?? null),
+            'size'         => $str($type['size'] ?? null),
+            'color'        => $str($type['color'] ?? null),
+            'headingColor' => $str($type['headingColor'] ?? null),
+            'logo'         => $logo,
+            'defaultLogo'  => asset('new_logo_in_chtm....png'),
+        ];
     }
 
     public function enterAmenity(Request $request, string $slug)

@@ -149,6 +149,10 @@
      native pickers render their own controls from this. */
   input[type="date"].booking-input,
   input[type="time"].booking-input { color-scheme: dark; }
+  /* The open list is drawn by the browser on white unless told otherwise, and
+     the options inherit the light card text - white on white. */
+  select.booking-input { color-scheme: dark; }
+  select.booking-input option { background: var(--card); color: var(--fg); }
   .dn-form { display: grid; gap: 0.9rem; }
   .dn-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
   .dn-field-label {
@@ -190,7 +194,8 @@
   :root[data-ops-theme="2"] .dn-modal-close { background: rgba(27,67,50,0.03); }
   :root[data-ops-theme="2"] .dn-card:hover { border-color: rgba(27,67,50,0.35); }
   :root[data-ops-theme="2"] input[type="date"].booking-input,
-  :root[data-ops-theme="2"] input[type="time"].booking-input { color-scheme: light; }
+  :root[data-ops-theme="2"] input[type="time"].booking-input,
+  :root[data-ops-theme="2"] select.booking-input { color-scheme: light; }
 </style>
 @endsection
 
@@ -366,7 +371,7 @@ function ReserveModal({ table, onReserve, onClose, busy }) {
   );
 }
 
-function TableCard({ table, canReserve, onOpenReserve, onSeat, busy }) {
+function TableCard({ table, canReserve, onOpenReserve, onSeat, onMove, moveTargets, busy }) {
   const available = table.status === 'Available';
   const reserved = table.status === 'Reserved';
 
@@ -407,6 +412,15 @@ function TableCard({ table, canReserve, onOpenReserve, onSeat, busy }) {
             style={{ width: '100%', justifyContent: 'center' }}>
             <i className="fa-solid fa-user-check" style={{ fontSize: '0.7rem' }}></i> Customer Arrived
           </button>
+          {/* Moves the held reservation, guest and all, to a free table that fits the
+              party. The guest's own reservation page follows it. */}
+          <select className="booking-input" aria-label={`Move ${table.name}'s reservation to another table`}
+            disabled={busy || moveTargets.length === 0} value=""
+            onChange={e => { if (e.target.value) onMove(table, moveTargets.find(t => String(t.id) === e.target.value)); }}
+            style={{ marginTop: '0.5rem', fontSize: '0.75rem', padding: '0.45rem 0.6rem' }}>
+            <option value="">{moveTargets.length ? 'Move to another table…' : 'No free table fits this party'}</option>
+            {moveTargets.map(t => <option key={t.id} value={t.id}>{t.name} · seats {t.capacity}</option>)}
+          </select>
         </div>
       )}
 
@@ -493,7 +507,7 @@ function App() {
       })
       .then(data => {
         if (data.table) setTables(prev => prev.map(t => (t.id === data.table.id ? data.table : t)));
-        if (onDone) onDone(data.table);
+        if (onDone) onDone(data.table, data);
       })
       .catch(e => { if (window.toast) window.toast(e.message); })
       .finally(() => {
@@ -510,6 +524,18 @@ function App() {
   const seatTable = (table) => patchTable(table.id, { arrive: true }, 'Could not seat this customer.', (updated) => {
     if (updated && window.toast) window.toast(`${updated.guestName || 'The customer'} is seated at ${updated.name}.`);
   });
+
+  const moveTable = (table, target) => {
+    if (!target || !window.confirm(`Move ${table.guestName || 'this guest'}'s reservation from ${table.name} to ${target.name}?`)) return;
+    patchTable(table.id, { move_to: target.id }, 'Could not move this reservation.', (moved, data) => {
+      // Both cards changed: the old table is free now.
+      if (data && data.from) setTables(prev => prev.map(t => (t.id === data.from.id ? data.from : t)));
+      if (moved && window.toast) window.toast(`${moved.guestName || 'The reservation'} moved to ${moved.name}.`);
+    });
+  };
+  const moveTargetsFor = (table) => tables
+    .filter(t => t.status === 'Available' && t.capacity >= (table.partySize || 1))
+    .sort((a, b) => a.capacity - b.capacity);
 
   const availableCount = tables.filter(t => t.status === 'Available').length;
   const reservedCount = tables.filter(t => t.status === 'Reserved').length;
@@ -613,7 +639,8 @@ function App() {
         <div className="dn-grid">
           {visible.map(table => (
             <TableCard key={table.id} table={table} canReserve={canReserve} busy={busy}
-              onOpenReserve={t => setReservingId(t.id)} onSeat={seatTable} />
+              onOpenReserve={t => setReservingId(t.id)} onSeat={seatTable}
+              onMove={moveTable} moveTargets={table.status === 'Reserved' ? moveTargetsFor(table) : []} />
           ))}
         </div>
       )}

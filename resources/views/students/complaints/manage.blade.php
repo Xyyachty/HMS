@@ -166,6 +166,7 @@
   .cx-pill.is-In-Progress .dot { background: var(--cx-warn); }
   .cx-pill.is-Resolved .dot { background: var(--cx-ok); }
   .cx-pill.is-Closed .dot { background: var(--accent); }
+  .cx-pill.is-Escalated .dot { background: #a855f7; }
   .cx-pill i { color: var(--accent); font-size: 0.75rem; }
 
   .cx-what { margin: 0; padding: 0.75rem 0.85rem; border-radius: 0.625rem; background: var(--cx-soft); border: 1px solid var(--cx-line); }
@@ -262,7 +263,10 @@
     indexUrl: @json(route('students.hotel.complaints.index')),
     storeUrl: @json(route('students.hotel.complaints.store')),
     roomsUrl: @json(route('students.hotel.rooms.index')),
+    tablesUrl: @json(route('students.hotel.tables.index')),
     departments: @json(\App\Models\HotelComplaint::DEPARTMENTS),
+    departmentOwned: @json(\App\Models\HotelComplaint::DEPARTMENT_OWNED),
+    sources: @json(\App\Models\HotelComplaint::SOURCES),
     statuses: @json(\App\Models\HotelComplaint::STATUSES),
     serviceCategories: @json(\App\Models\HotelComplaint::SERVICE_CATEGORIES),
   };
@@ -274,7 +278,7 @@ const { useState, useEffect, useCallback, useMemo, useRef } = React;
 const CFG = window.HMS_COMPLAINTS;
 const DEPARTMENT_LABELS = CFG.departments;
 const SERVICE_CATEGORIES = CFG.serviceCategories || [];
-const OPEN_STATUSES = ['Pending', 'In Progress'];
+const OPEN_STATUSES = ['Pending', 'In Progress', 'Escalated'];
 const DONE_STATUSES = ['Closed', 'Cancelled'];
 /* Housekeeping and Maintenance problems are always in a room; Room Management and
    the restaurant also hear from guests who are not staying in one. */
@@ -285,20 +289,25 @@ const ROOM_REQUIRED = ['housekeeping', 'maintenance'];
 const STATUS_HINTS = {
   'Pending': 'Waiting for the department',
   'In Progress': 'The department is working on it',
+  'Escalated': 'Passed up to a supervisor — still being worked on',
   'Resolved': 'Fixed — Front Desk to confirm with the guest',
   'Closed': 'Confirmed with the guest',
   'Cancelled': 'Withdrawn',
 };
 /* A guest complaint ends when the Front Desk confirms it; a staff-raised repair
-   (inspection or amenity) has no guest, so it ends at Resolved. */
+   (inspection or amenity) has no guest, so it ends at Resolved. A restaurant
+   complaint (departmentOwned) ends at Resolved too: Restaurant Services owns it. */
 const GUEST_TRACK = ['Pending', 'In Progress', 'Resolved', 'Closed'];
 const STAFF_TRACK = ['Pending', 'In Progress', 'Resolved'];
+const ESCALATED_TRACK = ['Pending', 'In Progress', 'Escalated', 'Resolved'];
+const FLOW = ['Pending', 'In Progress', 'Escalated', 'Resolved', 'Closed'];
 const TEAM_ICONS = {
   housekeeping: 'fa-broom',
   maintenance: 'fa-screwdriver-wrench',
   room_management: 'fa-bed',
   restaurant_management: 'fa-utensils',
 };
+const SOURCE_ICONS = { 'Dine-In': 'fa-utensils', 'Room Service': 'fa-bell-concierge' };
 
 /* Mirrors HotelComplaint::isForwardTransition(), so a button that is not offered
    matches what the server would refuse anyway. */
@@ -306,8 +315,8 @@ function canMoveComplaintTo(from, to) {
   if (from === to || DONE_STATUSES.includes(from)) return false;
   if (to === 'Cancelled') return from !== 'Resolved';
   if (to === 'Closed') return from === 'Resolved';
-  const fromAt = GUEST_TRACK.indexOf(from);
-  const toAt = GUEST_TRACK.indexOf(to);
+  const fromAt = FLOW.indexOf(from);
+  const toAt = FLOW.indexOf(to);
   return fromAt !== -1 && toAt !== -1 && toAt > fromAt;
 }
 
@@ -327,13 +336,22 @@ function formatWhen(iso) {
   return d.toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
-function ComplaintForm({ rooms, categories, onSubmit, busy }) {
+/* departments: the queues this form may send to. The Front Desk page sends to every
+   department except the ones that record their own (departmentOwned); the
+   Restaurant page records restaurant complaints only, with a Dine-In / Room Service
+   source and the table or room the guest was served at. */
+function ComplaintForm({ rooms, tables, departments, categories, onSubmit, busy }) {
+  const restaurantMode = departments.length === 1 && CFG.departmentOwned.includes(departments[0]);
   const [roomNumber, setRoomNumber] = useState('');
   const [guestName, setGuestName] = useState('');
-  const [department, setDepartment] = useState('');
+  const [department, setDepartment] = useState(restaurantMode ? departments[0] : '');
+  const [source, setSource] = useState('');
+  const [tableName, setTableName] = useState('');
   const [category, setCategory] = useState('');
   const [details, setDetails] = useState('');
   const [error, setError] = useState('');
+  const dineIn = restaurantMode && source === 'Dine-In';
+  let stepNo = 0;
 
   /* Only rooms with a guest actually in them. A complaint comes from someone staying
      in the room, so a vacant or merely-booked room is not a room to file against. */
@@ -353,21 +371,39 @@ function ComplaintForm({ rooms, categories, onSubmit, busy }) {
     if (reservedName) setGuestName(reservedName);
   };
 
+  const pickTable = (value) => {
+    setTableName(value);
+    const table = (tables || []).find(t => t.name === value);
+    if (table && table.guestName) setGuestName(table.guestName);
+  };
+
+  const pickSource = (value) => {
+    setSource(value);
+    setRoomNumber('');
+    setTableName('');
+    setGuestName('');
+  };
+
   const roomRequired = ROOM_REQUIRED.includes(department);
 
   const submit = (e) => {
     e.preventDefault();
+    if (restaurantMode && !source) { setError('Choose whether the guest was served Dine-In or by Room Service.'); return; }
     if (!department) { setError('Choose the department responsible for the problem.'); return; }
+    if (dineIn && !tableName) { setError('Choose the table the guest was seated at.'); return; }
+    if (dineIn && !guestName.trim()) { setError('Enter the guest name.'); return; }
+    if (restaurantMode && !dineIn && !roomNumber) { setError('Choose the room the order was delivered to.'); return; }
     if (roomRequired && !roomNumber) { setError(`Choose the room this ${DEPARTMENT_LABELS[department]} problem is in.`); return; }
     if (!roomNumber && !guestName.trim()) { setError('Enter the guest name or choose their room.'); return; }
     if (!category) { setError('Pick what kind of problem it is.'); return; }
     if (!details.trim()) { setError('Write down what the guest said, so the team knows what to do.'); return; }
     setError('');
     onSubmit({
-      room_number: roomNumber,
+      room_number: dineIn ? '' : roomNumber,
       guest_name: guestName.trim(),
       category,
       details: details.trim(),
+      ...(restaurantMode ? { source, table_name: dineIn ? tableName : '' } : {}),
     }, department, () => {
       setDetails('');
       setCategory('');
@@ -386,37 +422,75 @@ function ComplaintForm({ rooms, categories, onSubmit, busy }) {
       <h2 className="cx-panel-title">Report a problem</h2>
 
       <div className="cx-steps">
-        <div className={'cx-step' + (roomNumber || guestName.trim() ? ' is-done' : '')}>
-          <div className="cx-step-head"><span className="cx-num">1</span><label htmlFor="cxRoom">Which guest?</label></div>
-          <div className="cx-two">
-            <select id="cxRoom" className="cx-input" value={roomNumber} onChange={e => pickRoom(e.target.value)}>
-              <option value="">{occupiedRooms.length === 0 ? 'No guests are checked in' : 'Choose a room…'}</option>
-              {occupiedRooms.map(room => (
-                <option key={room.id} value={room.name}>Room {room.name} · {room.reservation.fullName || 'Guest'}</option>
+        {restaurantMode && (
+          <div className={'cx-step' + (source ? ' is-done' : '')}>
+            <div className="cx-step-head"><span className="cx-num">{++stepNo}</span><span className="cx-q">Where was the guest served?</span></div>
+            <div className="cx-teams">
+              {CFG.sources.map(key => (
+                <button key={key} type="button" className={'cx-team' + (source === key ? ' is-on' : '')} aria-pressed={source === key}
+                  onClick={() => pickSource(key)}>
+                  <i className={'fa-solid ' + (SOURCE_ICONS[key] || 'fa-utensils')}></i>
+                  <span>{key}</span>
+                </button>
               ))}
-            </select>
-            <input type="text" className="cx-input" placeholder="Guest name" value={guestName} onChange={e => setGuestName(e.target.value)} aria-label="Guest name (filled in from the room)" title="Filled in from the room" />
+            </div>
           </div>
-          <p className="cx-help">
-            Only rooms with a checked-in guest are listed. A restaurant or lobby guest who is not staying needs only a name.
-          </p>
-        </div>
+        )}
 
-        <div className={'cx-step' + (department ? ' is-done' : '')}>
-          <div className="cx-step-head"><span className="cx-num">2</span><span className="cx-q">Which department is it about?</span></div>
-          <div className="cx-teams">
-            {Object.entries(DEPARTMENT_LABELS).map(([key, label]) => (
-              <button key={key} type="button" className={'cx-team' + (department === key ? ' is-on' : '')} aria-pressed={department === key}
-                onClick={() => pickDepartment(key)}>
-                <i className={'fa-solid ' + (TEAM_ICONS[key] || 'fa-users')}></i>
-                <span>{label}</span>
-              </button>
-            ))}
+        {dineIn ? (
+          <div className={'cx-step' + (tableName && guestName.trim() ? ' is-done' : '')}>
+            <div className="cx-step-head"><span className="cx-num">{++stepNo}</span><label htmlFor="cxTable">Which guest?</label></div>
+            <div className="cx-two">
+              <select id="cxTable" className="cx-input" value={tableName} onChange={e => pickTable(e.target.value)}>
+                <option value="">{(tables || []).length === 0 ? 'No tables set up yet' : 'Choose a table…'}</option>
+                {(tables || []).map(table => (
+                  <option key={table.id} value={table.name}>{table.name}{table.guestName ? ` · ${table.guestName}` : ` · ${table.status}`}</option>
+                ))}
+              </select>
+              <input type="text" className="cx-input" placeholder="Guest name" value={guestName} onChange={e => setGuestName(e.target.value)} aria-label="Guest name (filled in from the table)" title="Filled in from the table" />
+            </div>
+            <p className="cx-help">Pick the table the guest was seated at. The name fills in from a seated table.</p>
           </div>
-        </div>
+        ) : (!restaurantMode || source) && (
+          <div className={'cx-step' + (roomNumber || guestName.trim() ? ' is-done' : '')}>
+            <div className="cx-step-head"><span className="cx-num">{++stepNo}</span><label htmlFor="cxRoom">Which guest?</label></div>
+            <div className="cx-two">
+              <select id="cxRoom" className="cx-input" value={roomNumber} onChange={e => pickRoom(e.target.value)}>
+                <option value="">{occupiedRooms.length === 0 ? 'No guests are checked in' : 'Choose a room…'}</option>
+                {occupiedRooms.map(room => (
+                  <option key={room.id} value={room.name}>Room {room.name} · {room.reservation.fullName || 'Guest'}</option>
+                ))}
+              </select>
+              <input type="text" className="cx-input" placeholder="Guest name" value={guestName} onChange={e => setGuestName(e.target.value)} aria-label="Guest name (filled in from the room)" title="Filled in from the room" />
+            </div>
+            <p className="cx-help">
+              {restaurantMode
+                ? 'Pick the room the order was delivered to. Only rooms with a checked-in guest are listed.'
+                : 'Only rooms with a checked-in guest are listed. A lobby guest who is not staying needs only a name.'}
+            </p>
+          </div>
+        )}
+
+        {!restaurantMode && (
+          <div className={'cx-step' + (department ? ' is-done' : '')}>
+            <div className="cx-step-head"><span className="cx-num">{++stepNo}</span><span className="cx-q">Which department is it about?</span></div>
+            <div className="cx-teams">
+              {departments.map(key => (
+                <button key={key} type="button" className={'cx-team' + (department === key ? ' is-on' : '')} aria-pressed={department === key}
+                  onClick={() => pickDepartment(key)}>
+                  <i className={'fa-solid ' + (TEAM_ICONS[key] || 'fa-users')}></i>
+                  <span>{DEPARTMENT_LABELS[key]}</span>
+                </button>
+              ))}
+            </div>
+            {CFG.departmentOwned.length > 0 && (
+              <p className="cx-help">Restaurant complaints are recorded by {CFG.departmentOwned.map(k => DEPARTMENT_LABELS[k]).join(', ')}. You can follow them in the list.</p>
+            )}
+          </div>
+        )}
 
         <div className={'cx-step' + (category ? ' is-done' : '')}>
-          <div className="cx-step-head"><span className="cx-num">3</span><span className="cx-q">What kind of problem?</span></div>
+          <div className="cx-step-head"><span className="cx-num">{++stepNo}</span><span className="cx-q">What kind of problem?</span></div>
           {!department && <p className="cx-help" style={{ marginTop: 0 }}>Choose a department first.</p>}
           {groups.map(group => (
             <div key={group.key} style={{ marginBottom: '0.35rem' }}>
@@ -433,7 +507,7 @@ function ComplaintForm({ rooms, categories, onSubmit, busy }) {
         </div>
 
         <div className={'cx-step' + (details.trim() ? ' is-done' : '')}>
-          <div className="cx-step-head"><span className="cx-num">4</span><label htmlFor="cxDetails">What did the guest say?</label></div>
+          <div className="cx-step-head"><span className="cx-num">{++stepNo}</span><label htmlFor="cxDetails">What did the guest say?</label></div>
           <textarea id="cxDetails" className="cx-input" rows={3}
             placeholder="e.g. The air conditioner is not cooling. The guest called at 9 PM."
             value={details} onChange={e => setDetails(e.target.value)} />
@@ -443,7 +517,7 @@ function ComplaintForm({ rooms, categories, onSubmit, busy }) {
 
         <button type="submit" className="cx-btn cx-btn-primary cx-btn-wide" disabled={busy}>
           <i className="fa-solid fa-paper-plane"></i>
-          {busy ? 'Sending…' : department ? `Send to ${DEPARTMENT_LABELS[department]}` : 'Send to department'}
+          {busy ? 'Sending…' : restaurantMode ? 'Record complaint' : department ? `Send to ${DEPARTMENT_LABELS[department]}` : 'Send to department'}
         </button>
       </div>
     </form>
@@ -452,19 +526,30 @@ function ComplaintForm({ rooms, categories, onSubmit, busy }) {
 
 function ComplaintCard({ complaint, canHandle, canFile, onUpdate }) {
   const [note, setNote] = useState(complaint.resolutionNote || '');
-  // null, 'note' (edit the note only) or 'resolve' (note, then mark Resolved).
+  // null, 'note' (edit the note only), 'resolve' (note, then mark Resolved) or
+  // 'action' (log one action taken — restaurant complaints).
   const [noteMode, setNoteMode] = useState(null);
+  const [action, setAction] = useState('');
   const [historyOpen, setHistoryOpen] = useState(false);
   const isOpen = OPEN_STATUSES.includes(complaint.status);
-  const track = complaint.internal ? STAFF_TRACK : GUEST_TRACK;
+  const owned = !!complaint.departmentOwned;
+  const history = complaint.history || [];
+  const actionsTaken = history.filter(h => h.event === 'Action taken');
+  const wasEscalated = complaint.status === 'Escalated' || history.some(h => h.event === 'Marked Escalated');
+  // Restaurant rows closed by the Front Desk before this rule keep the four-step track.
+  const track = owned && complaint.status !== 'Closed' ? (wasEscalated ? ESCALATED_TRACK : STAFF_TRACK) : complaint.internal ? STAFF_TRACK : GUEST_TRACK;
   const stepAt = track.indexOf(complaint.status);
   const finished = complaint.status === track[track.length - 1];
-  const history = complaint.history || [];
+  const statusHint = owned && complaint.status === 'Resolved'
+    ? `Fixed by ${complaint.departmentLabel}`
+    : STATUS_HINTS[complaint.status] || '';
   const otherDepartments = Object.keys(DEPARTMENT_LABELS).filter(k => k !== complaint.department);
 
   useEffect(() => { setNote(complaint.resolutionNote || ''); }, [complaint.resolutionNote]);
 
-  const where = complaint.roomNumber ? `Room ${complaint.roomNumber}` : (complaint.guestName || 'Guest');
+  const where = complaint.roomNumber ? `Room ${complaint.roomNumber}`
+    : complaint.tableName ? complaint.tableName
+    : (complaint.guestName || 'Guest');
 
   const cancel = () => {
     if (window.confirm(`Cancel the complaint for ${where}? The department will stop working on it.`)) {
@@ -486,6 +571,22 @@ function ComplaintCard({ complaint, canHandle, canFile, onUpdate }) {
     setNoteMode(null);
   };
 
+  const saveAction = () => {
+    if (!action.trim()) {
+      window.toast && window.toast('Write what was done.');
+      return;
+    }
+    onUpdate(complaint.id, { action_taken: action.trim() });
+    setAction('');
+    setNoteMode(null);
+  };
+
+  const escalate = () => {
+    if (window.confirm(`Escalate the complaint for ${where} to a supervisor?`)) {
+      onUpdate(complaint.id, { status: 'Escalated' });
+    }
+  };
+
   const handOver = (to) => {
     if (!to) return;
     if (window.confirm(`Give this complaint to ${DEPARTMENT_LABELS[to]}?`)) {
@@ -499,13 +600,14 @@ function ComplaintCard({ complaint, canHandle, canFile, onUpdate }) {
         <div style={{ minWidth: 0 }}>
           <span className="cx-room">{where}</span>
           <span className="cx-guest">
-            {complaint.roomNumber ? (complaint.guestName || 'Guest name not given') + ' · ' : 'No room · '}
+            {complaint.roomNumber || complaint.tableName ? (complaint.guestName || 'Guest name not given') + ' · ' : 'No room · '}
             {complaint.category}
           </span>
         </div>
         <div className="cx-pills">
-          <span className={`cx-pill is-${slug(complaint.status)}`} title={STATUS_HINTS[complaint.status] || ''}><span className="dot"></span>{complaint.status}</span>
+          <span className={`cx-pill is-${slug(complaint.status)}`} title={statusHint}><span className="dot"></span>{complaint.status}</span>
           <span className="cx-pill"><i className={'fa-solid ' + (TEAM_ICONS[complaint.department] || 'fa-users')}></i>{complaint.departmentLabel}</span>
+          {complaint.source && <span className="cx-pill"><i className={'fa-solid ' + (SOURCE_ICONS[complaint.source] || 'fa-utensils')}></i>{complaint.source}</span>}
           {complaint.kind === 'service' && <span className="cx-pill"><i className="fa-solid fa-user-tie"></i>Staff service</span>}
           {complaint.internal && <span className="cx-pill"><i className="fa-solid fa-clipboard-list"></i>Staff report</span>}
         </div>
@@ -541,6 +643,22 @@ function ComplaintCard({ complaint, canHandle, canFile, onUpdate }) {
         <p className="cx-meta">No resolution notes.</p>
       )}
 
+      {owned && (actionsTaken.length > 0 ? (
+        <div className="cx-what">
+          <small>Actions taken</small>
+          <ol className="cx-history" style={{ marginTop: '0.35rem' }}>
+            {actionsTaken.map((h, i) => (
+              <li key={i}>
+                <em>{h.note}</em>
+                <span>{formatWhen(h.at)}{h.by ? ` · ${h.by}` : ''}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      ) : (
+        <p className="cx-meta">No actions recorded yet.</p>
+      ))}
+
       {canHandle && isOpen && (
         <div className="cx-actions">
           {complaint.status === 'Pending' && (
@@ -548,20 +666,33 @@ function ComplaintCard({ complaint, canHandle, canFile, onUpdate }) {
               <i className="fa-solid fa-person-digging"></i> Start working on it
             </button>
           )}
-          <button type="button" className={'cx-btn ' + (complaint.status === 'In Progress' ? 'cx-btn-primary' : 'cx-btn-ghost')}
+          <button type="button" className={'cx-btn ' + (complaint.status !== 'Pending' ? 'cx-btn-primary' : 'cx-btn-ghost')}
             onClick={() => setNoteMode(m => (m === 'resolve' ? null : 'resolve'))}>
             <i className="fa-solid fa-circle-check"></i> Mark as resolved
           </button>
+          {owned && complaint.status !== 'Escalated' && (
+            <button type="button" className="cx-btn cx-btn-ghost" onClick={escalate}>
+              <i className="fa-solid fa-arrow-up-right-dots"></i> Escalate
+            </button>
+          )}
           <span className="cx-spacer"></span>
+          {owned && (
+            <button type="button" className="cx-btn-sm" onClick={() => setNoteMode(m => (m === 'action' ? null : 'action'))}>
+              <i className="fa-solid fa-list-check"></i>Record action
+            </button>
+          )}
           <button type="button" className="cx-btn-sm" onClick={() => setNoteMode(m => (m === 'note' ? null : 'note'))}>
             <i className="fa-solid fa-pen"></i>{complaint.resolutionNote ? 'Edit notes' : 'Add notes'}
           </button>
           {/* A resolved complaint cannot be handed over — that would reopen it, the
-              same backward move the status flow forbids. */}
-          <select className="cx-btn-sm cx-handover" value="" onChange={e => handOver(e.target.value)} aria-label="Give this complaint to another department">
-            <option value="">Give to…</option>
-            {otherDepartments.map(key => <option key={key} value={key}>{DEPARTMENT_LABELS[key]}</option>)}
-          </select>
+              same backward move the status flow forbids. Nor an escalated one: a
+              supervisor already has it. */}
+          {complaint.status !== 'Escalated' && (
+            <select className="cx-btn-sm cx-handover" value="" onChange={e => handOver(e.target.value)} aria-label="Give this complaint to another department">
+              <option value="">Give to…</option>
+              {otherDepartments.map(key => <option key={key} value={key}>{DEPARTMENT_LABELS[key]}</option>)}
+            </select>
+          )}
           <button type="button" className="cx-btn-sm is-danger" onClick={cancel}>
             <i className="fa-solid fa-xmark"></i>Cancel
           </button>
@@ -576,7 +707,7 @@ function ComplaintCard({ complaint, canHandle, canFile, onUpdate }) {
         </div>
       )}
 
-      {canFile && !complaint.internal && complaint.status === 'Resolved' && (
+      {canFile && !complaint.internal && !owned && complaint.status === 'Resolved' && (
         <div className="cx-actions">
           <span className="cx-meta">{complaint.departmentLabel} resolved this. Check with the guest, then close it.</span>
           <span className="cx-spacer"></span>
@@ -586,7 +717,15 @@ function ComplaintCard({ complaint, canHandle, canFile, onUpdate }) {
         </div>
       )}
 
-      {!canHandle && canFile && isOpen && (
+      {!canHandle && canFile && owned && (
+        <div className="cx-actions">
+          <span className="cx-meta">
+            {complaint.departmentLabel} handles this complaint from start to finish. Follow its status, actions taken and resolution here.
+          </span>
+        </div>
+      )}
+
+      {!canHandle && canFile && !owned && isOpen && (
         <div className="cx-actions">
           <span className="cx-meta">The {complaint.departmentLabel} team updates this as they work on it.</span>
           <span className="cx-spacer"></span>
@@ -596,7 +735,14 @@ function ComplaintCard({ complaint, canHandle, canFile, onUpdate }) {
         </div>
       )}
 
-      {canHandle && noteMode && (
+      {canHandle && noteMode === 'action' && (
+        <div className="cx-note-form">
+          <input type="text" className="cx-input" placeholder="What did you do? e.g. Replaced the dish, apologised to the guest" value={action} onChange={e => setAction(e.target.value)} aria-label="Action taken" autoFocus />
+          <button type="button" className="cx-btn cx-btn-primary" onClick={saveAction}>Save action</button>
+        </div>
+      )}
+
+      {canHandle && noteMode && noteMode !== 'action' && (
         <div className="cx-note-form">
           <input type="text" className="cx-input" placeholder="What was done to fix it?" value={note} onChange={e => setNote(e.target.value)} aria-label="What was done to fix it" autoFocus />
           <button type="button" className="cx-btn cx-btn-primary" onClick={saveNote}>
@@ -630,6 +776,7 @@ function ComplaintCard({ complaint, canHandle, canFile, onUpdate }) {
 function App() {
   const [complaints, setComplaints] = useState([]);
   const [rooms, setRooms] = useState([]);
+  const [tables, setTables] = useState([]);
   const [categories, setCategories] = useState({});
   const [canFile, setCanFile] = useState(false);
   const [handled, setHandled] = useState([]);
@@ -673,6 +820,16 @@ function App() {
       .catch(() => {});
   }, []);
 
+  // Only the restaurant's form asks for a dining table.
+  const ownsQueue = CFG.departmentOwned.includes(CFG.role);
+  useEffect(() => {
+    if (!ownsQueue) return;
+    fetch(CFG.tablesUrl, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data.tables)) setTables(data.tables); })
+      .catch(() => {});
+  }, [ownsQueue]);
+
   const fail = (message) => window.toast && window.toast(message);
 
   const fileComplaint = (payload, department, reset) => {
@@ -691,7 +848,7 @@ function App() {
       })
       .then(data => {
         if (data.complaint) setComplaints(prev => [data.complaint, ...prev]);
-        if (window.toast) window.toast(`Sent to ${DEPARTMENT_LABELS[department]}`);
+        if (window.toast) window.toast(CFG.departmentOwned.includes(department) ? 'Complaint recorded' : `Sent to ${DEPARTMENT_LABELS[department]}`);
         if (reset) reset();
       })
       .catch(e => fail(e.message))
@@ -743,25 +900,29 @@ function App() {
     return complaints.filter(c => {
       if (!inDepartment(c) || !tab.match(c)) return false;
       if (!q) return true;
-      return [c.roomNumber, c.guestName, c.category, c.details, c.filedBy, c.resolutionNote, c.departmentLabel]
+      return [c.roomNumber, c.tableName, c.source, c.guestName, c.category, c.details, c.filedBy, c.resolutionNote, c.departmentLabel]
         .some(field => String(field || '').toLowerCase().includes(q));
     });
   }, [complaints, departmentFilter, statusFilter, search]);
 
   const openCount = complaints.filter(c => OPEN_STATUSES.includes(c.status) && inDepartment(c)).length;
-  const toConfirm = complaints.filter(c => c.status === 'Resolved' && !c.internal && inDepartment(c)).length;
+  const toConfirm = complaints.filter(c => c.status === 'Resolved' && !c.internal && !c.departmentOwned && inDepartment(c)).length;
 
   const eyebrow = isDepartmentView ? DEPARTMENT_LABELS[CFG.role] : 'Front Desk';
   const heading = isDepartmentView ? 'Complaints & Concerns' : 'Guest Complaints';
-  const lead = isDepartmentView
+  const lead = CFG.role === 'restaurant_management'
+    ? 'Record complaints from Dine-In and Room Service guests. Start on each one, record the actions you take, escalate it to a supervisor if needed, and mark it resolved with notes. The Front Desk sees every update.'
+    : isDepartmentView
     ? 'Guest complaints the Front Desk sent to your department. Start on each one, mark it resolved with notes on what you did, and the Front Desk closes it once the guest confirms.'
-    : 'Record a guest’s complaint, send it to the department responsible, follow its progress, and close it once the guest confirms it is fixed.';
+    : 'Record a guest’s complaint, send it to the department responsible, follow its progress, and close it once the guest confirms it is fixed. Restaurant complaints are recorded and handled by Restaurant Services; follow them here.';
 
   let emptyTitle = 'Nothing matches';
   let emptyText = 'Try another tab, another department, or clear the search.';
   if (complaints.filter(inDepartment).length === 0) {
     emptyTitle = 'No complaints';
-    emptyText = canFile && !isDepartmentView
+    emptyText = ownsQueue
+      ? 'When a Dine-In or Room Service guest complains, use the form to record it.'
+      : canFile && !isDepartmentView
       ? 'When a guest reports a problem, use the form to send it to the right department.'
       : 'Nothing has been sent to your department. New complaints will show up here.';
   } else if (statusFilter === 'open' && !search.trim()) {
@@ -823,9 +984,13 @@ function App() {
     </section>
   );
 
-  // The report form belongs to the Front Desk page only, even for a member who can
-  // also file from a department page.
-  const showForm = canFile && !isDepartmentView;
+  // The report form sits on the Front Desk page, which sends to every department
+  // except Restaurant Services. Restaurant Services records its own complaints from
+  // its own page. Other department pages have no form.
+  const formDepartments = ownsQueue
+    ? [CFG.role]
+    : Object.keys(DEPARTMENT_LABELS).filter(k => !CFG.departmentOwned.includes(k));
+  const showForm = ownsQueue ? handled.includes(CFG.role) : canFile && !isDepartmentView;
 
   return (
     <div className="cx" data-hms-no-edit="1">
@@ -842,7 +1007,7 @@ function App() {
       </header>
 
       <div className={'cx-layout' + (showForm ? '' : ' is-single')}>
-        {showForm && <ComplaintForm rooms={rooms} categories={categories} onSubmit={fileComplaint} busy={busy} />}
+        {showForm && <ComplaintForm rooms={rooms} tables={tables} departments={formDepartments} categories={categories} onSubmit={fileComplaint} busy={busy} />}
         {list}
       </div>
     </div>

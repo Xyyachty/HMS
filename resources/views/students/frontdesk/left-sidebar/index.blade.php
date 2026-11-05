@@ -82,7 +82,7 @@
                 <a href="{{ route('students.frontdesk.verify-guest') }}"
                     onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
                     class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.frontdesk.verify-guest') ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
-                    <i class="fas fa-user-check text-[0.8125rem] text-emerald-400"></i> Guest Information
+                    <i class="fas fa-user-check text-[0.8125rem] text-emerald-400"></i> Guest Folio
                     @include('students.frontdesk.left-sidebar.badge', ['key' => 'verify-guest'])
                 </a>
                 <a href="{{ route('students.frontdesk.dine-in') }}"

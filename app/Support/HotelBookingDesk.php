@@ -6,6 +6,7 @@ use App\Exceptions\BookingOverlapException;
 use App\Models\HotelAddon;
 use App\Models\HotelBooking;
 use App\Models\HotelBookingCharge;
+use App\Models\HotelBookingDiscount;
 use App\Models\HotelBookingPayment;
 use App\Models\HotelChildPolicy;
 use App\Models\HotelGuest;
@@ -113,7 +114,16 @@ class HotelBookingDesk
             (string) ($stay['check_in'] ?? '')
         );
 
-        return DB::transaction(function () use ($scope, $room, $guest, $stay, $payment, $addons, $guestCount, $children, $promo) {
+        $claims = self::checkDiscounts(
+            $stay['discounts'] ?? [],
+            (int) ($adults ?? 1),
+            $ages,
+            (string) ($stay['check_in'] ?? ''),
+            $promo !== null,
+            (string) ($guest['full_name'] ?? '')
+        );
+
+        return DB::transaction(function () use ($scope, $room, $guest, $stay, $payment, $addons, $guestCount, $children, $promo, $claims) {
             $guestModel = HotelGuest::findOrCreateFor($scope, $guest);
 
             $booking = new HotelBooking($scope + [
@@ -146,6 +156,20 @@ class HotelBookingDesk
                 HotelAddonDesk::attachTo($booking, $addons);
             }
 
+            // Before any payment, so a deposit taken now is recorded against the
+            // discounted figure the desk quoted.
+            if ($claims) {
+                $verifiedBy = auth()->user()?->name;
+                foreach ($claims as $claim) {
+                    HotelBookingDiscount::create($scope + [
+                        'hotel_booking_id' => $booking->hotel_booking_id,
+                        'verified_at'      => $claim['verified'] ? now() : null,
+                        'verified_by'      => $claim['verified'] ? $verifiedBy : null,
+                    ] + array_diff_key($claim, ['verified' => true]));
+                }
+                $booking->recordDiscountAmounts();
+            }
+
             // After the add-ons, and deliberately: addPayment() prices the receipt off
             // totalDue(), which is the room and the children. Add-ons settle at
             // check-out the same way room service does.
@@ -158,6 +182,154 @@ class HotelBookingDesk
             // job (HotelRoom::toTemplateArray()'s bookedRanges), not hotel_rooms.status.
 
             return $booking->fresh(['guest', 'payments', 'addons']);
+        });
+    }
+
+    /**
+     * The Senior Citizen / PWD claims sent with a stay, checked and cleaned, or a
+     * RuntimeException naming the first problem. Run on the server whatever the
+     * browser already checked.
+     *
+     * Each claim: type, occupant (adult|child), child_index (child), is_primary,
+     * full_name, birth_date (Senior Citizen), id_number, verified.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function checkDiscounts(array $claims, int $adults, array $ages, string $checkIn, bool $hasPromo, string $bookerName): array
+    {
+        if (!$claims) {
+            return [];
+        }
+        if (!HotelBookingDiscount::supported()) {
+            throw new \RuntimeException('Senior Citizen and PWD discounts are not set up on this server yet. Ask your instructor.');
+        }
+        // RA 9994 Sec. 4: the guest takes the promo or the statutory discount, whichever
+        // is higher, never both.
+        if ($hasPromo) {
+            throw new \RuntimeException('A promo and a Senior Citizen / PWD discount cannot be combined. Pick the one that saves the guest more.');
+        }
+
+        $stayDate = $checkIn !== '' ? \Carbon\Carbon::parse($checkIn) : now('Asia/Manila');
+        $clean = [];
+        $hashes = [];
+        $children = [];
+        $adultClaims = 0;
+        $primary = 0;
+
+        foreach (array_values($claims) as $n => $claim) {
+            $who = 'Eligible guest ' . ($n + 1);
+            $type = HotelBookingDiscount::normalizeType($claim['type'] ?? null);
+            if (!$type) {
+                throw new \RuntimeException($who . ': choose Senior Citizen or PWD.');
+            }
+            $isPrimary = !empty($claim['is_primary']);
+            $name = trim((string) ($isPrimary ? $bookerName : ($claim['full_name'] ?? '')));
+            $idNumber = trim((string) ($claim['id_number'] ?? ''));
+            if ($name === '') {
+                throw new \RuntimeException($who . ': enter their full name.');
+            }
+            $who = $name;
+            if ($idNumber === '') {
+                throw new \RuntimeException($who . ': enter the ' . $type . ' ID number.');
+            }
+
+            $occupant = ($claim['occupant'] ?? 'adult') === 'child' ? 'child' : 'adult';
+            $childIndex = null;
+            if ($occupant === 'child') {
+                $childIndex = (int) ($claim['child_index'] ?? -1);
+                if ($type === 'Senior Citizen') {
+                    throw new \RuntimeException($who . ': a child cannot hold a Senior Citizen ID.');
+                }
+                if ($isPrimary) {
+                    throw new \RuntimeException($who . ': the guest making the booking is an adult.');
+                }
+                if (!array_key_exists($childIndex, $ages)) {
+                    throw new \RuntimeException($who . ': pick which child in this room.');
+                }
+                if (isset($children[$childIndex])) {
+                    throw new \RuntimeException('The same child is listed twice for a discount.');
+                }
+                $children[$childIndex] = true;
+            } else {
+                $adultClaims++;
+            }
+            $primary += $isPrimary ? 1 : 0;
+
+            $birthDate = null;
+            if ($type === 'Senior Citizen') {
+                try {
+                    $birthDate = \Carbon\Carbon::parse((string) ($claim['birth_date'] ?? ''));
+                } catch (\Throwable $e) {
+                    $birthDate = null;
+                }
+                if (empty($claim['birth_date']) || !$birthDate) {
+                    throw new \RuntimeException($who . ': enter their date of birth.');
+                }
+                $age = $birthDate->diff($stayDate)->y;
+                if ($birthDate->greaterThan($stayDate) || $age < HotelBookingDiscount::SENIOR_AGE) {
+                    throw new \RuntimeException($who . ' is ' . max(0, $age) . '. The Senior Citizen discount starts at '
+                        . HotelBookingDiscount::SENIOR_AGE . '.');
+                }
+            }
+
+            $hash = HotelBookingDiscount::hashId($type, $idNumber);
+            if (isset($hashes[$hash])) {
+                throw new \RuntimeException('The same ' . $type . ' ID is listed twice. Each person claims once.');
+            }
+            $hashes[$hash] = true;
+
+            $clean[] = [
+                'type'        => $type,
+                'occupant'    => $occupant,
+                'child_index' => $childIndex,
+                'is_primary'  => $isPrimary,
+                'full_name'   => mb_substr($name, 0, 255),
+                'birth_date'  => $birthDate?->toDateString(),
+                'id_number'   => mb_substr($idNumber, 0, 100),
+                'id_hash'     => $hash,
+                'verified'    => !empty($claim['verified']),
+            ];
+        }
+
+        if ($adultClaims > $adults) {
+            throw new \RuntimeException('More adults are claiming a discount (' . $adultClaims . ') than are staying in the room (' . $adults . ').');
+        }
+        if ($primary > 1) {
+            throw new \RuntimeException('Only one person is the primary guest.');
+        }
+
+        return $clean;
+    }
+
+    /**
+     * Front Desk saw the ID of a guest whose discount was pending. From now on the
+     * discount comes off the bill; anything already paid over that is a refund due,
+     * recorded as its own payment line, never by rewriting the earlier payment.
+     *
+     * @throws \RuntimeException when already verified or the stay is closed
+     */
+    public static function verifyDiscount(HotelBooking $booking, int $discountId, ?string $by): HotelBookingDiscount
+    {
+        return DB::transaction(function () use ($booking, $discountId, $by) {
+            HotelBooking::whereKey($booking->hotel_booking_id)->lockForUpdate()->first();
+            $discount = HotelBookingDiscount::where('hotel_booking_id', $booking->hotel_booking_id)
+                ->whereKey($discountId)
+                ->lockForUpdate()
+                ->first();
+            if (!$discount) {
+                throw new \RuntimeException('That discount is not on this booking.');
+            }
+            if ($discount->isVerified()) {
+                throw new \RuntimeException($discount->full_name . '’s ID was already verified.');
+            }
+            if (!$booking->isOpen()) {
+                throw new \RuntimeException('This stay is closed. Its bill can no longer change.');
+            }
+
+            $discount->forceFill(['verified_at' => now(), 'verified_by' => $by])->save();
+            $booking->recordDiscountAmounts();
+
+            return $discount;
         });
     }
 
@@ -177,6 +349,21 @@ class HotelBookingDesk
 
             $totalDue = $booking->totalDue();
             $amount   = round(max(0, (float) ($payment['amount_paid'] ?? 0)), 2);
+            $type     = HotelBookingPayment::normalizeType($payment['type'] ?? null);
+
+            // Money handed back: a discount verified after the guest paid full price.
+            // Its own row with a negative amount, so the earlier payment stays as it was
+            // taken and the refund shows on the bill and in the day's takings.
+            if ($type === 'Refund') {
+                $booking->load(['payments', 'foodOrders', 'charges', 'addons']);
+                $due = $booking->refundDue();
+                if ($amount <= 0 || $amount > $due + 0.005) {
+                    throw new \RuntimeException($due > 0
+                        ? 'The refund can be at most PHP ' . number_format($due, 2) . '.'
+                        : 'Nothing is owed back to this guest.');
+                }
+                $amount = -$amount;
+            }
             $method   = trim((string) ($payment['method'] ?? '')) ?: 'Cash';
             $reference = self::clean($payment['reference'] ?? null);
 
@@ -200,7 +387,7 @@ class HotelBookingDesk
                 'group_id'         => $booking->group_id,
                 'hotel_booking_id' => $booking->hotel_booking_id,
                 'transaction_ref'  => $payment['transaction_ref'] ?? (string) \Illuminate\Support\Str::uuid(),
-                'type'             => HotelBookingPayment::normalizeType($payment['type'] ?? null),
+                'type'             => $type,
                 'amount_paid'      => $amount,
                 'total_due'        => $totalDue,
                 'balance'          => round(max(0, $totalDue - ($alreadyPaid + $amount)), 2),

@@ -158,6 +158,11 @@
         width: 2.1rem; height: 2.1rem; flex-shrink: 0; border-radius: .65rem;
         display: inline-flex; align-items: center; justify-content: center; background: #fff; color: #B45309; font-size: 1.1rem;
     }
+    /* The text needs 10rem before the button may sit beside it; narrower, the
+       button drops to its own line (full width on a phone) instead of
+       squeezing the text to a word per line. */
+    .ov-notice > .flex-1 { flex: 1 1 10rem; }
+    @media (max-width: 640px) { .ov-notice > .tm-btn { width: 100%; } }
     .ov-notice-title { font-size: 0.8125rem; font-weight: 800; color: #181818; }
     .ov-notice-text { font-size: 0.75rem; color: #5F5A55; margin-top: .1rem; line-height: 1.45; }
     .ov-clear { display: none; align-items: center; gap: .4rem; font-size: 0.8125rem; font-weight: 700; color: #15803D; }
@@ -2039,9 +2044,15 @@
                                        submitted the concept (storeTask checks the same).
                                        Read off the concepts already loaded for the cards
                                        rather than asking the database again per team. */
-                                    $teamConceptSubmitted = \App\Support\HotelConceptDesk::isSubmitted(
-                                        ($conceptsByGroup ?? collect())->get($groupName, collect())
-                                    );
+                                    $teamConcepts = ($conceptsByGroup ?? collect())->get($groupName, collect());
+                                    $teamConceptSubmitted = \App\Support\HotelConceptDesk::isSubmitted($teamConcepts);
+
+                                    /* Only teams whose concept faculty approved are offered;
+                                       pending, sent back and not yet submitted wait off the
+                                       list. storeTask refuses them too. */
+                                    if (!\App\Support\HotelConceptDesk::isDecided($teamConcepts)) {
+                                        continue;
+                                    }
 
                                     $teamOpenTitles = ($teamConceptSubmitted ? $assignableTitles : $conceptTitles)
                                         ->diff(($teamHeldTitles ?? collect())->get($groupName, []));
@@ -2076,11 +2087,6 @@
                                                 This team still has an unassigned role. Assign all required roles before setting role-specific tasks.
                                             </span>
                                         @endif
-                                        @if($hasStudents && !$teamConceptSubmitted)
-                                            <span class="block text-[0.625rem] mt-1 text-amber-600 font-semibold leading-snug">
-                                                {{ \App\Support\HotelConceptDesk::TASK_TITLE }} only &mdash; the rest of the customization unlocks once Front Desk submits this team's hotel concept.
-                                            </span>
-                                        @endif
                                     </span>
                                 </label>
                             @endforeach
@@ -2089,7 +2095,7 @@
                             <div class="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center">
                                 <span class="iconify text-3xl text-slate-300" data-icon="mdi:check-all"></span>
                                 <p class="text-sm font-bold text-slate-500 mt-2">Every team already has its tasks</p>
-                                <p class="text-xs text-slate-400 mt-1">Teams come back here once there is a task they have not been given, such as when Front Desk submits the hotel concept.</p>
+                                <p class="text-xs text-slate-400 mt-1">Teams come back here once there is a task they have not been given, such as when you approve a team's hotel concept.</p>
                             </div>
                         @endif
                     @endif
@@ -2393,7 +2399,20 @@ function setTeamsActionHighlight(activeKey) {
 const TEAM_SETUP_URL = @json($teamSetupUrl);
 const TEAMS_LIST_URL = @json($teamsListUrl);
 
+/* Why Create Team has nothing to build in this block, or null (role()). Every
+   way into Team Setup comes through here, so they all say it the same way. */
+const CREATE_TEAM_BLOCK_REASON = @json($createTeamBlockReason ?? null);
+
+// Popup for a button that looks disabled but still says why when pressed.
+function showBlockedAction(title, reason) {
+    Swal.fire({ icon: 'info', title: title, text: reason, confirmButtonColor: '#374151', iconColor: '#C9A45C', width: '24rem' });
+}
+
 function openCreateTeamModal() {
+    if (CREATE_TEAM_BLOCK_REASON) {
+        showBlockedAction('Cannot create a team', CREATE_TEAM_BLOCK_REASON);
+        return;
+    }
     window.location.href = TEAM_SETUP_URL;
 }
 
@@ -4279,7 +4298,8 @@ function onTeamToggled() {
 }
 
 function toggleAllTeams(on) {
-    document.querySelectorAll('#taskTeamSelector input[name="group_names[]"]').forEach((box) => {
+    // Only teams that can take a task: one with nobody in it is shown, but off.
+    document.querySelectorAll('#taskTeamSelector input[name="group_names[]"]:not(:disabled)').forEach((box) => {
         box.checked = !!on;
     });
     onTeamToggled();
