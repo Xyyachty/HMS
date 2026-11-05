@@ -26,6 +26,8 @@
        never disagree about the reason. Null means there is somewhere to send a
        task and the button behaves as it always did. */
     $setTaskBlockReason = $setTaskBlockReason ?? null;
+    // Same idea for Create Team: no student in this block is free to put on a team.
+    $createTeamBlockReason = $createTeamBlockReason ?? null;
 @endphp
 
 <div class="px-4 pt-4 border-b border-slate-100 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -71,6 +73,18 @@
              the same screen under two names in two places, which read as two
              different things to do. Like Set Task, it is filled only on its
              own screen (Team Setup). --}}
+        @if($createTeamBlockReason && !$isTeamSetup)
+            {{-- Looks disabled, but stays pressable so it can say why
+                 (openCreateTeamModal shows the popup). --}}
+            <button type="button" aria-disabled="true"
+                onclick="openCreateTeamModal()"
+                title="{{ $createTeamBlockReason }}"
+                class="h-10 px-4 rounded-xl text-sm font-bold inline-flex items-center gap-2 whitespace-nowrap
+                       bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed">
+                <span class="iconify text-base" data-icon="mdi:plus"></span>
+                Create Team
+            </button>
+        @else
         <button type="button" data-action-btn="create_team"
             onclick="setTeamsActionHighlight('create_team'); openCreateTeamModal()"
             title="Create new team(s) or modify teams"
@@ -81,10 +95,13 @@
             <span class="iconify text-base" data-icon="mdi:plus"></span>
             Create Team
         </button>
+        @endif
         @if($setTaskBlockReason)
             {{-- A button rather than a link: a disabled <a> is still a link, and
-                 still goes where it points. The reason is the tooltip. --}}
-            <button type="button" disabled
+                 still goes where it points. Looks disabled, but stays pressable
+                 so it can say why in a popup; the reason is the tooltip too. --}}
+            <button type="button"
+                    onclick="showBlockedAction('Cannot set a task', @js($setTaskBlockReason))"
                     title="{{ $setTaskBlockReason }}"
                     aria-disabled="true"
                     aria-describedby="setTaskBlockedNote"
