@@ -1347,6 +1347,11 @@ function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable,
 
   const list = tables || [];
   const hasOpenOrder = (table) => (orders || []).some(o => o.tableId === table.id && OPEN_ORDER_STATUSES.includes(o.status));
+  // The tables reserved together with this one (its party_ref), in list order. Grouped
+  // by that shared id only, never by a matching name or number.
+  const partyOf = (table) => (table.partyRef && table.status !== 'Available'
+    ? list.filter(t => t.partyRef === table.partyRef && t.status !== 'Available')
+    : [table]);
   // Re-read from state so the modal follows a refresh rather than freezing at open time.
   const billingTable = billingTableId ? (list.find(t => t.id === billingTableId) || null) : null;
 
@@ -1395,6 +1400,84 @@ function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable,
       ) : (
         <div style={{ display: 'grid', gap: '0.6rem' }}>
           {list.map(table => {
+            /* One card for a party: the guest once, every table of it together, and
+               one Bill for the consolidated bill. Each table keeps its own row, status
+               and orders; the card is drawn where the party's first table sits. */
+            const members = partyOf(table);
+            if (members.length > 1) {
+              if (members[0].id !== table.id) return null;
+              const lead = members[0];
+              const names = members.map(t => t.name).join(' + ');
+              const allSeated = members.every(t => t.status === 'Occupied');
+              const anyReserved = members.some(t => t.status === 'Reserved');
+              const sameStatus = members.every(t => t.status === lead.status);
+              const guests = members.reduce((n, t) => n + (Number(t.partySize) || 0), 0);
+              return (
+                <div key={'party-' + lead.partyRef} style={{ border: '1px solid var(--accent)', borderRadius: 10, padding: '0.75rem 0.9rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.3rem', flexWrap: 'wrap' }}>
+                        <span style={{ color: 'var(--accent)', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                          <i className="fa-solid fa-link" style={{ fontSize: '0.6rem', marginRight: 5 }}></i>Dine-In Party
+                        </span>
+                        {sameStatus && <span className={`tb-badge tb-${lead.status.toLowerCase()}`}>{lead.status}</span>}
+                      </div>
+                      <p style={{ margin: 0, color: 'var(--fg)', fontWeight: 700 }}>{lead.guestName || 'Guest'}</p>
+                      <p style={{ margin: '0.15rem 0 0', color: 'var(--fg-muted)', fontSize: '0.76rem' }}>
+                        Party of {guests || '—'} · {members.length} tables · one bill
+                      </p>
+                      {(lead.contactNo || lead.reservedFor) && (
+                        <p style={{ margin: '0.2rem 0 0', color: 'var(--fg-muted)', fontSize: '0.72rem' }}>
+                          {lead.contactNo ? lead.contactNo : ''}
+                          {lead.contactNo && lead.reservedFor ? ' · ' : ''}
+                          {lead.reservedFor ? 'booked for ' + formatBookedFor(lead.reservedFor) : ''}
+                        </p>
+                      )}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.55rem' }}>
+                        {members.map(t => (
+                          <span key={t.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', border: '1px solid var(--border)', borderRadius: 8, padding: '0.3rem 0.55rem', fontSize: '0.74rem', color: 'var(--fg)' }}>
+                            <b>{t.name}</b>
+                            <span style={{ color: 'var(--fg-muted)' }}>seats {t.capacity}{t.partySize ? ` · ${t.partySize} here` : ''}</span>
+                            {!sameStatus && <span className={`tb-badge tb-${t.status.toLowerCase()}`}>{t.status}</span>}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    {canManage && (
+                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                        {anyReserved ? (
+                          <>
+                            {/* Seating one seats the whole party (server side). */}
+                            <button type="button" className="btn-primary"
+                              style={{ fontSize: '0.66rem', padding: '0.4rem 0.75rem' }}
+                              onClick={() => seatTable(Object.assign({}, members.find(t => t.status === 'Reserved'), { name: names }))}>
+                              <i className="fa-solid fa-chair" style={{ fontSize: '0.66rem' }}></i> Seat
+                            </button>
+                            <button type="button" title="Cancel the party's reservation and free its tables"
+                              onClick={() => closeTable(lead)} style={toolBtnStyle('danger')}>
+                              <i className="fa-solid fa-door-closed" style={{ fontSize: 11 }}></i>
+                            </button>
+                          </>
+                        ) : allSeated ? (
+                          <>
+                            <button type="button" className="btn-primary"
+                              style={{ fontSize: '0.66rem', padding: '0.4rem 0.75rem' }}
+                              onClick={() => setBillingTableId(lead.id)}>
+                              <i className="fa-solid fa-receipt" style={{ fontSize: '0.66rem' }}></i> Bill
+                            </button>
+                            <button type="button" title="Close the party's tables without billing" disabled={members.some(hasOpenOrder)}
+                              onClick={() => closeTable(lead)} style={toolBtnStyle('danger')}>
+                              <i className="fa-solid fa-door-closed" style={{ fontSize: 11 }}></i>
+                            </button>
+                          </>
+                        ) : null}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            }
+
             const isEditing = editingId === table.id;
             const occupied = table.status === 'Occupied';
             const reserved = table.status === 'Reserved';
@@ -1429,7 +1512,7 @@ function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable,
                         Seats {table.capacity}
                         {taken && table.guestName ? ` · ${table.guestName}, party of ${table.partySize || '—'}` : ''}
                       </p>
-                      {taken && table.partyRef && (
+                      {taken && table.partyRef && list.some(t => t.partyRef === table.partyRef && t.id !== table.id) && (
                         <p style={{ margin: '0.2rem 0 0', color: 'var(--accent)', fontSize: '0.72rem' }}>
                           <i className="fa-solid fa-link" style={{ fontSize: '0.62rem', marginRight: 5 }}></i>
                           Same party as {list.filter(t => t.partyRef === table.partyRef && t.id !== table.id).map(t => t.name).join(', ')} · seated, billed and closed together
