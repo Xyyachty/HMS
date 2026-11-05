@@ -1277,14 +1277,12 @@ function DineInReceiptModal({ receipt, onClose }) {
   );
 }
 
-function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable, onCloseTable, onRemoveTable, onSeatTable, onFetchBill, onSettleTable, onToast }) {
-  const [receipt, setReceipt] = useState(null);
+function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable, onCloseTable, onRemoveTable, onSeatTable, onToast }) {
   const [form, setForm] = useState(createEmptyTableForm);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState(null);
-  const [billingTableId, setBillingTableId] = useState(null);
 
   const fieldLabel = {
     fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase',
@@ -1352,8 +1350,6 @@ function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable,
   const partyOf = (table) => (table.partyRef && table.status !== 'Available'
     ? list.filter(t => t.partyRef === table.partyRef && t.status !== 'Available')
     : [table]);
-  // Re-read from state so the modal follows a refresh rather than freezing at open time.
-  const billingTable = billingTableId ? (list.find(t => t.id === billingTableId) || null) : null;
 
   return (
     <div className="rm-panel" style={{ maxWidth: '100%' }}>
@@ -1362,8 +1358,8 @@ function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable,
       <p className="rm-panel-desc">
         Add tables for Front Desk to reserve for a customer. A Reserved table is being
         held for someone who has not arrived yet — seat them here when they do, which
-        is what lets the Dine-In tab in Orders take their order. Bill the table here
-        once they have been served.
+        is what lets the Dine-In tab in Orders take their order. Once they have been
+        served, bill them in Orders, Dine-In: tables reserved together get one bill.
       </p>
 
       {canManage && (
@@ -1460,11 +1456,8 @@ function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable,
                           </>
                         ) : allSeated ? (
                           <>
-                            <button type="button" className="btn-primary"
-                              style={{ fontSize: '0.66rem', padding: '0.4rem 0.75rem' }}
-                              onClick={() => setBillingTableId(lead.id)}>
-                              <i className="fa-solid fa-receipt" style={{ fontSize: '0.66rem' }}></i> Bill
-                            </button>
+                            {/* Billing is in Orders > Dine-In. */}
+                            <span style={{ alignSelf: 'center', color: 'var(--fg-muted)', fontSize: '0.7rem' }}>Bill in Orders</span>
                             <button type="button" title="Close the party's tables without billing" disabled={members.some(hasOpenOrder)}
                               onClick={() => closeTable(lead)} style={toolBtnStyle('danger')}>
                               <i className="fa-solid fa-door-closed" style={{ fontSize: 11 }}></i>
@@ -1544,14 +1537,11 @@ function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable,
                           </>
                         ) : occupied ? (
                           <>
-                            {/* Billing is the way an occupied table normally ends —
-                                closing it out without one is for a party that never
-                                ordered, or a ticket written off. */}
-                            <button type="button" className="btn-primary"
-                              style={{ fontSize: '0.66rem', padding: '0.4rem 0.75rem' }}
-                              onClick={() => setBillingTableId(table.id)}>
-                              <i className="fa-solid fa-receipt" style={{ fontSize: '0.66rem' }}></i> Bill
-                            </button>
+                            {/* Billing is the way an occupied table normally ends, and
+                                it is done in Orders > Dine-In. Closing it out here
+                                without one is for a party that never ordered, or a
+                                ticket written off. */}
+                            <span style={{ alignSelf: 'center', color: 'var(--fg-muted)', fontSize: '0.7rem' }}>Bill in Orders</span>
                             <button type="button" title="Close table without billing" disabled={hasOpenOrder(table)}
                               onClick={() => closeTable(table)} style={toolBtnStyle('danger')}>
                               <i className="fa-solid fa-door-closed" style={{ fontSize: 11 }}></i>
@@ -1577,17 +1567,6 @@ function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable,
         </div>
       )}
 
-      {billingTable && (
-        <DineInBillModal
-          table={billingTable}
-          onFetchBill={onFetchBill}
-          onSettle={onSettleTable}
-          onClose={() => setBillingTableId(null)}
-          onToast={onToast}
-          onReceipt={setReceipt}
-        />
-      )}
-      {receipt && <DineInReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />}
     </div>
   );
 }
@@ -2091,7 +2070,106 @@ function NewDineInOrderModal({ tables, menus, onPlaceOrder, onToast, onClose }) 
 
 const ORD_PAGE = 12;
 
-function OrdersPanel({ orders, tables, menus, canPlaceDineIn, onPlaceOrder, onUpdateOrderStatus, onToast }) {
+/* Dine-in billing, in Orders: one card per seated table, or one per party of tables
+   reserved together (grouped by their shared party_ref, never by name), with what it
+   has ordered so far and one Bill button. The bill, the payment and the receipt are
+   the existing ones (DineInBillModal, HotelDineInBill, /settle), so a party still gets
+   one consolidated bill with each line naming its table. */
+function DineInBillsSection({ tables, orders, canBill, onFetchBill, onSettle, onToast }) {
+  const [billingId, setBillingId] = useState(null);
+  const [receipt, setReceipt] = useState(null);
+  const list = tables || [];
+
+  const groups = [];
+  list.filter(t => t.status === 'Occupied').forEach(t => {
+    const key = t.partyRef ? 'p-' + t.partyRef : 't-' + t.id;
+    let g = groups.find(x => x.key === key);
+    if (!g) { g = { key, tables: [] }; groups.push(g); }
+    g.tables.push(t);
+  });
+  // This seating's orders only: a table is reused, and the party before has paid.
+  const ordersOf = (t) => (orders || []).filter(o => o.orderType === 'dine_in' && o.tableId === t.id && o.status !== 'Cancelled'
+    && (!t.assignedAt || !o.placedAt || new Date(o.placedAt) >= new Date(t.assignedAt)));
+  // Re-read from state so the bill follows a refresh rather than freezing at open time.
+  const billingTable = billingId ? (list.find(t => t.id === billingId) || null) : null;
+
+  return (
+    <>
+      <section className="mn-panel" aria-labelledby="ord-bills" style={{ marginBottom: '1rem' }}>
+        <div className="mn-panel-head">
+          <div>
+            <h2 id="ord-bills">Bills to settle</h2>
+            <p>{groups.length
+              ? `${groups.length} seated ${groups.length === 1 ? 'party' : 'parties'}. Bill them once every order is served.`
+              : 'Seated dine-in tables show here, ready to bill.'}</p>
+          </div>
+        </div>
+        {groups.length > 0 && (
+          <div className="ord-grid">
+            {groups.map(g => {
+              const lead = g.tables[0];
+              const own = g.tables.flatMap(ordersOf);
+              const cooking = own.filter(o => !isFinished(o)).length;
+              const soFar = own.reduce((n, o) => n + (Number(o.total) || 0), 0);
+              const party = g.tables.length > 1;
+              return (
+                <div key={g.key} className="mn-panel" style={{ padding: '0.9rem 1rem', border: party ? '1px solid var(--accent)' : undefined }}>
+                  {party && (
+                    <p style={{ margin: '0 0 0.3rem', color: 'var(--accent)', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                      <i className="fa-solid fa-link" style={{ fontSize: '0.6rem', marginRight: 5 }}></i>Dine-In Party · one bill
+                    </p>
+                  )}
+                  <p style={{ margin: 0, color: 'var(--fg)', fontWeight: 700 }}>{lead.guestName || 'Guest'}</p>
+                  <p style={{ margin: '0.15rem 0 0', color: 'var(--fg-muted)', fontSize: '0.78rem' }}>
+                    {g.tables.map(t => t.name).join(' + ')} · party of {g.tables.reduce((n, t) => n + (Number(t.partySize) || 0), 0) || '—'}
+                  </p>
+                  {party && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.45rem' }}>
+                      {g.tables.map(t => {
+                        const n = ordersOf(t).length;
+                        return (
+                          <span key={t.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.2rem 0.5rem', fontSize: '0.72rem', color: 'var(--fg-muted)' }}>
+                            <b style={{ color: 'var(--fg)' }}>{t.name}</b> · {n} {n === 1 ? 'order' : 'orders'}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: cooking ? 'var(--danger, #fb7185)' : 'var(--fg-muted)' }}>
+                    {own.length === 0 ? 'Nothing ordered yet.'
+                      : cooking ? `${cooking} of ${own.length} ${own.length === 1 ? 'order' : 'orders'} still with the kitchen.`
+                        : `${own.length} ${own.length === 1 ? 'order' : 'orders'}, all served.`}
+                    {own.length > 0 && <b style={{ color: 'var(--fg)', marginLeft: 6 }}>{formatPeso(soFar)}</b>}
+                  </p>
+                  {canBill && (
+                    <button type="button" className="mn-btn is-small is-solid" style={{ marginTop: '0.7rem', width: '100%', justifyContent: 'center' }}
+                      onClick={() => setBillingId(lead.id)}>
+                      <i className="fa-solid fa-receipt"></i> {party ? 'Bill the party' : 'Bill ' + lead.name}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {billingTable && (
+        <DineInBillModal
+          table={billingTable}
+          onFetchBill={onFetchBill}
+          onSettle={onSettle}
+          onClose={() => setBillingId(null)}
+          onToast={onToast}
+          onReceipt={setReceipt}
+        />
+      )}
+      {receipt && <DineInReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />}
+    </>
+  );
+}
+
+function OrdersPanel({ orders, tables, menus, canPlaceDineIn, onPlaceOrder, onUpdateOrderStatus, onFetchBill, onSettleTable, onToast }) {
   const [orderType, setOrderType] = useState('room_service');
   const [view, setView] = useState('todo');   // todo | done | all | a stored status
   const [shown, setShown] = useState(ORD_PAGE);
@@ -2187,6 +2265,11 @@ function OrdersPanel({ orders, tables, menus, canPlaceDineIn, onPlaceOrder, onUp
           );
         })}
       </div>
+
+      {orderType === 'dine_in' && (
+        <DineInBillsSection tables={tables} orders={orders} canBill={canPlaceDineIn}
+          onFetchBill={onFetchBill} onSettle={onSettleTable} onToast={onToast} />
+      )}
 
       <section className="mn-panel" aria-labelledby="ord-list">
         <div className="mn-panel-head">
@@ -2285,6 +2368,8 @@ function RestaurantManagementPage({
           canPlaceDineIn={canManageTables}
           onPlaceOrder={onPlaceOrder}
           onUpdateOrderStatus={onUpdateOrderStatus}
+          onFetchBill={onFetchBill}
+          onSettleTable={onSettleTable}
           onToast={onToast}
         />
       </div>
@@ -2336,8 +2421,6 @@ function RestaurantManagementPage({
               onCloseTable={onCloseTable}
               onRemoveTable={onRemoveTable}
               onSeatTable={onSeatTable}
-              onFetchBill={onFetchBill}
-              onSettleTable={onSettleTable}
               onToast={onToast}
             />
           )}
