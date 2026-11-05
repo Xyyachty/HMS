@@ -326,6 +326,16 @@
   window.HMS_WALKIN_URL = @json(route('students.frontdesk.walk-in'));
   // The name printed at the top of the guest's receipt: the team's approved hotel.
   window.HMS_HOTEL_NAME = @json(\App\Support\HotelTemplateBuilder::hotelDefaults($groupName ?? null, isset($facultyId) ? (int) $facultyId : null)['name']);
+  @php
+    // Address and contact for the folio header: what the team typed in the site's
+    // hotel info (Customize). Left out of the folio when the team has not set them.
+    $folioHotelInfo = !empty($groupName) && !empty($facultyId)
+        ? (array) data_get(\App\Support\HotelTemplateBuilder::mergeTeamCustomizations((string) $groupName, (int) $facultyId), '__hotelInfo.items.0', [])
+        : [];
+    $folioPick = fn ($key) => is_scalar($folioHotelInfo[$key] ?? null) ? trim((string) $folioHotelInfo[$key]) : '';
+    $folioHotelInfo = ['address' => $folioPick('address'), 'phone' => $folioPick('phone'), 'email' => $folioPick('email')];
+  @endphp
+  window.HMS_HOTEL_INFO = @json($folioHotelInfo);
 </script>
 @verbatim
 <script type="text/babel">
@@ -518,32 +528,54 @@ function useNow(intervalMs) {
 
 const PAYMENT_METHODS = ['Cash', 'GCash', 'Card', 'Other'];
 
-/* The guest's receipt, shown once the stay is checked out. Built from the closed
-   stay's final bill: the room rate and length of stay on their own lines, then what
-   was paid and how. receipt.cash, set when the check-out was paid in cash, carries
-   the cash handed over and the change; it is not stored, so only this receipt has it.
-   Print prints the receipt alone (see .receipt-print in the styles). */
-function ReceiptModal({ receipt, onClose }) {
-  useEffect(() => {
-    if (!receipt) return;
-    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [receipt, onClose]);
+/* The guest's folio on paper, in the client's statement-of-account layout. Built
+   only from the bill the server priced (HotelBooking::toBillArray()), so it shows
+   the same charges, discounts and payments as the Guest Bill and never adds any.
+   official: the receipt handed over at check-out (receipt number, cash received
+   and change, payment method). Otherwise the running Statement of Account. Print
+   prints this sheet alone (see .receipt-print in the styles). */
+/* The folio sheet on its own page: the page's styles, white paper, and the sheet in
+   normal flow so a long folio runs onto a second page instead of being cut off. */
+function folioPrintHtml(sheet) {
+  const styles = [...document.querySelectorAll('style, link[rel="stylesheet"]')].map(n => n.outerHTML).join('');
+  const theme = document.documentElement.getAttribute('data-ops-theme');
+  return `<!doctype html><html${theme ? ` data-ops-theme="${theme}"` : ''}><head><meta charset="utf-8"><title>Guest Folio</title>${styles}`
+    + '<style>@page { margin: 12mm; } html, body { background: #fff !important; margin: 0; font-family: var(--font-body, "Outfit", sans-serif); }'
+    + ' .receipt-print { position: static !important; border: 0 !important; border-radius: 0 !important; padding: 0 !important; }</style>'
+    + `</head><body>${sheet.outerHTML}</body></html>`;
+}
 
-  if (!receipt) return null;
-  const bill = receipt.bill;
-  const issued = bill.checkedOutAt ? new Date(bill.checkedOutAt) : new Date();
+// Prints the folio next to the button, alone, from a hidden frame.
+function printFolio(e) {
+  const sheet = e.currentTarget.closest('.bill-body').querySelector('.receipt-print');
+  const frame = document.createElement('iframe');
+  frame.setAttribute('aria-hidden', 'true');
+  frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+  document.body.appendChild(frame);
+  // Set after appending: the empty frame's own load has already fired by then.
+  frame.onload = () => {
+    frame.contentWindow.focus();
+    frame.contentWindow.print();
+    setTimeout(() => frame.remove(), 1000);
+  };
+  frame.contentDocument.open();
+  frame.contentDocument.write(folioPrintHtml(sheet));
+  frame.contentDocument.close();
+}
+
+function GuestFolio({ bill, cash, official }) {
+  const hotel = window.HMS_HOTEL_INFO || {};
+  const issued = official && bill.checkedOutAt ? new Date(bill.checkedOutAt) : new Date();
   const ymd = issued.getFullYear() + String(issued.getMonth() + 1).padStart(2, '0') + String(issued.getDate()).padStart(2, '0');
   const number = 'OR-' + ymd + '-' + String(bill.bookingId || '').padStart(5, '0');
   const service = bill.roomService || { orders: [], subtotal: 0 };
   const addons = bill.addons || { items: [], subtotal: 0 };
   const extras = bill.otherCharges || { items: [], subtotal: 0 };
   const balance = Number(bill.balance) || 0;
+  const refundDue = Number(bill.refundDue) || 0;
   const room = bill.room;
   const nights = Math.max(1, Math.ceil((Number(room.blocks) || 1) / 2));
   const methods = [...new Set(bill.payments.filter(p => p.amountPaid > 0).map(p => p.method).filter(Boolean))];
-  const cash = receipt.cash;
   const line = (label, amount, key, cls, unit) => (
     <div className={'rc-line' + (cls ? ' ' + cls : '')} key={key}>
       <span>{label}{unit && <span className="rc-unit">{unit}</span>}</span><span className="rc-amt">{amount}</span>
@@ -566,25 +598,146 @@ function ReceiptModal({ receipt, onClose }) {
   const checkInText = longDay(checkInDay) + (bill.checkInTime ? ` (${String(bill.checkInTime).slice(0, 5)})` : '');
   const checkOutText = checkOutAt ? `${longDay(checkOutAt)} (${hhmm(checkOutAt)})` : longDay(toDate(bill.checkOut));
 
+  // One row per charge, labelled by the department it came from.
   const rows = [];
   rows.push(room.promo
-    ? { key: 'room', date: bill.checkIn, desc: `Room charge — ${room.promo} package`, qty: 1, unit: room.subtotal, amount: room.subtotal }
-    : { key: 'room', date: bill.checkIn, desc: 'Room charge' + (bill.roomCategory ? ` (${bill.roomCategory})` : ''), sub: `per ${room.blockHours} hrs`, qty: room.blocks, unit: room.rate, amount: room.subtotal });
+    ? { key: 'room', date: bill.checkIn, desc: `Front Office - ${room.promo} package`, qty: 1, unit: room.subtotal, amount: room.subtotal }
+    : { key: 'room', date: bill.checkIn, desc: 'Front Office - ' + (bill.roomCategory || 'Room') + ' Room', sub: `per ${room.blockHours} hrs`, qty: room.blocks, unit: room.rate, amount: room.subtotal });
   ((bill.children && bill.children.items) || []).forEach((c, i) => rows.push(
-    { key: 'ch' + i, date: bill.checkIn, desc: `Child, age ${c.age}`, sub: c.rate ? 'per night' : c.label, qty: c.rate ? c.nights : 1, unit: c.rate || 0, amount: c.line || 0 }));
+    { key: 'ch' + i, date: bill.checkIn, desc: `Front Office - Child, age ${c.age}`, sub: c.rate ? 'per night' : c.label, qty: c.rate ? c.nights : 1, unit: c.rate || 0, amount: c.line || 0 }));
   service.orders.forEach(order => order.items.forEach((item, i) => rows.push(
-    { key: 'rs' + order.orderId + '-' + i, date: order.placedAt, desc: `In-room dining — ${item.name}`, qty: item.qty, unit: item.price, amount: item.line })));
+    { key: 'rs' + order.orderId + '-' + i, date: order.placedAt, desc: `F&B - In-Room Dining (${item.name})`, qty: item.qty, unit: item.price, amount: item.line })));
   addons.items.forEach(a => rows.push(
-    { key: 'ad' + a.id, date: bill.checkIn, desc: a.name, sub: a.perNight ? `× ${a.nights} night${a.nights === 1 ? '' : 's'}` : '', qty: a.qty, unit: a.unitPrice, amount: a.line }));
-  extras.items.forEach(c => rows.push({ key: 'ex' + c.id, date: c.addedAt, desc: c.description, qty: 1, unit: c.amount, amount: c.amount }));
+    { key: 'ad' + a.id, date: bill.checkIn, desc: `Housekeeping - ${a.name}`, sub: a.perNight ? `× ${a.nights} night${a.nights === 1 ? '' : 's'}` : '', qty: a.qty, unit: a.unitPrice, amount: a.line }));
+  extras.items.forEach(c => rows.push({ key: 'ex' + c.id, date: c.addedAt, desc: `Front Office - ${c.description}`, qty: 1, unit: c.amount, amount: c.amount }));
 
-  // Senior Citizen / PWD: the only deduction this receipt carries. The bill takes the
-  // VAT exemption off with the 20%, so both are shown or the totals would not add up.
+  // Senior Citizen / PWD is the only deduction the bill makes; there are no taxes
+  // or service charges on it. The VAT exemption comes off with the 20%, so both
+  // are shown or the totals would not add up.
   const discounts = discountBillLines(bill);
   const discountVat = discounts.reduce((s, d) => s + (Number(d.vat) || 0), 0);
   const discount20 = discounts.reduce((s, d) => s + (Number(d.discount) || 0), 0);
   const subtotal = (Number(bill.total) || 0) + discountVat + discount20;
   const payments = bill.payments.filter(p => Number(p.amountPaid) !== 0);
+  const folioNo = 'FL-' + String(bill.bookingId || '').padStart(6, '0');
+  const contactLine = [hotel.phone && 'Tel: ' + hotel.phone, hotel.email].filter(Boolean).join(' | ');
+
+  return (
+    <div className="receipt-print">
+      <div className="rc-top">
+        <h3>{window.HMS_HOTEL_NAME || 'Hotel'}</h3>
+        {hotel.address && <p>{hotel.address}</p>}
+        {contactLine && <p>{contactLine}</p>}
+        {official ? (
+          <>
+            <p className="rc-title">Guest Statement of Account / Folio</p>
+            <p>(Official Receipt)</p>
+          </>
+        ) : (
+          <p className="rc-title">Statement of Account (Guest Folio)</p>
+        )}
+      </div>
+
+      <div className="rc-block">
+        <dl className="rc-info">
+          {official && <div><dt>Receipt No.</dt><dd>{number}</dd></div>}
+          {official ? <div><dt>Date Issued</dt><dd>{longDay(issued)}</dd></div> : null}
+          <div><dt>Folio No.</dt><dd>{folioNo}</dd></div>
+          {!official && <div><dt>Date Printed</dt><dd>{longDay(issued)}</dd></div>}
+          <div><dt>Room No.</dt><dd>{(bill.roomName || '—') + (bill.roomCategory ? ` (${bill.roomCategory})` : '')}</dd></div>
+          <div><dt>Check-In</dt><dd>{checkInText}</dd></div>
+          <div><dt>Guest Name</dt><dd>{bill.guestName || '—'}</dd></div>
+          <div><dt>Check-Out</dt><dd>{checkOutText}</dd></div>
+          <div><dt>Contact No.</dt><dd>{bill.contactNo || '—'}</dd></div>
+          <div><dt>Nights</dt><dd>{nights} Night{nights === 1 ? '' : 's'}</dd></div>
+          <div><dt>ID No.</dt><dd>{bill.idNumber || '—'}</dd></div>
+          <div><dt>Email</dt><dd>{bill.email || '—'}</dd></div>
+        </dl>
+      </div>
+
+      <div className="rc-block">
+        <table className="rc-table">
+          <thead>
+            <tr>
+              <th>Date</th><th>Department / Description</th><th className="num">Qty</th>
+              <th className="num rc-unitcol">Unit Price</th><th className="num">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(r => (
+              <tr key={r.key}>
+                <td className="rc-date">{shortDay(r.date)}</td>
+                <td>{r.desc}{r.sub && <span className="rc-unit">{r.sub}</span>}</td>
+                <td className="num">{r.qty}</td>
+                <td className="num rc-unitcol">{peso(r.unit)}</td>
+                <td className="num">{r.amount ? peso(r.amount) : 'Free'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="rc-block rc-sum">
+        {line('Subtotal', peso(subtotal), 'sub', 'rc-strong')}
+        {discounts.length > 0 && line('Less: SC / PWD VAT exemption', peso(-discountVat), 'lv')}
+        {discounts.length > 0 && line('Less: SC / PWD discount (20%)', peso(-discount20), 'ld')}
+        {line('Total Charges', peso(bill.total), 'total', 'rc-strong')}
+      </div>
+
+      <div className="rc-block">
+        <p className="rc-head">{official ? 'Payments / Deposits' : 'Payments & Credits Applied'}</p>
+        {payments.length === 0 && line('None', peso(0), 'nopay')}
+        <table className="rc-table">
+          <tbody>
+            {payments.map(p => (
+              <tr key={p.id}>
+                <td className="rc-date">{shortDay(p.paidAt)}</td>
+                <td>{(Number(p.amountPaid) < 0 ? 'Refund' : p.type === 'Full' ? 'Full payment' : 'Payment')} ({p.method}{p.reference ? ' · ' + p.reference : ''})</td>
+                <td className="num">{peso(-p.amountPaid)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {cash && line('Cash received', peso(cash.tendered), 'cash')}
+        {cash && line('Change', peso(cash.change), 'change')}
+      </div>
+
+      <div className="rc-block rc-sum">
+        {line('Total Paid', peso(bill.amountPaid), 'paid', 'rc-strong')}
+        {line(official ? 'Balance Due' : 'Total Balance Due', peso(balance), 'bal', 'rc-strong' + (balance > 0 ? ' rc-due' : ''))}
+        {refundDue > 0 && line('Refund Due to Guest', peso(refundDue), 'refund', 'rc-strong')}
+      </div>
+
+      <div className="rc-block">
+        <p className="rc-head">SC / PWD Discount</p>
+        {discounts.length
+          ? discounts.map(d => line(`${d.type} — ${d.fullName}`, peso(d.discount), 'sc' + d.id, '', `ID No: ${d.idNumber || 'N/A'} · 20% of ${peso(d.vatExemptPrice)}`))
+          : line('SC / PWD Discount', peso(0) + ' (ID No: N/A)', 'sc0')}
+        {official && line('Payment Method', methods.join(', ') || '—', 'method')}
+      </div>
+
+      <p className="rc-sign">
+        <span></span>
+        <span>Guest Signature — {bill.guestName || 'Guest'}</span>
+      </p>
+
+      {official && <p className="rc-thanks">Thank you for staying with us! Mabuhay!</p>}
+    </div>
+  );
+}
+
+/* The guest's receipt, shown once the stay is checked out. receipt.cash, set when
+   the check-out was paid in cash, carries the cash handed over and the change; it
+   is not stored, so only this receipt has it. */
+function ReceiptModal({ receipt, onClose }) {
+  useEffect(() => {
+    if (!receipt) return;
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [receipt, onClose]);
+
+  if (!receipt) return null;
 
   return (
     <div className="bill-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label="Receipt">
@@ -603,97 +756,47 @@ function ReceiptModal({ receipt, onClose }) {
         </div>
 
         <div className="bill-body">
-          <div className="receipt-print">
-            <div className="rc-top">
-              <h3>{window.HMS_HOTEL_NAME || 'Hotel'}</h3>
-              <p className="rc-title">Guest Statement of Account / Folio</p>
-              <p>(Official Receipt)</p>
-            </div>
-
-            <div className="rc-block">
-              <dl className="rc-info">
-                <div><dt>Receipt No.</dt><dd>{number}</dd></div>
-                <div><dt>Date Issued</dt><dd>{longDay(issued)}</dd></div>
-                <div><dt>Folio No.</dt><dd>{'FL-' + String(bill.bookingId || '').padStart(6, '0')}</dd></div>
-                <div><dt>Room No.</dt><dd>{(bill.roomName || '—') + (bill.roomCategory ? ` (${bill.roomCategory})` : '')}</dd></div>
-                <div><dt>Guest Name</dt><dd>{bill.guestName || '—'}</dd></div>
-                <div><dt>Check-In</dt><dd>{checkInText}</dd></div>
-                <div><dt>Contact No.</dt><dd>{bill.contactNo || '—'}</dd></div>
-                <div><dt>Check-Out</dt><dd>{checkOutText}</dd></div>
-                <div><dt>ID No.</dt><dd>{bill.idNumber || '—'}</dd></div>
-                <div><dt>Nights</dt><dd>{nights} Night{nights === 1 ? '' : 's'}</dd></div>
-              </dl>
-            </div>
-
-            <div className="rc-block">
-              <table className="rc-table">
-                <thead>
-                  <tr>
-                    <th>Date</th><th>Description</th><th className="num">Qty</th>
-                    <th className="num rc-unitcol">Unit Price</th><th className="num">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map(r => (
-                    <tr key={r.key}>
-                      <td className="rc-date">{shortDay(r.date)}</td>
-                      <td>{r.desc}{r.sub && <span className="rc-unit">{r.sub}</span>}</td>
-                      <td className="num">{r.qty}</td>
-                      <td className="num rc-unitcol">{peso(r.unit)}</td>
-                      <td className="num">{r.amount ? peso(r.amount) : 'Free'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="rc-block rc-sum">
-              {line('Subtotal', peso(subtotal), 'sub', 'rc-strong')}
-              {discounts.length > 0 && line('Less: SC / PWD VAT exemption', peso(-discountVat), 'lv')}
-              {discounts.length > 0 && line('Less: SC / PWD discount (20%)', peso(-discount20), 'ld')}
-              {line('Total Charges', peso(bill.total), 'total', 'rc-strong')}
-            </div>
-
-            <div className="rc-block">
-              <p className="rc-head">Payments / Deposits</p>
-              <table className="rc-table">
-                <tbody>
-                  {payments.map(p => (
-                    <tr key={p.id}>
-                      <td className="rc-date">{shortDay(p.paidAt)}</td>
-                      <td>{(Number(p.amountPaid) < 0 ? 'Refund' : p.type === 'Full' ? 'Full payment' : 'Payment')} ({p.method}{p.reference ? ' · ' + p.reference : ''})</td>
-                      <td className="num">{peso(-p.amountPaid)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {cash && line('Cash received', peso(cash.tendered), 'cash')}
-              {cash && line('Change', peso(cash.change), 'change')}
-            </div>
-
-            <div className="rc-block rc-sum">
-              {line('Total Paid', peso(bill.amountPaid), 'paid', 'rc-strong')}
-              {line('Balance Due', peso(balance), 'bal', 'rc-strong' + (balance > 0 ? ' rc-due' : ''))}
-            </div>
-
-            <div className="rc-block">
-              <p className="rc-head">SC / PWD Discount</p>
-              {discounts.length
-                ? discounts.map(d => line(`${d.type} — ${d.fullName}`, peso(d.discount), 'sc' + d.id, '', `ID No: ${d.idNumber || 'N/A'} · 20% of ${peso(d.vatExemptPrice)}`))
-                : line('SC / PWD Discount', peso(0) + ' (ID No: N/A)', 'sc0')}
-              {line('Payment Method', methods.join(', ') || '—', 'method')}
-            </div>
-
-            <p className="rc-sign">
-              <span></span>
-              <span>Guest Signature — {bill.guestName || 'Guest'}</span>
-            </p>
-
-            <p className="rc-thanks">Thank you for staying with us! Mabuhay!</p>
-          </div>
+          <GuestFolio bill={receipt.bill} cash={receipt.cash} official />
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', marginTop: '1.2rem' }}>
-            <button type="button" className="btn-outline" onClick={() => window.print()}>
+            <button type="button" className="btn-outline" onClick={printFolio}>
+              <i className="fa-solid fa-print" style={{ marginRight: 6 }}></i>Print
+            </button>
+            <button type="button" className="btn-solid" onClick={onClose}>Done</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* The Statement of Account for a stay still open, opened from the Guest Bill. */
+function FolioModal({ bill, onClose }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <div className="bill-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label="Guest folio">
+      <div className="bill-modal" onClick={e => e.stopPropagation()}>
+        <div className="bill-head">
+          <div>
+            <p style={{ color: 'var(--accent)', fontSize: '0.65rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: '0 0 0.35rem' }}>Front Desk</p>
+            <h2 className="font-display" style={{ fontSize: '1.5rem', margin: 0, color: 'var(--fg)' }}>Guest Folio</h2>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close"
+            style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)', cursor: 'pointer', flexShrink: 0 }}>
+            <i className="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <div className="bill-body">
+          <GuestFolio bill={bill} />
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', marginTop: '1.2rem' }}>
+            <button type="button" className="btn-outline" onClick={printFolio}>
               <i className="fa-solid fa-print" style={{ marginRight: 6 }}></i>Print
             </button>
             <button type="button" className="btn-solid" onClick={onClose}>Done</button>
@@ -723,6 +826,7 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
   const [addonQty, setAddonQty] = useState('1');
   const [showAddonForm, setShowAddonForm] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [showFolio, setShowFolio] = useState(false);
 
   const balance = bill ? Number(bill.balance) || 0 : 0;
   const refundDue = bill ? Number(bill.refundDue) || 0 : 0;
@@ -739,6 +843,7 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
     setAddonId('');
     setAddonQty('1');
     setShowAddonForm(false);
+    setShowFolio(false);
   }, [open]);
 
   // Re-filled whenever the balance moves (a charge added, a payment taken).
@@ -747,11 +852,12 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
   }, [open, bill && bill.bookingId, balance]);
 
   useEffect(() => {
-    if (!open) return;
+    // While the folio is open on top, Escape closes only the folio.
+    if (!open || showFolio) return;
     const onKey = (e) => { if (e.key === 'Escape' && !busy) onClose(); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [open, onClose, busy]);
+  }, [open, onClose, busy, showFolio]);
 
   if (!open) return null;
 
@@ -832,13 +938,23 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
         <div className="bill-head">
           <div>
             <p style={{ color: 'var(--accent)', fontSize: '0.65rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: '0 0 0.35rem' }}>Front Desk</p>
-            <h2 className="font-display" style={{ fontSize: '1.5rem', margin: 0, color: 'var(--fg)' }}>{canCheckOut ? 'Final Bill' : 'Bill'}</h2>
+            <h2 className="font-display" style={{ fontSize: '1.5rem', margin: 0, color: 'var(--fg)' }}>{canCheckOut ? 'Final Guest Bill' : 'Guest Bill'}</h2>
           </div>
-          <button type="button" onClick={onClose} disabled={busy} aria-label="Close"
-            style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)', cursor: busy ? 'not-allowed' : 'pointer', flexShrink: 0 }}>
-            <i className="fa-solid fa-xmark"></i>
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+            {bill && !loading && !error && (
+              <button type="button" className="btn-outline" onClick={() => setShowFolio(true)} disabled={busy}
+                title="Statement of Account (Guest Folio), ready to print"
+                style={{ padding: '0.45rem 0.8rem', fontSize: '0.66rem' }}>
+                <i className="fa-solid fa-print" style={{ marginRight: 6 }}></i>Guest Folio
+              </button>
+            )}
+            <button type="button" onClick={onClose} disabled={busy} aria-label="Close"
+              style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)', cursor: busy ? 'not-allowed' : 'pointer', flexShrink: 0 }}>
+              <i className="fa-solid fa-xmark"></i>
+            </button>
+          </div>
         </div>
+        {showFolio && bill && <FolioModal bill={bill} onClose={() => setShowFolio(false)} />}
 
         <div className="bill-body">
           {loading ? (
