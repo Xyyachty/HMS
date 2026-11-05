@@ -71,6 +71,7 @@ class HotelBooking extends Model
         'promo_price',
         'promo_blocks',
         'children',
+        'service_charge_rate',
     ];
 
     protected $casts = [
@@ -82,6 +83,7 @@ class HotelBooking extends Model
         'guest_count'    => 'integer',
         // [{age, rate, label}] per child, priced by HotelChildPolicy when booked.
         'children'       => 'array',
+        'service_charge_rate' => 'float',
         'reserved_at'    => 'datetime',
         'arrived_at'     => 'datetime',
         'checked_in_at'  => 'datetime',
@@ -102,6 +104,21 @@ class HotelBooking extends Model
         // Extend Stay, Change Room and a corrected party all move a person's share;
         // the stored amounts follow, so the record matches the bill.
         static::saved(fn (HotelBooking $booking) => $booking->recordDiscountAmounts());
+
+        // A new stay is billed at today's service charge rate, and keeps it.
+        static::creating(function (HotelBooking $booking) {
+            if ($booking->service_charge_rate === null && self::serviceChargeSupported()) {
+                $booking->service_charge_rate = (float) config('hms.service_charge_rate', 0);
+            }
+        });
+    }
+
+    /** False until the service_charge_rate migration has run. */
+    public static function serviceChargeSupported(): bool
+    {
+        static $has = null;
+
+        return $has ??= \Illuminate\Support\Facades\Schema::hasColumn('hotel_bookings', 'service_charge_rate');
     }
 
     public function room(): BelongsTo
@@ -404,13 +421,31 @@ class HotelBooking extends Model
         return (float) $this->addons->sum(fn (HotelBookingAddon $addon) => $addon->lineTotal($this->nights()));
     }
 
-    /** Room + room service + add-ons + extras — the figure the guest actually settles. */
-    public function grandTotal(): float
+    /** Room + room service + add-ons + extras, before the service charge. */
+    public function chargesBeforeServiceCharge(): float
     {
         return $this->totalDue()
             + $this->roomServiceTotal()
             + $this->addonsTotal()
             + $this->otherChargesTotal();
+    }
+
+    /**
+     * Service charge on every charge, after the Senior Citizen / PWD discounts (they
+     * are already out of totalDue()). Collected with the final bill. A stay booked
+     * before there was a service charge has no rate and pays none.
+     */
+    public function serviceCharge(): float
+    {
+        $rate = (float) ($this->service_charge_rate ?? 0);
+
+        return $rate > 0 ? round($this->chargesBeforeServiceCharge() * $rate / 100, 2) : 0.0;
+    }
+
+    /** Everything above plus the service charge — the figure the guest actually settles. */
+    public function grandTotal(): float
+    {
+        return round($this->chargesBeforeServiceCharge() + $this->serviceCharge(), 2);
     }
 
     /** Still owed once everything paid so far is counted against the full bill. */
@@ -615,6 +650,14 @@ class HotelBooking extends Model
         foreach ($bill['otherCharges']['items'] as $charge) {
             $lines[] = ['kind' => 'charge', 'label' => $charge['description'], 'detail' => '', 'amount' => (float) $charge['amount']];
         }
+        if ($bill['serviceCharge']['amount'] > 0) {
+            $lines[] = [
+                'kind'   => 'service',
+                'label'  => 'Service charge (' . rtrim(rtrim(number_format($bill['serviceCharge']['rate'], 2), '0'), '.') . '%)',
+                'detail' => 'On ₱' . number_format($bill['serviceCharge']['base'], 2) . ', after discounts',
+                'amount' => (float) $bill['serviceCharge']['amount'],
+            ];
+        }
 
         return $lines;
     }
@@ -703,6 +746,13 @@ class HotelBooking extends Model
             'otherCharges' => [
                 'items'    => $this->charges->map->toTemplateArray()->values()->all(),
                 'subtotal' => $this->otherChargesTotal(),
+            ],
+
+            // On every charge above, after the Senior Citizen / PWD discounts.
+            'serviceCharge' => [
+                'rate'   => (float) ($this->service_charge_rate ?? 0),
+                'base'   => round($this->chargesBeforeServiceCharge(), 2),
+                'amount' => $this->serviceCharge(),
             ],
 
             'total'       => $this->grandTotal(),

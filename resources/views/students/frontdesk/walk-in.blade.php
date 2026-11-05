@@ -306,6 +306,8 @@
     guestInfoUrl: @json(route('students.frontdesk.verify-guest')),
     dineInUrl: @json(route('students.frontdesk.dine-in')),
     startTab: @json(request('tab') === 'table' ? 'table' : 'room'),
+    // Percent, collected with the final bill at check-out (HotelBooking::serviceCharge()).
+    serviceChargeRate: @json((float) config('hms.service_charge_rate', 0)),
   };
 </script>
 @verbatim
@@ -1289,6 +1291,7 @@ function RoomWalkIn() {
             : plural(applied.length, 'guest') + ' applied' + (pending.length ? ', ' + pending.length + ' pending (est. −' + peso(pendingTotal) + ')' : '')],
           ...(applied.length ? [['Eligible accommodation', peso(applied.reduce((s, c) => s + c.money.eligible, 0))]] : []),
           ['Extras', extrasText],
+          ...(CFG.serviceChargeRate > 0 ? [['Service charge', CFG.serviceChargeRate + '% of the final bill, collected at check-out']] : []),
           ['Pay now', hasRooms ? (payType === 'None' ? 'Nothing yet' : peso(paidNow) + ' by ' + method) : ''],
         ]}
         bill={bill}

@@ -617,7 +617,8 @@ function GuestFolio({ bill, cash, official }) {
   const discounts = discountBillLines(bill);
   const discountVat = discounts.reduce((s, d) => s + (Number(d.vat) || 0), 0);
   const discount20 = discounts.reduce((s, d) => s + (Number(d.discount) || 0), 0);
-  const subtotal = (Number(bill.total) || 0) + discountVat + discount20;
+  const serviceCharge = (bill.serviceCharge && Number(bill.serviceCharge.amount)) || 0;
+  const subtotal = (Number(bill.total) || 0) - serviceCharge + discountVat + discount20;
   const payments = bill.payments.filter(p => Number(p.amountPaid) !== 0);
   const folioNo = 'FL-' + String(bill.bookingId || '').padStart(6, '0');
   const contactLine = [hotel.phone && 'Tel: ' + hotel.phone, hotel.email].filter(Boolean).join(' | ');
@@ -681,6 +682,7 @@ function GuestFolio({ bill, cash, official }) {
         {line('Subtotal', peso(subtotal), 'sub', 'rc-strong')}
         {discounts.length > 0 && line('Less: Senior Citizen / PWD VAT exemption', peso(-discountVat), 'lv')}
         {discounts.length > 0 && line('Less: Senior Citizen / PWD discount (20%)', peso(-discount20), 'ld')}
+        {serviceCharge > 0 && line(`Service Charge (${bill.serviceCharge.rate}%)`, peso(serviceCharge), 'svc', '', `On ${peso(bill.serviceCharge.base)}, after discounts`)}
         {line('Total Charges', peso(bill.total), 'total', 'rc-strong')}
       </div>
 
@@ -1095,6 +1097,17 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
                     </button>
                   )}
                 </div>
+              )}
+
+              {/* On every charge above, after the Senior Citizen / PWD discounts. Priced
+                  by the server; a stay booked before there was one shows none. */}
+              {bill.serviceCharge && bill.serviceCharge.amount > 0 && (
+                <>
+                  <p className="bill-section-title">Service Charge</p>
+                  <BillItem name={`Service charge (${bill.serviceCharge.rate}%)`}
+                    detail={`On ${formatPeso(bill.serviceCharge.base)}, after discounts`}
+                    amount={formatPeso(bill.serviceCharge.amount)} />
+                </>
               )}
               </div>
 
