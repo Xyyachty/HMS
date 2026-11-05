@@ -1351,7 +1351,8 @@ function TableWalkIn() {
   const [when, setWhen] = useState('now');
   const [onDate, setOnDate] = useState(today);
   const [atTime, setAtTime] = useState(nowClock);
-  const [tableId, setTableId] = useState(null);
+  // Several tables for a group too big for one: they are reserved together.
+  const [tableIds, setTableIds] = useState([]);
   const [error, setError] = useState('');
   const [tried, setTried] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -1379,15 +1380,29 @@ function TableWalkIn() {
     return () => { clearInterval(id); window.removeEventListener('focus', load); };
   }, [load]);
 
-  const biggest = tables.reduce((n, t) => Math.max(n, t.capacity || 0), 1);
-  // Smallest table that fits first, so a couple does not take the eight-seater.
+  // Every free table: a group can be split over several.
+  const freeSeats = tables.filter(t => t.status === 'Available').reduce((n, t) => n + (t.capacity || 0), 0);
+  const biggest = Math.max(1, freeSeats);
+  // Tables that seat the whole group first, smallest first, so a couple does not take
+  // the eight-seater; then the smaller ones, biggest first, to combine for a big group.
   const fits = useMemo(
-    () => tables.filter(t => t.status === 'Available' && t.capacity >= party).sort((a, b) => a.capacity - b.capacity),
+    () => tables.filter(t => t.status === 'Available').sort((a, b) => {
+      const fa = a.capacity >= party, fb = b.capacity >= party;
+      if (fa !== fb) return fa ? -1 : 1;
+      return fa ? a.capacity - b.capacity : b.capacity - a.capacity;
+    }),
     [tables, party]
   );
-  const table = fits.find(t => t.id === tableId) || null;
+  const picked = tableIds.map(id => fits.find(t => t.id === id)).filter(Boolean);
+  const pickedSeats = picked.reduce((n, t) => n + t.capacity, 0);
+  const fitsOne = fits.some(t => t.capacity >= party);
+  const tablesOk = picked.length > 0 && pickedSeats >= party && picked.length <= party;
+  const table = picked[0] || null;
+  const pickedNames = picked.map(t => t.name).join(' + ');
+  const toggleTable = (id) => setTableIds(ids => (ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id]));
 
-  useEffect(() => { if (tableId && !table) setTableId(null); }, [tableId, table]);
+  // A picked table someone else took drops out of the pick.
+  useEffect(() => { if (picked.length !== tableIds.length) setTableIds(picked.map(t => t.id)); }, [picked.length, tableIds.length]);
 
   const nameOk = !!guestName.trim();
   const contactOk = !!contactNo.trim();
@@ -1395,7 +1410,7 @@ function TableWalkIn() {
 
   const reset = () => {
     setGuestName(''); setContactNo(''); setParty(2); setWhen('now');
-    setOnDate(today()); setAtTime(nowClock()); setTableId(null);
+    setOnDate(today()); setAtTime(nowClock()); setTableIds([]);
     setError(''); setTried(false); setDone(null); load();
   };
 
@@ -1404,7 +1419,9 @@ function TableWalkIn() {
     setTried(true);
     if (!guestName.trim()) return setError('Enter the guest’s name.');
     if (!contactNo.trim()) return setError('Enter a contact number for the guest.');
-    if (!table) return setError('Pick a table that fits the group.');
+    if (!table) return setError('Pick a table for the group.');
+    if (pickedSeats < party) return setError('The tables picked seat ' + pickedSeats + '. Add another table for ' + plural(party, 'guest') + '.');
+    if (picked.length > party) return setError('More tables than guests. Unpick a table.');
     if (when === 'later') {
       if (!onDate || !atTime) return setError('Pick the date and time they are coming back.');
       if (new Date(onDate + 'T' + atTime) < new Date(Date.now() - 60000)) return setError('That time has already passed.');
@@ -1416,9 +1433,10 @@ function TableWalkIn() {
       const payload = { guest_name: guestName.trim(), contact_no: contactNo.trim(), party_size: party };
       if (when === 'now') payload.seat_now = true;
       else payload.reserved_for = onDate + ' ' + atTime + ':00';
+      if (picked.length > 1) payload.with_tables = picked.slice(1).map(t => t.id);
       const data = await send(CFG.tablesUrl + '/' + table.id, 'PATCH', payload);
-      setDone({ table: data.table || table });
-      if (window.toast) window.toast(when === 'now' ? guestName.trim() + ' is dining in at ' + table.name : 'Reserved ' + table.name + ' for ' + guestName.trim());
+      setDone({ table: data.table || table, names: pickedNames, seats: pickedSeats });
+      if (window.toast) window.toast(when === 'now' ? guestName.trim() + ' is dining in at ' + pickedNames : 'Reserved ' + pickedNames + ' for ' + guestName.trim());
     } catch (err) {
       setError(err.message);
       writing.current = false;
@@ -1434,8 +1452,8 @@ function TableWalkIn() {
       <Done
         title={when === 'now' ? guestName.trim() + ' is dining in' : 'Table held for ' + guestName.trim()}
         rows={[
-          ['Table', done.table.name],
-          ['Seats', String(done.table.capacity)],
+          [done.names.includes(' + ') ? 'Tables' : 'Table', done.names],
+          ['Seats', String(done.seats)],
           ['Guests', String(party)],
           ['When', when === 'now' ? 'Now' : niceDate(onDate) + ', ' + niceTime(atTime)],
           ['Status', when === 'now' ? 'Occupied' : 'Reserved'],
@@ -1500,32 +1518,39 @@ function TableWalkIn() {
           </div>
         </Section>
 
-        <Section n={3} title="Choose a table" className="wi-wide"
-          hint={loaded ? (fits.length === 1 ? '1 free table fits ' + plural(party, 'guest') + '. Smallest first.' : fits.length + ' free tables fit ' + plural(party, 'guest') + '. Smallest first.') : 'Looking for free tables…'}
-          done={!!table}>
+        <Section n={3} title="Choose tables" className="wi-wide"
+          hint={!loaded ? 'Looking for free tables…'
+            : picked.length ? 'Picked ' + pickedNames + ' · seats ' + pickedSeats + (pickedSeats < party ? '. Add a table for ' + plural(party - pickedSeats, 'more guest') + '.' : '.')
+            : fitsOne ? 'Tables that seat ' + plural(party, 'guest') + ' come first. Pick more than one to split a big group.'
+            : 'No single table seats ' + plural(party, 'guest') + '. Pick two or more tables together.'}
+          done={tablesOk}>
           {loadError && <p className="wi-alert" style={{ marginBottom: '0.8rem' }}>{loadError}</p>}
-          {tried && !table && loaded && fits.length > 0 && <p className="wi-alert" style={{ marginBottom: '0.8rem' }}>Pick a table that fits the group.</p>}
+          {tried && !tablesOk && loaded && fits.length > 0 && (
+            <p className="wi-alert" style={{ marginBottom: '0.8rem' }}>
+              {picked.length === 0 ? 'Pick a table for the group.' : pickedSeats < party ? 'These tables seat ' + pickedSeats + '. Add another table.' : 'More tables than guests. Unpick a table.'}
+            </p>
+          )}
           {!loaded ? <CardSkeletons /> : tables.length === 0 ? (
             <div className="wi-empty">
               <i className="fa-solid fa-chair"></i>
               Restaurant Management has not added any tables.
             </div>
-          ) : fits.length === 0 ? (
+          ) : fits.length === 0 || freeSeats < party ? (
             <div className="wi-empty">
               <i className="fa-solid fa-chair"></i>
-              No free table fits {plural(party, 'guest')} right now.<br />Try a smaller group, or reserve for later.
+              {fits.length === 0 ? 'No table is free right now.' : 'All the free tables together seat ' + freeSeats + '.'}<br />Try a smaller group, or reserve for later.
             </div>
           ) : (
             <div className="wi-cards wi-table-cards">
               {fits.map(t => {
-                const on = t.id === tableId;
+                const on = tableIds.includes(t.id);
                 return (
                   <button key={t.id} type="button" className={'wi-card' + (on ? ' is-on' : '')}
-                    onClick={() => setTableId(t.id)} aria-pressed={on}>
+                    onClick={() => toggleTable(t.id)} aria-pressed={on}>
                     <div className="wi-card-photo wi-table-icon"><i className="fa-solid fa-chair"></i></div>
                     <div className="wi-card-body">
                       <span className="wi-card-name">{t.name}</span>
-                      <span className="wi-card-sub">Seats {t.capacity}</span>
+                      <span className="wi-card-sub">Seats {t.capacity}{t.capacity < party ? ' · combine' : ''}</span>
                     </div>
                     {on && <span className="wi-card-tick"><i className="fa-solid fa-check"></i></span>}
                   </button>
@@ -1542,17 +1567,18 @@ function TableWalkIn() {
           ['Name', guestName.trim()],
           ['Guests', plural(party, 'guest')],
           ['When', when === 'now' ? 'Now' : (onDate && atTime ? niceDate(onDate) + ', ' + niceTime(atTime) : '')],
-          ['Table', table ? table.name + ' (seats ' + table.capacity + ')' : ''],
+          [picked.length > 1 ? 'Tables' : 'Table', picked.length ? pickedNames + ' (seats ' + pickedSeats + ')' : ''],
         ]}
         todo={[
           ['Guest name', nameOk],
           ['Contact number', contactOk],
-          ['Table', !!table],
+          [picked.length > 1 ? 'Tables' : 'Table', tablesOk],
         ]}
         error={error}
         busy={busy}
-        button={when === 'now' ? ['Seat guests now', 'fa-utensils'] : ['Reserve this table', 'fa-calendar-check']}
-        note={when === 'now' ? 'The table is marked Occupied. The restaurant team takes over from here.' : 'The table is kept for them until they arrive.'}
+        button={when === 'now' ? ['Seat guests now', 'fa-utensils'] : [picked.length > 1 ? 'Reserve these tables' : 'Reserve this table', 'fa-calendar-check']}
+        note={(when === 'now' ? 'Marked Occupied. The restaurant team takes over from here.' : 'Kept for them until they arrive.')
+          + (picked.length > 1 ? ' The tables are seated, billed and paid together, with one receipt.' : '')}
       />
     </form>
   );

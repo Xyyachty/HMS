@@ -48,7 +48,17 @@ class HotelDineInBill
      */
     public static function for(HotelDineInTable $table): array
     {
-        $orders = self::ordersFor($table);
+        // Tables reserved together for one guest are billed as one: every table of
+        // the party, each line saying which table ordered it.
+        $tables = $table->partyTables();
+        $orders = collect();
+        $tableNames = [];
+        foreach ($tables as $partyTable) {
+            foreach (self::ordersFor($partyTable) as $order) {
+                $orders->push($order);
+                $tableNames[$order->hotel_food_order_id] = $partyTable->name;
+            }
+        }
 
         $items = [];
         $total = 0.0;
@@ -58,11 +68,12 @@ class HotelDineInBill
                 $qty = (int) ($line['qty'] ?? 0);
                 $price = (float) ($line['price'] ?? 0);
                 $items[] = [
-                    'orderId' => $order->hotel_food_order_id,
-                    'name'    => (string) ($line['name'] ?? ''),
-                    'qty'     => $qty,
-                    'price'   => $price,
-                    'line'    => $price * $qty,
+                    'orderId'   => $order->hotel_food_order_id,
+                    'tableName' => $tableNames[$order->hotel_food_order_id] ?? $table->name,
+                    'name'      => (string) ($line['name'] ?? ''),
+                    'qty'       => $qty,
+                    'price'     => $price,
+                    'line'      => $price * $qty,
                 ];
                 $total += $price * $qty;
             }
@@ -79,9 +90,14 @@ class HotelDineInBill
 
         return [
             'tableId'   => $table->hotel_dine_in_table_id,
-            'tableName' => $table->name,
+            'tableName' => HotelDineInTable::joinNames($tables),
+            // Every table this bill covers, with where each one stands.
+            'tables'    => $tables->map(fn (HotelDineInTable $t) => [
+                'id' => $t->hotel_dine_in_table_id, 'name' => $t->name, 'status' => $t->status, 'partySize' => $t->party_size,
+            ])->values()->all(),
+            'partyRef'  => $table->party_ref ?? null,
             'guestName' => $table->guest_name ?? '',
-            'partySize' => $table->party_size,
+            'partySize' => (int) $tables->sum('party_size'),
             'reservedAt' => optional($table->assigned_at)->toIso8601String(),
             'reservedBy' => $table->assigned_by ?? '',
             'orders'    => $orders->map(fn (HotelFoodOrder $order) => [

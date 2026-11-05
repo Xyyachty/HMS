@@ -4673,7 +4673,26 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             'seat_now'    => 'sometimes|boolean',
             // Front Desk moving a reservation that has not been seated to another table.
             'move_to'     => 'sometimes|integer',
+            // More tables reserved with this one for the same guest (a big party).
+            'with_tables'   => 'sometimes|array|max:9',
+            'with_tables.*' => 'integer',
         ]);
+
+        // This table plus any reserved with it, all free tables of this team.
+        $extraIds = array_values(array_unique(array_diff(array_map('intval', $data['with_tables'] ?? []), [(int) $table->hotel_dine_in_table_id])));
+        $extraTables = $extraIds
+            ? HotelDineInTable::where('group_name', $membership->group_name)
+                ->where('faculty_id', $membership->faculty_id)
+                ->whereIn('hotel_dine_in_table_id', $extraIds)
+                ->get()
+                ->sortBy(fn ($t) => array_search((int) $t->hotel_dine_in_table_id, $extraIds, true))
+                ->values()
+                ->all()
+            : [];
+        if (count($extraTables) !== count($extraIds)) {
+            return response()->json(['message' => 'One of those tables was not found. Refresh and try again.'], 404);
+        }
+        $pickedTables = array_merge([$table], $extraTables);
 
         /* A guest signed into the hotel's website reserves a table for themselves.
            Their name and number come off their account, whatever the request says.
@@ -4690,7 +4709,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             }
             try {
                 [$table, $reservation, $token] = \App\Support\HotelTableDesk::reserveForGuest(
-                    $table, $guestAuth, (int) $data['party_size'], (string) $data['reserved_for']
+                    $pickedTables, $guestAuth, (int) $data['party_size'], (string) $data['reserved_for']
                 );
             } catch (\RuntimeException $e) {
                 return response()->json(['message' => $e->getMessage()], $e->getCode() === 409 ? 409 : 422);
@@ -4698,6 +4717,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
 
             return response()->json([
                 'table'       => $table->toTemplateArray(),
+                'tables'      => $table->partyTables()->map->toTemplateArray()->values(),
                 'reservation' => \App\Http\Controllers\PublicSiteController::guestReservationLink(
                     $reservation, $token, \App\Models\Group::slugForTeam($membership->group_name, (int) $membership->faculty_id), $table
                 ),
@@ -4726,32 +4746,46 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
 
         $closedNow = false;
         $arrivedNow = false;
+        // Tables reserved together are seated and closed together.
+        $party = $table->partyTables();
 
         if ($request->boolean('close')) {
             if (!$manages) {
                 return response()->json(['message' => 'Only Restaurant Management staff can close a table.'], 403);
             }
 
-            $openOrder = HotelFoodOrder::where('dine_in_table_id', $table->hotel_dine_in_table_id)
+            $openOrder = HotelFoodOrder::whereIn('dine_in_table_id', $party->pluck('hotel_dine_in_table_id'))
                 ->whereIn('status', ['Preparing'])
                 ->exists();
             if ($openOrder) {
                 return response()->json([
-                    'message' => 'This table still has an order in the kitchen — mark it Ready or Cancelled first.',
+                    'message' => ($party->count() > 1 ? 'One of these tables' : 'This table')
+                        . ' still has an order in the kitchen — mark it Ready or Cancelled first.',
                 ], 422);
             }
 
-            // Closing a table nobody was seated at cancels the reservation; closing one
-            // somebody ate at ends the visit.
-            \App\Support\HotelTableDesk::endReservation($table, $table->status === 'Reserved' ? 'Cancelled' : 'Completed');
+            \Illuminate\Support\Facades\DB::transaction(function () use ($party, $table) {
+                foreach ($party as $partyTable) {
+                    $partyTable = $partyTable->is($table) ? $table : $partyTable;
+                    // Closing a table nobody was seated at cancels the reservation; closing
+                    // one somebody ate at ends the visit.
+                    \App\Support\HotelTableDesk::endReservation($partyTable, $partyTable->status === 'Reserved' ? 'Cancelled' : 'Completed');
 
-            $table->status = 'Available';
-            $table->guest_name = null;
-            $table->contact_no = null;
-            $table->party_size = null;
-            $table->reserved_for = null;
-            $table->assigned_by = null;
-            $table->assigned_at = null;
+                    $partyTable->status = 'Available';
+                    $partyTable->guest_name = null;
+                    $partyTable->contact_no = null;
+                    $partyTable->party_size = null;
+                    $partyTable->reserved_for = null;
+                    $partyTable->assigned_by = null;
+                    $partyTable->assigned_at = null;
+                    if (HotelDineInTable::partySupported()) {
+                        $partyTable->party_ref = null;
+                    }
+                    if (!$partyTable->is($table)) {
+                        $partyTable->save();
+                    }
+                }
+            });
             $closedNow = true;
         } elseif ($request->boolean('arrive')) {
             // Either desk can seat the customer: they may announce themselves at the
@@ -4768,6 +4802,13 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             }
 
             $table->status = 'Occupied';
+            // The whole party arrives together.
+            foreach ($party as $partyTable) {
+                if (!$partyTable->is($table) && $partyTable->status === 'Reserved') {
+                    $partyTable->status = 'Occupied';
+                    $partyTable->save();
+                }
+            }
             $arrivedNow = true;
         } elseif (array_key_exists('guest_name', $data) || array_key_exists('party_size', $data)
             || array_key_exists('contact_no', $data) || array_key_exists('reserved_for', $data)) {
@@ -4776,14 +4817,17 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             }
             // Shared with the guest path above; see HotelTableDesk.
             try {
-                $table = \App\Support\HotelTableDesk::reserve(
-                    $table, $data, auth()->user(), auth()->user()?->name, $request->boolean('seat_now')
+                $reserved = \App\Support\HotelTableDesk::reserveMany(
+                    $pickedTables, $data, auth()->user(), auth()->user()?->name, $request->boolean('seat_now')
                 );
             } catch (\RuntimeException $e) {
                 return response()->json(['message' => $e->getMessage()], $e->getCode() === 409 ? 409 : 422);
             }
 
-            return response()->json(['table' => $table->toTemplateArray()]);
+            return response()->json([
+                'table'  => $reserved[0]->toTemplateArray(),
+                'tables' => array_map(fn ($t) => $t->toTemplateArray(), $reserved),
+            ]);
         } else {
             if (!$manages) {
                 return response()->json(['message' => 'Only Restaurant Management staff can edit a table.'], 403);
@@ -4812,11 +4856,15 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             ActivityLog::record(
                 auth()->user(),
                 ActivityLog::TABLE_CLOSED,
-                'Closed out ' . $table->name . '.'
+                'Closed out ' . HotelDineInTable::joinNames($party) . '.'
             );
         }
 
-        return response()->json(['table' => $table->toTemplateArray()]);
+        // Every table this call changed, the party's others included.
+        return response()->json([
+            'table'  => $table->toTemplateArray(),
+            'tables' => $party->map(fn ($t) => ($t->is($table) ? $table : $t->fresh())->toTemplateArray())->values(),
+        ]);
     })->name('hotel.tables.update');
 
     /*
@@ -4871,6 +4919,16 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             'reference'   => 'nullable|string|max:255',
         ]);
 
+        // Tables reserved together are settled together, with one payment.
+        $party = $table->partyTables();
+        $notSeated = $party->where('status', '!=', 'Occupied');
+        if ($notSeated->isNotEmpty()) {
+            return response()->json([
+                'message' => HotelDineInTable::joinNames($notSeated) . ' of this party ' . ($notSeated->count() === 1 ? 'is' : 'are')
+                    . ' not seated. Seat the customer there, or close that table, before billing.',
+            ], 422);
+        }
+
         $bill = \App\Support\HotelDineInBill::for($table);
 
         if ($bill['unserved']) {
@@ -4892,15 +4950,15 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
 
         // Settling and freeing the table are one move: a table left Occupied after the
         // customer has paid and walked out is a table nobody can reserve.
-        $payment = \Illuminate\Support\Facades\DB::transaction(function () use ($membership, $table, $bill, $total, $paid, $data) {
+        $payment = \Illuminate\Support\Facades\DB::transaction(function () use ($membership, $table, $party, $bill, $total, $paid, $data) {
             $payment = \App\Models\HotelDineInPayment::create([
                 'group_name'             => $membership->group_name,
                 'faculty_id'             => $membership->faculty_id,
                 'group_id'               => $membership->group_id,
                 'hotel_dine_in_table_id' => $table->hotel_dine_in_table_id,
-                'table_name'             => $table->name,
+                'table_name'             => $bill['tableName'],
                 'guest_name'             => $table->guest_name,
-                'party_size'             => $table->party_size,
+                'party_size'             => $bill['partySize'] ?: $table->party_size,
                 'total_due'              => $total,
                 'amount_paid'            => $paid,
                 'balance'                => max(0, round($total - $paid, 2)),
@@ -4910,18 +4968,23 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
                 'order_ids'              => $bill['orderIds'],
                 'collected_by'           => auth()->user()?->name,
                 'paid_at'                => now(),
-            ]);
+            ] + ($party->count() > 1 ? ['party_ref' => $table->party_ref] : []));
 
-            \App\Support\HotelTableDesk::endReservation($table, 'Completed');
+            foreach ($party as $partyTable) {
+                \App\Support\HotelTableDesk::endReservation($partyTable, 'Completed');
 
-            $table->status = 'Available';
-            $table->guest_name = null;
-            $table->contact_no = null;
-            $table->party_size = null;
-            $table->reserved_for = null;
-            $table->assigned_by = null;
-            $table->assigned_at = null;
-            $table->save();
+                $partyTable->status = 'Available';
+                $partyTable->guest_name = null;
+                $partyTable->contact_no = null;
+                $partyTable->party_size = null;
+                $partyTable->reserved_for = null;
+                $partyTable->assigned_by = null;
+                $partyTable->assigned_at = null;
+                if (HotelDineInTable::partySupported()) {
+                    $partyTable->party_ref = null;
+                }
+                $partyTable->save();
+            }
 
             return $payment;
         });
@@ -4936,6 +4999,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
         return response()->json([
             'payment' => $payment->toTemplateArray(),
             'table'   => $table->fresh()->toTemplateArray(),
+            'tables'  => $party->map(fn ($t) => $t->fresh()->toTemplateArray())->values(),
         ], 201);
     })->name('hotel.tables.settle');
 

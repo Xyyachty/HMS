@@ -419,6 +419,8 @@
 <script>
   window.HMS_RESTAURANT_URL = @json(route('students.dashboard', ['section' => 'tasks']));
   window.HMS_RESTAURANT_INITIAL_NAV = @json(request()->query('nav', 'manage-menu'));
+  // The name printed at the top of a dine-in receipt: the team's approved hotel.
+  window.HMS_HOTEL_NAME = @json(\App\Support\HotelTemplateBuilder::hotelDefaults($groupName ?? null, isset($facultyId) ? (int) $facultyId : null)['name']);
 </script>
 @verbatim
 <script type="text/babel">
@@ -994,7 +996,7 @@ const BILL_METHODS = ['Cash', 'GCash', 'Card', 'Other'];
  * table in the same call — a table left Occupied after the customer has paid and
  * walked out is a table nobody can reserve.
  */
-function DineInBillModal({ table, onFetchBill, onSettle, onClose, onToast }) {
+function DineInBillModal({ table, onFetchBill, onSettle, onClose, onToast, onReceipt }) {
   const [bill, setBill] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -1030,15 +1032,25 @@ function DineInBillModal({ table, onFetchBill, onSettle, onClose, onToast }) {
   const shortBy = Math.max(0, total - paid);
   const unserved = (bill && bill.unserved) || [];
 
+  // Cash: the field is what the customer hands over; only the bill is recorded as
+  // paid and the rest goes back as change. Other methods record what was typed.
+  const isCash = method === 'Cash';
+  const recorded = isCash ? Math.min(paid, total) : paid;
+  const change = isCash ? Math.max(0, paid - total) : 0;
+  const names = bill ? bill.tableName : table.name;
+  const isParty = !!(bill && bill.tables && bill.tables.length > 1);
+
   const settle = (e) => {
     e.preventDefault();
     if (shortBy > 0 && !window.confirm(
-      `${formatPeso(shortBy)} of this bill will go uncollected. Close the table anyway?`
+      `${formatPeso(shortBy)} of this bill will go uncollected. Close ${isParty ? 'the tables' : 'the table'} anyway?`
     )) return;
     setBusy(true);
-    Promise.resolve(onSettle(table.id, { amount_paid: paid, method, reference: reference.trim() }))
-      .then(() => {
-        if (onToast) onToast(`${table.name} settled — ${formatPeso(paid)} by ${method}.`);
+    Promise.resolve(onSettle(table.id, { amount_paid: recorded, method, reference: reference.trim() }))
+      .then((payment) => {
+        if (onToast) onToast(`${names} settled — ${formatPeso(recorded)} by ${method}.`);
+        // The receipt for what was just paid, one for the whole party.
+        if (payment && onReceipt) onReceipt({ payment, tendered: paid, change, contactNo: table.contactNo });
         onClose();
       })
       .catch(err => setError((err && err.message) || 'Could not settle this table.'))
@@ -1056,11 +1068,17 @@ function DineInBillModal({ table, onFetchBill, onSettle, onClose, onToast }) {
         <div className="tb-modal-head">
           <div>
             <p style={{ color: 'var(--accent)', fontSize: '0.65rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: '0 0 0.35rem' }}>Dine-in</p>
-            <h2 className="font-display" style={{ fontSize: '1.4rem', margin: 0, color: 'var(--fg)' }}>Final Bill · {table.name}</h2>
+            <h2 className="font-display" style={{ fontSize: '1.4rem', margin: 0, color: 'var(--fg)' }}>Final Bill · {names}</h2>
             <p style={{ margin: '0.3rem 0 0', color: 'var(--fg-muted)', fontSize: '0.78rem' }}>
-              {table.guestName || 'Guest'} · party of {table.partySize || '—'}
+              {table.guestName || 'Guest'} · party of {(bill && bill.partySize) || table.partySize || '—'}
               {table.contactNo ? ` · ${table.contactNo}` : ''}
             </p>
+            {isParty && (
+              <p style={{ margin: '0.25rem 0 0', color: 'var(--accent)', fontSize: '0.74rem' }}>
+                <i className="fa-solid fa-link" style={{ fontSize: '0.65rem', marginRight: 5 }}></i>
+                {bill.tables.length} tables reserved together · one bill, one payment, one receipt
+              </p>
+            )}
           </div>
           <button type="button" onClick={onClose} disabled={busy} aria-label="Close"
             style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)', cursor: busy ? 'not-allowed' : 'pointer', flexShrink: 0 }}>
@@ -1084,7 +1102,7 @@ function DineInBillModal({ table, onFetchBill, onSettle, onClose, onToast }) {
                   <p className="tb-bill-title">Ordered</p>
                   {bill.items.map((line, i) => (
                     <div className="tb-bill-line" key={line.orderId + '-' + i}>
-                      <span>{line.name} × {line.qty} <span style={{ opacity: 0.55 }}>· #{line.orderId}</span></span>
+                      <span>{line.name} × {line.qty} <span style={{ opacity: 0.55 }}>· {isParty && line.tableName ? line.tableName + ' · ' : ''}#{line.orderId}</span></span>
                       <span className="tb-bill-amt">{formatPeso(line.line)}</span>
                     </div>
                   ))}
@@ -1115,7 +1133,7 @@ function DineInBillModal({ table, onFetchBill, onSettle, onClose, onToast }) {
                       </select>
                     </div>
                     <div>
-                      <label style={fieldLabel}>Amount Paid</label>
+                      <label style={fieldLabel}>{isCash ? 'Cash Received' : 'Amount Paid'}</label>
                       <input type="number" className="booking-input" min="0" step="0.01" value={amount}
                         onChange={e => setAmount(e.target.value)} />
                     </div>
@@ -1132,10 +1150,15 @@ function DineInBillModal({ table, onFetchBill, onSettle, onClose, onToast }) {
                       ? `${formatPeso(shortBy)} of this bill will go uncollected.`
                       : 'This settles the bill in full.'}
                   </p>
+                  {change > 0 && (
+                    <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', fontWeight: 700, color: 'var(--fg)' }}>
+                      Change: {formatPeso(change)}
+                    </p>
+                  )}
                   {error && <p style={{ margin: '0.55rem 0 0', color: 'var(--danger, #fb7185)', fontSize: '0.78rem' }}>{error}</p>}
                   <button type="submit" className="btn-primary" disabled={busy} style={{ width: '100%', marginTop: '1rem', justifyContent: 'center' }}>
                     <i className="fa-solid fa-cash-register" style={{ fontSize: '0.7rem' }}></i>
-                    {busy ? 'Settling…' : 'Mark Paid & Close Table'}
+                    {busy ? 'Settling…' : (isParty ? 'Mark Paid & Close Tables' : 'Mark Paid & Close Table')}
                   </button>
                 </form>
               )}
@@ -1147,7 +1170,115 @@ function DineInBillModal({ table, onFetchBill, onSettle, onClose, onToast }) {
   );
 }
 
+/* The dine-in receipt, shown once a bill is settled: one for the whole party when
+   several tables were reserved together. Built from the payment the server just
+   recorded; tendered and change are only known here, so only this receipt has them.
+   Print prints the sheet alone from a hidden frame, on white. */
+function DineInReceiptModal({ receipt, onClose }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const p = receipt.payment;
+  const paidAt = p.paidAt ? new Date(p.paidAt) : new Date();
+  const ymd = paidAt.getFullYear() + String(paidAt.getMonth() + 1).padStart(2, '0') + String(paidAt.getDate()).padStart(2, '0');
+  const number = 'OR-R' + ymd + '-' + String(p.id || '').padStart(5, '0');
+  const peso = (n) => (Number(n) < 0 ? '−₱' : '₱') + Math.abs(Number(n) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const tablesNamed = String(p.tableName || '').split(' + ').filter(Boolean);
+  const byTable = tablesNamed.length > 1;
+  const groups = byTable
+    ? tablesNamed.map(name => ({ name, items: (p.items || []).filter(i => i.tableName === name) }))
+    : [{ name: p.tableName, items: p.items || [] }];
+  const row = (label, value, strong) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', padding: '0.18rem 0', fontWeight: strong ? 700 : 400 }}>
+      <span>{label}</span><span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{value}</span>
+    </div>
+  );
+
+  const print = (e) => {
+    const sheet = e.currentTarget.closest('.tb-modal-body').querySelector('.dn-receipt');
+    const frame = document.createElement('iframe');
+    frame.setAttribute('aria-hidden', 'true');
+    frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+    document.body.appendChild(frame);
+    frame.onload = () => { frame.contentWindow.focus(); frame.contentWindow.print(); setTimeout(() => frame.remove(), 1000); };
+    frame.contentDocument.open();
+    frame.contentDocument.write('<!doctype html><html><head><meta charset="utf-8"><title>Receipt</title>'
+      + '<style>@page{margin:12mm}body{margin:0;background:#fff;color:#1a1a1a;font-family:Arial,sans-serif;font-size:13px}</style></head><body>'
+      + sheet.outerHTML + '</body></html>');
+    frame.contentDocument.close();
+  };
+
+  const paper = { background: '#fff', color: '#1a1a1a', borderRadius: 10, padding: '1.2rem 1.3rem', fontSize: '0.84rem', border: '1px solid #e5e2dd' };
+  const block = { padding: '0.7rem 0', borderBottom: '1px dashed #c9c3ba' };
+  const head = { margin: '0 0 0.35rem', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#5f5a55' };
+
+  return (
+    <div className="tb-modal-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label="Receipt">
+      <div className="tb-modal" onClick={e => e.stopPropagation()}>
+        <div className="tb-modal-head">
+          <div>
+            <p style={{ color: 'var(--success, #4ade80)', fontSize: '0.72rem', fontWeight: 700, margin: '0 0 0.35rem' }}>
+              <i className="fa-solid fa-circle-check" style={{ marginRight: 6 }}></i>Paid
+            </p>
+            <h2 className="font-display" style={{ fontSize: '1.4rem', margin: 0, color: 'var(--fg)' }}>Receipt</h2>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close"
+            style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)', cursor: 'pointer', flexShrink: 0 }}>
+            <i className="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div className="tb-modal-body">
+          <div className="dn-receipt" style={paper}>
+            <div style={{ textAlign: 'center', paddingBottom: '0.8rem', borderBottom: '1px dashed #c9c3ba' }}>
+              <h3 style={{ margin: '0 0 0.2rem', fontSize: '1.15rem' }}>{window.HMS_HOTEL_NAME || 'Restaurant'}</h3>
+              <p style={{ margin: 0, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', fontSize: '0.78rem' }}>Restaurant Official Receipt</p>
+              <p style={{ margin: '0.15rem 0 0', fontWeight: 700 }}>{number}</p>
+              <p style={{ margin: '0.1rem 0 0', color: '#5f5a55', fontSize: '0.78rem' }}>
+                {paidAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}, {paidAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+              </p>
+            </div>
+            <div style={block}>
+              {row('Guest', p.guestName || 'Guest')}
+              {receipt.contactNo ? row('Contact', receipt.contactNo) : null}
+              {row(byTable ? 'Tables' : 'Table', p.tableName)}
+              {row('Party', String(p.partySize || '—'))}
+            </div>
+            {groups.map(g => (
+              <div style={block} key={g.name}>
+                <p style={head}>{byTable ? g.name : 'Ordered'}</p>
+                {g.items.map((i, k) => <React.Fragment key={k}>{row(`${i.name} × ${i.qty}`, peso(i.line), false)}</React.Fragment>)}
+                {byTable && row('Subtotal', peso(g.items.reduce((s, i) => s + (Number(i.line) || 0), 0)), true)}
+              </div>
+            ))}
+            <div style={block}>
+              {row('Total', peso(p.totalDue), true)}
+              {row('Payment method', p.method + (p.reference ? ' · ' + p.reference : ''))}
+              {p.method === 'Cash' && receipt.tendered > 0 && row('Cash received', peso(receipt.tendered))}
+              {p.method === 'Cash' && receipt.change > 0 && row('Change', peso(receipt.change))}
+              {row('Amount paid', peso(p.amountPaid), true)}
+              {Number(p.balance) > 0 && row('Unpaid balance', peso(p.balance), true)}
+            </div>
+            <p style={{ margin: '0.8rem 0 0', textAlign: 'center', color: '#5f5a55', fontSize: '0.78rem' }}>
+              {p.collectedBy ? 'Served by ' + p.collectedBy + ' · ' : ''}Thank you for dining with us!
+            </p>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', marginTop: '1rem' }}>
+            <button type="button" className="btn-outline" onClick={print}>
+              <i className="fa-solid fa-print" style={{ marginRight: 6 }}></i>Print
+            </button>
+            <button type="button" className="btn-primary" onClick={onClose}>Done</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable, onCloseTable, onRemoveTable, onSeatTable, onFetchBill, onSettleTable, onToast }) {
+  const [receipt, setReceipt] = useState(null);
   const [form, setForm] = useState(createEmptyTableForm);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -1195,11 +1326,15 @@ function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable,
 
   const closeTable = (table) => {
     const held = table.status === 'Reserved';
+    // A party's tables are closed together, so the question names them all.
+    const names = table.partyRef
+      ? (tables || []).filter(t => t.partyRef === table.partyRef).map(t => t.name).join(' + ')
+      : table.name;
     if (!hmsConfirm(held
-      ? `Cancel the reservation on ${table.name} and free it up?`
-      : `Close ${table.name} and free it up?`)) return;
+      ? `Cancel the reservation on ${names} and free ${table.partyRef ? 'them' : 'it'} up?`
+      : `Close ${names} and free ${table.partyRef ? 'them' : 'it'} up?`)) return;
     Promise.resolve(onCloseTable(table.id))
-      .then(() => { if (onToast) onToast(`${table.name} is now available.`); })
+      .then(() => { if (onToast) onToast(`${names} ${table.partyRef ? 'are' : 'is'} now available.`); })
       .catch(err => { if (onToast) onToast((err && err.message) || 'Could not close this table.'); });
   };
 
@@ -1294,6 +1429,12 @@ function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable,
                         Seats {table.capacity}
                         {taken && table.guestName ? ` · ${table.guestName}, party of ${table.partySize || '—'}` : ''}
                       </p>
+                      {taken && table.partyRef && (
+                        <p style={{ margin: '0.2rem 0 0', color: 'var(--accent)', fontSize: '0.72rem' }}>
+                          <i className="fa-solid fa-link" style={{ fontSize: '0.62rem', marginRight: 5 }}></i>
+                          Same party as {list.filter(t => t.partyRef === table.partyRef && t.id !== table.id).map(t => t.name).join(', ')} · seated, billed and closed together
+                        </p>
+                      )}
                       {taken && (table.contactNo || table.reservedFor) && (
                         <p style={{ margin: '0.2rem 0 0', color: 'var(--fg-muted)', fontSize: '0.72rem' }}>
                           {table.contactNo ? table.contactNo : ''}
@@ -1360,8 +1501,10 @@ function ManageTablesPanel({ tables, orders, canManage, onAddTable, onEditTable,
           onSettle={onSettleTable}
           onClose={() => setBillingTableId(null)}
           onToast={onToast}
+          onReceipt={setReceipt}
         />
       )}
+      {receipt && <DineInReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />}
     </div>
   );
 }
@@ -2235,12 +2378,18 @@ function App() {
     })
   ), [menuRequest]);
 
+  // Every table a call changed: a party's other tables move with the one clicked.
+  const mergeTables = useCallback((data) => {
+    const changed = [...((data && Array.isArray(data.tables)) ? data.tables : []), ...((data && data.table) ? [data.table] : [])];
+    if (changed.length) setTables(prev => prev.map(t => changed.find(c => c.id === t.id) || t));
+  }, []);
+
   const closeTable = useCallback((id) => (
     menuRequest('/students/hotel/tables/' + id, 'PATCH', { close: true }).then(data => {
-      if (data && data.table) setTables(prev => prev.map(t => (t.id === data.table.id ? data.table : t)));
+      mergeTables(data);
       return data && data.table;
     })
-  ), [menuRequest]);
+  ), [menuRequest, mergeTables]);
 
   const removeTable = useCallback((id) => (
     menuRequest('/students/hotel/tables/' + id, 'DELETE').then(data => {
@@ -2251,10 +2400,10 @@ function App() {
 
   const seatTable = useCallback((id) => (
     menuRequest('/students/hotel/tables/' + id, 'PATCH', { arrive: true }).then(data => {
-      if (data && data.table) setTables(prev => prev.map(t => (t.id === data.table.id ? data.table : t)));
+      mergeTables(data);
       return data && data.table;
     })
-  ), [menuRequest]);
+  ), [menuRequest, mergeTables]);
 
   const fetchTableBill = useCallback((id) => (
     menuRequest('/students/hotel/tables/' + id + '/bill', 'GET').then(data => data && data.bill)
@@ -2265,11 +2414,11 @@ function App() {
      list is what the bill was built from and must not be guessed at here. */
   const settleTable = useCallback((id, payload) => (
     menuRequest('/students/hotel/tables/' + id + '/settle', 'POST', payload).then(data => {
-      if (data && data.table) setTables(prev => prev.map(t => (t.id === data.table.id ? data.table : t)));
+      mergeTables(data);
       fetchOrders();
       return data && data.payment;
     })
-  ), [menuRequest, fetchOrders]);
+  ), [menuRequest, fetchOrders, mergeTables]);
 
   const placeDineInOrder = useCallback((tableId, items) => (
     menuRequest('/students/hotel/orders', 'POST', { order_type: 'dine_in', dine_in_table_id: tableId, items }).then(data => {

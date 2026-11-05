@@ -366,16 +366,25 @@ class PublicSiteController extends Controller
             'table_id'     => 'required|integer',
             'party_size'   => 'required|integer|min:1|max:50',
             'reserved_for' => 'required|date',
+            // A party too big for one table: the others reserved with table_id.
+            'with_tables'   => 'sometimes|array|max:9',
+            'with_tables.*' => 'integer',
         ]);
 
-        $table = \App\Models\HotelDineInTable::where('hotel_dine_in_table_id', $data['table_id'])
-            ->where('group_name', $groupName)
+        $ids = array_values(array_unique(array_merge([(int) $data['table_id']], array_map('intval', $data['with_tables'] ?? []))));
+        $found = \App\Models\HotelDineInTable::where('group_name', $groupName)
             ->where('faculty_id', $facultyId)
-            ->firstOrFail();
+            ->whereIn('hotel_dine_in_table_id', $ids)
+            ->get()
+            ->keyBy('hotel_dine_in_table_id');
+        if ($found->count() !== count($ids)) {
+            abort(404);
+        }
+        $picked = array_map(fn ($id) => $found->get($id), $ids);
 
         try {
             [$table, $reservation, $token] = \App\Support\HotelTableDesk::reserveForGuest(
-                $table, $auth, (int) $data['party_size'], (string) $data['reserved_for']
+                $picked, $auth, (int) $data['party_size'], (string) $data['reserved_for']
             );
         } catch (\RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], $e->getCode() === 409 ? 409 : 422);

@@ -41,6 +41,7 @@ class HotelDineInTable extends Model
         'reserved_for',
         'assigned_by',
         'assigned_at',
+        'party_ref',
     ];
 
     protected $casts = [
@@ -65,6 +66,39 @@ class HotelDineInTable extends Model
         return 'Available';
     }
 
+    /** False until the party_ref migration has run. */
+    public static function partySupported(): bool
+    {
+        static $has = null;
+
+        return $has ??= \Illuminate\Support\Facades\Schema::hasColumn('hotel_dine_in_tables', 'party_ref');
+    }
+
+    /**
+     * This table and every other table reserved with it for the same guest, in name
+     * order. Just this table when it was reserved alone.
+     *
+     * @return \Illuminate\Support\Collection<int, self>
+     */
+    public function partyTables(): \Illuminate\Support\Collection
+    {
+        if (!self::partySupported() || !$this->party_ref) {
+            return collect([$this]);
+        }
+
+        return self::where('group_name', $this->group_name)
+            ->where('faculty_id', $this->faculty_id)
+            ->where('party_ref', $this->party_ref)
+            ->orderBy('name')
+            ->get();
+    }
+
+    /** "Table 2 + Table 5": the tables of a party, as the bill and receipt name them. */
+    public static function joinNames(iterable $tables): string
+    {
+        return \Illuminate\Support\Str::limit(collect($tables)->pluck('name')->implode(' + '), 250, '…');
+    }
+
     /** Shape sent to the dine-in front-end. */
     public function toTemplateArray(): array
     {
@@ -81,6 +115,8 @@ class HotelDineInTable extends Model
             'reservedFor' => $this->reserved_for?->shiftTimezone('Asia/Manila')->toIso8601String(),
             'assignedBy' => $this->assigned_by ?? '',
             'assignedAt' => optional($this->assigned_at)->toIso8601String(),
+            // Shared by the tables reserved together for one guest; null when alone.
+            'partyRef' => $this->party_ref ?? null,
             'updatedAt' => optional($this->updated_at)->toIso8601String(),
         ];
     }

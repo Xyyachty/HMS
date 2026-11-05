@@ -139,6 +139,9 @@ class HotelTableDesk
         $table->reserved_for = $due;
         $table->assigned_by = $assignedBy;
         $table->assigned_at = now();
+        if (HotelDineInTable::partySupported()) {
+            $table->party_ref = $data['party_ref'] ?? null;
+        }
 
         /* Written only if the table is still Available. The check above read it
            without a lock, so two desks taking the same table at once both passed
@@ -162,6 +165,59 @@ class HotelTableDesk
         );
 
         return $table;
+    }
+
+    /**
+     * Several tables for one guest, reserved (or seated) together: one party_ref on
+     * all of them, so they are seated, billed and closed as one. All or nothing — if
+     * any table was taken meanwhile, none is kept.
+     *
+     * $data['party_size'] is the whole party. It is shared out so that no table holds
+     * more than it seats and every table holds at least one guest.
+     *
+     * @param  list<HotelDineInTable>  $tables  in the order the desk picked them
+     * @return list<HotelDineInTable>
+     */
+    public static function reserveMany(
+        array $tables,
+        array $data,
+        ?User $actor,
+        ?string $assignedBy,
+        bool $seatNow = false
+    ): array {
+        if (count($tables) === 1) {
+            return [self::reserve($tables[0], $data, $actor, $assignedBy, $seatNow)];
+        }
+        if (!HotelDineInTable::partySupported()) {
+            throw new RuntimeException('Reserving several tables together is not available yet. Reserve one table.', 422);
+        }
+
+        $party = (int) ($data['party_size'] ?? 0);
+        if ($party < 1) {
+            throw new RuntimeException('Enter how many guests are in the party.', 422);
+        }
+        if ($party < count($tables)) {
+            throw new RuntimeException('There are more tables than guests. Pick fewer tables.', 422);
+        }
+        $seats = array_sum(array_map(fn (HotelDineInTable $t) => (int) $t->capacity, $tables));
+        if ($party > $seats) {
+            throw new RuntimeException("These tables seat {$seats} — the party of {$party} is too large for them.", 422);
+        }
+
+        $ref = (string) Str::uuid();
+
+        return DB::transaction(function () use ($tables, $data, $actor, $assignedBy, $seatNow, $party, $ref) {
+            $left = $party;
+            $reserved = [];
+            foreach (array_values($tables) as $i => $table) {
+                $after = count($tables) - $i - 1;
+                $share = min((int) $table->capacity, $left - $after);
+                $reserved[] = self::reserve($table, ['party_size' => $share, 'party_ref' => $ref] + $data, $actor, $assignedBy, $seatNow);
+                $left -= $share;
+            }
+
+            return $reserved;
+        });
     }
 
     /**
@@ -195,7 +251,7 @@ class HotelTableDesk
                         'assigned_by'  => null,
                         'assigned_at'  => null,
                         'updated_at'   => now(),
-                    ]);
+                    ] + (HotelDineInTable::partySupported() ? ['party_ref' => null] : []));
                 if (!$freed) {
                     return;
                 }
@@ -250,23 +306,28 @@ class HotelTableDesk
      * Also writes the guest's own record and private link. The token is returned
      * once, here, and only its hash is kept.
      *
-     * $auth is HotelSimulationAuth::current() for a customer.
+     * $auth is HotelSimulationAuth::current() for a customer. $tables may hold several
+     * tables for one large party: they are reserved together (reserveMany) under one
+     * reservation, which sits on the first table and names them all.
      *
+     * @param  HotelDineInTable|list<HotelDineInTable>  $tables
      * @return array{0: HotelDineInTable, 1: ?HotelDineInReservation, 2: ?string}
      */
-    public static function reserveForGuest(HotelDineInTable $table, array $auth, int $partySize, string $reservedFor): array
+    public static function reserveForGuest(HotelDineInTable|array $tables, array $auth, int $partySize, string $reservedFor): array
     {
+        $tables = is_array($tables) ? array_values($tables) : [$tables];
         $name = trim((string) ($auth['name'] ?? '')) ?: 'Guest';
         $customer = HotelCustomer::find($auth['customer_id'] ?? null);
 
-        return DB::transaction(function () use ($table, $name, $customer, $partySize, $reservedFor) {
-            $table = self::reserve($table, [
+        return DB::transaction(function () use ($tables, $name, $customer, $partySize, $reservedFor) {
+            $all = self::reserveMany($tables, [
                 'guest_name'   => $name,
                 'contact_no'   => $customer?->contact_number,
                 'party_size'   => $partySize,
                 // reserve() refuses a time already gone.
                 'reserved_for' => $reservedFor,
             ], null, 'Online · ' . $name);
+            $table = $all[0];
 
             if (!HotelDineInReservation::supported()) {
                 return [$table, null, null];
@@ -278,13 +339,14 @@ class HotelTableDesk
                 'faculty_id'             => $table->faculty_id,
                 'group_id'               => $table->group_id,
                 'hotel_dine_in_table_id' => $table->hotel_dine_in_table_id,
-                'table_name'             => $table->name,
+                'table_name'             => HotelDineInTable::joinNames($all),
                 'hotel_customer_id'      => $customer?->getKey(),
                 'guest_name'             => $table->guest_name,
-                'party_size'             => $table->party_size,
+                // The whole party, not the first table's share of it.
+                'party_size'             => $partySize,
                 'reserved_for'           => $table->reserved_for,
                 'token_hash'             => HotelDineInReservation::hashToken($token),
-            ]);
+            ] + (count($all) > 1 ? ['party_ref' => $table->party_ref] : []));
 
             return [$table, $reservation, $token];
         });
@@ -327,6 +389,10 @@ class HotelTableDesk
         }
 
         $fields = ['guest_name', 'contact_no', 'party_size', 'reserved_for', 'assigned_by', 'assigned_at'];
+        // A table of a party keeps its party when it moves.
+        if (HotelDineInTable::partySupported()) {
+            $fields[] = 'party_ref';
+        }
 
         return DB::transaction(function () use ($from, $to, $fields, $actor) {
             // Same guard as reserve(): written only if each table is still what it was.
@@ -343,7 +409,9 @@ class HotelTableDesk
             if (HotelDineInReservation::supported()) {
                 HotelDineInReservation::where('hotel_dine_in_table_id', $from->getKey())
                     ->whereNull('outcome')
-                    ->update(['hotel_dine_in_table_id' => $to->getKey(), 'table_name' => $to->name, 'updated_at' => now()]);
+                    ->update(['hotel_dine_in_table_id' => $to->getKey(), 'updated_at' => now(),
+                        // A party's reservation names all its tables, the moved one now included.
+                        'table_name' => $from->party_ref ? HotelDineInTable::joinNames($to->fresh()->partyTables()) : $to->name]);
             }
 
             ActivityLog::record(

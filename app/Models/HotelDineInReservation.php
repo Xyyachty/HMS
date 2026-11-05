@@ -33,6 +33,7 @@ class HotelDineInReservation extends Model
         'token_hash',
         'outcome',
         'ended_at',
+        'party_ref',
     ];
 
     protected $hidden = ['token_hash'];
@@ -96,10 +97,16 @@ class HotelDineInReservation extends Model
             default => 'Closed',
         };
 
+        // Every table of the party while it is open ("Table 2 + Table 5"); afterwards
+        // the names as they were written when it was reserved.
+        $tableName = $live
+            ? ($table->party_ref ? HotelDineInTable::joinNames($table->partyTables()) : $table->name)
+            : $this->table_name;
+
         return [
             'reference' => $this->reference(),
             'guestName' => $this->guest_name ?: 'Guest',
-            'tableName' => $live ? $table->name : $this->table_name,
+            'tableName' => $tableName,
             'partySize' => $this->party_size,
             'reservedFor' => $this->dueAt()?->toIso8601String(),
             'status' => $status,

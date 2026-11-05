@@ -260,7 +260,11 @@ function formatClock(iso) {
  * date and time pickers, do not fit in a 270px grid column without the pickers
  * being clipped to uselessness.
  */
-function ReserveModal({ table, onReserve, onClose, busy }) {
+function ReserveModal({ table, freeTables, onReserve, onClose, busy }) {
+  // Other free tables reserved with this one, for a group too big for it.
+  const [withIds, setWithIds] = useState([]);
+  const withTables = withIds.map(id => freeTables.find(t => t.id === id)).filter(Boolean);
+  const seats = table.capacity + withTables.reduce((n, t) => n + t.capacity, 0);
   const [guestName, setGuestName] = useState('');
   const [contactNo, setContactNo] = useState('');
   // Today at the next whole hour: most reservations the desk takes are for later
@@ -281,8 +285,12 @@ function ReserveModal({ table, onReserve, onClose, busy }) {
     if (!guestName.trim()) { setError('Enter the customer’s name.'); return; }
     if (!contactNo.trim()) { setError('Enter a contact number for the customer.'); return; }
     if (!onDate || !atTime) { setError('Pick the date and time they are booked for.'); return; }
-    if (partySize < 1 || partySize > table.capacity) {
-      setError(`Party size must be between 1 and ${table.capacity}.`);
+    if (partySize < 1 || partySize > seats) {
+      setError(`Party size must be between 1 and ${seats}.`);
+      return;
+    }
+    if (partySize < 1 + withTables.length) {
+      setError('More tables than guests. Remove a table.');
       return;
     }
     setError('');
@@ -292,8 +300,10 @@ function ReserveModal({ table, onReserve, onClose, busy }) {
       // Local wall-clock, no timezone suffix — the server parses it in app time.
       reserved_for: `${onDate} ${atTime}:00`,
       party_size: partySize,
+      ...(withTables.length ? { with_tables: withTables.map(t => t.id) } : {}),
     });
   };
+  const toggleWith = (id) => setWithIds(ids => (ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id]));
 
   return (
     <div className="dn-modal-overlay" onClick={() => { if (!busy) onClose(); }} role="dialog" aria-modal="true">
@@ -301,9 +311,11 @@ function ReserveModal({ table, onReserve, onClose, busy }) {
         <div className="dn-modal-head">
           <div>
             <p style={{ color: 'var(--accent)', fontSize: '0.65rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: '0 0 0.35rem' }}>Front Desk</p>
-            <h2 className="font-display" style={{ fontSize: '1.4rem', margin: 0, color: 'var(--fg)' }}>Reserve {table.name}</h2>
+            <h2 className="font-display" style={{ fontSize: '1.4rem', margin: 0, color: 'var(--fg)' }}>
+              Reserve {[table, ...withTables].map(t => t.name).join(' + ')}
+            </h2>
             <p style={{ margin: '0.3rem 0 0', color: 'var(--fg-muted)', fontSize: '0.76rem' }}>
-              Seats {table.capacity} · holds the table only, the restaurant takes the order
+              Seats {seats} · holds the {withTables.length ? 'tables' : 'table'} only, the restaurant takes the order
             </p>
           </div>
           <button type="button" className="dn-modal-close" onClick={onClose} disabled={busy} aria-label="Close">
@@ -338,18 +350,37 @@ function ReserveModal({ table, onReserve, onClose, busy }) {
               </div>
             </div>
 
+            {/* A big group: more free tables, reserved, seated, billed and paid
+                together with this one, on one receipt. */}
+            {freeTables.length > 0 && (
+              <div>
+                <label className="dn-field-label">Add tables for a big group</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                  {freeTables.map(t => {
+                    const on = withIds.includes(t.id);
+                    return (
+                      <button key={t.id} type="button" className={`dn-filter${on ? ' is-active' : ''}`}
+                        aria-pressed={on} onClick={() => toggleWith(t.id)} style={{ fontSize: '0.68rem' }}>
+                        {on ? '✓ ' : '+ '}{t.name} · {t.capacity}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div>
-              <label className="dn-field-label">Party size · seats {table.capacity}</label>
+              <label className="dn-field-label">Party size · seats {seats}</label>
               {/* Stepper rather than a number input, so it cannot be typed past
-                  the table's own capacity. */}
+                  the tables' own capacity. */}
               <div className="dn-party">
                 <button type="button" className="dn-step" aria-label="Fewer guests"
                   disabled={partySize <= 1}
                   onClick={() => setPartySize(n => Math.max(1, n - 1))}>−</button>
                 <output>{partySize}</output>
                 <button type="button" className="dn-step" aria-label="More guests"
-                  disabled={partySize >= table.capacity}
-                  onClick={() => setPartySize(n => Math.min(table.capacity, n + 1))}>+</button>
+                  disabled={partySize >= seats}
+                  onClick={() => setPartySize(n => Math.min(seats, n + 1))}>+</button>
               </div>
             </div>
 
@@ -358,7 +389,7 @@ function ReserveModal({ table, onReserve, onClose, busy }) {
             <div style={{ display: 'flex', gap: '0.6rem', marginTop: '0.2rem' }}>
               <button type="submit" className="btn-solid" disabled={busy} style={{ flex: 1, justifyContent: 'center' }}>
                 <i className="fa-solid fa-chair" style={{ fontSize: '0.7rem' }}></i>
-                {busy ? 'Reserving…' : 'Reserve Table'}
+                {busy ? 'Reserving…' : (withTables.length ? 'Reserve Tables' : 'Reserve Table')}
               </button>
               <button type="button" className="btn-outline" onClick={onClose} disabled={busy} style={{ padding: '0.55rem 1.1rem' }}>
                 Cancel
@@ -371,7 +402,7 @@ function ReserveModal({ table, onReserve, onClose, busy }) {
   );
 }
 
-function TableCard({ table, canReserve, onOpenReserve, onSeat, onMove, moveTargets, busy }) {
+function TableCard({ table, partyWith, canReserve, onOpenReserve, onSeat, onMove, moveTargets, busy }) {
   const available = table.status === 'Available';
   const reserved = table.status === 'Reserved';
 
@@ -401,6 +432,15 @@ function TableCard({ table, canReserve, onOpenReserve, onSeat, onMove, moveTarge
           <p className="dn-card-note">
             {reserved ? 'Reserved' : 'Seated'} {formatClock(table.assignedAt)}{table.assignedBy ? ` by ${table.assignedBy}` : ''}
           </p>
+          {reserved && partyWith.length > 0 && (
+            <p className="dn-card-note">Customer Arrived seats every table of the party.</p>
+          )}
+          {partyWith.length > 0 && (
+            <p className="dn-card-note" style={{ color: 'var(--accent)' }}>
+              <i className="fa-solid fa-link" style={{ fontSize: '0.65rem', marginRight: 5 }}></i>
+              Same party as {partyWith.join(', ')} · one bill
+            </p>
+          )}
         </>
       )}
 
@@ -506,7 +546,9 @@ function App() {
         return data;
       })
       .then(data => {
-        if (data.table) setTables(prev => prev.map(t => (t.id === data.table.id ? data.table : t)));
+        // Every table the call changed: a party's other tables move with this one.
+        const changed = [...(Array.isArray(data.tables) ? data.tables : []), ...(data.table ? [data.table] : [])];
+        if (changed.length) setTables(prev => prev.map(t => changed.find(c => c.id === t.id) || t));
         if (onDone) onDone(data.table, data);
       })
       .catch(e => { if (window.toast) window.toast(e.message); })
@@ -516,14 +558,21 @@ function App() {
       });
   };
 
-  const reserveTable = (id, payload) => patchTable(id, payload, 'Could not reserve this table.', (table) => {
-    if (table && window.toast) window.toast(`Reserved ${table.name} for ${table.guestName}`);
+  const namesOf = (data, fallback) => ((data && Array.isArray(data.tables) && data.tables.length)
+    ? data.tables.map(t => t.name).join(' + ') : fallback);
+
+  const reserveTable = (id, payload) => patchTable(id, payload, 'Could not reserve this table.', (table, data) => {
+    if (table && window.toast) window.toast(`Reserved ${namesOf(data, table.name)} for ${table.guestName}`);
     setReservingId(null);
   });
 
-  const seatTable = (table) => patchTable(table.id, { arrive: true }, 'Could not seat this customer.', (updated) => {
-    if (updated && window.toast) window.toast(`${updated.guestName || 'The customer'} is seated at ${updated.name}.`);
+  const seatTable = (table) => patchTable(table.id, { arrive: true }, 'Could not seat this customer.', (updated, data) => {
+    if (updated && window.toast) window.toast(`${updated.guestName || 'The customer'} is seated at ${namesOf(data, updated.name)}.`);
   });
+
+  // The other tables reserved with this one, by name.
+  const partyWith = (table) => (table.partyRef
+    ? tables.filter(t => t.partyRef === table.partyRef && t.id !== table.id).map(t => t.name) : []);
 
   const moveTable = (table, target) => {
     if (!target || !window.confirm(`Move ${table.guestName || 'this guest'}'s reservation from ${table.name} to ${target.name}?`)) return;
@@ -638,7 +687,7 @@ function App() {
       ) : (
         <div className="dn-grid">
           {visible.map(table => (
-            <TableCard key={table.id} table={table} canReserve={canReserve} busy={busy}
+            <TableCard key={table.id} table={table} partyWith={partyWith(table)} canReserve={canReserve} busy={busy}
               onOpenReserve={t => setReservingId(t.id)} onSeat={seatTable}
               onMove={moveTable} moveTargets={table.status === 'Reserved' ? moveTargetsFor(table) : []} />
           ))}
@@ -648,6 +697,7 @@ function App() {
       {reservingTable && (
         <ReserveModal
           table={reservingTable}
+          freeTables={tables.filter(t => t.status === 'Available' && t.id !== reservingTable.id)}
           busy={busy}
           onReserve={reserveTable}
           onClose={() => setReservingId(null)}

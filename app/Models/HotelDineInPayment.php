@@ -35,6 +35,7 @@ class HotelDineInPayment extends Model
         'order_ids',
         'collected_by',
         'paid_at',
+        'party_ref',
     ];
 
     protected $casts = [
@@ -83,6 +84,8 @@ class HotelDineInPayment extends Model
             'items'      => $this->items ?? [],
             'orderIds'   => $this->order_ids ?? [],
             'collectedBy' => $this->collected_by ?? '',
+            // Set when one payment settled several tables reserved together.
+            'partyRef'   => $this->party_ref ?? null,
             'paidAt'     => optional($this->paid_at)->toIso8601String(),
         ];
     }

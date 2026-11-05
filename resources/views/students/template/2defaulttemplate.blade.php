@@ -3184,7 +3184,8 @@ function TableReserveModal({ open, onClose, guest, onToast }) {
   const [time, setTime] = useState('19:00');
   const [party, setParty] = useState('2');
   const [tables, setTables] = useState(null);
-  const [tableId, setTableId] = useState(null);
+  // One table, or several together for a party too big for one.
+  const [tableIds, setTableIds] = useState([]);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   // The reservation just made, with the guest's private link to follow it.
@@ -3199,7 +3200,7 @@ function TableReserveModal({ open, onClose, guest, onToast }) {
 
   useEffect(() => {
     if (!open) return;
-    setDate(today); setTime('19:00'); setParty('2'); setTableId(null); setError(''); setTables(null); setDone(null);
+    setDate(today); setTime('19:00'); setParty('2'); setTableIds([]); setError(''); setTables(null); setDone(null);
     loadTables();
     // Tables Restaurant Management adds, removes or resizes, and ones another guest
     // takes, show up while the dialog is open, not only the next time it opens.
@@ -3217,11 +3218,22 @@ function TableReserveModal({ open, onClose, guest, onToast }) {
   if (!open) return null;
 
   const partySize = Math.max(1, parseInt(party, 10) || 1);
-  // Smallest table that fits first, the same rule the walk-in desk uses.
+  // The same rule the walk-in desk uses: tables that seat the whole party first,
+  // smallest first; then smaller ones, biggest first, to combine for a big party.
   const fits = (tables || [])
-    .filter(t => t.status === 'Available' && t.capacity >= partySize)
-    .sort((a, b) => a.capacity - b.capacity);
-  const picked = fits.find(t => t.id === tableId) || null;
+    .filter(t => t.status === 'Available')
+    .sort((a, b) => {
+      const fa = a.capacity >= partySize, fb = b.capacity >= partySize;
+      if (fa !== fb) return fa ? -1 : 1;
+      return fa ? a.capacity - b.capacity : b.capacity - a.capacity;
+    });
+  const pickedList = tableIds.map(id => fits.find(t => t.id === id)).filter(Boolean);
+  const pickedSeats = pickedList.reduce((n, t) => n + t.capacity, 0);
+  const freeSeats = fits.reduce((n, t) => n + t.capacity, 0);
+  const pickedNames = pickedList.map(t => t.name).join(' + ');
+  // Ready to send: enough seats, and no table left without a guest.
+  const picked = pickedList.length > 0 && pickedSeats >= partySize && pickedList.length <= partySize ? pickedList[0] : null;
+  const toggleTable = (id) => setTableIds(ids => (ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id]));
   const fieldLabel = { fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.4rem' };
 
   const submit = (e) => {
@@ -3235,19 +3247,22 @@ function TableReserveModal({ open, onClose, guest, onToast }) {
       method: isPublic ? 'POST' : 'PATCH',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
-      body: JSON.stringify({ table_id: picked.id, party_size: partySize, reserved_for: date + ' ' + time + ':00', as_guest: true }),
+      body: JSON.stringify({
+        table_id: picked.id, party_size: partySize, reserved_for: date + ' ' + time + ':00', as_guest: true,
+        ...(pickedList.length > 1 ? { with_tables: pickedList.slice(1).map(t => t.id) } : {}),
+      }),
     })
       .then(r => r.json().catch(() => ({})).then(data => (r.ok ? data : Promise.reject(Object.assign({ status: r.status }, data)))))
       .then((data) => {
         if (data && data.reservation && data.reservation.link) { setDone(data.reservation); return; }
         const when = new Date(date + 'T' + time).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-        if (onToast) onToast(`${picked.name} is reserved for you on ${when}. Give your name at the restaurant.`);
+        if (onToast) onToast(`${pickedNames} ${pickedList.length > 1 ? 'are' : 'is'} reserved for you on ${when}. Give your name at the restaurant.`);
         onClose();
       })
       .catch(err => {
         setError((err && err.message) || 'That table could not be reserved. Please try again.');
         // Someone else took it: show what is still free.
-        if (err && err.status === 409) { setTableId(null); loadTables(); }
+        if (err && err.status === 409) { setTableIds([]); loadTables(); }
       })
       .finally(() => setSaving(false));
   };
@@ -3272,7 +3287,7 @@ function TableReserveModal({ open, onClose, guest, onToast }) {
               <dl style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.85rem 1rem', margin: 0 }}>
                 {[
                   ['Reference', done.reference],
-                  ['Reserved table', done.tableName],
+                  [String(done.tableName || '').includes(' + ') ? 'Reserved tables' : 'Reserved table', done.tableName],
                   ['Date', new Date(done.reservedFor).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'long', day: 'numeric', year: 'numeric' })],
                   ['Time', new Date(done.reservedFor).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit' })],
                   ['Guests', done.partySize + (done.partySize === 1 ? ' person' : ' persons')],
@@ -3311,22 +3326,30 @@ function TableReserveModal({ open, onClose, guest, onToast }) {
               <div>
                 <label style={fieldLabel}>Guests</label>
                 <input type="number" className="booking-input" min="1" max="20" value={party}
-                  onChange={e => { setParty(e.target.value); setTableId(null); }} required />
+                  onChange={e => { setParty(e.target.value); setTableIds([]); }} required />
               </div>
               <div>
                 <label style={fieldLabel}>Choose a table</label>
                 {tables === null ? (
                   <p style={{ color: 'var(--fg-muted)', fontSize: '0.82rem', margin: 0 }}>Looking for free tables…</p>
-                ) : fits.length === 0 ? (
+                ) : fits.length === 0 || freeSeats < partySize ? (
                   <p style={{ color: 'var(--fg-muted)', fontSize: '0.82rem', margin: 0, lineHeight: 1.5 }}>
-                    No free table seats {partySize} right now. Try a smaller party, or ask the front desk.
+                    No free tables seat {partySize} right now. Try a smaller party, or ask the front desk.
                   </p>
                 ) : (
+                  <>
+                  <p style={{ color: 'var(--fg-muted)', fontSize: '0.76rem', margin: '0 0 0.5rem', lineHeight: 1.5 }}>
+                    {pickedList.length
+                      ? `${pickedNames} · seats ${pickedSeats}${pickedSeats < partySize ? `. Add a table for ${partySize - pickedSeats} more.` : ''}`
+                      : fits.some(t => t.capacity >= partySize)
+                        ? 'A big group? Pick more than one table.'
+                        : `No single table seats ${partySize}. Pick two or more tables together.`}
+                  </p>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '0.5rem', maxHeight: 210, overflowY: 'auto' }}>
                     {fits.map(t => {
-                      const on = t.id === tableId;
+                      const on = tableIds.includes(t.id);
                       return (
-                        <button key={t.id} type="button" onClick={() => setTableId(t.id)} aria-pressed={on}
+                        <button key={t.id} type="button" onClick={() => toggleTable(t.id)} aria-pressed={on}
                           style={{ textAlign: 'left', padding: '0.65rem 0.75rem', borderRadius: 8, cursor: 'pointer',
                             border: '1px solid ' + (on ? 'var(--accent)' : 'var(--border)'),
                             background: on ? 'rgba(201,168,76,0.12)' : 'rgba(255,255,255,0.03)', color: 'var(--fg)' }}>
@@ -3338,6 +3361,7 @@ function TableReserveModal({ open, onClose, guest, onToast }) {
                       );
                     })}
                   </div>
+                  </>
                 )}
               </div>
               <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.78rem', lineHeight: 1.5 }}>
@@ -3348,7 +3372,7 @@ function TableReserveModal({ open, onClose, guest, onToast }) {
               {error ? <p style={{ margin: 0, color: '#fb7185', fontSize: '0.8rem' }}>{error}</p> : null}
             </div>
             <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '1.35rem' }} disabled={!picked || saving}>
-              {saving ? 'Reserving…' : (picked ? 'Reserve ' + picked.name : 'Reserve a Table')} <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
+              {saving ? 'Reserving…' : (picked ? 'Reserve ' + pickedNames : 'Reserve a Table')} <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.7rem' }}></i>
             </button>
           </form>
           )}
