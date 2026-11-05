@@ -34,7 +34,16 @@ class HotelDineInReservation extends Model
         'outcome',
         'ended_at',
         'party_ref',
+        'hotel_dine_in_payment_id',
     ];
+
+    /** False until the migration linking a reservation to its payment has run. */
+    public static function paymentLinkSupported(): bool
+    {
+        static $has = null;
+
+        return $has ??= self::supported() && Schema::hasColumn('hotel_dine_in_reservations', 'hotel_dine_in_payment_id');
+    }
 
     protected $hidden = ['token_hash'];
 

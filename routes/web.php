@@ -4997,6 +4997,13 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
                   'service_charge'      => $bill['serviceCharge'],
               ] : []));
 
+            // A guest who reserved online sees this receipt on their reservation page.
+            if (\App\Models\HotelDineInReservation::paymentLinkSupported()) {
+                \App\Models\HotelDineInReservation::whereIn('hotel_dine_in_table_id', $party->pluck('hotel_dine_in_table_id'))
+                    ->whereNull('outcome')
+                    ->update(['hotel_dine_in_payment_id' => $payment->hotel_dine_in_payment_id, 'updated_at' => now()]);
+            }
+
             foreach ($party as $partyTable) {
                 \App\Support\HotelTableDesk::endReservation($partyTable, 'Completed');
 

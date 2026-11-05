@@ -471,6 +471,10 @@ class PublicSiteController extends Controller
                 'brandName' => $team ? $this->brandName($custom, $groupName, $facultyId) : HotelTemplateBuilder::DEFAULT_BRAND_NAME,
                 'theme'     => $this->siteTheme($custom),
                 'siteUrl'   => '/hotel/' . rawurlencode($slug),
+                // The header of the guest's printed bill, the same as the restaurant prints.
+                'printIdentity' => $team
+                    ? HotelTemplateBuilder::printIdentity($custom, $groupName, $facultyId, $this->templateFor($groupName, $facultyId))
+                    : null,
             ], $code)
             // The token is in the URL: never send it on to an image host or a cache.
             ->header('Referrer-Policy', 'no-referrer')
@@ -498,8 +502,54 @@ class PublicSiteController extends Controller
 
         return response()->json([
             'reservation' => $reservation->toGuestArray($table),
+            'bill'        => $this->guestBill($reservation, $table),
             'menu'        => $this->menuPayload($reservation->group_name, (int) $reservation->faculty_id),
         ])->header('Cache-Control', 'no-store')->header('Referrer-Policy', 'no-referrer');
+    }
+
+    /**
+     * The guest's own bill, for their reservation page: while they are seated, what
+     * has been ordered so far, priced by the same HotelDineInBill the restaurant
+     * settles from (Senior Citizen / PWD discounts are applied by the cashier when
+     * paying); once paid, the payment that settled it. Only what the paper shows:
+     * no staff names, no payment reference. Null before they are seated.
+     */
+    private function guestBill(HotelDineInReservation $reservation, ?HotelDineInTable $table): ?array
+    {
+        $line = fn (array $i) => array_intersect_key($i, array_flip(['tableName', 'placedAt', 'name', 'qty', 'price', 'line']));
+        $paper = fn (array $b) => array_intersect_key($b, array_flip([
+            'tableName', 'guestName', 'partySize', 'orderIds', 'subtotal', 'discounts', 'serviceChargeRate', 'serviceCharge',
+        ]));
+
+        if ($table && $table->status === 'Occupied') {
+            $bill = \App\Support\HotelDineInBill::for($table);
+
+            return ['state' => 'open', 'bill' => $paper($bill) + [
+                'items' => array_map($line, $bill['items']),
+                'total' => $bill['total'],
+            ]];
+        }
+
+        if (HotelDineInReservation::paymentLinkSupported() && $reservation->hotel_dine_in_payment_id) {
+            $payment = \App\Models\HotelDineInPayment::where('hotel_dine_in_payment_id', $reservation->hotel_dine_in_payment_id)
+                ->where('group_name', $reservation->group_name)
+                ->where('faculty_id', $reservation->faculty_id)
+                ->first();
+            if ($payment) {
+                $p = $payment->toTemplateArray();
+
+                return ['state' => 'paid', 'payment' => $paper($p) + [
+                    'items'      => array_map($line, $p['items'] ?? []),
+                    'totalDue'   => $p['totalDue'],
+                    'amountPaid' => $p['amountPaid'],
+                    'balance'    => $p['balance'],
+                    'method'     => $p['method'],
+                    'paidAt'     => $p['paidAt'],
+                ]];
+            }
+        }
+
+        return null;
     }
 
     /**

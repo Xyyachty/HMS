@@ -232,9 +232,12 @@
 </main>
 
 @unless ($error)
+{{-- The Dine-in Final Bill sheet, the same one the restaurant prints. --}}
+<script src="{{ asset('js/hms-dinein-bill.js') }}?v={{ filemtime(public_path('js/hms-dinein-bill.js')) }}"></script>
 <script>
 (function () {
   var DATA_URL = @json($dataUrl);
+  var PRINT_IDENTITY = @json($printIdentity ?? null);
   var app = document.getElementById('app');
   var state = { data: null, category: 'All', gone: null };
 
@@ -298,6 +301,24 @@
       + '</section>';
   }
 
+  /* The guest's bill: what they have ordered so far while seated, then the receipt
+     once the restaurant has settled it. Drawn by hms-dinein-bill.js. */
+  function billHtml(b) {
+    if (!b || !window.HmsDineInBill) return '';
+    var paid = b.state === 'paid';
+    var sheet = window.HmsDineInBill.html({
+      hotel: PRINT_IDENTITY || {},
+      bill: paid ? null : b.bill,
+      payment: paid ? b.payment : null,
+      note: paid ? '' : 'Your bill so far. Senior Citizen / PWD discounts are applied by the cashier when you pay.',
+    });
+    return '<section class="section" aria-labelledby="h-bill">'
+      + '<div class="section-head"><h2 id="h-bill">' + (paid ? 'My Receipt' : 'My Bill') + '</h2>'
+      + '<button type="button" class="tab" id="print-bill"><i class="fa-solid fa-print"></i> Print</button></div>'
+      + '<div id="bill-sheet">' + sheet + '</div>'
+      + '</section>';
+  }
+
   function menuHtml(menu) {
     var items = (menu && menu.items) || [];
     if (!items.length) {
@@ -340,6 +361,7 @@
     }
     var d = state.data;
     app.innerHTML = reservationHtml(d.reservation)
+      + billHtml(d.bill)
       + '<section class="section" aria-labelledby="h-menu">'
       +   '<div class="section-head"><h2 id="h-menu">Restaurant menu</h2><span class="muted" style="font-size:0.85rem">For viewing. Order at your table.</span></div>'
       +   menuHtml(d.menu)
@@ -349,6 +371,11 @@
   }
 
   app.addEventListener('click', function (e) {
+    if (e.target.closest('#print-bill')) {
+      var sheet = document.querySelector('#bill-sheet .dn-sheet');
+      if (sheet && window.HmsDineInBill) window.HmsDineInBill.print(sheet);
+      return;
+    }
     var tab = e.target.closest('.tab');
     if (!tab) return;
     state.category = tab.getAttribute('data-cat');

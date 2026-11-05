@@ -429,6 +429,8 @@
   window.HMS_HOTEL_IDENTITY = @json($printIdentity);
   window.HMS_HOTEL_NAME = window.HMS_HOTEL_IDENTITY.name;
 </script>
+{{-- The Dine-in Final Bill sheet, shared with the guest's reservation page. --}}
+<script src="{{ asset('js/hms-dinein-bill.js') }}?v={{ filemtime(public_path('js/hms-dinein-bill.js')) }}"></script>
 @verbatim
 <script type="text/babel">
 const { useState, useEffect, useCallback, useRef, useId } = React;
@@ -1271,180 +1273,17 @@ function DineInBillModal({ table, onFetchBill, onSettle, onClose, onToast, onRec
    when the bill has them; there is no tax line and no room charge. Its own <style>
    travels with it into the print frame. */
 function DineInBillSheet({ bill, payment, tendered, change }) {
-  const hotel = window.HMS_HOTEL_IDENTITY || { name: window.HMS_HOTEL_NAME || 'Restaurant' };
-  const src = payment || bill || {};
-  const items = src.items || [];
-  const orderIds = (src.orderIds || []).map(Number).filter(Boolean);
-  const billNo = 'BIL-' + String(orderIds.length ? Math.min(...orderIds) : (src.tableId || src.id || '')).padStart(6, '0');
-  const tableNames = String(src.tableName || '').split(' + ').filter(Boolean);
-  const multi = tableNames.length > 1;
-  // The food, then any Senior Citizen / PWD discounts and the service charge, as the
-  // server priced them. A payment from before those existed has only its total.
-  const totalDue = payment ? Number(payment.totalDue) || 0 : Number(bill && bill.total) || 0;
-  const subtotal = src.subtotal != null ? Number(src.subtotal) || 0 : totalDue;
-  const discounts = src.discounts || [];
-  const serviceCharge = Number(src.serviceCharge) || 0;
-  const paid = payment ? Number(payment.amountPaid) || 0 : 0;
-  const balance = payment ? Math.max(0, Number(payment.balance) || 0) : totalDue;
-  const printed = new Date();
-  const money = (n) => (Number(n) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const day = (iso) => {
-    const d = iso ? new Date(iso) : (payment && payment.paidAt ? new Date(payment.paidAt) : printed);
-    return isNaN(d) ? '' : String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
-  };
-  const longDay = (d) => String(d.getDate()).padStart(2, '0') + ' ' + d.toLocaleString('en-US', { month: 'short' }) + ' ' + d.getFullYear();
-  const contact = [hotel.phone && 'Tel: ' + hotel.phone, hotel.email].filter(Boolean).join(' | ');
-  // "Table 10" reads as 10 in the Tables row, like the paper form; any other name stays whole.
-  const tableLabel = tableNames.map(n => n.replace(/^Table\s+/i, '')).join(', ');
-
-  return (
-    <div className="dn-sheet" style={{ '--ink': hotel.ink || '#1f2a44' }}>
-      <style>{`
-        .dn-sheet { background: #fff; color: #1a1a1a; border-radius: 10px; padding: 1.5rem 1.6rem 1.4rem; font-family: Georgia, 'Times New Roman', serif; font-size: 13.5px; line-height: 1.45; font-variant-numeric: lining-nums; }
-        .dn-sheet * { box-sizing: border-box; }
-        .dn-sheet .h-top { text-align: center; }
-        .dn-sheet .h-logo { max-height: 56px; max-width: 160px; object-fit: contain; display: block; margin: 0 auto 0.4rem; }
-        .dn-sheet .h-name { margin: 0; color: var(--ink); font-size: 1.55rem; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; }
-        .dn-sheet .h-line { margin: 0.15rem 0 0; color: #2b2b2b; }
-        .dn-sheet .rule { border: 0; border-top: 2px solid var(--ink); margin: 0.8rem 0 0; }
-        .dn-sheet .rule + .rule { border-top-width: 1px; margin-top: 3px; }
-        .dn-sheet .title { text-align: center; color: var(--ink); font-size: 1.45rem; font-weight: 700; margin: 0.9rem 0 0.7rem; letter-spacing: 0.02em; }
-        .dn-sheet .meta { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; }
-        .dn-sheet .meta dl { margin: 0; display: grid; grid-template-columns: auto auto 1fr; column-gap: 0.6rem; row-gap: 0.15rem; }
-        .dn-sheet .meta dt { margin: 0; }
-        .dn-sheet .meta dd { margin: 0; }
-        .dn-sheet .meta .printed { white-space: nowrap; }
-        .dn-sheet table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-family: Georgia, serif; }
-        .dn-sheet thead th { background: color-mix(in srgb, var(--ink) 9%, #fff); color: var(--ink); font-family: Arial, sans-serif; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; text-align: left; padding: 0.55rem 0.4rem; border-top: 2px solid var(--ink); border-bottom: 1px solid var(--ink); }
-        .dn-sheet td { padding: 0.4rem 0.4rem; vertical-align: top; }
-        .dn-sheet tbody tr:first-child td { padding-top: 0.7rem; }
-        .dn-sheet tbody tr:last-child td { padding-bottom: 0.7rem; border-bottom: 1.5px solid var(--ink); }
-        .dn-sheet .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
-        .dn-sheet .qty { text-align: center; }
-        .dn-sheet .from { display: block; font-family: Arial, sans-serif; font-size: 0.7rem; color: #6b6b6b; }
-        .dn-sheet .sum { display: flex; justify-content: flex-end; gap: 2rem; align-items: baseline; padding: 0.65rem 0.4rem 0; color: var(--ink); font-weight: 700; }
-        .dn-sheet .sum b { font-size: 1.05rem; }
-        .dn-sheet .adj { display: flex; justify-content: space-between; gap: 1rem; padding: 0.15rem 0.4rem 0 1.6rem; }
-        .dn-sheet .adj + .sum { margin-top: 0.3rem; border-top: 1px solid color-mix(in srgb, var(--ink) 35%, #fff); }
-        .dn-sheet .sec { margin: 1rem 0 0.3rem; color: var(--ink); font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; }
-        .dn-sheet .pay { display: flex; justify-content: space-between; gap: 1rem; padding: 0.1rem 0.4rem 0.1rem 1.6rem; }
-        .dn-sheet .pay .muted { color: #6b6b6b; }
-        .dn-sheet .due { display: flex; justify-content: flex-end; gap: 2rem; align-items: baseline; margin-top: 0.6rem; padding: 0.55rem 0.4rem; border-top: 1.5px solid var(--ink); border-bottom: 1.5px solid var(--ink); color: var(--ink); font-weight: 700; }
-        .dn-sheet .due b { font-size: 1.5rem; color: #1a1a1a; }
-        .dn-sheet .due.is-owed b { color: #b91c1c; }
-        .dn-sheet .sign { margin-top: 1.8rem; display: flex; align-items: flex-end; gap: 0.5rem; }
-        .dn-sheet .sign span:last-child { flex: 0 1 18rem; border-bottom: 1px solid #1a1a1a; height: 1.2rem; }
-        .dn-sheet .sign-name { margin: 0.25rem 0 0; padding-left: 9.5rem; font-style: italic; color: var(--ink); }
-        @media (max-width: 520px) {
-          .dn-sheet { padding: 1rem; font-size: 12.5px; }
-          .dn-sheet .h-name { font-size: 1.2rem; }
-          .dn-sheet .meta { flex-direction: column; }
-          .dn-sheet .unit { display: none; }
-          .dn-sheet .sign-name { padding-left: 0; }
-        }
-      `}</style>
-
-      <div className="h-top">
-        {hotel.logo ? <img className="h-logo" src={hotel.logo} alt="" /> : null}
-        <h3 className="h-name">{hotel.name || 'Restaurant'}</h3>
-        {hotel.address ? <p className="h-line">{hotel.address}</p> : null}
-        {contact ? <p className="h-line">{contact}</p> : null}
-      </div>
-      <hr className="rule" /><hr className="rule" />
-
-      <p className="title">FINAL BILL – DINE-IN</p>
-
-      <div className="meta">
-        <dl>
-          <dt>Bill No.</dt><dd>:</dd><dd>{billNo}</dd>
-          <dt>Guest Name</dt><dd>:</dd><dd>{src.guestName || 'Guest'}</dd>
-          <dt>No. of Guests</dt><dd>:</dd><dd>{src.partySize ? src.partySize + (Number(src.partySize) === 1 ? ' Guest' : ' Guests') : '—'}</dd>
-          <dt>{multi ? 'Tables' : 'Table'}</dt><dd>:</dd><dd>{tableLabel || '—'}</dd>
-        </dl>
-        <span className="printed">Date Printed: {longDay(printed)}</span>
-      </div>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Date</th><th>Description</th><th className="qty">Qty</th>
-            <th className="num unit">Unit Price (PHP)</th><th className="num">Amount (PHP)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.length === 0 ? (
-            <tr><td colSpan="5" style={{ color: '#6b6b6b' }}>Nothing ordered.</td></tr>
-          ) : items.map((i, k) => (
-            <tr key={k}>
-              <td style={{ whiteSpace: 'nowrap' }}>{day(i.placedAt)}</td>
-              <td>{i.name}{multi && i.tableName ? <span className="from">{i.tableName}</span> : null}</td>
-              <td className="qty">{i.qty}</td>
-              <td className="num unit">{money(i.price != null ? i.price : (Number(i.line) || 0) / (Number(i.qty) || 1))}</td>
-              <td className="num">{money(i.line)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      <div className="sum"><span>SUBTOTAL</span><b>₱{money(subtotal)}</b></div>
-      {(discounts.length > 0 || serviceCharge > 0) && (
-        <>
-          {discounts.map((d, k) => (
-            <React.Fragment key={k}>
-              <div className="adj"><span>Less: VAT exemption – {d.type} ({d.fullName}, ID {d.idNumber})</span><span className="num">-{money(d.vat)}</span></div>
-              <div className="adj"><span>Less: 20% {d.type} discount</span><span className="num">-{money(d.discount)}</span></div>
-            </React.Fragment>
-          ))}
-          {serviceCharge > 0 && (
-            <div className="adj"><span>Service charge ({src.serviceChargeRate}%)</span><span className="num">{money(serviceCharge)}</span></div>
-          )}
-          <div className="sum"><span>TOTAL AMOUNT</span><b>₱{money(totalDue)}</b></div>
-        </>
-      )}
-
-      <p className="sec">Payments &amp; Credits Applied:</p>
-      {payment && paid > 0 ? (
-        <>
-          <div className="pay">
-            <span>{day(payment.paidAt)} &nbsp; {payment.method}{payment.reference ? ' · ' + payment.reference : ''}</span>
-            <span className="num">-{money(paid)}</span>
-          </div>
-        </>
-      ) : (
-        <div className="pay muted"><span>None yet</span><span className="num">0.00</span></div>
-      )}
-      <div className="pay"><span>Payment Method</span><span>{payment ? payment.method : '—'}</span></div>
-      {/* What the guest handed over and what went back. Cash only: card and e-wallet
-          payments are for the exact amount. tendered is known only right after
-          paying, so a receipt opened later shows the amount paid. */}
-      {payment && payment.method === 'Cash' && (
-        <>
-          <div className="pay"><span>Cash Received</span><span className="num">₱{money(tendered > 0 ? tendered : paid)}</span></div>
-          <div className="pay"><span>Change</span><span className="num">₱{money(tendered > 0 ? change : 0)}</span></div>
-        </>
-      )}
-
-      <div className={'due' + (balance > 0 ? ' is-owed' : '')}><span>TOTAL BALANCE</span><b>{money(balance)}</b></div>
-
-      <div className="sign"><span>Guest Signature:</span><span></span></div>
-      <p className="sign-name">{src.guestName || 'Guest'}</p>
-    </div>
-  );
+  // Drawn by public/js/hms-dinein-bill.js, the same sheet the guest sees on their
+  // reservation page; every value in it is escaped there.
+  const html = window.HmsDineInBill
+    ? window.HmsDineInBill.html({ hotel: window.HMS_HOTEL_IDENTITY, bill, payment, tendered, change })
+    : '';
+  return <div dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
 // Prints the sheet next to the button, alone, from a hidden frame, on white.
 function printDineInSheet(e) {
-  const sheet = e.currentTarget.closest('.tb-modal-body').querySelector('.dn-sheet');
-  const frame = document.createElement('iframe');
-  frame.setAttribute('aria-hidden', 'true');
-  frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
-  document.body.appendChild(frame);
-  frame.onload = () => { frame.contentWindow.focus(); frame.contentWindow.print(); setTimeout(() => frame.remove(), 1000); };
-  frame.contentDocument.open();
-  frame.contentDocument.write('<!doctype html><html><head><meta charset="utf-8"><title>Final Bill</title>'
-    + '<style>@page{margin:12mm}html,body{margin:0;background:#fff}.dn-sheet{border-radius:0!important;padding:0!important}</style></head><body>'
-    + sheet.outerHTML + '</body></html>');
-  frame.contentDocument.close();
+  if (window.HmsDineInBill) window.HmsDineInBill.print(e.currentTarget.closest('.tb-modal-body').querySelector('.dn-sheet'));
 }
 
 /* The Final Bill on screen, with Print. receipt is { payment, tendered, change } after
