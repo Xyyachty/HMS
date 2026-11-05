@@ -4923,12 +4923,22 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
         }
 
         $data = $request->validate([
-            'amount_paid' => 'required|numeric|min:0',
-            'method'      => 'required|string|max:50',
+            // One way of paying, or `splits` for a bill paid in parts.
+            'amount_paid' => 'required_without:splits|numeric|min:0',
+            'method'      => 'required_without:splits|string|max:50',
             'reference'   => 'nullable|string|max:255',
+            // Paid in parts, e.g. cash and the rest by GCash: [{method, amount, reference}].
+            // Each amount is what that method pays toward the bill; cash change is not in it.
+            'splits'             => 'sometimes|array|min:2|max:4',
+            'splits.*.method'    => 'required_with:splits|string|max:50',
+            'splits.*.amount'    => 'required_with:splits|numeric|min:0.01',
+            'splits.*.reference' => 'nullable|string|max:255',
             // Senior Citizen / PWD guests at the table: [{type, full_name, id_number}].
             'discounts'   => 'sometimes|array|max:50',
         ]);
+        if (!empty($data['splits']) && !\App\Models\HotelDineInPayment::splitsSupported()) {
+            return response()->json(['message' => 'Split payments are not available yet. Try again in a minute.'], 422);
+        }
 
         // Tables reserved together are settled together, with one payment.
         $party = $table->partyTables();
@@ -4966,11 +4976,31 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
         }
 
         $total = (float) $bill['total'];
-        $paid = round((float) $data['amount_paid'], 2);
+
+        // The parts of a split payment, each a method the restaurant takes. Together
+        // they may not pay more than the bill: change comes out of the cash, not into it.
+        $splits = [];
+        foreach ($data['splits'] ?? [] as $part) {
+            $splits[] = [
+                'method'    => \App\Models\HotelDineInPayment::normalizeMethod($part['method']),
+                'amount'    => round((float) $part['amount'], 2),
+                'reference' => isset($part['reference']) ? mb_substr(trim((string) $part['reference']), 0, 255) : '',
+            ];
+        }
+        if ($splits && array_sum(array_column($splits, 'amount')) > $total + 0.005) {
+            return response()->json([
+                'message' => 'The parts add up to more than the bill of PHP ' . number_format($total, 2)
+                    . '. Enter only what each method pays; give the extra cash back as change.',
+            ], 422);
+        }
+        $paid = $splits ? round(array_sum(array_column($splits, 'amount')), 2) : round((float) $data['amount_paid'], 2);
+        $method = $splits
+            ? implode(' + ', array_values(array_unique(array_column($splits, 'method'))))
+            : \App\Models\HotelDineInPayment::normalizeMethod($data['method']);
 
         // Settling and freeing the table are one move: a table left Occupied after the
         // customer has paid and walked out is a table nobody can reserve.
-        $payment = \Illuminate\Support\Facades\DB::transaction(function () use ($membership, $table, $party, $bill, $total, $paid, $data) {
+        $payment = \Illuminate\Support\Facades\DB::transaction(function () use ($membership, $table, $party, $bill, $total, $paid, $data, $splits, $method) {
             $payment = \App\Models\HotelDineInPayment::create([
                 'group_name'             => $membership->group_name,
                 'faculty_id'             => $membership->faculty_id,
@@ -4982,8 +5012,10 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
                 'total_due'              => $total,
                 'amount_paid'            => $paid,
                 'balance'                => max(0, round($total - $paid, 2)),
-                'method'                 => \App\Models\HotelDineInPayment::normalizeMethod($data['method']),
-                'reference'              => isset($data['reference']) ? trim($data['reference']) : null,
+                'method'                 => $method,
+                'reference'              => $splits
+                    ? (implode(', ', array_filter(array_column($splits, 'reference'))) ?: null)
+                    : (isset($data['reference']) ? trim($data['reference']) : null),
                 'items'                  => $bill['items'],
                 'order_ids'              => $bill['orderIds'],
                 'collected_by'           => auth()->user()?->name,
@@ -4995,7 +5027,8 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
                   'discount_total'      => $bill['discountTotal'],
                   'service_charge_rate' => $bill['serviceChargeRate'],
                   'service_charge'      => $bill['serviceCharge'],
-              ] : []));
+              ] : [])
+              + ($splits ? ['splits' => $splits] : []));
 
             // A guest who reserved online sees this receipt on their reservation page.
             if (\App\Models\HotelDineInReservation::paymentLinkSupported()) {

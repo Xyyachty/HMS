@@ -545,6 +545,8 @@ class PublicSiteController extends Controller
                     'balance'    => $p['balance'],
                     'method'     => $p['method'],
                     'paidAt'     => $p['paidAt'],
+                    // Each method and amount of a split payment, without references.
+                    'splits'     => array_map(fn ($s) => ['method' => $s['method'] ?? '', 'amount' => (float) ($s['amount'] ?? 0)], $p['splits'] ?? []),
                 ]];
             }
         }

@@ -112,14 +112,21 @@
         + '<div class="sum"><span>TOTAL AMOUNT</span><b>₱' + money(totalDue) + '</b></div>';
     }
 
+    // One line per way the bill was paid: a split payment (cash, then the rest by
+    // GCash or card) lists each part with its amount.
+    var parts = payment ? ((payment.splits && payment.splits.length) ? payment.splits : [{ method: payment.method, amount: paid }]) : [];
     var payments = payment && paid > 0
-      ? '<div class="pay"><span>' + esc(day(payment.paidAt)) + ' &nbsp; ' + esc(payment.method) + '</span><span class="num">-' + money(paid) + '</span></div>'
+      ? parts.map(function (s) {
+          return '<div class="pay"><span>' + esc(day(payment.paidAt)) + ' &nbsp; ' + esc(s.method) + '</span><span class="num">-' + money(s.amount) + '</span></div>';
+        }).join('')
       : '<div class="pay muted"><span>None yet</span><span class="num">0.00</span></div>';
     payments += '<div class="pay"><span>Payment Method</span><span>' + esc(payment ? payment.method : '—') + '</span></div>';
-    // Cash only: card and e-wallet payments are for the exact amount. A receipt opened
-    // later than the payment does not know the cash handed over, so it shows the paid amount.
-    if (payment && payment.method === 'Cash') {
-      payments += '<div class="pay"><span>Cash Received</span><span class="num">₱' + money(tendered > 0 ? tendered : paid) + '</span></div>'
+    // The cash part only: card and e-wallet payments are for the exact amount. A
+    // receipt opened later does not know the cash handed over, so it shows the
+    // cash part itself and no change.
+    var cashPart = parts.filter(function (s) { return s.method === 'Cash'; }).reduce(function (n, s) { return n + (Number(s.amount) || 0); }, 0);
+    if (payment && cashPart > 0) {
+      payments += '<div class="pay"><span>Cash Received</span><span class="num">₱' + money(tendered > 0 ? tendered : cashPart) + '</span></div>'
         + '<div class="pay"><span>Change</span><span class="num">₱' + money(tendered > 0 ? change : 0) + '</span></div>';
     }
 

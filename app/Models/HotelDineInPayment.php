@@ -41,7 +41,16 @@ class HotelDineInPayment extends Model
         'discount_total',
         'service_charge_rate',
         'service_charge',
+        'splits',
     ];
+
+    /** False until the split-payment migration has run. */
+    public static function splitsSupported(): bool
+    {
+        static $has = null;
+
+        return $has ??= \Illuminate\Support\Facades\Schema::hasColumn('hotel_dine_in_payments', 'splits');
+    }
 
     /** False until the discounts / service charge migration has run. */
     public static function pricingSupported(): bool
@@ -57,6 +66,7 @@ class HotelDineInPayment extends Model
         'discount_total'      => 'float',
         'service_charge_rate' => 'float',
         'service_charge'      => 'float',
+        'splits'              => 'array',
         'total_due'   => 'float',
         'amount_paid' => 'float',
         'balance'     => 'float',
@@ -111,6 +121,10 @@ class HotelDineInPayment extends Model
             'discountTotal'     => (float) ($this->discount_total ?? 0),
             'serviceChargeRate' => (float) ($this->service_charge_rate ?? 0),
             'serviceCharge'     => (float) ($this->service_charge ?? 0),
+            // Each part of a bill paid more than one way; one part otherwise.
+            'splits'            => $this->splits ?: [[
+                'method' => $this->method, 'amount' => (float) $this->amount_paid, 'reference' => $this->reference ?? '',
+            ]],
             'paidAt'     => optional($this->paid_at)->toIso8601String(),
         ];
     }

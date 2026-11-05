@@ -1055,19 +1055,49 @@ function DineInBillModal({ table, onFetchBill, onSettle, onClose, onToast, onRec
 
   const total = bill ? Number(bill.total) || 0 : 0;
   const paid = Math.max(0, parseFloat(amount) || 0);
-  const shortBy = Math.max(0, total - paid);
   const unserved = (bill && bill.unserved) || [];
 
   // Cash: the field is what the customer hands over; only the bill is recorded as
   // paid and the rest goes back as change. Other methods record what was typed.
   const isCash = method === 'Cash';
-  const recorded = isCash ? Math.min(paid, total) : paid;
-  const change = isCash ? Math.max(0, paid - total) : 0;
   const names = bill ? bill.tableName : table.name;
   const isParty = !!(bill && bill.tables && bill.tables.length > 1);
 
+  /* Split payment: cash and the rest by GCash, card or another method. A cash part
+     is what the guest hands over; only what the bill still needs after the other
+     parts is recorded from it, and the rest is change. Other parts record exactly
+     what was typed, and together they may not pay more than the bill. */
+  const [split, setSplit] = useState(false);
+  const [parts, setParts] = useState([
+    { method: 'Cash', amount: '', reference: '' },
+    { method: 'GCash', amount: '', reference: '' },
+  ]);
+  const amt = (v) => Math.max(0, parseFloat(v) || 0);
+  const nonCash = parts.filter(p => p.method !== 'Cash').reduce((n, p) => n + amt(p.amount), 0);
+  const cashGiven = parts.filter(p => p.method === 'Cash').reduce((n, p) => n + amt(p.amount), 0);
+  const cashApplied = Math.min(cashGiven, Math.max(0, total - nonCash));
+  const tooMuch = split && nonCash > total + 0.005;
+  const setPart = (i, patch) => setParts(list => list.map((p, k) => (k === i ? Object.assign({}, p, patch) : p)));
+  const addPart = () => setParts(list => [...list, { method: 'Card', amount: '', reference: '' }]);
+  const removePart = (i) => setParts(list => list.filter((p, k) => k !== i));
+  // What the other parts leave of the bill, for "Pay the rest".
+  const restFor = (i) => Math.max(0, Math.round((total - parts.reduce((n, p, k) => (k === i ? n : n + amt(p.amount)), 0)) * 100) / 100);
+
+  const recorded = split ? nonCash + cashApplied : (isCash ? Math.min(paid, total) : paid);
+  const change = split ? Math.max(0, cashGiven - cashApplied) : (isCash ? Math.max(0, paid - total) : 0);
+  const shortBy = Math.max(0, Math.round((total - recorded) * 100) / 100);
+  // Sent to the server: one cash part (what it pays, change taken out), then the rest.
+  const sentParts = split ? [
+    ...(cashApplied > 0 ? [{ method: 'Cash', amount: Math.round(cashApplied * 100) / 100, reference: '' }] : []),
+    ...parts.filter(p => p.method !== 'Cash' && amt(p.amount) > 0)
+      .map(p => ({ method: p.method, amount: Math.round(amt(p.amount) * 100) / 100, reference: p.reference.trim() })),
+  ] : [];
+  const methodLabel = split ? [...new Set(sentParts.map(p => p.method))].join(' + ') : method;
+
   const settle = (e) => {
     e.preventDefault();
+    if (tooMuch) { setError('GCash, card and other parts add up to more than the bill. Lower them; cash change comes from the cash part.'); return; }
+    if (split && sentParts.length === 0) { setError('Enter how much each method pays.'); return; }
     if (shortBy > 0 && !window.confirm(
       `${formatPeso(shortBy)} of this bill will go uncollected. Close ${isParty ? 'the tables' : 'the table'} anyway?`
     )) return;
@@ -1076,11 +1106,17 @@ function DineInBillModal({ table, onFetchBill, onSettle, onClose, onToast, onRec
       return;
     }
     setBusy(true);
-    Promise.resolve(onSettle(table.id, { amount_paid: recorded, method, reference: reference.trim(), discounts: filled }))
+    // Split into one part only is just that one way of paying.
+    const payload = split && sentParts.length > 1
+      ? { splits: sentParts, discounts: filled }
+      : split
+        ? { amount_paid: sentParts[0].amount, method: sentParts[0].method, reference: sentParts[0].reference, discounts: filled }
+        : { amount_paid: recorded, method, reference: reference.trim(), discounts: filled };
+    Promise.resolve(onSettle(table.id, payload))
       .then((payment) => {
-        if (onToast) onToast(`${names} settled — ${formatPeso(recorded)} by ${method}.`);
+        if (onToast) onToast(`${names} settled — ${formatPeso(recorded)} by ${methodLabel}.`);
         // The receipt for what was just paid, one for the whole party.
-        if (payment && onReceipt) onReceipt({ payment, tendered: paid, change, contactNo: table.contactNo });
+        if (payment && onReceipt) onReceipt({ payment, tendered: split ? cashGiven : paid, change, contactNo: table.contactNo });
         onClose();
       })
       .catch(err => setError((err && err.message) || 'Could not settle this table.'))
@@ -1215,6 +1251,57 @@ function DineInBillModal({ table, onFetchBill, onSettle, onClose, onToast, onRec
               {bill.items.length > 0 && unserved.length === 0 && (
                 <form onSubmit={settle} style={{ marginTop: '1.3rem' }}>
                   <p className="tb-bill-title" style={{ marginTop: 0 }}>Payment</p>
+                  <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.7rem' }}>
+                    {[[false, 'One Payment'], [true, 'Split Payment']].map(([on, label]) => (
+                      <button key={label} type="button" aria-pressed={split === on}
+                        className={split === on ? 'btn-primary' : 'btn-outline'}
+                        style={{ fontSize: '0.66rem', padding: '0.4rem 0.8rem' }}
+                        onClick={() => { setSplit(on); setError(''); }}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  {split ? (
+                    <div style={{ display: 'grid', gap: '0.45rem' }}>
+                      {parts.map((p, i) => (
+                        <div key={i} style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center' }}>
+                          <select className="booking-input" value={p.method} onChange={e => setPart(i, { method: e.target.value })}
+                            aria-label="Payment method" style={{ flex: '1 0 7rem', width: 'auto', padding: '0.5rem 1.6rem 0.5rem 0.6rem', fontSize: '0.8rem', colorScheme: 'dark', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)' }}>
+                            {BILL_METHODS.map(m => <option key={m} value={m} style={{ background: 'var(--card, #181714)' }}>{m}</option>)}
+                          </select>
+                          <input type="number" className="booking-input" min="0" step="0.01" value={p.amount}
+                            placeholder={p.method === 'Cash' ? 'Cash received' : 'Amount'} aria-label={p.method + ' amount'}
+                            onChange={e => setPart(i, { amount: e.target.value })} style={{ flex: '1 1 7rem', width: 'auto', padding: '0.5rem 0.6rem', fontSize: '0.8rem' }} />
+                          {p.method !== 'Cash' && (
+                            <input type="text" className="booking-input" placeholder="Ref # / card last 4" value={p.reference}
+                              onChange={e => setPart(i, { reference: e.target.value })} style={{ flex: '1 1 7rem', width: 'auto', padding: '0.5rem 0.6rem', fontSize: '0.8rem' }} />
+                          )}
+                          {p.method !== 'Cash' && restFor(i) > 0 && (
+                            <button type="button" className="btn-outline" onClick={() => setPart(i, { amount: String(restFor(i)) })}
+                              style={{ fontSize: '0.62rem', padding: '0.35rem 0.6rem' }} title="Fill in what the other parts leave">
+                              Pay the rest
+                            </button>
+                          )}
+                          {parts.length > 2 && (
+                            <button type="button" onClick={() => removePart(i)} aria-label="Remove this part" style={toolBtnStyle('danger')}>
+                              <i className="fa-solid fa-xmark" style={{ fontSize: 11 }}></i>
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      {parts.length < 4 && (
+                        <button type="button" onClick={addPart}
+                          style={{ justifySelf: 'start', background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: '0.74rem', padding: '0.2rem 0' }}>
+                          <i className="fa-solid fa-plus" style={{ fontSize: '0.62rem', marginRight: 5 }}></i> Add another method
+                        </button>
+                      )}
+                      <p style={{ margin: 0, fontSize: '0.74rem', color: 'var(--fg-muted)' }}>
+                        Paid so far {money2(recorded)} of {money2(total)}
+                        {shortBy > 0 ? ` · ${money2(shortBy)} still to pay` : ''}
+                      </p>
+                    </div>
+                  ) : (
+                  <>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.7rem' }}>
                     <div>
                       <label style={fieldLabel}>Payment Method</label>
@@ -1236,10 +1323,14 @@ function DineInBillModal({ table, onFetchBill, onSettle, onClose, onToast, onRec
                         value={reference} onChange={e => setReference(e.target.value)} />
                     </div>
                   )}
-                  <p style={{ margin: '0.65rem 0 0', fontSize: '0.76rem', color: shortBy > 0 ? 'var(--danger, #fb7185)' : 'var(--success, #4ade80)' }}>
-                    {shortBy > 0
-                      ? `${formatPeso(shortBy)} of this bill will go uncollected.`
-                      : 'This settles the bill in full.'}
+                  </>
+                  )}
+                  <p style={{ margin: '0.65rem 0 0', fontSize: '0.76rem', color: tooMuch || shortBy > 0 ? 'var(--danger, #fb7185)' : 'var(--success, #4ade80)' }}>
+                    {tooMuch
+                      ? 'GCash, card and other parts are more than the bill. Lower them.'
+                      : shortBy > 0
+                        ? `${money2(shortBy)} of this bill will go uncollected.`
+                        : 'This settles the bill in full.'}
                   </p>
                   {change > 0 && (
                     <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', fontWeight: 700, color: 'var(--fg)' }}>
