@@ -286,6 +286,28 @@
   .rc-strong { font-weight: 700; margin-top: 0.25rem; }
   .rc-due { color: #c81e3a; }
   .rc-thanks { margin: 0.9rem 0 0; text-align: center; color: #5f5a55; font-size: 0.8rem; }
+  /* Folio layout (the client's statement-of-account format). */
+  .rc-title { font-weight: 700; color: #1a1a1a !important; letter-spacing: 0.06em; text-transform: uppercase; }
+  .rc-info { display: grid; grid-template-columns: 1fr 1fr; gap: 0.2rem 1.2rem; margin: 0; font-size: 0.78rem; }
+  .rc-info div { display: flex; gap: 0.4rem; min-width: 0; }
+  .rc-info dt { flex: none; width: 5.4rem; color: #5f5a55; }
+  .rc-info dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+  .rc-table { width: 100%; border-collapse: collapse; font-size: 0.76rem; }
+  .rc-table th { text-align: left; font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; color: #5f5a55; padding: 0 0.35rem 0.35rem; border-bottom: 1px solid #c9c3ba; }
+  .rc-table td { padding: 0.3rem 0.35rem; vertical-align: top; }
+  .rc-table th:first-child, .rc-table td:first-child { padding-left: 0; }
+  .rc-table th:last-child, .rc-table td:last-child { padding-right: 0; }
+  .rc-table .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .rc-table .rc-date { white-space: nowrap; color: #5f5a55; }
+  .rc-sum .rc-line { padding-left: 35%; }
+  .receipt-print .rc-line { font-size: 0.8rem; }
+  .rc-sign { margin: 1.4rem 0 0; display: flex; flex-direction: column; align-items: flex-start; font-size: 0.78rem; color: #5f5a55; }
+  .rc-sign span:first-child { width: 14rem; max-width: 100%; border-bottom: 1px solid #1a1a1a; height: 1.4rem; }
+  @media (max-width: 480px) {
+    .rc-info { grid-template-columns: 1fr; }
+    .rc-table .rc-unitcol { display: none; }
+    .rc-sum .rc-line { padding-left: 0; }
+  }
   @media print {
     body * { visibility: hidden !important; }
     .receipt-print, .receipt-print * { visibility: visible !important; }
@@ -522,12 +544,47 @@ function ReceiptModal({ receipt, onClose }) {
   const nights = Math.max(1, Math.ceil((Number(room.blocks) || 1) / 2));
   const methods = [...new Set(bill.payments.filter(p => p.amountPaid > 0).map(p => p.method).filter(Boolean))];
   const cash = receipt.cash;
-  const paidEarlier = cash ? (Number(bill.amountPaid) || 0) - cash.paidNow : 0;
   const line = (label, amount, key, cls, unit) => (
     <div className={'rc-line' + (cls ? ' ' + cls : '')} key={key}>
       <span>{label}{unit && <span className="rc-unit">{unit}</span>}</span><span className="rc-amt">{amount}</span>
     </div>
   );
+
+  // Folio format: "06 Nov 2026" in the header, "04/11/2026" on each line.
+  const peso = (n) => (Number(n) < 0 ? '−₱' : '₱') + Math.abs(Number(n) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const toDate = (v) => {
+    if (!v) return null;
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+    const d = m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(v);
+    return isNaN(d) ? null : d;
+  };
+  const longDay = (d) => d ? String(d.getDate()).padStart(2, '0') + ' ' + d.toLocaleString('en-US', { month: 'short' }) + ' ' + d.getFullYear() : '—';
+  const shortDay = (v) => { const d = toDate(v); return d ? String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear() : ''; };
+  const hhmm = (d) => d ? String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') : '';
+  const checkInDay = toDate(bill.checkIn);
+  const checkOutAt = bill.checkedOutAt ? new Date(bill.checkedOutAt) : null;
+  const checkInText = longDay(checkInDay) + (bill.checkInTime ? ` (${String(bill.checkInTime).slice(0, 5)})` : '');
+  const checkOutText = checkOutAt ? `${longDay(checkOutAt)} (${hhmm(checkOutAt)})` : longDay(toDate(bill.checkOut));
+
+  const rows = [];
+  rows.push(room.promo
+    ? { key: 'room', date: bill.checkIn, desc: `Room charge — ${room.promo} package`, qty: 1, unit: room.subtotal, amount: room.subtotal }
+    : { key: 'room', date: bill.checkIn, desc: 'Room charge' + (bill.roomCategory ? ` (${bill.roomCategory})` : ''), sub: `per ${room.blockHours} hrs`, qty: room.blocks, unit: room.rate, amount: room.subtotal });
+  ((bill.children && bill.children.items) || []).forEach((c, i) => rows.push(
+    { key: 'ch' + i, date: bill.checkIn, desc: `Child, age ${c.age}`, sub: c.rate ? 'per night' : c.label, qty: c.rate ? c.nights : 1, unit: c.rate || 0, amount: c.line || 0 }));
+  service.orders.forEach(order => order.items.forEach((item, i) => rows.push(
+    { key: 'rs' + order.orderId + '-' + i, date: order.placedAt, desc: `In-room dining — ${item.name}`, qty: item.qty, unit: item.price, amount: item.line })));
+  addons.items.forEach(a => rows.push(
+    { key: 'ad' + a.id, date: bill.checkIn, desc: a.name, sub: a.perNight ? `× ${a.nights} night${a.nights === 1 ? '' : 's'}` : '', qty: a.qty, unit: a.unitPrice, amount: a.line }));
+  extras.items.forEach(c => rows.push({ key: 'ex' + c.id, date: c.addedAt, desc: c.description, qty: 1, unit: c.amount, amount: c.amount }));
+
+  // Senior Citizen / PWD: the only deduction this receipt carries. The bill takes the
+  // VAT exemption off with the 20%, so both are shown or the totals would not add up.
+  const discounts = discountBillLines(bill);
+  const discountVat = discounts.reduce((s, d) => s + (Number(d.vat) || 0), 0);
+  const discount20 = discounts.reduce((s, d) => s + (Number(d.discount) || 0), 0);
+  const subtotal = (Number(bill.total) || 0) + discountVat + discount20;
+  const payments = bill.payments.filter(p => Number(p.amountPaid) !== 0);
 
   return (
     <div className="bill-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label="Receipt">
@@ -549,53 +606,90 @@ function ReceiptModal({ receipt, onClose }) {
           <div className="receipt-print">
             <div className="rc-top">
               <h3>{window.HMS_HOTEL_NAME || 'Hotel'}</h3>
-              <p>Official Receipt</p>
-              <p className="rc-no">{number}</p>
-              <p>{issued.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' })}, {issued.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</p>
+              <p className="rc-title">Guest Statement of Account / Folio</p>
+              <p>(Official Receipt)</p>
             </div>
 
             <div className="rc-block">
-              {line('Guest', bill.guestName || '—', 'g')}
-              {line('Room', bill.roomName || '—', 'r')}
-              {line('Check-in', formatBillDateTime(bill.checkIn, bill.checkInTime), 'ci')}
-              {line('Check-out', formatBillStamp(bill.checkedOutAt) || formatBillDate(bill.checkOut) || '—', 'co')}
+              <dl className="rc-info">
+                <div><dt>Receipt No.</dt><dd>{number}</dd></div>
+                <div><dt>Date Issued</dt><dd>{longDay(issued)}</dd></div>
+                <div><dt>Folio No.</dt><dd>{'FL-' + String(bill.bookingId || '').padStart(6, '0')}</dd></div>
+                <div><dt>Room No.</dt><dd>{(bill.roomName || '—') + (bill.roomCategory ? ` (${bill.roomCategory})` : '')}</dd></div>
+                <div><dt>Guest Name</dt><dd>{bill.guestName || '—'}</dd></div>
+                <div><dt>Check-In</dt><dd>{checkInText}</dd></div>
+                <div><dt>Contact No.</dt><dd>{bill.contactNo || '—'}</dd></div>
+                <div><dt>Check-Out</dt><dd>{checkOutText}</dd></div>
+                <div><dt>ID No.</dt><dd>{bill.idNumber || '—'}</dd></div>
+                <div><dt>Nights</dt><dd>{nights} Night{nights === 1 ? '' : 's'}</dd></div>
+              </dl>
             </div>
 
             <div className="rc-block">
-              <p className="rc-head">Charges</p>
-              {room.promo
-                ? line('Room ' + (bill.roomName || ''), formatPeso(room.subtotal), 'room', '', roomUnit(room))
-                : [
-                    line('Room rate', formatPeso(room.rate), 'rate', '', `per ${room.blockHours} hrs`),
-                    line('Length of stay', `${nights} night${nights === 1 ? '' : 's'}`, 'len', '', `${room.blocks} × ${room.blockHours} hrs`),
-                    line('Room total', formatPeso(room.subtotal), 'room', '', `${room.blocks} × ${formatPeso(room.rate)}`),
-                  ]}
-              {((bill.children && bill.children.items) || []).map((c, i) => (
-                line(`Child, age ${c.age}`, c.line ? formatPeso(c.line) : 'Free', 'ch' + i, '', c.rate ? `${c.nights} × ${formatPeso(c.rate)}` : c.label)
-              ))}
-              {discountBillLines(bill).map(d => [
-                line(`VAT exemption — ${d.fullName}`, formatPeso(-d.vat), 'dv' + d.id, '', `${d.type} ID ${d.idNumber} · on ${formatPeso(d.eligible)}`),
-                line(`${d.type} discount (20%) — ${d.fullName}`, formatPeso(-d.discount), 'dd' + d.id, '', `20% of ${formatPeso(d.vatExemptPrice)}`),
-              ])}
-              {service.orders.map(order => order.items.map((item, i) => (
-                line(`Room service — ${item.name}`, formatPeso(item.line), 'rs' + order.orderId + '-' + i, '', `${item.qty} × ${formatPeso(item.price)}`)
-              )))}
-              {addons.items.map(a => line(`Add-on — ${a.name}`, formatPeso(a.line), 'ad' + a.id, '', addonUnit(a)))}
-              {extras.items.map(c => line(c.description, formatPeso(c.amount), 'ex' + c.id))}
-              {line('Total', formatPeso(bill.total), 'total', 'rc-strong')}
+              <table className="rc-table">
+                <thead>
+                  <tr>
+                    <th>Date</th><th>Description</th><th className="num">Qty</th>
+                    <th className="num rc-unitcol">Unit Price</th><th className="num">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map(r => (
+                    <tr key={r.key}>
+                      <td className="rc-date">{shortDay(r.date)}</td>
+                      <td>{r.desc}{r.sub && <span className="rc-unit">{r.sub}</span>}</td>
+                      <td className="num">{r.qty}</td>
+                      <td className="num rc-unitcol">{peso(r.unit)}</td>
+                      <td className="num">{r.amount ? peso(r.amount) : 'Free'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="rc-block rc-sum">
+              {line('Subtotal', peso(subtotal), 'sub', 'rc-strong')}
+              {discounts.length > 0 && line('Less: SC / PWD VAT exemption', peso(-discountVat), 'lv')}
+              {discounts.length > 0 && line('Less: SC / PWD discount (20%)', peso(-discount20), 'ld')}
+              {line('Total Charges', peso(bill.total), 'total', 'rc-strong')}
             </div>
 
             <div className="rc-block">
-              <p className="rc-head">Payment</p>
-              {line('Payment method', methods.join(', ') || '—', 'method')}
-              {paidEarlier > 0 && line('Paid earlier', formatPeso(paidEarlier), 'early')}
-              {cash && line('Cash received', formatPeso(cash.tendered), 'cash')}
-              {cash && line('Change', formatPeso(cash.change), 'change')}
-              {line('Amount paid', formatPeso(bill.amountPaid), 'paid', 'rc-strong')}
-              {balance > 0 && line('Unpaid balance', formatPeso(balance), 'bal', 'rc-strong rc-due')}
+              <p className="rc-head">Payments / Deposits</p>
+              <table className="rc-table">
+                <tbody>
+                  {payments.map(p => (
+                    <tr key={p.id}>
+                      <td className="rc-date">{shortDay(p.paidAt)}</td>
+                      <td>{(Number(p.amountPaid) < 0 ? 'Refund' : p.type === 'Full' ? 'Full payment' : 'Payment')} ({p.method}{p.reference ? ' · ' + p.reference : ''})</td>
+                      <td className="num">{peso(-p.amountPaid)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {cash && line('Cash received', peso(cash.tendered), 'cash')}
+              {cash && line('Change', peso(cash.change), 'change')}
             </div>
 
-            <p className="rc-thanks">Thank you for staying with us.</p>
+            <div className="rc-block rc-sum">
+              {line('Total Paid', peso(bill.amountPaid), 'paid', 'rc-strong')}
+              {line('Balance Due', peso(balance), 'bal', 'rc-strong' + (balance > 0 ? ' rc-due' : ''))}
+            </div>
+
+            <div className="rc-block">
+              <p className="rc-head">SC / PWD Discount</p>
+              {discounts.length
+                ? discounts.map(d => line(`${d.type} — ${d.fullName}`, peso(d.discount), 'sc' + d.id, '', `ID No: ${d.idNumber || 'N/A'} · 20% of ${peso(d.vatExemptPrice)}`))
+                : line('SC / PWD Discount', peso(0) + ' (ID No: N/A)', 'sc0')}
+              {line('Payment Method', methods.join(', ') || '—', 'method')}
+            </div>
+
+            <p className="rc-sign">
+              <span></span>
+              <span>Guest Signature — {bill.guestName || 'Guest'}</span>
+            </p>
+
+            <p className="rc-thanks">Thank you for staying with us! Mabuhay!</p>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', marginTop: '1.2rem' }}>
