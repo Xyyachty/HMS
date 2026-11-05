@@ -167,6 +167,15 @@ Route::prefix('hotel')->name('public.hotel')->group(function () {
         ->middleware('throttle:60,1')
         ->where('token', '[A-Za-z0-9]{1,100}')
         ->name('.reservation.data');
+    // The same page opened from My Bookings: the signed-in account is the access check.
+    Route::get('/{slug}/my-reservation/{id}', [PublicSiteController::class, 'myReservation'])
+        ->middleware('throttle:60,1')
+        ->whereNumber('id')
+        ->name('.my-reservation');
+    Route::get('/{slug}/api/my-reservation/{id}', [PublicSiteController::class, 'myReservationData'])
+        ->middleware('throttle:60,1')
+        ->whereNumber('id')
+        ->name('.my-reservation.data');
 
     // Food, ordered by the guest reading the menu. Same reason as the two above:
     // the staff endpoint sits behind the students login a visitor does not have.

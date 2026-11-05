@@ -52,7 +52,12 @@ class HotelSimulationAuthController extends Controller
         return response()->json([
             'bookings' => $bookings->map->toGuestArray()->values(),
             'tables'   => $context
-                ? \App\Support\HotelGuestStay::tableReservations($context['group_name'], (int) $context['faculty_id'])
+                ? \App\Support\HotelGuestStay::tableReservations(
+                    $context['group_name'],
+                    (int) $context['faculty_id'],
+                    // The builder has no slug in its URL; the team's own is the same page.
+                    $slug ?? \App\Models\Group::slugForTeam($context['group_name'], (int) $context['faculty_id'])
+                )
                 : [],
         ]);
     }

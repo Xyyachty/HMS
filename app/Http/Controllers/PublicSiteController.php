@@ -419,12 +419,38 @@ class PublicSiteController extends Controller
      */
     public function reservation(string $slug, string $token)
     {
-        [$reservation, $error, $code] = $this->guestReservation($slug, $token);
+        return $this->reservationPage($slug, $this->guestReservation($slug, $token), '/api/reservation/' . $token);
+    }
+
+    public function reservationData(string $slug, string $token)
+    {
+        return $this->reservationJson($this->guestReservation($slug, $token));
+    }
+
+    /**
+     * The same page, opened from My Bookings by the signed-in guest who made the
+     * reservation. The account is the access check here instead of the token, so a
+     * guest who lost the private link still has a way back to the status and menu.
+     */
+    public function myReservation(string $slug, int $id)
+    {
+        return $this->reservationPage($slug, $this->accountReservation($slug, $id), '/api/my-reservation/' . $id);
+    }
+
+    public function myReservationData(string $slug, int $id)
+    {
+        return $this->reservationJson($this->accountReservation($slug, $id));
+    }
+
+    /** @param array{0: ?HotelDineInReservation, 1: ?string, 2: int} $found */
+    private function reservationPage(string $slug, array $found, string $dataPath)
+    {
+        [$reservation, $error, $code] = $found;
 
         return response()
             ->view('hotel.reservation', [
                 'error'     => $error,
-                'dataUrl'   => $reservation ? '/hotel/' . rawurlencode($slug) . '/api/reservation/' . $token : null,
+                'dataUrl'   => $reservation ? '/hotel/' . rawurlencode($slug) . $dataPath : null,
                 'template'  => $reservation ? $this->templateFor($reservation) : '1',
                 'brandName' => $reservation ? $this->brandName($reservation) : HotelTemplateBuilder::DEFAULT_BRAND_NAME,
                 'siteUrl'   => '/hotel/' . rawurlencode($slug),
@@ -435,9 +461,10 @@ class PublicSiteController extends Controller
             ->header('X-Robots-Tag', 'noindex');
     }
 
-    public function reservationData(string $slug, string $token)
+    /** @param array{0: ?HotelDineInReservation, 1: ?string, 2: int} $found */
+    private function reservationJson(array $found)
     {
-        [$reservation, $error, $code] = $this->guestReservation($slug, $token);
+        [$reservation, $error, $code] = $found;
         if (!$reservation) {
             return response()->json(['message' => $error], $code);
         }
@@ -475,6 +502,37 @@ class PublicSiteController extends Controller
         }
         if ($reservation->linkExpired()) {
             return [null, 'This reservation link has expired. Please contact the hotel if you need your reservation details.', 410];
+        }
+
+        return [$reservation, null, 200];
+    }
+
+    /**
+     * A reservation of the guest signed into this hotel, by id. Another guest's id,
+     * another hotel's, or nobody signed in all get the same 404.
+     *
+     * @return array{0: ?HotelDineInReservation, 1: ?string, 2: int}
+     */
+    private function accountReservation(string $slug, int $id): array
+    {
+        $context = \App\Support\HotelSimulationAuth::teamContextForSlug($slug);
+        if ($context) {
+            // A "remember me" guest opening the page in a new tab is signed back in first.
+            \App\Support\HotelSimulationAuth::restore(request()->user(), $context);
+        }
+        $auth = \App\Support\HotelSimulationAuth::current();
+
+        $reservation = $context && HotelDineInReservation::supported()
+            && is_array($auth) && ($auth['type'] ?? null) === 'customer'
+            ? HotelDineInReservation::where('hotel_dine_in_reservation_id', $id)
+                ->where('group_name', $context['group_name'])
+                ->where('faculty_id', $context['faculty_id'])
+                ->where('hotel_customer_id', (int) ($auth['customer_id'] ?? 0))
+                ->first()
+            : null;
+
+        if (!$reservation) {
+            return [null, 'Sign in to the hotel website with the account that made this reservation, then open it from My Bookings.', 404];
         }
 
         return [$reservation, null, 200];

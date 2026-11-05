@@ -3155,6 +3155,14 @@ function MyBookingsModal({ open, onClose }) {
                       : '—'}
                     {` · ${t.partySize} ${t.partySize === 1 ? 'person' : 'persons'}`}
                   </p>
+                  {t.link && (
+                    <a href={t.link} target="_blank" rel="noopener noreferrer"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--accent)', fontSize: '0.75rem', padding: '0.45rem 0 0', textDecoration: 'none' }}>
+                      <i className="fa-solid fa-utensils" style={{ fontSize: '0.65rem' }}></i>
+                      View status and menu
+                      <i className="fa-solid fa-arrow-up-right-from-square" style={{ fontSize: '0.6rem' }}></i>
+                    </a>
+                  )}
                   <p style={Object.assign({}, muted, { fontSize: '0.72rem', marginTop: '0.25rem' })}>Reservation #{t.reference}</p>
                 </div>
               ))}

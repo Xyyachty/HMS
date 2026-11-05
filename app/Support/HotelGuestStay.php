@@ -89,7 +89,7 @@ class HotelGuestStay
      * that made them (hotel_customer_id), which reserveForGuest() records. Empty for
      * anyone else, and until the reservations table exists.
      */
-    public static function tableReservations(string $groupName, int $facultyId): array
+    public static function tableReservations(string $groupName, int $facultyId, ?string $slug): array
     {
         $auth = HotelSimulationAuth::current();
         if (!is_array($auth) || ($auth['type'] ?? null) !== 'customer' || !HotelDineInReservation::supported()) {
@@ -112,9 +112,13 @@ class HotelGuestStay
             ->get()
             ->keyBy('hotel_dine_in_table_id');
 
+        // The page with the status and the menu, opened by this account rather than the
+        // private link (PublicSiteController::myReservation). Root-relative, as elsewhere.
         return $reservations->map(fn (HotelDineInReservation $reservation) => $reservation->toGuestArray(
             $reservation->outcome === null ? $tables->get($reservation->hotel_dine_in_table_id) : null
-        ))->values()->all();
+        ) + [
+            'link' => $slug ? '/hotel/' . rawurlencode($slug) . '/my-reservation/' . $reservation->hotel_dine_in_reservation_id : null,
+        ])->values()->all();
     }
 
     /**
