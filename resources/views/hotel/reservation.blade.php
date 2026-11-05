@@ -35,7 +35,8 @@
   .wrap { max-width: 960px; margin: 0 auto; padding: 0 16px; }
   header.top { border-bottom: 1px solid var(--border); }
   header.top .wrap { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 64px; }
-  .brand { font-family: var(--display-font); font-size: 1.35rem; font-weight: 700; color: var(--fg); text-decoration: none; }
+  .brand { display: inline-flex; align-items: center; gap: 0.6rem; min-width: 0; font-family: var(--display-font); font-size: 1.35rem; font-weight: 700; color: var(--fg); text-decoration: none; }
+  .brand-logo { width: 34px; height: 34px; object-fit: contain; flex: none; }
   .back { color: var(--fg-muted); font-size: 0.85rem; text-decoration: none; white-space: nowrap; }
   .back:hover { color: var(--accent); }
   main.wrap { padding-top: 2.25rem; padding-bottom: 4rem; }
@@ -102,11 +103,111 @@
   }
   @media (prefers-reduced-motion: reduce) { .s-seated::before, .skeleton { animation: none; } }
 </style>
+<script>
+/* The team's own design on top of the template's defaults above: the site and header
+   colours, the menu card colour and the site-wide type, as the builder saved them.
+   A chosen background becomes a whole palette (card, border, text, a readable accent)
+   by the same rules as the templates' sitePalette() / cardPalette() / siteTypeCss(),
+   so the page matches the site. Anything that does not parse is left at the default. */
+(function () {
+  var t = @json($theme);
+
+  function rgbOf(v) {
+    v = String(v || '').trim();
+    var m = /^#([0-9a-f]{3})$/i.exec(v);
+    if (m) v = '#' + m[1].split('').map(function (c) { return c + c; }).join('');
+    m = /^#([0-9a-f]{6})([0-9a-f]{2})?$/i.exec(v);
+    if (m) return { r: parseInt(m[1].slice(0, 2), 16), g: parseInt(m[1].slice(2, 4), 16), b: parseInt(m[1].slice(4, 6), 16) };
+    m = /^rgba?\(([^)]+)\)$/i.exec(v);
+    if (m) {
+      var p = m[1].split(',').map(parseFloat);
+      if (p.length >= 3 && p.slice(0, 3).every(function (x) { return !isNaN(x); })) return { r: p[0], g: p[1], b: p[2] };
+    }
+    return null;
+  }
+  function lum(c) {
+    var f = function (x) { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); };
+    return 0.2126 * f(c.r) + 0.7152 * f(c.g) + 0.0722 * f(c.b);
+  }
+  function mix(a, b, k) {
+    var c = function (x, y) { return Math.round(x + (y - x) * k); };
+    return { r: c(a.r, b.r), g: c(a.g, b.g), b: c(a.b, b.b) };
+  }
+  function css(c, alpha) {
+    return alpha == null ? 'rgb(' + c.r + ',' + c.g + ',' + c.b + ')' : 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + alpha + ')';
+  }
+
+  var siteAccent = rgbOf(getComputedStyle(document.documentElement).getPropertyValue('--accent'));
+
+  // The site's accent, darkened or lightened toward the text until it reads at 3:1.
+  function readableAccent(bgLum, fg) {
+    if (!siteAccent) return null;
+    for (var k = 0; k <= 0.91; k += 0.13) {
+      var c = mix(siteAccent, fg, k);
+      var l = lum(c);
+      if ((Math.max(l, bgLum) + 0.05) / (Math.min(l, bgLum) + 0.05) >= 3) return c;
+    }
+    return null;
+  }
+
+  function palette(bg) {
+    var rgb = rgbOf(bg);
+    if (!rgb) return null;
+    var L = lum(rgb);
+    var fg = L > 0.4 ? { r: 20, g: 17, b: 12 } : { r: 245, g: 240, b: 232 };
+    var accent = readableAccent(L, fg) || fg;
+    // The status colours follow the ground too: the light template's on a pale
+    // background, the dark template's on a dark one.
+    var status = L > 0.4
+      ? { '--ok': '#1f7a4d', '--ok-soft': 'rgba(31,122,77,0.1)', '--bad': '#b4233c', '--bad-soft': 'rgba(180,35,60,0.08)', '--warn': '#a15c0b', '--warn-soft': 'rgba(161,92,11,0.1)' }
+      : { '--ok': '#6fcf97', '--ok-soft': 'rgba(111,207,151,0.12)', '--bad': '#fb7185', '--bad-soft': 'rgba(251,113,133,0.12)', '--warn': '#f2b45a', '--warn-soft': 'rgba(242,180,90,0.12)' };
+    var vars = {
+      '--bg': css(rgb), '--card': css(mix(rgb, fg, 0.07)), '--border': css(mix(rgb, fg, 0.18)),
+      '--fg': css(fg), '--fg-muted': css(fg, 0.62), '--accent': css(accent), '--accent-soft': css(accent, 0.12),
+    };
+    for (var k in status) vars[k] = status[k];
+    return vars;
+  }
+
+  function rule(selector, vars, extra) {
+    var out = selector + '{';
+    for (var k in vars) out += k + ':' + vars[k] + ';';
+    return out + (extra || '') + '}';
+  }
+
+  // Free text from the builder goes into a stylesheet: keep it to one declaration.
+  function clean(v) { return String(v || '').replace(/[{}<>;\\]/g, '').trim(); }
+
+  var out = '';
+  var p = palette(t.site);
+  if (p) out += rule(':root', p);
+  p = palette(t.header);
+  if (p) out += rule('header.top', p, 'background:var(--bg);color:var(--fg);');
+  p = palette(t.menuCard);
+  if (p) { p['--card'] = p['--bg']; out += rule('.dish', p, 'color:var(--fg);'); }
+
+  var family = clean(t.family), size = clean(t.size), color = clean(t.color), heading = clean(t.headingColor);
+  var body = (family ? 'font-family:' + family + ';' : '') + (size ? 'font-size:' + size + ';' : '') + (color ? 'color:' + color + ';' : '');
+  if (body) out += 'body{' + body + '}';
+  if (family) out += 'h1,h2,h3,.brand,.table-hero b,button{font-family:' + family + ';}';
+  if (heading) out += 'h1,h2,h3{color:' + heading + ';}';
+
+  if (out) {
+    var style = document.createElement('style');
+    style.textContent = out;
+    document.head.appendChild(style);
+  }
+})();
+</script>
 </head>
 <body>
 <header class="top">
   <div class="wrap">
-    <a class="brand" href="{{ $siteUrl }}">{{ $brandName }}</a>
+    <a class="brand" href="{{ $siteUrl }}">
+      <img class="brand-logo" src="{{ $theme['logo'] ?: $theme['defaultLogo'] }}" alt="" referrerpolicy="no-referrer"
+        data-fallback="{{ $theme['defaultLogo'] }}" onerror="if (!this.dataset.failed) { this.dataset.failed = '1'; this.src = this.dataset.fallback; } else { this.style.display = 'none'; }">
+      <span>{{ $brandName }}</span>
+    </a>
     <a class="back" href="{{ $siteUrl }}"><i class="fa-solid fa-arrow-left"></i> Hotel website</a>
   </div>
 </header>

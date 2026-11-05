@@ -447,12 +447,20 @@ class PublicSiteController extends Controller
     {
         [$reservation, $error, $code] = $found;
 
+        // Dressed as the team's own site, the not-found page too: the slug is in the
+        // URL already, so this tells nobody anything the address does not.
+        $team = Group::resolveSlug($slug);
+        $groupName = $team ? (string) $team['group_name'] : '';
+        $facultyId = $team ? (int) $team['faculty_id'] : 0;
+        $custom = $team ? HotelTemplateBuilder::mergeTeamCustomizations($groupName, $facultyId) : [];
+
         return response()
             ->view('hotel.reservation', [
                 'error'     => $error,
                 'dataUrl'   => $reservation ? '/hotel/' . rawurlencode($slug) . $dataPath : null,
-                'template'  => $reservation ? $this->templateFor($reservation) : '1',
-                'brandName' => $reservation ? $this->brandName($reservation) : HotelTemplateBuilder::DEFAULT_BRAND_NAME,
+                'template'  => $team ? $this->templateFor($groupName, $facultyId) : '1',
+                'brandName' => $team ? $this->brandName($custom, $groupName, $facultyId) : HotelTemplateBuilder::DEFAULT_BRAND_NAME,
+                'theme'     => $this->siteTheme($custom),
                 'siteUrl'   => '/hotel/' . rawurlencode($slug),
             ], $code)
             // The token is in the URL: never send it on to an image host or a cache.
@@ -538,24 +546,65 @@ class PublicSiteController extends Controller
         return [$reservation, null, 200];
     }
 
-    private function templateFor(HotelDineInReservation $reservation): string
+    private function templateFor(string $groupName, int $facultyId): string
     {
-        $selected = (string) GroupSettings::where('group_name', $reservation->group_name)
-            ->where('faculty_id', $reservation->faculty_id)
+        $selected = (string) GroupSettings::where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
             ->value('selected_template');
 
         return $selected === '2' ? '2' : '1';
     }
 
     /** The name the team gave its site, else the approved concept's: what the site's header shows. */
-    private function brandName(HotelDineInReservation $reservation): string
+    private function brandName(array $custom, string $groupName, int $facultyId): string
     {
-        $custom = HotelTemplateBuilder::mergeTeamCustomizations($reservation->group_name, (int) $reservation->faculty_id);
         $label = trim((string) data_get($custom, HotelTemplateBuilder::BRAND_NAME_KEY . '.items.0.label', ''));
 
         return $label !== ''
             ? $label
-            : HotelTemplateBuilder::hotelDefaults($reservation->group_name, (int) $reservation->faculty_id)['name'];
+            : HotelTemplateBuilder::hotelDefaults($groupName, $facultyId)['name'];
+    }
+
+    /**
+     * The parts of the team's design the reservation page wears: the site and header
+     * colours, the menu card colour, the site-wide type and the logo. Raw strings as
+     * the builder saved them; the page turns colours into a palette the same way the
+     * templates' SiteTheme does, and ignores anything that does not parse.
+     */
+    private function siteTheme(array $custom): array
+    {
+        $str = fn ($value) => is_string($value) ? trim($value) : '';
+
+        $colors = [];
+        foreach ((array) data_get($custom, HotelTemplateBuilder::SITE_COLORS_KEY . '.items', []) as $item) {
+            if (is_array($item) && is_string($item['id'] ?? null)) {
+                $colors[$item['id']] = $str($item['bg'] ?? null);
+            }
+        }
+
+        $type = (array) data_get($custom, HotelTemplateBuilder::TYPOGRAPHY_KEY . '.items.0', []);
+
+        // The shared logo, then the per-section ones older sites still carry (the
+        // templates' resolveLogo() reads them in this order), then the default.
+        $images = (array) data_get($custom, HotelTemplateBuilder::CARD_IMAGES_KEY . '.map', []);
+        $logo = '';
+        foreach (['logo', 'logo-home', 'logo-rooms', 'logo-restaurant'] as $id) {
+            if (($logo = $str($images['brand:' . $id] ?? null)) !== '') {
+                break;
+            }
+        }
+
+        return [
+            'site'         => $colors['site'] ?? '',
+            'header'       => $colors['header'] ?? '',
+            'menuCard'     => $str(data_get($custom, HotelTemplateBuilder::MENU_CARD_STYLE_KEY . '.items.0.bg')),
+            'family'       => $str($type['family'] ?? null),
+            'size'         => $str($type['size'] ?? null),
+            'color'        => $str($type['color'] ?? null),
+            'headingColor' => $str($type['headingColor'] ?? null),
+            'logo'         => $logo,
+            'defaultLogo'  => asset('new_logo_in_chtm....png'),
+        ];
     }
 
     public function enterAmenity(Request $request, string $slug)
