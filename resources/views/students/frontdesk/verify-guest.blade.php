@@ -497,7 +497,9 @@ function useNow(intervalMs) {
 const PAYMENT_METHODS = ['Cash', 'GCash', 'Card', 'Other'];
 
 /* The guest's receipt, shown once the stay is checked out. Built from the closed
-   stay's final bill, so it lists the payment just taken with the earlier ones.
+   stay's final bill: the room rate and length of stay on their own lines, then what
+   was paid and how. receipt.cash, set when the check-out was paid in cash, carries
+   the cash handed over and the change; it is not stored, so only this receipt has it.
    Print prints the receipt alone (see .receipt-print in the styles). */
 function ReceiptModal({ receipt, onClose }) {
   useEffect(() => {
@@ -516,6 +518,11 @@ function ReceiptModal({ receipt, onClose }) {
   const addons = bill.addons || { items: [], subtotal: 0 };
   const extras = bill.otherCharges || { items: [], subtotal: 0 };
   const balance = Number(bill.balance) || 0;
+  const room = bill.room;
+  const nights = Math.max(1, Math.ceil((Number(room.blocks) || 1) / 2));
+  const methods = [...new Set(bill.payments.filter(p => p.amountPaid > 0).map(p => p.method).filter(Boolean))];
+  const cash = receipt.cash;
+  const paidEarlier = cash ? (Number(bill.amountPaid) || 0) - cash.paidNow : 0;
   const line = (label, amount, key, cls, unit) => (
     <div className={'rc-line' + (cls ? ' ' + cls : '')} key={key}>
       <span>{label}{unit && <span className="rc-unit">{unit}</span>}</span><span className="rc-amt">{amount}</span>
@@ -556,7 +563,13 @@ function ReceiptModal({ receipt, onClose }) {
 
             <div className="rc-block">
               <p className="rc-head">Charges</p>
-              {line('Room ' + (bill.roomName || ''), formatPeso(bill.room.subtotal), 'room', '', roomUnit(bill.room))}
+              {room.promo
+                ? line('Room ' + (bill.roomName || ''), formatPeso(room.subtotal), 'room', '', roomUnit(room))
+                : [
+                    line('Room rate', formatPeso(room.rate), 'rate', '', `per ${room.blockHours} hrs`),
+                    line('Length of stay', `${nights} night${nights === 1 ? '' : 's'}`, 'len', '', `${room.blocks} × ${room.blockHours} hrs`),
+                    line('Room total', formatPeso(room.subtotal), 'room', '', `${room.blocks} × ${formatPeso(room.rate)}`),
+                  ]}
               {((bill.children && bill.children.items) || []).map((c, i) => (
                 line(`Child, age ${c.age}`, c.line ? formatPeso(c.line) : 'Free', 'ch' + i, '', c.rate ? `${c.nights} × ${formatPeso(c.rate)}` : c.label)
               ))}
@@ -573,18 +586,13 @@ function ReceiptModal({ receipt, onClose }) {
             </div>
 
             <div className="rc-block">
-              <p className="rc-head">Payments</p>
-              {bill.payments.length === 0
-                ? line('None', formatPeso(0), 'none')
-                : bill.payments.map(pay => line(
-                    `${pay.type} — ${[pay.method, formatBillStamp(pay.paidAt)].filter(Boolean).join(', ')}`,
-                    formatPeso(pay.amountPaid),
-                    'p' + pay.id
-                  ))}
-              {line('Total paid', formatPeso(bill.amountPaid), 'paid', 'rc-strong')}
-              {balance > 0
-                ? line('Unpaid balance', formatPeso(balance), 'bal', 'rc-strong rc-due')
-                : line('Balance', formatPeso(0), 'bal', 'rc-strong')}
+              <p className="rc-head">Payment</p>
+              {line('Payment method', methods.join(', ') || '—', 'method')}
+              {paidEarlier > 0 && line('Paid earlier', formatPeso(paidEarlier), 'early')}
+              {cash && line('Cash received', formatPeso(cash.tendered), 'cash')}
+              {cash && line('Change', formatPeso(cash.change), 'change')}
+              {line('Amount paid', formatPeso(bill.amountPaid), 'paid', 'rc-strong')}
+              {balance > 0 && line('Unpaid balance', formatPeso(balance), 'bal', 'rc-strong rc-due')}
             </div>
 
             <p className="rc-thanks">Thank you for staying with us.</p>
@@ -653,7 +661,12 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
 
   if (!open) return null;
 
-  const paid = Math.max(0, parseFloat(amount) || 0);
+  // Cash: the field is what the guest hands over. Only the balance is recorded as
+  // paid; the rest goes back as change. Other methods record the amount as typed.
+  const entered = Math.max(0, parseFloat(amount) || 0);
+  const isCash = method === 'Cash';
+  const paid = isCash ? Math.min(entered, Math.max(0, balance)) : entered;
+  const change = isCash ? Math.max(0, entered - Math.max(0, balance)) : 0;
   const remainingAfter = Math.max(0, balance - paid);
 
   const submitCharge = (e) => {
@@ -685,7 +698,7 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
     if (!(paid > 0)) { if (onToast) onToast('Enter the amount received.'); return; }
     setBusy(true);
     Promise.resolve(onPay({ amount: paid, method, reference: reference.trim(), full: remainingAfter <= 0 }))
-      .then(() => { setReference(''); if (onToast) onToast(formatPeso(paid) + ' received by ' + method + '.'); })
+      .then(() => { setReference(''); if (onToast) onToast(formatPeso(paid) + ' received by ' + method + '.' + (change > 0 ? ' Change: ' + formatPeso(change) + '.' : '')); })
       .catch(err => { if (onToast) onToast((err && err.message) || 'Could not record that payment.'); })
       .finally(() => setBusy(false));
   };
@@ -709,7 +722,7 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
       `${formatPeso(remainingAfter)} will still be unpaid after this. Check out anyway?`
     )) return;
     setBusy(true);
-    Promise.resolve(onSettle({ amount: paid, method, reference: reference.trim() }))
+    Promise.resolve(onSettle({ amount: paid, method, reference: reference.trim(), tendered: entered, change }))
       .catch(err => { if (onToast) onToast((err && err.message) || 'Could not complete check-out.'); })
       .finally(() => setBusy(false));
   };
@@ -936,7 +949,7 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
                     </select>
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.35rem' }}>Amount Received</label>
+                    <label style={{ fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.35rem' }}>{isCash ? 'Cash Received' : 'Amount Received'}</label>
                     <input type="number" className="booking-input" min="0" step="0.01" value={amount}
                       onChange={e => setAmount(e.target.value)} />
                   </div>
@@ -953,6 +966,11 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
                     ? `${formatPeso(remainingAfter)} will still be unpaid.`
                     : 'This pays the bill in full.'}
                 </p>
+                {change > 0 && (
+                  <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', fontWeight: 700, color: 'var(--fg)' }}>
+                    Change: {formatPeso(change)}
+                  </p>
+                )}
                 <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1rem', flexWrap: 'wrap' }}>
                   <button type="button" className={canCheckOut ? 'btn-outline' : 'btn-solid'} disabled={busy || paid <= 0} onClick={payOnly}
                     style={{ flex: '1 1 10rem' }} title="Record the money without checking the guest out">
@@ -1780,14 +1798,17 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
   const settleAndCheckOut = (payment) => {
     const bookingId = billFor.reservation.bookingId;
     const lastBill = bill;
+    const cash = payment.method === 'Cash' && payment.amount > 0
+      ? { tendered: payment.tendered, change: payment.change, paidNow: payment.amount }
+      : null;
     return Promise.resolve(onSettleAndCheckOut(bookingId, payment)).then(() => {
       if (onToast) {
         onToast(`${billFor.reservation.fullName || 'Guest'} checked out of ${billFor.room.name}.`);
       }
       closeBill();
       return Promise.resolve(onFetchBill(bookingId))
-        .then(finalBill => setReceipt({ bill: finalBill || lastBill }))
-        .catch(() => { if (lastBill) setReceipt({ bill: lastBill }); });
+        .then(finalBill => setReceipt({ bill: finalBill || lastBill, cash }))
+        .catch(() => { if (lastBill) setReceipt({ bill: lastBill, cash }); });
     });
   };
 
