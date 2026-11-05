@@ -64,11 +64,13 @@
             </div>
             <button class="panel-undo-label" title="Undo the last change you made" onclick="undoEditorChange()">Undo</button>
             <div class="flex-1"></div>
-            <button class="panel-tool-btn panel-tool-btn--bare" title="Clear the styling on the selected element only" onclick="resetSelectedStyles()">
-                <i class="fas fa-eraser"></i>
+            {{-- Words, not bare icons: an eraser and a circular arrow told a
+                 non-designer nothing, and one of them wipes the whole page. --}}
+            <button class="panel-text-btn" title="Put the selected item back to how it looked originally" onclick="resetSelectedStyles()">
+                <i class="fas fa-eraser"></i>Clear style
             </button>
-            <button class="panel-tool-btn panel-tool-btn--danger" title="Reset the whole page back to the original design" onclick="resetAllDesign()">
-                <i class="fas fa-rotate-right"></i>
+            <button class="panel-text-btn panel-text-btn--danger" title="Put the whole page back to the original design" onclick="resetAllDesign()">
+                <i class="fas fa-rotate-left"></i>Reset page
             </button>
         </div>
     </div>
@@ -249,28 +251,24 @@
                 </div>
 
                 <p id="selectionHint" class="target-hint">
-                    Click text, a button, image, or icon. Alt+click selects its layout container.
+                    Click any words, button or picture on the page to change it here.
                 </p>
 
                 <button id="selectParentBtn" type="button" onclick="selectParentElement()" class="hidden parent-btn">
-                    <i class="fas fa-arrow-up"></i><span id="selectParentLabel">Select parent container</span>
+                    <i class="fas fa-arrow-up"></i><span id="selectParentLabel">Select the box around it</span>
                 </button>
 
+                {{-- The Top / Middle / Bottom and Left / Centre / Right buttons that
+                     sat here slid a template item to the edge of its section, onto
+                     whatever was there, and it stayed there on phones. Text
+                     alignment lives under Text style; moving is the drag handle. --}}
                 <div id="movementControls" class="hidden move-box">
                     <div class="flex items-start gap-2">
                         <i class="fas fa-up-down-left-right move-icon" id="movementIcon"></i>
                         <div class="min-w-0 flex-1">
-                            <p id="movementStatus" class="move-title">Position &amp; align</p>
-                            <p id="movementHelp" class="move-help">Drag the cyan Move handle to reposition. Pink guides snap it into alignment. Arrow keys nudge (Shift = 10px).</p>
+                            <p id="movementStatus" class="move-title">Moving it</p>
+                            <p id="movementHelp" class="move-help">Drag the “Move” tab above it on the page. Pull a corner dot to make it bigger or smaller.</p>
                         </div>
-                    </div>
-                    <div id="movementAlignButtons" class="grid grid-cols-3 gap-1 mt-2.5">
-                        <button type="button" onclick="alignSelectedElement('left')" class="add-el-btn" title="Align left"><i class="fas fa-align-left"></i>Left</button>
-                        <button type="button" onclick="alignSelectedElement('center')" class="add-el-btn" title="Center horizontally"><i class="fas fa-align-center"></i>Center</button>
-                        <button type="button" onclick="alignSelectedElement('right')" class="add-el-btn" title="Align right"><i class="fas fa-align-right"></i>Right</button>
-                        <button type="button" onclick="alignSelectedElement('top')" class="add-el-btn" title="Align top"><i class="fas fa-arrow-up"></i>Top</button>
-                        <button type="button" onclick="alignSelectedElement('middle')" class="add-el-btn" title="Center vertically"><i class="fas fa-arrows-up-down"></i>Middle</button>
-                        <button type="button" onclick="alignSelectedElement('bottom')" class="add-el-btn" title="Align bottom"><i class="fas fa-arrow-down"></i>Bottom</button>
                     </div>
                 </div>
 
@@ -296,15 +294,15 @@
                 <i class="fas fa-chevron-down section-chevron" id="chevron-add" style="transform: rotate(-90deg)"></i>
             </button>
             <div class="section-body hidden" id="section-add">
-                <p class="section-hint">Drops the new object onto the page. Select it, then drag its cyan Move handle or pull the corner points to resize.</p>
+                <p class="section-hint">Puts it on the page where you are looking. Drag the “Move” tab above it to place it.</p>
+                {{-- Text field, Icon and Container are gone: a typing box a guest
+                     cannot send anywhere, an icon only changeable by its code name,
+                     and an empty dashed box did nothing for a hotel page. --}}
                 <div class="grid grid-cols-2 gap-1.5">
-                    <button type="button" onclick="addCanvasElement('text')" class="add-el-btn"><i class="fas fa-font"></i>Text</button>
+                    <button type="button" onclick="addCanvasElement('text')" class="add-el-btn"><i class="fas fa-font"></i>Words</button>
                     <button type="button" onclick="addCanvasElement('button')" class="add-el-btn"><i class="fas fa-square"></i>Button</button>
-                    <button type="button" onclick="addCanvasElement('image')" class="add-el-btn"><i class="fas fa-image"></i>Image</button>
-                    <button type="button" onclick="addCanvasElement('textfield')" class="add-el-btn"><i class="fas fa-i-cursor"></i>Text field</button>
-                    <button type="button" onclick="addCanvasElement('icon')" class="add-el-btn"><i class="fas fa-icons"></i>Icon</button>
+                    <button type="button" onclick="addCanvasElement('image')" class="add-el-btn"><i class="fas fa-image"></i>Picture</button>
                     <button type="button" onclick="addCanvasElement('card')" class="add-el-btn"><i class="fas fa-id-card"></i>Card</button>
-                    <button type="button" onclick="addCanvasElement('container')" class="add-el-btn col-span-2"><i class="fas fa-border-all"></i>Container</button>
                 </div>
             </div>
         </div>
@@ -314,65 +312,19 @@
             <button onclick="toggleSection('content')" class="section-toggle">
                 <span class="section-icon"><i class="fas fa-align-left"></i></span>
                 <span class="section-label">
-                    Words &amp; icon
+                    Words
                     <span class="section-sub">Change what it says</span>
                 </span>
                 <i class="fas fa-chevron-down section-chevron" id="chevron-content"></i>
             </button>
+            {{-- The Font Awesome icon-name box and the H1-H6 heading buttons are
+                 gone. The first needed a code name typed in; the second rebuilt the
+                 element under a new tag, which was never saved, so the change was
+                 lost on the next reload. Size is under Text style. --}}
             <div class="section-body" id="section-content">
-                <label class="field-label settings-label">Text</label>
-                <textarea id="elementText" rows="3" class="style-input resize-y min-h-[4.5rem]" placeholder="Select text in the template, then edit here"
+                <textarea id="elementText" rows="3" class="style-input resize-y min-h-[4.5rem]" placeholder="Click some words on the page, then type the new words here"
                     oninput="applyTextContent(this.value)"></textarea>
-                <p class="section-hint mt-1.5 mb-4">Tip: you can also double-click the text on the page and type straight into it.</p>
-
-                <label class="field-label settings-label">Icon name (Font Awesome)</label>
-                <input id="iconClass" type="text" class="style-input font-mono" placeholder="e.g. fas fa-hotel"
-                    onchange="applyIconClass(this.value)">
-            </div>
-        </div>
-
-        <!-- ── Heading level ── -->
-        <div class="design-section needs-selection">
-            <button onclick="toggleSection('heading')" class="section-toggle">
-                <span class="section-icon"><i class="fas fa-heading"></i></span>
-                <span class="section-label">
-                    Heading size
-                    <span class="section-sub">Title, section, or plain text</span>
-                </span>
-                <i class="fas fa-chevron-down section-chevron" id="chevron-heading"></i>
-            </button>
-            <div class="section-body" id="section-heading">
-                <p class="section-hint">Biggest at H1, smallest at H6 - the same idea as heading styles in Word.</p>
-                <div class="grid grid-cols-3 gap-1.5">
-                    <button onclick="applyHeading('h1')" class="heading-btn group" data-group="heading" title="Heading 1">
-                        <span class="text-base font-extrabold text-white leading-none">H1</span>
-                        <span class="heading-btn-sub">Display</span>
-                    </button>
-                    <button onclick="applyHeading('h2')" class="heading-btn group" data-group="heading" title="Heading 2">
-                        <span class="text-sm font-bold text-white leading-none">H2</span>
-                        <span class="heading-btn-sub">Title</span>
-                    </button>
-                    <button onclick="applyHeading('h3')" class="heading-btn group" data-group="heading" title="Heading 3">
-                        <span class="text-[0.8125rem] font-bold text-white leading-none">H3</span>
-                        <span class="heading-btn-sub">Section</span>
-                    </button>
-                    <button onclick="applyHeading('h4')" class="heading-btn group" data-group="heading" title="Heading 4">
-                        <span class="text-xs font-semibold text-white leading-none">H4</span>
-                        <span class="heading-btn-sub">Sub</span>
-                    </button>
-                    <button onclick="applyHeading('h5')" class="heading-btn group" data-group="heading" title="Heading 5">
-                        <span class="text-[0.6875rem] font-semibold text-zinc-300 leading-none">H5</span>
-                        <span class="heading-btn-sub">Label</span>
-                    </button>
-                    <button onclick="applyHeading('h6')" class="heading-btn group" data-group="heading" title="Heading 6">
-                        <span class="text-[0.625rem] font-medium text-zinc-400 leading-none">H6</span>
-                        <span class="heading-btn-sub">Caption</span>
-                    </button>
-                </div>
-                <!-- Remove heading -->
-                <button onclick="applyHeading('p')" class="ghost-btn mt-2">
-                    <i class="fas fa-paragraph"></i>Back to normal text
-                </button>
+                <p class="section-hint mt-1.5">Tip: you can also double-click the words on the page and type straight into them.</p>
             </div>
         </div>
 
@@ -387,19 +339,20 @@
                 <i class="fas fa-chevron-down section-chevron" id="chevron-typography"></i>
             </button>
             <div class="section-body" id="section-typography">
-                <!-- Font Family -->
+                <!-- Font Family: only fonts the hotel site actually loads. Manrope,
+                     SF Pro Display and Helvetica Neue were offered before and are not
+                     on the site, so picking one quietly showed a different font. -->
                 <div class="mb-4">
                     <label class="field-label settings-label">Font</label>
                     <div class="relative">
                         <select id="fontFamily" class="style-input appearance-none pr-8 cursor-pointer" onchange="applyStyle('font-family', this.value)">
-                            <option value="inherit">Inherit</option>
-                            <option value="'Manrope', sans-serif">Manrope</option>
-                            <option value="'Inter', sans-serif">Inter</option>
-                            <option value="system-ui, sans-serif">System UI</option>
-                            <option value="Georgia, serif">Georgia</option>
-                            <option value="'Courier New', monospace">Courier New</option>
-                            <option value="'SF Pro Display', sans-serif">SF Pro Display</option>
-                            <option value="'Helvetica Neue', sans-serif">Helvetica Neue</option>
+                            <option value="inherit">Same as the rest of the site</option>
+                            <option value="'Playfair Display', Georgia, serif">Playfair Display (elegant)</option>
+                            <option value="'Lora', Georgia, serif">Lora (classic)</option>
+                            <option value="Georgia, 'Times New Roman', serif">Georgia (classic)</option>
+                            <option value="'Montserrat', system-ui, sans-serif">Montserrat (modern)</option>
+                            <option value="'Poppins', system-ui, sans-serif">Poppins (friendly)</option>
+                            <option value="'Inter', system-ui, sans-serif">Inter (clean)</option>
                         </select>
                         <i class="fas fa-chevron-down select-caret"></i>
                     </div>
@@ -453,9 +406,6 @@
                         <button onclick="toggleInlineStyle('text-decoration', 'underline')" class="style-toggle-btn" title="Underline">
                             <i class="fas fa-underline"></i>
                         </button>
-                        <button onclick="toggleInlineStyle('text-decoration', 'line-through')" class="style-toggle-btn" title="Strikethrough">
-                            <i class="fas fa-strikethrough"></i>
-                        </button>
                     </div>
                 </div>
             </div>
@@ -472,53 +422,45 @@
                 <i class="fas fa-chevron-down section-chevron" id="chevron-colors"></i>
             </button>
             <div class="section-body" id="section-colors">
+                {{-- Pick from the swatches or the colour box. The hex-code fields
+                     that sat beside the box are gone: a colour is chosen by looking,
+                     not by typing #e4e4e7. The swatches are hotel tones (cream, gold,
+                     wine, forest) rather than the admin-panel greys they used to be. --}}
                 <!-- Text Color -->
                 <div class="mb-4">
-                    <label class="field-label settings-label">Text colour</label>
-                    <div class="flex items-center gap-2">
-                        <div class="relative">
-                            <input type="color" id="textColor" value="#e4e4e7" class="color-swatch" onchange="applyStyle('color', this.value); updateColorHex('textColorHex', this.value)">
-                            <i class="fas fa-eye-dropper swatch-glyph"></i>
-                        </div>
-                        <input type="text" id="textColorHex" value="#e4e4e7" class="style-input flex-1 font-mono" oninput="syncColorPicker('textColor', this.value)" maxlength="7">
-                    </div>
-                    <!-- Text Color Swatches -->
+                    <label class="field-label settings-label">Colour of the words</label>
                     <div class="swatch-row">
-                        <button onclick="setColor('text','#ffffff')" class="color-preset-swatch" style="background:#ffffff" title="#ffffff"></button>
-                        <button onclick="setColor('text','#e4e4e7')" class="color-preset-swatch ring-1 ring-cyan-400/50" style="background:#e4e4e7" title="#e4e4e7"></button>
-                        <button onclick="setColor('text','#a1a1aa')" class="color-preset-swatch" style="background:#a1a1aa" title="#a1a1aa"></button>
-                        <button onclick="setColor('text','#71717a')" class="color-preset-swatch" style="background:#71717a" title="#71717a"></button>
-                        <button onclick="setColor('text','#DB2777')" class="color-preset-swatch" style="background:#DB2777" title="#DB2777"></button>
-                        <button onclick="setColor('text','#3b82f6')" class="color-preset-swatch" style="background:#3b82f6" title="#3b82f6"></button>
-                        <button onclick="setColor('text','#10b981')" class="color-preset-swatch" style="background:#10b981" title="#10b981"></button>
-                        <button onclick="setColor('text','#f59e0b')" class="color-preset-swatch" style="background:#f59e0b" title="#f59e0b"></button>
-                        <button onclick="setColor('text','#ef4444')" class="color-preset-swatch" style="background:#ef4444" title="#ef4444"></button>
+                        <button onclick="setColor('text','#ffffff')" class="color-preset-swatch" style="background:#ffffff" title="White"></button>
+                        <button onclick="setColor('text','#f5f0e8')" class="color-preset-swatch" style="background:#f5f0e8" title="Cream"></button>
+                        <button onclick="setColor('text','#1a1a1a')" class="color-preset-swatch" style="background:#1a1a1a" title="Black"></button>
+                        <button onclick="setColor('text','#6b7280')" class="color-preset-swatch" style="background:#6b7280" title="Grey"></button>
+                        <button onclick="setColor('text','#c9a84c')" class="color-preset-swatch" style="background:#c9a84c" title="Gold"></button>
+                        <button onclick="setColor('text','#7f1d1d')" class="color-preset-swatch" style="background:#7f1d1d" title="Wine red"></button>
+                        <button onclick="setColor('text','#1b4332')" class="color-preset-swatch" style="background:#1b4332" title="Forest green"></button>
+                        <button onclick="setColor('text','#1e3a8a')" class="color-preset-swatch" style="background:#1e3a8a" title="Navy blue"></button>
+                        <label class="color-more" title="Pick any colour">
+                            <input type="color" id="textColor" value="#f5f0e8" class="color-swatch" onchange="applyStyle('color', this.value)">
+                            <span>More</span>
+                        </label>
                     </div>
                 </div>
 
                 <!-- Background Color -->
                 <div>
-                    <label class="field-label settings-label">Background</label>
-                    <div class="flex items-center gap-2">
-                        <div class="relative">
-                            <input type="color" id="bgColor" value="#18181b" class="color-swatch" onchange="applyStyle('background-color', this.value); updateColorHex('bgColorHex', this.value)">
-                            <i class="fas fa-fill-drip swatch-glyph"></i>
-                        </div>
-                        <input type="text" id="bgColorHex" value="#18181b" class="style-input flex-1 font-mono" oninput="syncColorPicker('bgColor', this.value)" maxlength="7">
-                        <button onclick="applyStyle('background-color', 'transparent')" class="style-toggle-btn shrink-0" title="No background (see-through)">
-                            <i class="fas fa-ban"></i>
-                        </button>
-                    </div>
+                    <label class="field-label settings-label">Colour behind it</label>
                     <div class="swatch-row">
-                        <button onclick="setColor('bg','transparent')" class="color-preset-swatch swatch-transparent" title="Transparent"></button>
-                        <button onclick="setColor('bg','#000000')" class="color-preset-swatch" style="background:#000000" title="#000000"></button>
-                        <button onclick="setColor('bg','#18181b')" class="color-preset-swatch ring-1 ring-cyan-400/50" style="background:#18181b" title="#18181b"></button>
-                        <button onclick="setColor('bg','#27272a')" class="color-preset-swatch" style="background:#27272a" title="#27272a"></button>
-                        <button onclick="setColor('bg','#3f3f46')" class="color-preset-swatch" style="background:#3f3f46" title="#3f3f46"></button>
-                        <button onclick="setColor('bg','#ffffff')" class="color-preset-swatch" style="background:#ffffff" title="#ffffff"></button>
-                        <button onclick="setColor('bg','#f4f4f5')" class="color-preset-swatch" style="background:#f4f4f5" title="#f4f4f5"></button>
-                        <button onclick="setColor('bg','#FDF2F8')" class="color-preset-swatch" style="background:#FDF2F8" title="#FDF2F8"></button>
-                        <button onclick="setColor('bg','#DB2777')" class="color-preset-swatch" style="background:#DB2777" title="#DB2777"></button>
+                        <button onclick="setColor('bg','transparent')" class="color-preset-swatch swatch-transparent" title="None (see-through)"></button>
+                        <button onclick="setColor('bg','#ffffff')" class="color-preset-swatch" style="background:#ffffff" title="White"></button>
+                        <button onclick="setColor('bg','#f5f0e8')" class="color-preset-swatch" style="background:#f5f0e8" title="Cream"></button>
+                        <button onclick="setColor('bg','#1a1a1a')" class="color-preset-swatch" style="background:#1a1a1a" title="Black"></button>
+                        <button onclick="setColor('bg','#c9a84c')" class="color-preset-swatch" style="background:#c9a84c" title="Gold"></button>
+                        <button onclick="setColor('bg','#7f1d1d')" class="color-preset-swatch" style="background:#7f1d1d" title="Wine red"></button>
+                        <button onclick="setColor('bg','#1b4332')" class="color-preset-swatch" style="background:#1b4332" title="Forest green"></button>
+                        <button onclick="setColor('bg','#1e3a8a')" class="color-preset-swatch" style="background:#1e3a8a" title="Navy blue"></button>
+                        <label class="color-more" title="Pick any colour">
+                            <input type="color" id="bgColor" value="#1a1a1a" class="color-swatch" onchange="applyStyle('background-color', this.value)">
+                            <span>More</span>
+                        </label>
                     </div>
                 </div>
             </div>
@@ -549,61 +491,36 @@
         <!-- ── Size & spacing ── -->
         <div class="design-section needs-selection">
             <button onclick="toggleSection('spacing')" class="section-toggle">
-                <span class="section-icon"><i class="fas fa-expand"></i></span>
+                <span class="section-icon"><i class="fas fa-shapes"></i></span>
                 <span class="section-label">
-                    Size &amp; spacing
-                    <span class="section-sub">Room around it, corners, width</span>
+                    Corners &amp; fading
+                    <span class="section-sub">Round the corners, make it lighter</span>
                 </span>
                 <i class="fas fa-chevron-down section-chevron" id="chevron-spacing" style="transform: rotate(-90deg)"></i>
             </button>
-            <div class="section-body hidden" id="section-spacing">
-                <p class="section-hint">Type a number with <span class="hint-code">px</span> after it, like <span class="hint-code">12px</span>.</p>
-                <div class="grid grid-cols-2 gap-x-2 gap-y-3">
-                    <div>
-                        <label class="field-label settings-label" title="Space inside the element, between its edge and its content">Inside space</label>
-                        <input id="padInput" type="text" class="style-input" placeholder="e.g. 12px" onchange="applyStyle('padding', this.value)">
-                    </div>
-                    <div>
-                        <label class="field-label settings-label" title="Space outside the element, pushing its neighbours away">Outside space</label>
-                        <input id="marginInput" type="text" class="style-input" placeholder="e.g. 8px" onchange="applyStyle('margin', this.value)">
-                    </div>
-                    <div>
-                        <label class="field-label settings-label">Width</label>
-                        <input id="widthInput" type="text" class="style-input" placeholder="e.g. 240px" onchange="applyStyle('width', this.value)">
-                    </div>
-                    <div>
-                        <label class="field-label settings-label">Height</label>
-                        <input id="heightInput" type="text" class="style-input" placeholder="e.g. 80px" onchange="applyStyle('height', this.value)">
-                    </div>
-                    <div>
-                        <label class="field-label settings-label" title="How round the corners are">Rounded corners</label>
-                        <input id="radiusInput" type="text" class="style-input" placeholder="e.g. 12px" onchange="applyStyle('border-radius', this.value)">
-                    </div>
-                    <div>
-                        <label class="field-label settings-label" title="1 is solid, 0 is invisible">See-through</label>
-                        <input id="opacityInput" type="number" min="0" max="1" step="0.05" value="1" class="style-input" onchange="applyStyle('opacity', this.value)">
-                    </div>
-                </div>
-            </div>
-        </div>
+            {{-- Was "Size & spacing": typed CSS for padding, margin, width and
+                 height. A fixed width or height set here held on phones and pushed
+                 the page sideways or cut text off, and a mistyped value did
+                 nothing at all. Size is the corner dots on the page now; what is
+                 left are the two safe ones, as buttons and a slider.
 
-        <!-- ── Layers ── -->
-        <div class="design-section needs-selection">
-            <button onclick="toggleSection('layers')" class="section-toggle">
-                <span class="section-icon"><i class="fas fa-layer-group"></i></span>
-                <span class="section-label">
-                    Front or back
-                    <span class="section-sub">When things overlap</span>
-                </span>
-                <i class="fas fa-chevron-down section-chevron" id="chevron-layers" style="transform: rotate(-90deg)"></i>
-            </button>
-            <div class="section-body hidden" id="section-layers">
-                <p class="section-hint">Like a stack of paper: bring a piece to the top, or push it underneath.</p>
-                <div class="grid grid-cols-2 gap-1.5">
-                    <button type="button" onclick="layerSelected('front')" class="add-el-btn"><i class="fas fa-arrow-up"></i>To front</button>
-                    <button type="button" onclick="layerSelected('back')" class="add-el-btn"><i class="fas fa-arrow-down"></i>To back</button>
-                    <button type="button" onclick="layerSelected('forward')" class="add-el-btn"><i class="fas fa-caret-up"></i>Forward</button>
-                    <button type="button" onclick="layerSelected('backward')" class="add-el-btn"><i class="fas fa-caret-down"></i>Backward</button>
+                 "Front or back" (layers) is gone too: it lifted a template item
+                 out of the page flow to stack it, so the content around it closed
+                 up over the gap. --}}
+            <div class="section-body hidden" id="section-spacing">
+                <label class="field-label settings-label">Corners</label>
+                <div class="grid grid-cols-4 gap-1.5 mb-4">
+                    <button type="button" onclick="applyStyle('border-radius', '0px')" class="corner-btn" title="Square corners"><span style="border-radius:0"></span>Square</button>
+                    <button type="button" onclick="applyStyle('border-radius', '8px')" class="corner-btn" title="Slightly rounded"><span style="border-radius:3px"></span>Soft</button>
+                    <button type="button" onclick="applyStyle('border-radius', '18px')" class="corner-btn" title="Rounded"><span style="border-radius:6px"></span>Round</button>
+                    <button type="button" onclick="applyStyle('border-radius', '9999px')" class="corner-btn" title="Pill or circle"><span style="border-radius:999px"></span>Pill</button>
+                </div>
+
+                <label class="field-label settings-label">Fading</label>
+                <div class="flex items-center gap-2.5">
+                    <input id="opacityInput" type="range" min="0.2" max="1" step="0.05" value="1" class="flex-1 accent-cyan-500"
+                        oninput="onOpacitySlide(this.value)" onchange="applyStyle('opacity', this.value)">
+                    <span id="opacityLabel" class="value-pill">Solid</span>
                 </div>
             </div>
         </div>
@@ -654,6 +571,17 @@
         transition: color 0.15s ease;
     }
     .panel-undo-label:hover { color: #d4d4d8; }
+    .panel-text-btn {
+        display: inline-flex; align-items: center; gap: 0.3125rem;
+        height: 1.75rem; padding: 0 0.5625rem; border-radius: 0.5rem;
+        background: #27272a; border: 1px solid #3f3f46;
+        color: #d4d4d8; font-size: 0.6562rem; font-weight: 600; cursor: pointer;
+        transition: all 0.15s ease; white-space: nowrap;
+    }
+    .panel-text-btn i { font-size: 0.5938rem; }
+    .panel-text-btn:hover { background: #3f3f46; color: #fff; }
+    .panel-text-btn--danger { color: #fda4af; }
+    .panel-text-btn--danger:hover { background: rgba(136, 19, 55, 0.6); border-color: rgba(244, 63, 94, 0.5); color: #fecdd3; }
 
     /* ── Zone headings ──
        Not buttons and not sections: a label that says which of the two
@@ -705,11 +633,6 @@
     .section-body { padding: 0 1.25rem 1rem; }
     .section-hint {
         font-size: 0.6875rem; line-height: 1.55; color: #71717a; margin-bottom: 0.625rem;
-    }
-    .hint-code {
-        font-family: ui-monospace, 'SFMono-Regular', monospace;
-        background: #27272a; color: #a1a1aa;
-        padding: 1px 0.3125rem; border-radius: 0.25rem; font-size: 0.6562rem;
     }
 
     /* Nothing is selected, so the controls that need one are muted. They
@@ -852,24 +775,16 @@
     .add-el-btn:hover { border-color: rgba(6, 182, 212, 0.5); color: #fff; background: #27272a; }
     .add-el-btn i { font-size: 0.625rem; color: #22d3ee; }
 
-    /* ── Heading buttons ── */
-    .heading-btn {
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        padding: 0.5rem 0.25rem; border-radius: 0.5625rem; min-height: 2.875rem;
+    /* ── Corner buttons: a little box drawn with the corner it gives ── */
+    .corner-btn {
+        display: flex; flex-direction: column; align-items: center; gap: 0.3125rem;
+        padding: 0.5rem 0.25rem; border-radius: 0.5625rem;
         background: #18181b; border: 1px solid #3f3f46;
+        color: #a1a1aa; font-size: 0.6094rem; font-weight: 600;
         cursor: pointer; transition: all 0.15s ease;
     }
-    .heading-btn:hover { background: #27272a; border-color: rgba(6, 182, 212, 0.45); }
-    .heading-btn.active {
-        background: rgba(6, 182, 212, 0.14);
-        border-color: rgba(6, 182, 212, 0.55);
-        box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.2);
-    }
-    .heading-btn-sub {
-        display: block; margin-top: 0.1875rem; font-size: 0.5938rem; color: #71717a;
-        transition: color 0.15s ease;
-    }
-    .heading-btn:hover .heading-btn-sub { color: #a1a1aa; }
+    .corner-btn span { width: 1.25rem; height: 0.875rem; border: 2px solid #22d3ee; }
+    .corner-btn:hover { background: #27272a; border-color: rgba(6, 182, 212, 0.45); color: #fff; }
 
     /* ── Toggle buttons (align, italic, underline, strikethrough) ── */
     .style-toggle-btn {
@@ -887,10 +802,11 @@
     }
 
     /* ── Colour swatches ── */
-    .swatch-row { display: flex; flex-wrap: wrap; gap: 0.375rem; margin-top: 0.5625rem; }
+    .swatch-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem; }
     .color-preset-swatch {
         width: 1.5rem; height: 1.5rem; border-radius: 0.4375rem; cursor: pointer;
-        border: 2px solid transparent; flex-shrink: 0;
+        /* A faint edge so the black swatch still shows on the dark panel. */
+        border: 1px solid rgba(255, 255, 255, 0.2); flex-shrink: 0;
         transition: all 0.15s ease;
     }
     .color-preset-swatch:hover { transform: scale(1.15); border-color: rgba(255, 255, 255, 0.3); }
@@ -898,6 +814,14 @@
         background-image: repeating-conic-gradient(#3f3f46 0% 25%, #27272a 0% 50%);
         background-size: 8px 8px;
     }
+    /* Every colour, for the one the swatches do not have: the browser's own picker
+       behind a small labelled box, so there is no code to type. */
+    .color-more {
+        display: inline-flex; align-items: center; gap: 0.25rem; cursor: pointer;
+        font-size: 0.6094rem; font-weight: 600; color: #a1a1aa;
+    }
+    .color-more .color-swatch { width: 1.5rem; height: 1.5rem; border-radius: 0.4375rem; }
+    .color-more:hover { color: #fff; }
 
     /* Kept for the builder shell's own theme rules, which target it by name. */
     .color-swatch {
@@ -969,16 +893,6 @@
         return true;
     }
 
-    function applyHeading(tag) {
-        if (!requireSelection()) return;
-        postToTemplate({ type: 'apply-edit', id: window.selectedElementId, heading: tag });
-        document.querySelectorAll('[data-group="heading"]').forEach(b => b.classList.remove('active'));
-        const matched = [...document.querySelectorAll('[data-group="heading"]')].find(b =>
-            b.getAttribute('onclick') === "applyHeading('" + tag + "')"
-        );
-        if (matched) matched.classList.add('active');
-    }
-
     function applyStyle(prop, value) {
         if (!requireSelection()) return;
         const style = {};
@@ -996,42 +910,21 @@
     }
 
     function setColor(kind, value) {
-        if (kind === 'text') {
-            const picker = document.getElementById('textColor');
-            const hex = document.getElementById('textColorHex');
-            if (picker && value !== 'transparent') picker.value = value;
-            if (hex) hex.value = value;
-            applyStyle('color', value);
-        } else {
-            const picker = document.getElementById('bgColor');
-            const hex = document.getElementById('bgColorHex');
-            if (picker && value !== 'transparent') picker.value = value;
-            if (hex) hex.value = value;
-            applyStyle('background-color', value);
-        }
+        const picker = document.getElementById(kind === 'text' ? 'textColor' : 'bgColor');
+        if (picker && value !== 'transparent') picker.value = value;
+        applyStyle(kind === 'text' ? 'color' : 'background-color', value);
     }
 
-    function syncColorPicker(pickerId, hex) {
-        if (!/^#([0-9A-Fa-f]{3}){1,2}$/.test(hex)) return;
-        const picker = document.getElementById(pickerId);
-        if (picker) picker.value = hex;
-        if (pickerId === 'textColor') applyStyle('color', hex);
-        if (pickerId === 'bgColor') applyStyle('background-color', hex);
-    }
-
-    function updateColorHex(hexId, value) {
-        const el = document.getElementById(hexId);
-        if (el) el.value = value;
+    // The slider's own words, so "0.45" never has to mean anything to anyone.
+    function onOpacitySlide(value) {
+        const label = document.getElementById('opacityLabel');
+        const n = Number(value);
+        if (label) label.textContent = n >= 1 ? 'Solid' : Math.round(n * 100) + '%';
     }
 
     function applyTextContent(value) {
         if (!requireSelection()) return;
         postToTemplate({ type: 'apply-edit', id: window.selectedElementId, text: value });
-    }
-
-    function applyIconClass(value) {
-        if (!requireSelection()) return;
-        postToTemplate({ type: 'apply-edit', id: window.selectedElementId, iconClass: value });
     }
 
     function applyImageUrl(url) {
@@ -1143,11 +1036,22 @@
             return;
         }
         postToTemplate({ type: 'add-element', elementType: type });
-        if (typeof toast === 'function') toast('Added ' + type + ' — use the cyan Move handle');
+        const names = { text: 'Words', button: 'A button', image: 'A picture', card: 'A card' };
+        if (typeof toast === 'function') toast((names[type] || 'It') + ' added. Drag the “Move” tab to place it.');
     }
 
-    function deleteSelectedElement() {
+    /* Asked first: a deleted section is gone from the live site too, and Undo
+       only reaches back through this visit. */
+    async function deleteSelectedElement() {
         if (!requireSelection()) return;
+        const ok = typeof askConfirm === 'function'
+            ? await askConfirm(
+                'Remove this from the page?',
+                'Guests will no longer see it. Undo brings it back while this page is open.',
+                'Remove'
+              )
+            : confirm('Remove this from the page?');
+        if (!ok || !window.selectedElementId) return;
         postToTemplate({ type: 'delete-element' });
         window.selectedElementId = null;
         const label = document.getElementById('selectedElement');
@@ -1165,20 +1069,10 @@
         postToTemplate({ type: 'select-parent' });
     }
 
-    function alignSelectedElement(direction) {
-        if (!requireSelection()) return;
-        postToTemplate({ type: 'align-element', direction: direction });
-    }
-
     function updateMovementControls() {
         const controls = document.getElementById('movementControls');
         if (!controls) return;
         controls.classList.remove('hidden');
-    }
-
-    function layerSelected(direction) {
-        if (!requireSelection()) return;
-        postToTemplate({ type: 'layer-element', direction: direction });
     }
 
     function onTemplateMessage(event) {
@@ -1206,29 +1100,26 @@
             window.selectedElementId = data.id;
             window.selectedElementIsText = !data.isImage && /^(h[1-6]|p|span|em|strong|small|label|a|li|i)$/.test(data.tag || '');
             const label = document.getElementById('selectedElement');
-            if (label) label.textContent = (data.label || 'Selected element') + (data.tag ? ' · <' + data.tag + '>' : '');
+            // The plain name only: "· <h2>" after it was code to a non-designer.
+            if (label) label.textContent = data.label || 'Selected item';
             const parentBtn = document.getElementById('selectParentBtn');
             const parentLabel = document.getElementById('selectParentLabel');
             if (parentBtn) parentBtn.classList.toggle('hidden', !data.canSelectParent);
             if (parentLabel) parentLabel.textContent = data.parentLabel
-                ? 'Select parent: ' + data.parentLabel
-                : 'Select parent container';
+                ? 'Select the box around it: ' + data.parentLabel
+                : 'Select the box around it';
             setPanelSelectionState(true);
             updateMovementControls();
             const textArea = document.getElementById('elementText');
             if (textArea) textArea.value = data.text || '';
-            const iconInput = document.getElementById('iconClass');
-            if (iconInput) iconInput.value = data.iconClass || '';
             const urlInput = document.getElementById('imageUrlInput');
             if (urlInput) urlInput.value = data.src || '';
             if (data.styles) {
-                if (data.styles.color && data.styles.color !== 'transparent' && /^#/.test(data.styles.color)) {
-                    updateColorHex('textColorHex', data.styles.color);
+                if (data.styles.color && /^#[0-9a-f]{6}$/i.test(data.styles.color)) {
                     const tc = document.getElementById('textColor');
                     if (tc) tc.value = data.styles.color;
                 }
-                if (data.styles['background-color'] && data.styles['background-color'] !== 'transparent' && /^#/.test(data.styles['background-color'])) {
-                    updateColorHex('bgColorHex', data.styles['background-color']);
+                if (data.styles['background-color'] && /^#[0-9a-f]{6}$/i.test(data.styles['background-color'])) {
                     const bc = document.getElementById('bgColor');
                     if (bc) bc.value = data.styles['background-color'];
                 }
@@ -1244,18 +1135,10 @@
                         if (val) val.value = n;
                     }
                 }
-                const pad = document.getElementById('padInput');
-                if (pad && data.styles.padding) pad.value = data.styles.padding;
-                const margin = document.getElementById('marginInput');
-                if (margin && data.styles.margin) margin.value = data.styles.margin;
-                const width = document.getElementById('widthInput');
-                if (width && data.styles.width) width.value = data.styles.width;
-                const height = document.getElementById('heightInput');
-                if (height && data.styles.height) height.value = data.styles.height;
-                const radius = document.getElementById('radiusInput');
-                if (radius && data.styles['border-radius']) radius.value = data.styles['border-radius'];
                 const opacity = document.getElementById('opacityInput');
-                if (opacity && data.styles.opacity) opacity.value = data.styles.opacity;
+                const op = data.styles.opacity ? Number(data.styles.opacity) : 1;
+                if (opacity) opacity.value = isNaN(op) ? 1 : op;
+                onOpacitySlide(isNaN(op) ? 1 : op);
             }
         }
 
