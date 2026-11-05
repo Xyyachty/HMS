@@ -166,6 +166,7 @@
   .cx-pill.is-In-Progress .dot { background: var(--cx-warn); }
   .cx-pill.is-Resolved .dot { background: var(--cx-ok); }
   .cx-pill.is-Closed .dot { background: var(--accent); }
+  .cx-pill.is-Escalated .dot { background: #a855f7; }
   .cx-pill i { color: var(--accent); font-size: 0.75rem; }
 
   .cx-what { margin: 0; padding: 0.75rem 0.85rem; border-radius: 0.625rem; background: var(--cx-soft); border: 1px solid var(--cx-line); }
@@ -274,7 +275,7 @@ const { useState, useEffect, useCallback, useMemo, useRef } = React;
 const CFG = window.HMS_COMPLAINTS;
 const DEPARTMENT_LABELS = CFG.departments;
 const SERVICE_CATEGORIES = CFG.serviceCategories || [];
-const OPEN_STATUSES = ['Pending', 'In Progress'];
+const OPEN_STATUSES = ['Pending', 'In Progress', 'Escalated'];
 const DONE_STATUSES = ['Closed', 'Cancelled'];
 /* Housekeeping and Maintenance problems are always in a room; Room Management and
    the restaurant also hear from guests who are not staying in one. */
@@ -285,14 +286,18 @@ const ROOM_REQUIRED = ['housekeeping', 'maintenance'];
 const STATUS_HINTS = {
   'Pending': 'Waiting for the department',
   'In Progress': 'The department is working on it',
+  'Escalated': 'Passed up to a supervisor — still being worked on',
   'Resolved': 'Fixed — Front Desk to confirm with the guest',
   'Closed': 'Confirmed with the guest',
   'Cancelled': 'Withdrawn',
 };
 /* A guest complaint ends when the Front Desk confirms it; a staff-raised repair
-   (inspection or amenity) has no guest, so it ends at Resolved. */
+   (inspection or amenity) has no guest, so it ends at Resolved. A restaurant
+   complaint (departmentOwned) ends at Resolved too: Restaurant Services owns it. */
 const GUEST_TRACK = ['Pending', 'In Progress', 'Resolved', 'Closed'];
 const STAFF_TRACK = ['Pending', 'In Progress', 'Resolved'];
+const ESCALATED_TRACK = ['Pending', 'In Progress', 'Escalated', 'Resolved'];
+const FLOW = ['Pending', 'In Progress', 'Escalated', 'Resolved', 'Closed'];
 const TEAM_ICONS = {
   housekeeping: 'fa-broom',
   maintenance: 'fa-screwdriver-wrench',
@@ -306,8 +311,8 @@ function canMoveComplaintTo(from, to) {
   if (from === to || DONE_STATUSES.includes(from)) return false;
   if (to === 'Cancelled') return from !== 'Resolved';
   if (to === 'Closed') return from === 'Resolved';
-  const fromAt = GUEST_TRACK.indexOf(from);
-  const toAt = GUEST_TRACK.indexOf(to);
+  const fromAt = FLOW.indexOf(from);
+  const toAt = FLOW.indexOf(to);
   return fromAt !== -1 && toAt !== -1 && toAt > fromAt;
 }
 
@@ -452,14 +457,23 @@ function ComplaintForm({ rooms, categories, onSubmit, busy }) {
 
 function ComplaintCard({ complaint, canHandle, canFile, onUpdate }) {
   const [note, setNote] = useState(complaint.resolutionNote || '');
-  // null, 'note' (edit the note only) or 'resolve' (note, then mark Resolved).
+  // null, 'note' (edit the note only), 'resolve' (note, then mark Resolved) or
+  // 'action' (log one action taken — restaurant complaints).
   const [noteMode, setNoteMode] = useState(null);
+  const [action, setAction] = useState('');
   const [historyOpen, setHistoryOpen] = useState(false);
   const isOpen = OPEN_STATUSES.includes(complaint.status);
-  const track = complaint.internal ? STAFF_TRACK : GUEST_TRACK;
+  const owned = !!complaint.departmentOwned;
+  const history = complaint.history || [];
+  const actionsTaken = history.filter(h => h.event === 'Action taken');
+  const wasEscalated = complaint.status === 'Escalated' || history.some(h => h.event === 'Marked Escalated');
+  // Restaurant rows closed by the Front Desk before this rule keep the four-step track.
+  const track = owned && complaint.status !== 'Closed' ? (wasEscalated ? ESCALATED_TRACK : STAFF_TRACK) : complaint.internal ? STAFF_TRACK : GUEST_TRACK;
   const stepAt = track.indexOf(complaint.status);
   const finished = complaint.status === track[track.length - 1];
-  const history = complaint.history || [];
+  const statusHint = owned && complaint.status === 'Resolved'
+    ? `Fixed by ${complaint.departmentLabel}`
+    : STATUS_HINTS[complaint.status] || '';
   const otherDepartments = Object.keys(DEPARTMENT_LABELS).filter(k => k !== complaint.department);
 
   useEffect(() => { setNote(complaint.resolutionNote || ''); }, [complaint.resolutionNote]);
@@ -486,6 +500,22 @@ function ComplaintCard({ complaint, canHandle, canFile, onUpdate }) {
     setNoteMode(null);
   };
 
+  const saveAction = () => {
+    if (!action.trim()) {
+      window.toast && window.toast('Write what was done.');
+      return;
+    }
+    onUpdate(complaint.id, { action_taken: action.trim() });
+    setAction('');
+    setNoteMode(null);
+  };
+
+  const escalate = () => {
+    if (window.confirm(`Escalate the complaint for ${where} to a supervisor?`)) {
+      onUpdate(complaint.id, { status: 'Escalated' });
+    }
+  };
+
   const handOver = (to) => {
     if (!to) return;
     if (window.confirm(`Give this complaint to ${DEPARTMENT_LABELS[to]}?`)) {
@@ -504,7 +534,7 @@ function ComplaintCard({ complaint, canHandle, canFile, onUpdate }) {
           </span>
         </div>
         <div className="cx-pills">
-          <span className={`cx-pill is-${slug(complaint.status)}`} title={STATUS_HINTS[complaint.status] || ''}><span className="dot"></span>{complaint.status}</span>
+          <span className={`cx-pill is-${slug(complaint.status)}`} title={statusHint}><span className="dot"></span>{complaint.status}</span>
           <span className="cx-pill"><i className={'fa-solid ' + (TEAM_ICONS[complaint.department] || 'fa-users')}></i>{complaint.departmentLabel}</span>
           {complaint.kind === 'service' && <span className="cx-pill"><i className="fa-solid fa-user-tie"></i>Staff service</span>}
           {complaint.internal && <span className="cx-pill"><i className="fa-solid fa-clipboard-list"></i>Staff report</span>}
@@ -541,6 +571,22 @@ function ComplaintCard({ complaint, canHandle, canFile, onUpdate }) {
         <p className="cx-meta">No resolution notes.</p>
       )}
 
+      {owned && (actionsTaken.length > 0 ? (
+        <div className="cx-what">
+          <small>Actions taken</small>
+          <ol className="cx-history" style={{ marginTop: '0.35rem' }}>
+            {actionsTaken.map((h, i) => (
+              <li key={i}>
+                <em>{h.note}</em>
+                <span>{formatWhen(h.at)}{h.by ? ` · ${h.by}` : ''}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      ) : (
+        <p className="cx-meta">No actions recorded yet.</p>
+      ))}
+
       {canHandle && isOpen && (
         <div className="cx-actions">
           {complaint.status === 'Pending' && (
@@ -548,20 +594,33 @@ function ComplaintCard({ complaint, canHandle, canFile, onUpdate }) {
               <i className="fa-solid fa-person-digging"></i> Start working on it
             </button>
           )}
-          <button type="button" className={'cx-btn ' + (complaint.status === 'In Progress' ? 'cx-btn-primary' : 'cx-btn-ghost')}
+          <button type="button" className={'cx-btn ' + (complaint.status !== 'Pending' ? 'cx-btn-primary' : 'cx-btn-ghost')}
             onClick={() => setNoteMode(m => (m === 'resolve' ? null : 'resolve'))}>
             <i className="fa-solid fa-circle-check"></i> Mark as resolved
           </button>
+          {owned && complaint.status !== 'Escalated' && (
+            <button type="button" className="cx-btn cx-btn-ghost" onClick={escalate}>
+              <i className="fa-solid fa-arrow-up-right-dots"></i> Escalate
+            </button>
+          )}
           <span className="cx-spacer"></span>
+          {owned && (
+            <button type="button" className="cx-btn-sm" onClick={() => setNoteMode(m => (m === 'action' ? null : 'action'))}>
+              <i className="fa-solid fa-list-check"></i>Record action
+            </button>
+          )}
           <button type="button" className="cx-btn-sm" onClick={() => setNoteMode(m => (m === 'note' ? null : 'note'))}>
             <i className="fa-solid fa-pen"></i>{complaint.resolutionNote ? 'Edit notes' : 'Add notes'}
           </button>
           {/* A resolved complaint cannot be handed over — that would reopen it, the
-              same backward move the status flow forbids. */}
-          <select className="cx-btn-sm cx-handover" value="" onChange={e => handOver(e.target.value)} aria-label="Give this complaint to another department">
-            <option value="">Give to…</option>
-            {otherDepartments.map(key => <option key={key} value={key}>{DEPARTMENT_LABELS[key]}</option>)}
-          </select>
+              same backward move the status flow forbids. Nor an escalated one: a
+              supervisor already has it. */}
+          {complaint.status !== 'Escalated' && (
+            <select className="cx-btn-sm cx-handover" value="" onChange={e => handOver(e.target.value)} aria-label="Give this complaint to another department">
+              <option value="">Give to…</option>
+              {otherDepartments.map(key => <option key={key} value={key}>{DEPARTMENT_LABELS[key]}</option>)}
+            </select>
+          )}
           <button type="button" className="cx-btn-sm is-danger" onClick={cancel}>
             <i className="fa-solid fa-xmark"></i>Cancel
           </button>
@@ -576,7 +635,7 @@ function ComplaintCard({ complaint, canHandle, canFile, onUpdate }) {
         </div>
       )}
 
-      {canFile && !complaint.internal && complaint.status === 'Resolved' && (
+      {canFile && !complaint.internal && !owned && complaint.status === 'Resolved' && (
         <div className="cx-actions">
           <span className="cx-meta">{complaint.departmentLabel} resolved this. Check with the guest, then close it.</span>
           <span className="cx-spacer"></span>
@@ -586,7 +645,15 @@ function ComplaintCard({ complaint, canHandle, canFile, onUpdate }) {
         </div>
       )}
 
-      {!canHandle && canFile && isOpen && (
+      {!canHandle && canFile && owned && (
+        <div className="cx-actions">
+          <span className="cx-meta">
+            {complaint.departmentLabel} handles this complaint from start to finish. Follow its status, actions taken and resolution here.
+          </span>
+        </div>
+      )}
+
+      {!canHandle && canFile && !owned && isOpen && (
         <div className="cx-actions">
           <span className="cx-meta">The {complaint.departmentLabel} team updates this as they work on it.</span>
           <span className="cx-spacer"></span>
@@ -596,7 +663,14 @@ function ComplaintCard({ complaint, canHandle, canFile, onUpdate }) {
         </div>
       )}
 
-      {canHandle && noteMode && (
+      {canHandle && noteMode === 'action' && (
+        <div className="cx-note-form">
+          <input type="text" className="cx-input" placeholder="What did you do? e.g. Replaced the dish, apologised to the guest" value={action} onChange={e => setAction(e.target.value)} aria-label="Action taken" autoFocus />
+          <button type="button" className="cx-btn cx-btn-primary" onClick={saveAction}>Save action</button>
+        </div>
+      )}
+
+      {canHandle && noteMode && noteMode !== 'action' && (
         <div className="cx-note-form">
           <input type="text" className="cx-input" placeholder="What was done to fix it?" value={note} onChange={e => setNote(e.target.value)} aria-label="What was done to fix it" autoFocus />
           <button type="button" className="cx-btn cx-btn-primary" onClick={saveNote}>
@@ -749,11 +823,13 @@ function App() {
   }, [complaints, departmentFilter, statusFilter, search]);
 
   const openCount = complaints.filter(c => OPEN_STATUSES.includes(c.status) && inDepartment(c)).length;
-  const toConfirm = complaints.filter(c => c.status === 'Resolved' && !c.internal && inDepartment(c)).length;
+  const toConfirm = complaints.filter(c => c.status === 'Resolved' && !c.internal && !c.departmentOwned && inDepartment(c)).length;
 
   const eyebrow = isDepartmentView ? DEPARTMENT_LABELS[CFG.role] : 'Front Desk';
   const heading = isDepartmentView ? 'Complaints & Concerns' : 'Guest Complaints';
-  const lead = isDepartmentView
+  const lead = CFG.role === 'restaurant_management'
+    ? 'Guest complaints the Front Desk sent to the restaurant. Start on each one, record the actions you take, escalate it to a supervisor if needed, and mark it resolved with notes. The Front Desk sees every update.'
+    : isDepartmentView
     ? 'Guest complaints the Front Desk sent to your department. Start on each one, mark it resolved with notes on what you did, and the Front Desk closes it once the guest confirms.'
     : 'Record a guest’s complaint, send it to the department responsible, follow its progress, and close it once the guest confirms it is fixed.';
 

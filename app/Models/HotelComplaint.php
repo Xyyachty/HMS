@@ -93,18 +93,28 @@ class HotelComplaint extends Model
     /**
      * Front Desk files as Pending; the department moves it to In Progress and
      * Resolved; the Front Desk closes it once the guest confirms. Cancelled is the
-     * exit for a complaint withdrawn before it was resolved.
+     * exit for a complaint withdrawn before it was resolved. Escalated is only for
+     * the departments in DEPARTMENT_OWNED.
      */
     public const STATUSES = [
         'Pending',
         'In Progress',
+        'Escalated',
         'Resolved',
         'Closed',
         'Cancelled',
     ];
 
     /** The working pipeline, in order. Cancelled sits off to the side as an exit. */
-    public const FLOW = ['Pending', 'In Progress', 'Resolved', 'Closed'];
+    public const FLOW = ['Pending', 'In Progress', 'Escalated', 'Resolved', 'Closed'];
+
+    /**
+     * Departments that own their complaints end to end. The Front Desk still records
+     * and forwards them, but only watches: the department alone moves the status
+     * (including Escalated), logs the actions taken and writes the resolution. They
+     * finish at Resolved, with no Front Desk close.
+     */
+    public const DEPARTMENT_OWNED = ['restaurant_management'];
 
     /** Nothing moves once a complaint reaches one of these. */
     public const FINAL_STATUSES = ['Closed', 'Cancelled'];
@@ -219,6 +229,12 @@ class HotelComplaint extends Model
         return $this->hotel_room_inspection_id !== null || $this->hotel_amenity_id !== null;
     }
 
+    /** Worked and finished by its department alone — see DEPARTMENT_OWNED. */
+    public function isDepartmentOwned(): bool
+    {
+        return in_array($this->department, self::DEPARTMENT_OWNED, true);
+    }
+
     public function isServiceComplaint(): bool
     {
         return in_array($this->category, self::SERVICE_CATEGORIES, true);
@@ -251,6 +267,7 @@ class HotelComplaint extends Model
             'inspectionId'    => $this->hotel_room_inspection_id,
             'amenityId'       => $this->hotel_amenity_id,
             'internal'        => $this->isInternal(),
+            'departmentOwned' => $this->isDepartmentOwned(),
             // Empty when the guest is not staying in a room (a restaurant walk-in).
             'roomNumber'      => $this->room_number ?? '',
             'guestName'       => $this->guest_name ?? '',

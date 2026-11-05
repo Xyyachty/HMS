@@ -92,7 +92,9 @@ class HotelNavBadges
             ->when($department, fn ($query) => $query->where('department', $department))
             // Front Desk only confirms guest complaints; staff-raised repairs finish at
             // Resolved and would otherwise sit in its badge forever.
-            ->when(!$department, fn ($query) => $query->whereNull('hotel_room_inspection_id')->whereNull('hotel_amenity_id'))
+            ->when(!$department, fn ($query) => $query->whereNull('hotel_room_inspection_id')->whereNull('hotel_amenity_id')
+                // Restaurant complaints finish at Resolved too — nothing left for Front Desk.
+                ->whereNotIn('department', HotelComplaint::DEPARTMENT_OWNED))
             ->where('status', $status)
             ->count();
     }

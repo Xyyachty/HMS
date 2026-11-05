@@ -4164,12 +4164,15 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             'status'          => 'sometimes|string|max:50',
             'department'      => ['sometimes', 'string', Rule::in(array_keys(HotelComplaint::DEPARTMENTS))],
             'resolution_note' => 'sometimes|nullable|string|max:2000',
+            'action_taken'    => 'sometimes|string|max:2000',
         ]);
 
         // Authorised against the department the complaint sits in *now* — that is
         // also what lets a department hand a mis-routed one to another.
         $handles = \App\Support\HotelComplaintAccess::canHandle($membership, $complaint->department);
         $isFrontDesk = \App\Support\HotelComplaintAccess::canFile($membership);
+        // Restaurant complaints: the Front Desk records and forwards them, then only watches.
+        $owned = $complaint->isDepartmentOwned();
         $by = auth()->user()?->name;
 
         $reassignedFrom = null;
@@ -4180,8 +4183,9 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
                 ], 403);
             }
             // Once resolved there is nothing left to hand over — reassigning would
-            // reopen it, the same backward move the status flow forbids.
-            if (in_array($complaint->status, ['Resolved', 'Closed', 'Cancelled'], true)) {
+            // reopen it, the same backward move the status flow forbids. An escalated
+            // one is already with a manager.
+            if (in_array($complaint->status, ['Escalated', 'Resolved', 'Closed', 'Cancelled'], true)) {
                 return response()->json([
                     'message' => 'This complaint is already ' . $complaint->status . ' and cannot be reassigned.',
                 ], 422);
@@ -4209,12 +4213,18 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
                 if ($complaint->isInternal()) {
                     return response()->json(['message' => 'This issue was raised by staff, not a guest. It is finished once Resolved.'], 422);
                 }
+                if ($owned) {
+                    return response()->json(['message' => $complaint->departmentLabel() . ' complaints are finished once Resolved.'], 422);
+                }
                 $maySet = $isFrontDesk;
                 $who = 'Front Desk';
-            } elseif ($next === 'Cancelled') {
+            } elseif ($next === 'Cancelled' && !$owned) {
                 $maySet = $handles || $isFrontDesk;
                 $who = $complaint->departmentLabel() . ' or Front Desk';
             } else {
+                if ($next === 'Escalated' && !$owned) {
+                    return response()->json(['message' => 'Only restaurant complaints can be escalated.'], 422);
+                }
                 $maySet = $handles;
                 $who = $complaint->departmentLabel();
             }
@@ -4248,6 +4258,27 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             if ($note !== $complaint->resolution_note) {
                 $complaint->resolution_note = $note;
                 $complaint->logHistory('Resolution note updated', $by, $note);
+            }
+        }
+
+        // One history entry per step the department took; the card lists them as
+        // "Actions taken" for the Front Desk to follow.
+        if (array_key_exists('action_taken', $data)) {
+            if (!$handles) {
+                return response()->json([
+                    'message' => 'Only ' . $complaint->departmentLabel() . ' staff can record an action on this complaint.',
+                ], 403);
+            }
+            if (in_array($complaint->status, HotelComplaint::FINAL_STATUSES, true)) {
+                return response()->json(['message' => 'This complaint is already ' . $complaint->status . '.'], 422);
+            }
+            $action = trim($data['action_taken']);
+            if ($action === '') {
+                return response()->json(['message' => 'Write what was done.'], 422);
+            }
+            $complaint->logHistory('Action taken', $by, $action);
+            if ($complaint->handled_by === null) {
+                $complaint->handled_by = $by;
             }
         }
 
