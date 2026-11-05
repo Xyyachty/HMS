@@ -149,6 +149,10 @@
      native pickers render their own controls from this. */
   input[type="date"].booking-input,
   input[type="time"].booking-input { color-scheme: dark; }
+  /* The open list is drawn by the browser on white unless told otherwise, and
+     the options inherit the light card text - white on white. */
+  select.booking-input { color-scheme: dark; }
+  select.booking-input option { background: var(--card); color: var(--fg); }
   .dn-form { display: grid; gap: 0.9rem; }
   .dn-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
   .dn-field-label {
@@ -190,7 +194,8 @@
   :root[data-ops-theme="2"] .dn-modal-close { background: rgba(27,67,50,0.03); }
   :root[data-ops-theme="2"] .dn-card:hover { border-color: rgba(27,67,50,0.35); }
   :root[data-ops-theme="2"] input[type="date"].booking-input,
-  :root[data-ops-theme="2"] input[type="time"].booking-input { color-scheme: light; }
+  :root[data-ops-theme="2"] input[type="time"].booking-input,
+  :root[data-ops-theme="2"] select.booking-input { color-scheme: light; }
 </style>
 @endsection
 
