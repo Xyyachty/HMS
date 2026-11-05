@@ -4094,25 +4094,59 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
         if (!$membership) {
             return response()->json(['message' => 'Join a hotel team first.'], 404);
         }
-        if (!\App\Support\HotelComplaintAccess::canFile($membership)) {
-            return response()->json(['message' => 'Only Front Desk staff can record a guest complaint.'], 403);
-        }
-
         $data = $request->validate([
             'room_number' => 'nullable|string|max:100',
             'guest_name'  => 'nullable|string|max:255',
             'category'    => ['required', 'string', Rule::in(array_keys(HotelComplaint::CATEGORY_DEPARTMENTS))],
             'details'     => 'required|string|max:2000',
+            'source'      => ['nullable', 'string', Rule::in(HotelComplaint::SOURCES)],
+            'table_name'  => 'nullable|string|max:255',
         ]);
 
         // The category decides the department, so a complaint always lands with the
         // team that owns that kind of problem.
         $department = HotelComplaint::departmentForCategory($data['category']);
+        $owned = in_array($department, HotelComplaint::DEPARTMENT_OWNED, true);
+
+        // Restaurant Services records its own complaints; the Front Desk records the rest.
+        if ($owned) {
+            if (!\App\Support\HotelComplaintAccess::canHandle($membership, $department)) {
+                return response()->json(['message' => 'Only ' . HotelComplaint::DEPARTMENTS[$department] . ' staff can record a restaurant complaint.'], 403);
+            }
+        } elseif (!\App\Support\HotelComplaintAccess::canFile($membership)) {
+            return response()->json(['message' => 'Only Front Desk staff can record a guest complaint.'], 403);
+        }
+
         $room = trim((string) ($data['room_number'] ?? ''));
         $guest = trim((string) ($data['guest_name'] ?? ''));
+        $source = $owned ? ($data['source'] ?? null) : null;
+        $table = '';
 
-        // A dirty room or a broken aircon is always in a room. Room Management and the
-        // restaurant also hear from guests who are not staying in one.
+        if ($owned) {
+            // A Dine-In guest is at a table, a Room Service guest is in a room.
+            if ($source === null) {
+                return response()->json(['message' => 'Choose whether the guest was served Dine-In or by Room Service.'], 422);
+            }
+            if ($source === 'Dine-In') {
+                $room = '';
+                $table = trim((string) ($data['table_name'] ?? ''));
+                $tableExists = $table !== '' && HotelDineInTable::where('group_name', $membership->group_name)
+                    ->where('faculty_id', $membership->faculty_id)
+                    ->where('name', $table)
+                    ->exists();
+                if (!$tableExists) {
+                    return response()->json(['message' => 'Choose the table the guest was seated at.'], 422);
+                }
+                if ($guest === '') {
+                    return response()->json(['message' => 'Enter the guest name.'], 422);
+                }
+            } elseif ($room === '') {
+                return response()->json(['message' => 'Choose the room the order was delivered to.'], 422);
+            }
+        }
+
+        // A dirty room or a broken aircon is always in a room. Room Management also
+        // hears from guests who are not staying in one.
         if ($room === '' && in_array($department, ['housekeeping', 'maintenance'], true)) {
             return response()->json(['message' => 'Choose the room this ' . HotelComplaint::DEPARTMENTS[$department] . ' problem is in.'], 422);
         }
@@ -4126,6 +4160,8 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             'group_id'    => $membership->group_id,
             // The column is not nullable; an empty string is "no room".
             'room_number' => $room,
+            'source'      => $source,
+            'table_name'  => $table !== '' ? $table : null,
             'guest_name'  => $guest !== '' ? $guest : null,
             'category'    => $data['category'],
             'department'  => $department,
@@ -4133,7 +4169,12 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             'status'      => 'Pending',
             'filed_by'    => auth()->user()?->name,
         ]);
-        $complaint->logHistory('Received and sent to ' . $complaint->departmentLabel(), $complaint->filed_by);
+        $complaint->logHistory(
+            $owned
+                ? 'Recorded by ' . $complaint->departmentLabel() . ' (' . $source . ')'
+                : 'Received and sent to ' . $complaint->departmentLabel(),
+            $complaint->filed_by
+        );
         $complaint->save();
 
         \App\Support\Notifier::complaintFiled(auth()->user(), $complaint);
@@ -4142,7 +4183,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             auth()->user(),
             ActivityLog::COMPLAINT_FILED,
             'Recorded a ' . $complaint->departmentLabel() . ' complaint'
-                . ($room !== '' ? ' for room ' . $room : ' from ' . $guest)
+                . ($room !== '' ? ' for room ' . $room : ($table !== '' ? ' for table ' . $table : ' from ' . $guest))
                 . ' (' . $complaint->category . ').'
         );
 

@@ -116,6 +116,9 @@ class HotelComplaint extends Model
      */
     public const DEPARTMENT_OWNED = ['restaurant_management'];
 
+    /** Where a restaurant guest was served. Dine-In names a table, Room Service a room. */
+    public const SOURCES = ['Dine-In', 'Room Service'];
+
     /** Nothing moves once a complaint reaches one of these. */
     public const FINAL_STATUSES = ['Closed', 'Cancelled'];
 
@@ -128,6 +131,8 @@ class HotelComplaint extends Model
         'hotel_room_inspection_id',
         'hotel_amenity_id',
         'room_number',
+        'source',
+        'table_name',
         'guest_name',
         'category',
         'department',
@@ -270,6 +275,9 @@ class HotelComplaint extends Model
             'departmentOwned' => $this->isDepartmentOwned(),
             // Empty when the guest is not staying in a room (a restaurant walk-in).
             'roomNumber'      => $this->room_number ?? '',
+            // Restaurant complaints only; empty on older ones and other departments.
+            'source'          => $this->source ?? '',
+            'tableName'       => $this->table_name ?? '',
             'guestName'       => $this->guest_name ?? '',
             'category'        => $this->category,
             'kind'            => $this->isServiceComplaint() ? 'service' : 'facility',
