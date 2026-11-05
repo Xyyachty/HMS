@@ -3014,6 +3014,8 @@ function MenuDetailModal({ item, onClose, canOrder, onAddToCart, onToast }) {
    booking just made is already on it. */
 function MyBookingsModal({ open, onClose }) {
   const [bookings, setBookings] = useState(null);
+  // Tables the guest reserved on the website, with their live status.
+  const [tables, setTables] = useState([]);
   const [error, setError] = useState('');
   // The booking whose charges are spelled out.
   const [openRef, setOpenRef] = useState(null);
@@ -3021,12 +3023,16 @@ function MyBookingsModal({ open, onClose }) {
   useEffect(() => {
     if (!open) return;
     setBookings(null);
+    setTables([]);
     setError('');
     const url = (window.__HMS_HOTEL_AUTH_ROUTES__ || {}).myBookings;
     if (!url) { setBookings([]); return; }
     fetch(url, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
       .then(r => (r.ok ? r.json() : Promise.reject()))
-      .then(data => setBookings(Array.isArray(data.bookings) ? data.bookings : []))
+      .then(data => {
+        setTables(Array.isArray(data.tables) ? data.tables : []);
+        setBookings(Array.isArray(data.bookings) ? data.bookings : []);
+      })
       .catch(() => { setBookings([]); setError('Your bookings could not be loaded. Please try again.'); });
   }, [open]);
 
@@ -3060,10 +3066,10 @@ function MyBookingsModal({ open, onClose }) {
             <p style={muted}>Loading your bookings…</p>
           ) : error ? (
             <p role="alert" style={{ color: '#f08a99', fontSize: '0.82rem', margin: 0 }}>{error}</p>
-          ) : bookings.length === 0 ? (
+          ) : bookings.length === 0 && tables.length === 0 ? (
             <p style={muted}>
-              You have no bookings yet. Rooms you book show here. Bookings are matched to your
-              account by email, so use the same email when you book.
+              You have no bookings yet. Rooms and tables you book show here. Room bookings are
+              matched to your account by email, so use the same email when you book.
             </p>
           ) : (
             <div style={{ display: 'grid', gap: '0.75rem' }}>
@@ -3125,6 +3131,31 @@ function MyBookingsModal({ open, onClose }) {
                     </div>
                   )}
                   <p style={Object.assign({}, muted, { fontSize: '0.72rem', marginTop: '0.25rem' })}>Booking #{b.reference}</p>
+                </div>
+              ))}
+              {tables.length > 0 && (
+                <p style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', margin: bookings.length ? '0.5rem 0 0' : 0 }}>
+                  Table Reservations
+                </p>
+              )}
+              {tables.map(t => (
+                <div key={t.reference} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.9rem 1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
+                    <strong style={{ color: 'var(--fg)', fontSize: '0.95rem' }}>
+                      <i className="fa-solid fa-utensils" style={{ color: 'var(--accent)', fontSize: '0.75rem', marginRight: '0.45rem' }}></i>
+                      {t.tableName || 'Table'}
+                    </strong>
+                    <span style={{ flexShrink: 0, fontSize: '0.68rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--accent)', border: '1px solid var(--border)', borderRadius: 999, padding: '0.15rem 0.6rem' }}>
+                      {t.status}
+                    </span>
+                  </div>
+                  <p style={Object.assign({}, muted, { marginTop: '0.35rem' })}>
+                    {t.reservedFor
+                      ? new Date(t.reservedFor).toLocaleString('en-US', { timeZone: 'Asia/Manila', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+                      : '—'}
+                    {` · ${t.partySize} ${t.partySize === 1 ? 'person' : 'persons'}`}
+                  </p>
+                  <p style={Object.assign({}, muted, { fontSize: '0.72rem', marginTop: '0.25rem' })}>Reservation #{t.reference}</p>
                 </div>
               ))}
             </div>
@@ -3244,7 +3275,7 @@ function TableReserveModal({ open, onClose, guest, onToast }) {
               </dl>
               <p style={{ margin: '1.1rem 0 0', color: 'var(--fg-muted)', fontSize: '0.78rem', lineHeight: 1.5 }}>
                 Your reservation page shows your table, its live status and the restaurant menu.
-                Bookmark it: the link is private to you.
+                Bookmark it: the link is private to you. Your reservation also stays under My Bookings.
               </p>
               <a href={done.link} target="_blank" rel="noopener noreferrer" className="btn-primary"
                 style={{ width: '100%', justifyContent: 'center', marginTop: '1.1rem', textDecoration: 'none' }}>

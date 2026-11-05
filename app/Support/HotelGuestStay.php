@@ -4,6 +4,8 @@ namespace App\Support;
 
 use App\Models\HotelBooking;
 use App\Models\HotelCustomer;
+use App\Models\HotelDineInReservation;
+use App\Models\HotelDineInTable;
 use App\Models\HotelGuest;
 use App\Models\StudentGroup;
 
@@ -78,6 +80,41 @@ class HotelGuestStay
         return $customer
             ? self::bookingsQuery($customer)->with(['room', 'payments', 'foodOrders', 'charges', 'addons'])->get()
             : collect();
+    }
+
+    /**
+     * The signed-in guest's table reservations at this hotel, newest first, for their
+     * My Bookings list: the same guest-facing view the private reservation link shows,
+     * so a guest who lost that link can still follow the table. Matched on the account
+     * that made them (hotel_customer_id), which reserveForGuest() records. Empty for
+     * anyone else, and until the reservations table exists.
+     */
+    public static function tableReservations(string $groupName, int $facultyId): array
+    {
+        $auth = HotelSimulationAuth::current();
+        if (!is_array($auth) || ($auth['type'] ?? null) !== 'customer' || !HotelDineInReservation::supported()) {
+            return [];
+        }
+
+        // A late table is let go here too, so the status reads the same as everywhere else.
+        HotelTableDesk::releaseNoShows($groupName, $facultyId);
+
+        $reservations = HotelDineInReservation::where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
+            ->where('hotel_customer_id', (int) ($auth['customer_id'] ?? 0))
+            ->orderByDesc('reserved_for')
+            ->limit(20)
+            ->get();
+
+        $tables = HotelDineInTable::where('group_name', $groupName)
+            ->where('faculty_id', $facultyId)
+            ->whereIn('hotel_dine_in_table_id', $reservations->pluck('hotel_dine_in_table_id')->filter()->all())
+            ->get()
+            ->keyBy('hotel_dine_in_table_id');
+
+        return $reservations->map(fn (HotelDineInReservation $reservation) => $reservation->toGuestArray(
+            $reservation->outcome === null ? $tables->get($reservation->hotel_dine_in_table_id) : null
+        ))->values()->all();
     }
 
     /**

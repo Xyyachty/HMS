@@ -34,7 +34,7 @@ class HotelSimulationAuthController extends Controller
         return response()->json(HotelSimulationAuth::payload());
     }
 
-    /** The signed-in guest's stays at this hotel, for their My Bookings list. */
+    /** The signed-in guest's stays and table reservations at this hotel, for their My Bookings list. */
     public function myBookings(Request $request, ?string $slug = null)
     {
         $context = $slug === null
@@ -49,7 +49,12 @@ class HotelSimulationAuthController extends Controller
             ? \App\Support\HotelGuestStay::bookings($context['group_name'], (int) $context['faculty_id'])
             : collect();
 
-        return response()->json(['bookings' => $bookings->map->toGuestArray()->values()]);
+        return response()->json([
+            'bookings' => $bookings->map->toGuestArray()->values(),
+            'tables'   => $context
+                ? \App\Support\HotelGuestStay::tableReservations($context['group_name'], (int) $context['faculty_id'])
+                : [],
+        ]);
     }
 
     public function staffLogin(Request $request)
