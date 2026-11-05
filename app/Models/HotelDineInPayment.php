@@ -36,9 +36,27 @@ class HotelDineInPayment extends Model
         'collected_by',
         'paid_at',
         'party_ref',
+        'subtotal',
+        'discounts',
+        'discount_total',
+        'service_charge_rate',
+        'service_charge',
     ];
 
+    /** False until the discounts / service charge migration has run. */
+    public static function pricingSupported(): bool
+    {
+        static $has = null;
+
+        return $has ??= \Illuminate\Support\Facades\Schema::hasColumn('hotel_dine_in_payments', 'service_charge');
+    }
+
     protected $casts = [
+        'subtotal'            => 'float',
+        'discounts'           => 'array',
+        'discount_total'      => 'float',
+        'service_charge_rate' => 'float',
+        'service_charge'      => 'float',
         'total_due'   => 'float',
         'amount_paid' => 'float',
         'balance'     => 'float',
@@ -86,6 +104,13 @@ class HotelDineInPayment extends Model
             'collectedBy' => $this->collected_by ?? '',
             // Set when one payment settled several tables reserved together.
             'partyRef'   => $this->party_ref ?? null,
+            // Null on payments from before discounts and service charge: their
+            // total_due was the food alone.
+            'subtotal'          => $this->subtotal ?? (float) $this->total_due,
+            'discounts'         => $this->discounts ?? [],
+            'discountTotal'     => (float) ($this->discount_total ?? 0),
+            'serviceChargeRate' => (float) ($this->service_charge_rate ?? 0),
+            'serviceCharge'     => (float) ($this->service_charge ?? 0),
             'paidAt'     => optional($this->paid_at)->toIso8601String(),
         ];
     }

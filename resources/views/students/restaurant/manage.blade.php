@@ -1011,22 +1011,39 @@ function DineInBillModal({ table, onFetchBill, onSettle, onClose, onToast, onRec
   const [amount, setAmount] = useState('');
   const [reference, setReference] = useState('');
   const [busy, setBusy] = useState(false);
+  // With / Without Discount: the Senior Citizen and PWD guests at the table, each
+  // with a name and ID number. The server prices their share (VAT exemption + 20%).
+  const [withDiscount, setWithDiscount] = useState(false);
+  const [claims, setClaims] = useState([]);
+  const filled = withDiscount
+    ? claims.filter(c => c.full_name.trim() && c.id_number.trim())
+        .map(c => ({ type: c.type, full_name: c.full_name.trim(), id_number: c.id_number.trim() }))
+    : [];
+  const claimsKey = JSON.stringify(filled);
 
   useEffect(() => {
     let alive = true;
-    setLoading(true);
-    Promise.resolve(onFetchBill(table.id))
-      .then(data => {
-        if (!alive) return;
-        setBill(data);
-        // Settling in full is the common case; the field stays editable for a
-        // customer handing over something else.
-        setAmount(String(data && data.total != null ? data.total : ''));
-      })
-      .catch(err => { if (alive) setError((err && err.message) || 'Could not load this bill.'); })
-      .finally(() => { if (alive) setLoading(false); });
-    return () => { alive = false; };
-  }, [table.id, onFetchBill]);
+    // Re-priced shortly after the cashier stops typing a name or ID.
+    const id = setTimeout(() => {
+      Promise.resolve(onFetchBill(table.id, filled))
+        .then(data => {
+          if (!alive) return;
+          setBill(data);
+          setError('');
+          // Settling in full is the common case; the field stays editable for a
+          // customer handing over something else.
+          setAmount(String(data && data.total != null ? data.total : ''));
+        })
+        .catch(err => { if (alive) setError((err && err.message) || 'Could not load this bill.'); })
+        .finally(() => { if (alive) setLoading(false); });
+    }, bill ? 350 : 0);
+    return () => { alive = false; clearTimeout(id); };
+  }, [table.id, onFetchBill, claimsKey]);
+
+  const setClaim = (i, patch) => setClaims(list => list.map((c, k) => (k === i ? Object.assign({}, c, patch) : c)));
+  const addClaim = () => setClaims(list => [...list, { type: 'Senior Citizen', full_name: '', id_number: '' }]);
+  const removeClaim = (i) => setClaims(list => list.filter((c, k) => k !== i));
+  const money2 = (n) => '₱' + (Number(n) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape' && !busy) onClose(); };
@@ -1052,8 +1069,12 @@ function DineInBillModal({ table, onFetchBill, onSettle, onClose, onToast, onRec
     if (shortBy > 0 && !window.confirm(
       `${formatPeso(shortBy)} of this bill will go uncollected. Close ${isParty ? 'the tables' : 'the table'} anyway?`
     )) return;
+    if (withDiscount && filled.length !== claims.length) {
+      setError('Enter the name and ID number of every Senior Citizen / PWD guest, or remove the empty row.');
+      return;
+    }
     setBusy(true);
-    Promise.resolve(onSettle(table.id, { amount_paid: recorded, method, reference: reference.trim() }))
+    Promise.resolve(onSettle(table.id, { amount_paid: recorded, method, reference: reference.trim(), discounts: filled }))
       .then((payment) => {
         if (onToast) onToast(`${names} settled — ${formatPeso(recorded)} by ${method}.`);
         // The receipt for what was just paid, one for the whole party.
@@ -1113,9 +1134,63 @@ function DineInBillModal({ table, onFetchBill, onSettle, onClose, onToast, onRec
                       <span className="tb-bill-amt">{formatPeso(line.line)}</span>
                     </div>
                   ))}
+                  {/* Senior Citizen / PWD: With or Without Discount. */}
+                  <p className="tb-bill-title" style={{ marginTop: '1rem' }}>Senior Citizen / PWD</p>
+                  <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                    {[[false, 'Without Discount'], [true, 'With Discount']].map(([on, label]) => (
+                      <button key={label} type="button" aria-pressed={withDiscount === on}
+                        className={withDiscount === on ? 'btn-primary' : 'btn-outline'}
+                        style={{ fontSize: '0.66rem', padding: '0.4rem 0.8rem' }}
+                        onClick={() => { setWithDiscount(on); if (on && claims.length === 0) addClaim(); }}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  {withDiscount && (
+                    <div style={{ display: 'grid', gap: '0.45rem', marginTop: '0.6rem' }}>
+                      {claims.map((c, i) => (
+                        <div key={i} style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center' }}>
+                          <select className="booking-input" value={c.type} onChange={e => setClaim(i, { type: e.target.value })}
+                            aria-label="Discount type" style={{ padding: '0.45rem 1.6rem 0.45rem 0.5rem', fontSize: '0.76rem', flex: '1 0 8.5rem', width: 'auto' }}>
+                            <option value="Senior Citizen">Senior Citizen</option>
+                            <option value="PWD">PWD</option>
+                          </select>
+                          <input className="booking-input" placeholder="Full name" value={c.full_name}
+                            onChange={e => setClaim(i, { full_name: e.target.value })} style={{ padding: '0.45rem 0.6rem', fontSize: '0.76rem', flex: '2 1 9rem', width: 'auto' }} />
+                          <input className="booking-input" placeholder="ID number" value={c.id_number}
+                            onChange={e => setClaim(i, { id_number: e.target.value })} style={{ padding: '0.45rem 0.6rem', fontSize: '0.76rem', flex: '1 1 7rem', width: 'auto' }} />
+                          <button type="button" onClick={() => removeClaim(i)} aria-label="Remove this guest" style={toolBtnStyle('danger')}>
+                            <i className="fa-solid fa-xmark" style={{ fontSize: 11 }}></i>
+                          </button>
+                        </div>
+                      ))}
+                      {claims.length < ((bill && bill.partySize) || 1) && (
+                        <button type="button" onClick={addClaim}
+                          style={{ justifySelf: 'start', background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: '0.74rem', padding: '0.2rem 0' }}>
+                          <i className="fa-solid fa-plus" style={{ fontSize: '0.62rem', marginRight: 5 }}></i> Add another Senior Citizen / PWD
+                        </button>
+                      )}
+                      <p style={{ margin: 0, color: 'var(--fg-muted)', fontSize: '0.7rem', lineHeight: 1.45 }}>
+                        Each one's share is the food total split over the party of {(bill && bill.partySize) || '—'}; that share is VAT-exempt, then 20% off. Check the ID before giving it.
+                      </p>
+                    </div>
+                  )}
+
+                  <div style={{ marginTop: '0.9rem' }}>
+                    <div className="tb-bill-line"><span>Subtotal</span><span className="tb-bill-amt">{money2(bill.subtotal)}</span></div>
+                    {(bill.discounts || []).map((d, i) => (
+                      <React.Fragment key={'d' + i}>
+                        <div className="tb-bill-line"><span>Less VAT exemption · {d.type} {d.fullName}<span style={{ opacity: 0.55 }}> · on {money2(d.eligible)} share</span></span><span className="tb-bill-amt">−{money2(d.vat)}</span></div>
+                        <div className="tb-bill-line"><span>Less 20% {d.type} discount · ID {d.idNumber}</span><span className="tb-bill-amt">−{money2(d.discount)}</span></div>
+                      </React.Fragment>
+                    ))}
+                    {Number(bill.serviceCharge) > 0 && (
+                      <div className="tb-bill-line"><span>Service charge ({bill.serviceChargeRate}%)<span style={{ opacity: 0.55 }}> · after discounts</span></span><span className="tb-bill-amt">{money2(bill.serviceCharge)}</span></div>
+                    )}
+                  </div>
                   <div className="tb-bill-line is-total">
                     <span>Total Bill</span>
-                    <span className="tb-bill-amt">{formatPeso(total)}</span>
+                    <span className="tb-bill-amt">{money2(total)}</span>
                   </div>
                   {/* The printed Final Bill for the guest to check before paying. */}
                   {onReceipt && (
@@ -1192,8 +1267,9 @@ function DineInBillModal({ table, onFetchBill, onSettle, onClose, onToast, onRec
    Two sources, one sheet. Before payment it is drawn from the bill the server priced
    (HotelDineInBill) and the whole total is still due. After payment it is drawn from
    the payment the server recorded, which kept the same lines, so the receipt shows
-   what was actually paid. No tax, service charge, room charge or discount: none of
-   them is on a dine-in bill. Its own <style> travels with it into the print frame. */
+   what was actually paid. Senior Citizen / PWD discounts and the service charge show
+   when the bill has them; there is no tax line and no room charge. Its own <style>
+   travels with it into the print frame. */
 function DineInBillSheet({ bill, payment, tendered, change }) {
   const hotel = window.HMS_HOTEL_IDENTITY || { name: window.HMS_HOTEL_NAME || 'Restaurant' };
   const src = payment || bill || {};
@@ -1202,9 +1278,14 @@ function DineInBillSheet({ bill, payment, tendered, change }) {
   const billNo = 'BIL-' + String(orderIds.length ? Math.min(...orderIds) : (src.tableId || src.id || '')).padStart(6, '0');
   const tableNames = String(src.tableName || '').split(' + ').filter(Boolean);
   const multi = tableNames.length > 1;
-  const subtotal = payment ? Number(payment.totalDue) || 0 : Number(bill && bill.total) || 0;
+  // The food, then any Senior Citizen / PWD discounts and the service charge, as the
+  // server priced them. A payment from before those existed has only its total.
+  const totalDue = payment ? Number(payment.totalDue) || 0 : Number(bill && bill.total) || 0;
+  const subtotal = src.subtotal != null ? Number(src.subtotal) || 0 : totalDue;
+  const discounts = src.discounts || [];
+  const serviceCharge = Number(src.serviceCharge) || 0;
   const paid = payment ? Number(payment.amountPaid) || 0 : 0;
-  const balance = payment ? Math.max(0, Number(payment.balance) || 0) : subtotal;
+  const balance = payment ? Math.max(0, Number(payment.balance) || 0) : totalDue;
   const printed = new Date();
   const money = (n) => (Number(n) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const day = (iso) => {
@@ -1243,6 +1324,8 @@ function DineInBillSheet({ bill, payment, tendered, change }) {
         .dn-sheet .from { display: block; font-family: Arial, sans-serif; font-size: 0.7rem; color: #6b6b6b; }
         .dn-sheet .sum { display: flex; justify-content: flex-end; gap: 2rem; align-items: baseline; padding: 0.65rem 0.4rem 0; color: var(--ink); font-weight: 700; }
         .dn-sheet .sum b { font-size: 1.05rem; }
+        .dn-sheet .adj { display: flex; justify-content: space-between; gap: 1rem; padding: 0.15rem 0.4rem 0 1.6rem; }
+        .dn-sheet .adj + .sum { margin-top: 0.3rem; border-top: 1px solid color-mix(in srgb, var(--ink) 35%, #fff); }
         .dn-sheet .sec { margin: 1rem 0 0.3rem; color: var(--ink); font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; }
         .dn-sheet .pay { display: flex; justify-content: space-between; gap: 1rem; padding: 0.1rem 0.4rem 0.1rem 1.6rem; }
         .dn-sheet .pay .muted { color: #6b6b6b; }
@@ -1304,6 +1387,20 @@ function DineInBillSheet({ bill, payment, tendered, change }) {
       </table>
 
       <div className="sum"><span>SUBTOTAL</span><b>₱{money(subtotal)}</b></div>
+      {(discounts.length > 0 || serviceCharge > 0) && (
+        <>
+          {discounts.map((d, k) => (
+            <React.Fragment key={k}>
+              <div className="adj"><span>Less: VAT exemption – {d.type} ({d.fullName}, ID {d.idNumber})</span><span className="num">-{money(d.vat)}</span></div>
+              <div className="adj"><span>Less: 20% {d.type} discount</span><span className="num">-{money(d.discount)}</span></div>
+            </React.Fragment>
+          ))}
+          {serviceCharge > 0 && (
+            <div className="adj"><span>Service charge ({src.serviceChargeRate}%)</span><span className="num">{money(serviceCharge)}</span></div>
+          )}
+          <div className="sum"><span>TOTAL AMOUNT DUE</span><b>₱{money(totalDue)}</b></div>
+        </>
+      )}
 
       <p className="sec">Payments &amp; Credits Applied:</p>
       {payment && paid > 0 ? (
@@ -2681,8 +2778,11 @@ function App() {
     })
   ), [menuRequest, mergeTables]);
 
-  const fetchTableBill = useCallback((id) => (
-    menuRequest('/students/hotel/tables/' + id + '/bill', 'GET').then(data => data && data.bill)
+  // discounts: the Senior Citizen / PWD guests entered so far, priced by the server.
+  const fetchTableBill = useCallback((id, discounts) => (
+    menuRequest('/students/hotel/tables/' + id + '/bill'
+      + (discounts && discounts.length ? '?discounts=' + encodeURIComponent(JSON.stringify(discounts)) : ''), 'GET')
+      .then(data => data && data.bill)
   ), [menuRequest]);
 
   /* Settling frees the table server-side, so the row that comes back is already

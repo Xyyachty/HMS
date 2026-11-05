@@ -4888,7 +4888,16 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             ->where('faculty_id', $membership->faculty_id)
             ->firstOrFail();
 
-        return response()->json(['bill' => \App\Support\HotelDineInBill::for($table)]);
+        // ?discounts=[{type, full_name, id_number}] prices the bill with the Senior
+        // Citizen / PWD guests the cashier has entered, before anything is paid.
+        $raw = json_decode((string) $request->query('discounts', '[]'), true);
+        try {
+            $claims = \App\Support\HotelDineInBill::claims($raw, (int) $table->partyTables()->sum('party_size'));
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['bill' => \App\Support\HotelDineInBill::for($table, $claims)]);
     })->name('hotel.tables.bill');
 
     Route::post('/hotel/tables/{id}/settle', function (Request $request, $id) {
@@ -4917,6 +4926,8 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             'amount_paid' => 'required|numeric|min:0',
             'method'      => 'required|string|max:50',
             'reference'   => 'nullable|string|max:255',
+            // Senior Citizen / PWD guests at the table: [{type, full_name, id_number}].
+            'discounts'   => 'sometimes|array|max:50',
         ]);
 
         // Tables reserved together are settled together, with one payment.
@@ -4929,7 +4940,16 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             ], 422);
         }
 
-        $bill = \App\Support\HotelDineInBill::for($table);
+        try {
+            $claims = \App\Support\HotelDineInBill::claims($data['discounts'] ?? [], (int) $party->sum('party_size'));
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+        if ($claims && !\App\Models\HotelDineInPayment::pricingSupported()) {
+            return response()->json(['message' => 'Discounts are not available yet. Try again in a minute.'], 422);
+        }
+
+        $bill = \App\Support\HotelDineInBill::for($table, $claims);
 
         if ($bill['unserved']) {
             $ids = implode(', #', array_column($bill['unserved'], 'orderId'));
@@ -4968,7 +4988,14 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
                 'order_ids'              => $bill['orderIds'],
                 'collected_by'           => auth()->user()?->name,
                 'paid_at'                => now(),
-            ] + ($party->count() > 1 ? ['party_ref' => $table->party_ref] : []));
+            ] + ($party->count() > 1 ? ['party_ref' => $table->party_ref] : [])
+              + (\App\Models\HotelDineInPayment::pricingSupported() ? [
+                  'subtotal'            => $bill['subtotal'],
+                  'discounts'           => $bill['discounts'],
+                  'discount_total'      => $bill['discountTotal'],
+                  'service_charge_rate' => $bill['serviceChargeRate'],
+                  'service_charge'      => $bill['serviceCharge'],
+              ] : []));
 
             foreach ($party as $partyTable) {
                 \App\Support\HotelTableDesk::endReservation($partyTable, 'Completed');

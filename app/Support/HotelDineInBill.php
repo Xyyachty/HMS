@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\HotelBookingDiscount;
 use App\Models\HotelDineInTable;
 use App\Models\HotelFoodOrder;
 
@@ -46,7 +47,74 @@ class HotelDineInBill
      * The bill as the settle screen renders it: one entry per order line, the orders
      * those lines came from, and what is still cooking.
      */
-    public static function for(HotelDineInTable $table): array
+    /**
+     * The Senior Citizen / PWD guests a bill is discounted for, cleaned and checked:
+     * a type, a name and an ID number each, no ID twice, and no more of them than
+     * the party has guests.
+     *
+     * @return list<array{type: string, fullName: string, idNumber: string}>
+     * @throws \RuntimeException with a message the cashier can act on
+     */
+    public static function claims(mixed $raw, int $partySize): array
+    {
+        $claims = [];
+        $seen = [];
+        foreach (is_array($raw) ? $raw : [] as $row) {
+            $row = is_array($row) ? $row : [];
+            $type = HotelBookingDiscount::normalizeType($row['type'] ?? null);
+            $name = trim((string) ($row['full_name'] ?? $row['fullName'] ?? ''));
+            $id = trim((string) ($row['id_number'] ?? $row['idNumber'] ?? ''));
+            if (!$type) {
+                throw new \RuntimeException('Pick Senior Citizen or PWD for each discounted guest.');
+            }
+            if ($name === '' || $id === '') {
+                throw new \RuntimeException('Enter the name and ID number of each ' . $type . ' guest.');
+            }
+            $key = $type . '|' . mb_strtoupper(preg_replace('/[\s-]+/', '', $id));
+            if (isset($seen[$key])) {
+                throw new \RuntimeException('ID ' . $id . ' is listed twice.');
+            }
+            $seen[$key] = true;
+            $claims[] = ['type' => $type, 'fullName' => mb_substr($name, 0, 120), 'idNumber' => mb_substr($id, 0, 60)];
+        }
+        if (count($claims) > max(1, $partySize)) {
+            throw new \RuntimeException('There are more discounted guests than the party of ' . $partySize . '.');
+        }
+
+        return $claims;
+    }
+
+    /**
+     * Prices a bill. Each Senior Citizen / PWD guest's share is the food subtotal
+     * split evenly over the party; that share loses its VAT and then 20%, the same
+     * computation the room bill uses (HotelBookingDiscount::compute). The service
+     * charge (config hms.service_charge_rate) is then taken on what is left, as on
+     * the guest bill.
+     */
+    public static function price(float $subtotal, int $partySize, array $claims): array
+    {
+        $share = $partySize > 0 ? round($subtotal / $partySize, 2) : $subtotal;
+        $discounts = array_map(
+            fn ($c) => $c + HotelBookingDiscount::compute($share),
+            $claims
+        );
+        $discountTotal = round(array_sum(array_column($discounts, 'less')), 2);
+        // Off until the payment can record it, so no receipt shows a total it cannot explain.
+        $rate = \App\Models\HotelDineInPayment::pricingSupported() ? max(0, (float) config('hms.service_charge_rate', 0)) : 0.0;
+        $afterDiscount = max(0, round($subtotal - $discountTotal, 2));
+        $serviceCharge = $rate > 0 ? round($afterDiscount * $rate / 100, 2) : 0.0;
+
+        return [
+            'subtotal'          => round($subtotal, 2),
+            'discounts'         => $discounts,
+            'discountTotal'     => $discountTotal,
+            'serviceChargeRate' => $rate,
+            'serviceCharge'     => $serviceCharge,
+            'total'             => round($afterDiscount + $serviceCharge, 2),
+        ];
+    }
+
+    public static function for(HotelDineInTable $table, array $claims = []): array
     {
         // Tables reserved together for one guest are billed as one: every table of
         // the party, each line saying which table ordered it.
@@ -90,7 +158,10 @@ class HotelDineInBill
             ->values()
             ->all();
 
-        return [
+        $partySize = (int) $tables->sum('party_size');
+        $priced = self::price($total, $partySize, $claims);
+
+        return $priced + [
             'tableId'   => $table->hotel_dine_in_table_id,
             'tableName' => HotelDineInTable::joinNames($tables),
             // Every table this bill covers, with where each one stands.
@@ -99,7 +170,7 @@ class HotelDineInBill
             ])->values()->all(),
             'partyRef'  => $table->party_ref ?? null,
             'guestName' => $table->guest_name ?? '',
-            'partySize' => (int) $tables->sum('party_size'),
+            'partySize' => $partySize,
             'reservedAt' => optional($table->assigned_at)->toIso8601String(),
             'reservedBy' => $table->assigned_by ?? '',
             'orders'    => $orders->map(fn (HotelFoodOrder $order) => [
@@ -110,7 +181,7 @@ class HotelDineInBill
             ])->values()->all(),
             'items'     => $items,
             'orderIds'  => $orders->pluck('hotel_food_order_id')->values()->all(),
-            'total'     => $total,
+            // subtotal, discounts, serviceCharge and total come from price() above.
             // Non-empty means the customer has not been served yet, so the bill is
             // premature — the settle route refuses on the same condition.
             'unserved'  => $unserved,
