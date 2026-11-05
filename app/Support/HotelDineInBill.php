@@ -70,6 +70,8 @@ class HotelDineInBill
                 $items[] = [
                     'orderId'   => $order->hotel_food_order_id,
                     'tableName' => $tableNames[$order->hotel_food_order_id] ?? $table->name,
+                    // When it was ordered, for the Date column of the printed bill.
+                    'placedAt'  => optional($order->created_at)->toIso8601String(),
                     'name'      => (string) ($line['name'] ?? ''),
                     'qty'       => $qty,
                     'price'     => $price,

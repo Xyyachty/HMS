@@ -324,18 +324,17 @@
 <script>
   window.HMS_FRONTDESK_URL = @json(route('students.dashboard', ['section' => 'tasks']));
   window.HMS_WALKIN_URL = @json(route('students.frontdesk.walk-in'));
-  // The name printed at the top of the guest's receipt: the team's approved hotel.
-  window.HMS_HOTEL_NAME = @json(\App\Support\HotelTemplateBuilder::hotelDefaults($groupName ?? null, isset($facultyId) ? (int) $facultyId : null)['name']);
+  // The top of the folio and receipt: the team's own hotel name, address and contact,
+  // the same as the dine-in bill prints (HotelTemplateBuilder::printIdentity). A field
+  // the team has not filled in is left off.
   @php
-    // Address and contact for the folio header: what the team typed in the site's
-    // hotel info (Customize). Left out of the folio when the team has not set them.
-    $folioHotelInfo = !empty($groupName) && !empty($facultyId)
-        ? (array) data_get(\App\Support\HotelTemplateBuilder::mergeTeamCustomizations((string) $groupName, (int) $facultyId), '__hotelInfo.items.0', [])
-        : [];
-    $folioPick = fn ($key) => is_scalar($folioHotelInfo[$key] ?? null) ? trim((string) $folioHotelInfo[$key]) : '';
-    $folioHotelInfo = ['address' => $folioPick('address'), 'phone' => $folioPick('phone'), 'email' => $folioPick('email')];
+    $printIdentity = \App\Support\HotelTemplateBuilder::printIdentity(
+        $templateCustomizations ?? [], $groupName ?? null, isset($facultyId) ? (int) $facultyId : null, $selectedTemplate ?? null
+    );
   @endphp
-  window.HMS_HOTEL_INFO = @json($folioHotelInfo);
+  window.HMS_HOTEL_IDENTITY = @json($printIdentity);
+  window.HMS_HOTEL_NAME = window.HMS_HOTEL_IDENTITY.name;
+  window.HMS_HOTEL_INFO = window.HMS_HOTEL_IDENTITY;
 </script>
 @verbatim
 <script type="text/babel">

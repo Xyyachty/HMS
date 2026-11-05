@@ -371,6 +371,36 @@ class HotelTemplateBuilder
         ];
     }
 
+    /**
+     * What a printed bill or receipt puts at the top, from the team's own saved
+     * design: the site name they gave it (else the approved concept's), the address,
+     * phone and email from the site's hotel info, the logo, and an ink colour from
+     * their site colours that reads on white. A field the team never filled in is
+     * '' and left off the paper; nothing is made up.
+     */
+    public static function printIdentity(array $customizations, ?string $groupName, ?int $facultyId, ?string $template = null): array
+    {
+        $text = fn ($value) => is_scalar($value) ? trim((string) $value) : '';
+        $info = (array) data_get($customizations, self::HOTEL_INFO_KEY . '.items.0', []);
+        $brand = $text(data_get($customizations, self::BRAND_NAME_KEY . '.items.0.label'));
+        $images = (array) data_get($customizations, self::CARD_IMAGES_KEY . '.map', []);
+        $logo = '';
+        foreach (['logo', 'logo-home', 'logo-rooms', 'logo-restaurant'] as $id) {
+            if (($logo = $text($images['brand:' . $id] ?? null)) !== '') {
+                break;
+            }
+        }
+
+        return [
+            'name'    => $brand !== '' ? $brand : self::hotelDefaults($groupName, $facultyId)['name'],
+            'address' => $text($info['address'] ?? null),
+            'phone'   => $text($info['phone'] ?? null),
+            'email'   => $text($info['email'] ?? null),
+            'logo'    => preg_match('#^(https?:)?//|^/|^data:image/#', $logo) ? $logo : '',
+            'ink'     => SitePalette::inkOnWhite($customizations, $template),
+        ];
+    }
+
     public static function isValidRole(string $role): bool
     {
         return array_key_exists($role, self::ROLES);

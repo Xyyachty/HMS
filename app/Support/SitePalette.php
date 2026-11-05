@@ -91,6 +91,42 @@ class SitePalette
         return null;
     }
 
+    /**
+     * The team's design colour for ink on white paper (printed bills and receipts):
+     * the first of the header and site colours they picked that reads on white at
+     * 4.5:1, else the template's accent darkened until it does.
+     */
+    public static function inkOnWhite(?array $customizations, ?string $template = null): string
+    {
+        $entry = $customizations[self::SITE_COLORS_KEY] ?? null;
+        $items = is_array($entry) && is_array($entry['items'] ?? null) ? $entry['items'] : [];
+        $picked = [];
+        foreach ($items as $item) {
+            if (is_array($item) && is_string($item['id'] ?? null)) {
+                $picked[$item['id']] = (string) ($item['bg'] ?? '');
+            }
+        }
+
+        $white = 1.0;
+        foreach ([$picked['header'] ?? null, $picked['site'] ?? null] as $color) {
+            $rgb = self::parseColor($color);
+            if ($rgb && self::contrastRatio(self::relativeLuminance($rgb), $white) >= 4.5) {
+                return self::rgbToCss($rgb);
+            }
+        }
+
+        $accent = self::parseColor(self::ACCENTS[$template] ?? self::ACCENTS['1']);
+        $black = ['r' => 20, 'g' => 17, 'b' => 12];
+        for ($t = 0.0; $t <= 1.0; $t += 0.1) {
+            $candidate = self::mixRgb($accent, $black, $t);
+            if (self::contrastRatio(self::relativeLuminance($candidate), $white) >= 4.5) {
+                return self::rgbToCss($candidate);
+            }
+        }
+
+        return self::rgbToCss($black);
+    }
+
     private static function parseColor(?string $value): ?array
     {
         $v = trim((string) $value);

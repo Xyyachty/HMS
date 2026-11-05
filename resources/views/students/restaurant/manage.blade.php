@@ -419,8 +419,15 @@
 <script>
   window.HMS_RESTAURANT_URL = @json(route('students.dashboard', ['section' => 'tasks']));
   window.HMS_RESTAURANT_INITIAL_NAV = @json(request()->query('nav', 'manage-menu'));
-  // The name printed at the top of a dine-in receipt: the team's approved hotel.
-  window.HMS_HOTEL_NAME = @json(\App\Support\HotelTemplateBuilder::hotelDefaults($groupName ?? null, isset($facultyId) ? (int) $facultyId : null)['name']);
+  // The top of a printed dine-in bill: the team's own hotel name, address, contact,
+  // logo and design colour, from their saved customization (HotelTemplateBuilder::printIdentity).
+  @php
+    $printIdentity = \App\Support\HotelTemplateBuilder::printIdentity(
+        $templateCustomizations ?? [], $groupName ?? null, isset($facultyId) ? (int) $facultyId : null, $selectedTemplate ?? null
+    );
+  @endphp
+  window.HMS_HOTEL_IDENTITY = @json($printIdentity);
+  window.HMS_HOTEL_NAME = window.HMS_HOTEL_IDENTITY.name;
 </script>
 @verbatim
 <script type="text/babel">
@@ -1110,6 +1117,13 @@ function DineInBillModal({ table, onFetchBill, onSettle, onClose, onToast, onRec
                     <span>Total Bill</span>
                     <span className="tb-bill-amt">{formatPeso(total)}</span>
                   </div>
+                  {/* The printed Final Bill for the guest to check before paying. */}
+                  {onReceipt && (
+                    <button type="button" className="btn-outline" onClick={() => onReceipt({ bill })}
+                      style={{ marginTop: '0.8rem', fontSize: '0.7rem', padding: '0.5rem 0.9rem' }}>
+                      <i className="fa-solid fa-file-invoice" style={{ marginRight: 6 }}></i>View / Print Final Bill
+                    </button>
+                  )}
                 </>
               )}
 
@@ -1170,60 +1184,186 @@ function DineInBillModal({ table, onFetchBill, onSettle, onClose, onToast, onRec
   );
 }
 
-/* The dine-in receipt, shown once a bill is settled: one for the whole party when
-   several tables were reserved together. Built from the payment the server just
-   recorded; tendered and change are only known here, so only this receipt has them.
-   Print prints the sheet alone from a hidden frame, on white. */
-function DineInReceiptModal({ receipt, onClose }) {
+/* The printed Dine-in Final Bill, in the formal hotel layout: the team's own hotel
+   header and design colour (window.HMS_HOTEL_IDENTITY, from their saved
+   customization), the bill details, every order line with the table it came from,
+   then the subtotal, payment applied and balance due, and a guest signature line.
+
+   Two sources, one sheet. Before payment it is drawn from the bill the server priced
+   (HotelDineInBill) and the whole total is still due. After payment it is drawn from
+   the payment the server recorded, which kept the same lines, so the receipt shows
+   what was actually paid. No tax, service charge, room charge or discount: none of
+   them is on a dine-in bill. Its own <style> travels with it into the print frame. */
+function DineInBillSheet({ bill, payment, tendered, change }) {
+  const hotel = window.HMS_HOTEL_IDENTITY || { name: window.HMS_HOTEL_NAME || 'Restaurant' };
+  const src = payment || bill || {};
+  const items = src.items || [];
+  const orderIds = (src.orderIds || []).map(Number).filter(Boolean);
+  const billNo = 'BIL-' + String(orderIds.length ? Math.min(...orderIds) : (src.tableId || src.id || '')).padStart(6, '0');
+  const tableNames = String(src.tableName || '').split(' + ').filter(Boolean);
+  const multi = tableNames.length > 1;
+  const subtotal = payment ? Number(payment.totalDue) || 0 : Number(bill && bill.total) || 0;
+  const paid = payment ? Number(payment.amountPaid) || 0 : 0;
+  const balance = payment ? Math.max(0, Number(payment.balance) || 0) : subtotal;
+  const printed = new Date();
+  const money = (n) => (Number(n) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const day = (iso) => {
+    const d = iso ? new Date(iso) : (payment && payment.paidAt ? new Date(payment.paidAt) : printed);
+    return isNaN(d) ? '' : String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+  };
+  const longDay = (d) => String(d.getDate()).padStart(2, '0') + ' ' + d.toLocaleString('en-US', { month: 'short' }) + ' ' + d.getFullYear();
+  const contact = [hotel.phone && 'Tel: ' + hotel.phone, hotel.email].filter(Boolean).join(' | ');
+  // "Table 10" reads as 10 in the Tables row, like the paper form; any other name stays whole.
+  const tableLabel = tableNames.map(n => n.replace(/^Table\s+/i, '')).join(', ');
+
+  return (
+    <div className="dn-sheet" style={{ '--ink': hotel.ink || '#1f2a44' }}>
+      <style>{`
+        .dn-sheet { background: #fff; color: #1a1a1a; border-radius: 10px; padding: 1.5rem 1.6rem 1.4rem; font-family: Georgia, 'Times New Roman', serif; font-size: 13.5px; line-height: 1.45; font-variant-numeric: lining-nums; }
+        .dn-sheet * { box-sizing: border-box; }
+        .dn-sheet .h-top { text-align: center; }
+        .dn-sheet .h-logo { max-height: 56px; max-width: 160px; object-fit: contain; display: block; margin: 0 auto 0.4rem; }
+        .dn-sheet .h-name { margin: 0; color: var(--ink); font-size: 1.55rem; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; }
+        .dn-sheet .h-line { margin: 0.15rem 0 0; color: #2b2b2b; }
+        .dn-sheet .rule { border: 0; border-top: 2px solid var(--ink); margin: 0.8rem 0 0; }
+        .dn-sheet .rule + .rule { border-top-width: 1px; margin-top: 3px; }
+        .dn-sheet .title { text-align: center; color: var(--ink); font-size: 1.45rem; font-weight: 700; margin: 0.9rem 0 0.7rem; letter-spacing: 0.02em; }
+        .dn-sheet .meta { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; }
+        .dn-sheet .meta dl { margin: 0; display: grid; grid-template-columns: auto auto 1fr; column-gap: 0.6rem; row-gap: 0.15rem; }
+        .dn-sheet .meta dt { margin: 0; }
+        .dn-sheet .meta dd { margin: 0; }
+        .dn-sheet .meta .printed { white-space: nowrap; }
+        .dn-sheet table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-family: Georgia, serif; }
+        .dn-sheet thead th { background: color-mix(in srgb, var(--ink) 9%, #fff); color: var(--ink); font-family: Arial, sans-serif; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; text-align: left; padding: 0.55rem 0.4rem; border-top: 2px solid var(--ink); border-bottom: 1px solid var(--ink); }
+        .dn-sheet td { padding: 0.4rem 0.4rem; vertical-align: top; }
+        .dn-sheet tbody tr:first-child td { padding-top: 0.7rem; }
+        .dn-sheet tbody tr:last-child td { padding-bottom: 0.7rem; border-bottom: 1.5px solid var(--ink); }
+        .dn-sheet .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+        .dn-sheet .qty { text-align: center; }
+        .dn-sheet .from { display: block; font-family: Arial, sans-serif; font-size: 0.7rem; color: #6b6b6b; }
+        .dn-sheet .sum { display: flex; justify-content: flex-end; gap: 2rem; align-items: baseline; padding: 0.65rem 0.4rem 0; color: var(--ink); font-weight: 700; }
+        .dn-sheet .sum b { font-size: 1.05rem; }
+        .dn-sheet .sec { margin: 1rem 0 0.3rem; color: var(--ink); font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; }
+        .dn-sheet .pay { display: flex; justify-content: space-between; gap: 1rem; padding: 0.1rem 0.4rem 0.1rem 1.6rem; }
+        .dn-sheet .pay .muted { color: #6b6b6b; }
+        .dn-sheet .due { display: flex; justify-content: flex-end; gap: 2rem; align-items: baseline; margin-top: 0.6rem; padding: 0.55rem 0.4rem; border-top: 1.5px solid var(--ink); border-bottom: 1.5px solid var(--ink); color: var(--ink); font-weight: 700; }
+        .dn-sheet .due b { font-size: 1.5rem; color: #1a1a1a; }
+        .dn-sheet .due.is-owed b { color: #b91c1c; }
+        .dn-sheet .sign { margin-top: 1.8rem; display: flex; align-items: flex-end; gap: 0.5rem; }
+        .dn-sheet .sign span:last-child { flex: 0 1 18rem; border-bottom: 1px solid #1a1a1a; height: 1.2rem; }
+        .dn-sheet .sign-name { margin: 0.25rem 0 0; padding-left: 9.5rem; font-style: italic; color: var(--ink); }
+        @media (max-width: 520px) {
+          .dn-sheet { padding: 1rem; font-size: 12.5px; }
+          .dn-sheet .h-name { font-size: 1.2rem; }
+          .dn-sheet .meta { flex-direction: column; }
+          .dn-sheet .unit { display: none; }
+          .dn-sheet .sign-name { padding-left: 0; }
+        }
+      `}</style>
+
+      <div className="h-top">
+        {hotel.logo ? <img className="h-logo" src={hotel.logo} alt="" /> : null}
+        <h3 className="h-name">{hotel.name || 'Restaurant'}</h3>
+        {hotel.address ? <p className="h-line">{hotel.address}</p> : null}
+        {contact ? <p className="h-line">{contact}</p> : null}
+      </div>
+      <hr className="rule" /><hr className="rule" />
+
+      <p className="title">FINAL BILL – DINE-IN</p>
+
+      <div className="meta">
+        <dl>
+          <dt>Bill No.</dt><dd>:</dd><dd>{billNo}</dd>
+          <dt>Guest Name</dt><dd>:</dd><dd>{src.guestName || 'Guest'}</dd>
+          <dt>Party Size</dt><dd>:</dd><dd>{src.partySize ? src.partySize + (Number(src.partySize) === 1 ? ' Guest' : ' Guests') : '—'}</dd>
+          <dt>{multi ? 'Tables' : 'Table'}</dt><dd>:</dd><dd>{tableLabel || '—'}</dd>
+        </dl>
+        <span className="printed">Date Printed: {longDay(printed)}</span>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th><th>Description</th><th className="qty">Qty</th>
+            <th className="num unit">Unit Price (PHP)</th><th className="num">Amount (PHP)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.length === 0 ? (
+            <tr><td colSpan="5" style={{ color: '#6b6b6b' }}>Nothing ordered.</td></tr>
+          ) : items.map((i, k) => (
+            <tr key={k}>
+              <td style={{ whiteSpace: 'nowrap' }}>{day(i.placedAt)}</td>
+              <td>{i.name}{multi && i.tableName ? <span className="from">{i.tableName}</span> : null}</td>
+              <td className="qty">{i.qty}</td>
+              <td className="num unit">{money(i.price != null ? i.price : (Number(i.line) || 0) / (Number(i.qty) || 1))}</td>
+              <td className="num">{money(i.line)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div className="sum"><span>SUBTOTAL</span><b>₱{money(subtotal)}</b></div>
+
+      <p className="sec">Payments &amp; Credits Applied:</p>
+      {payment && paid > 0 ? (
+        <>
+          <div className="pay">
+            <span>{day(payment.paidAt)} &nbsp; {payment.method}{payment.reference ? ' · ' + payment.reference : ''}</span>
+            <span className="num">-{money(paid)}</span>
+          </div>
+          {payment.method === 'Cash' && tendered > 0 ? (
+            <div className="pay muted"><span>Cash received ₱{money(tendered)}{change > 0 ? ' · Change ₱' + money(change) : ''}</span><span></span></div>
+          ) : null}
+        </>
+      ) : (
+        <div className="pay muted"><span>None yet</span><span className="num">0.00</span></div>
+      )}
+      <div className="pay"><span>Payment Method</span><span>{payment ? payment.method : '—'}</span></div>
+
+      <div className={'due' + (balance > 0 ? ' is-owed' : '')}><span>TOTAL BALANCE DUE</span><b>{money(balance)}</b></div>
+
+      <div className="sign"><span>Guest Signature:</span><span></span></div>
+      <p className="sign-name">{src.guestName || 'Guest'}</p>
+    </div>
+  );
+}
+
+// Prints the sheet next to the button, alone, from a hidden frame, on white.
+function printDineInSheet(e) {
+  const sheet = e.currentTarget.closest('.tb-modal-body').querySelector('.dn-sheet');
+  const frame = document.createElement('iframe');
+  frame.setAttribute('aria-hidden', 'true');
+  frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+  document.body.appendChild(frame);
+  frame.onload = () => { frame.contentWindow.focus(); frame.contentWindow.print(); setTimeout(() => frame.remove(), 1000); };
+  frame.contentDocument.open();
+  frame.contentDocument.write('<!doctype html><html><head><meta charset="utf-8"><title>Final Bill</title>'
+    + '<style>@page{margin:12mm}html,body{margin:0;background:#fff}.dn-sheet{border-radius:0!important;padding:0!important}</style></head><body>'
+    + sheet.outerHTML + '</body></html>');
+  frame.contentDocument.close();
+}
+
+/* The Final Bill on screen, with Print. receipt is { payment, tendered, change } after
+   payment; bill is the priced bill before it, for a preview the guest can check. */
+function DineInReceiptModal({ receipt, bill, onClose }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  const p = receipt.payment;
-  const paidAt = p.paidAt ? new Date(p.paidAt) : new Date();
-  const ymd = paidAt.getFullYear() + String(paidAt.getMonth() + 1).padStart(2, '0') + String(paidAt.getDate()).padStart(2, '0');
-  const number = 'OR-R' + ymd + '-' + String(p.id || '').padStart(5, '0');
-  const peso = (n) => (Number(n) < 0 ? '−₱' : '₱') + Math.abs(Number(n) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const tablesNamed = String(p.tableName || '').split(' + ').filter(Boolean);
-  const byTable = tablesNamed.length > 1;
-  const groups = byTable
-    ? tablesNamed.map(name => ({ name, items: (p.items || []).filter(i => i.tableName === name) }))
-    : [{ name: p.tableName, items: p.items || [] }];
-  const row = (label, value, strong) => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', padding: '0.18rem 0', fontWeight: strong ? 700 : 400 }}>
-      <span>{label}</span><span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{value}</span>
-    </div>
-  );
-
-  const print = (e) => {
-    const sheet = e.currentTarget.closest('.tb-modal-body').querySelector('.dn-receipt');
-    const frame = document.createElement('iframe');
-    frame.setAttribute('aria-hidden', 'true');
-    frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
-    document.body.appendChild(frame);
-    frame.onload = () => { frame.contentWindow.focus(); frame.contentWindow.print(); setTimeout(() => frame.remove(), 1000); };
-    frame.contentDocument.open();
-    frame.contentDocument.write('<!doctype html><html><head><meta charset="utf-8"><title>Receipt</title>'
-      + '<style>@page{margin:12mm}body{margin:0;background:#fff;color:#1a1a1a;font-family:Arial,sans-serif;font-size:13px}</style></head><body>'
-      + sheet.outerHTML + '</body></html>');
-    frame.contentDocument.close();
-  };
-
-  const paper = { background: '#fff', color: '#1a1a1a', borderRadius: 10, padding: '1.2rem 1.3rem', fontSize: '0.84rem', border: '1px solid #e5e2dd' };
-  const block = { padding: '0.7rem 0', borderBottom: '1px dashed #c9c3ba' };
-  const head = { margin: '0 0 0.35rem', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#5f5a55' };
+  const paidNow = !!(receipt && receipt.payment);
 
   return (
-    <div className="tb-modal-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label="Receipt">
-      <div className="tb-modal" onClick={e => e.stopPropagation()}>
+    <div className="tb-modal-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label="Final bill">
+      <div className="tb-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '46rem' }}>
         <div className="tb-modal-head">
           <div>
-            <p style={{ color: 'var(--success, #4ade80)', fontSize: '0.72rem', fontWeight: 700, margin: '0 0 0.35rem' }}>
-              <i className="fa-solid fa-circle-check" style={{ marginRight: 6 }}></i>Paid
+            <p style={{ color: paidNow ? 'var(--success, #4ade80)' : 'var(--accent)', fontSize: '0.72rem', fontWeight: 700, margin: '0 0 0.35rem' }}>
+              <i className={'fa-solid ' + (paidNow ? 'fa-circle-check' : 'fa-receipt')} style={{ marginRight: 6 }}></i>{paidNow ? 'Paid' : 'Not paid yet'}
             </p>
-            <h2 className="font-display" style={{ fontSize: '1.4rem', margin: 0, color: 'var(--fg)' }}>Receipt</h2>
+            <h2 className="font-display" style={{ fontSize: '1.4rem', margin: 0, color: 'var(--fg)' }}>{paidNow ? 'Receipt' : 'Final Bill'}</h2>
           </div>
           <button type="button" onClick={onClose} aria-label="Close"
             style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)', cursor: 'pointer', flexShrink: 0 }}>
@@ -1231,45 +1371,13 @@ function DineInReceiptModal({ receipt, onClose }) {
           </button>
         </div>
         <div className="tb-modal-body">
-          <div className="dn-receipt" style={paper}>
-            <div style={{ textAlign: 'center', paddingBottom: '0.8rem', borderBottom: '1px dashed #c9c3ba' }}>
-              <h3 style={{ margin: '0 0 0.2rem', fontSize: '1.15rem' }}>{window.HMS_HOTEL_NAME || 'Restaurant'}</h3>
-              <p style={{ margin: 0, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', fontSize: '0.78rem' }}>Restaurant Official Receipt</p>
-              <p style={{ margin: '0.15rem 0 0', fontWeight: 700 }}>{number}</p>
-              <p style={{ margin: '0.1rem 0 0', color: '#5f5a55', fontSize: '0.78rem' }}>
-                {paidAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}, {paidAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-              </p>
-            </div>
-            <div style={block}>
-              {row('Guest', p.guestName || 'Guest')}
-              {receipt.contactNo ? row('Contact', receipt.contactNo) : null}
-              {row(byTable ? 'Tables' : 'Table', p.tableName)}
-              {row('Party', String(p.partySize || '—'))}
-            </div>
-            {groups.map(g => (
-              <div style={block} key={g.name}>
-                <p style={head}>{byTable ? g.name : 'Ordered'}</p>
-                {g.items.map((i, k) => <React.Fragment key={k}>{row(`${i.name} × ${i.qty}`, peso(i.line), false)}</React.Fragment>)}
-                {byTable && row('Subtotal', peso(g.items.reduce((s, i) => s + (Number(i.line) || 0), 0)), true)}
-              </div>
-            ))}
-            <div style={block}>
-              {row('Total', peso(p.totalDue), true)}
-              {row('Payment method', p.method + (p.reference ? ' · ' + p.reference : ''))}
-              {p.method === 'Cash' && receipt.tendered > 0 && row('Cash received', peso(receipt.tendered))}
-              {p.method === 'Cash' && receipt.change > 0 && row('Change', peso(receipt.change))}
-              {row('Amount paid', peso(p.amountPaid), true)}
-              {Number(p.balance) > 0 && row('Unpaid balance', peso(p.balance), true)}
-            </div>
-            <p style={{ margin: '0.8rem 0 0', textAlign: 'center', color: '#5f5a55', fontSize: '0.78rem' }}>
-              {p.collectedBy ? 'Served by ' + p.collectedBy + ' · ' : ''}Thank you for dining with us!
-            </p>
-          </div>
+          <DineInBillSheet bill={bill} payment={receipt && receipt.payment}
+            tendered={receipt ? receipt.tendered : 0} change={receipt ? receipt.change : 0} />
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', marginTop: '1rem' }}>
-            <button type="button" className="btn-outline" onClick={print}>
+            <button type="button" className="btn-outline" onClick={printDineInSheet}>
               <i className="fa-solid fa-print" style={{ marginRight: 6 }}></i>Print
             </button>
-            <button type="button" className="btn-primary" onClick={onClose}>Done</button>
+            <button type="button" className="btn-primary" onClick={onClose}>{paidNow ? 'Done' : 'Close'}</button>
           </div>
         </div>
       </div>
@@ -2164,7 +2272,9 @@ function DineInBillsSection({ tables, orders, canBill, onFetchBill, onSettle, on
           onReceipt={setReceipt}
         />
       )}
-      {receipt && <DineInReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />}
+      {receipt && (
+        <DineInReceiptModal receipt={receipt.payment ? receipt : null} bill={receipt.bill} onClose={() => setReceipt(null)} />
+      )}
     </>
   );
 }
