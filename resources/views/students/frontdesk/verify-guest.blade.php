@@ -1,6 +1,6 @@
 @extends('students.builder.ops-shell')
 
-@section('page-title', 'Guest Information')
+@section('page-title', 'Guest Folio')
 
 @section('head-extra')
 <style>
@@ -2032,7 +2032,7 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
     <div className="vg" data-hms-no-edit="1">
       <header className="vg-head">
         <div>
-          <h1 className="font-display">Guest Information</h1>
+          <h1 className="font-display">Guest Folio</h1>
           <p>Everyone booked or staying right now. Use the button on each row for the next step.</p>
         </div>
         {window.HMS_WALKIN_URL && (

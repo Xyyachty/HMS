@@ -918,9 +918,9 @@ function RoomWalkIn() {
           ['Paid now', peso(done.paid)],
           ['Still to pay', peso(balance)],
         ]}
-        note={'Room Management will give the guest the room key and check them in. Each room is its own stay in Guest Information. Any amount still unpaid is collected at check-out in Guest Information.'
-          + (done.pending.length ? ' Pending discounts come off the bill once you verify the ID under Guest Information → Details.' : '')}
-        primary={{ href: CFG.guestInfoUrl, label: 'Go to Guest Information' }}
+        note={'Room Management will give the guest the room key and check them in. Each room is its own stay in Guest Folio. Any amount still unpaid is collected at check-out in Guest Folio.'
+          + (done.pending.length ? ' Pending discounts come off the bill once you verify the ID under Guest Folio → Details.' : '')}
+        primary={{ href: CFG.guestInfoUrl, label: 'Go to Guest Folio' }}
         onAgain={reset}
       />
     );
