@@ -3133,6 +3133,15 @@ function MyBookingsModal({ open, onClose }) {
                       </div>
                     </div>
                   )}
+                  {/* The stay's own page: its status and the whole bill as the Front Desk prints it. */}
+                  {b.link && (
+                    <a href={b.link} target="_blank" rel="noopener noreferrer"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--accent)', fontSize: '0.75rem', padding: '0.45rem 0 0', marginLeft: '1rem', textDecoration: 'none' }}>
+                      <i className="fa-solid fa-file-invoice" style={{ fontSize: '0.65rem' }}></i>
+                      View status and bill
+                      <i className="fa-solid fa-arrow-up-right-from-square" style={{ fontSize: '0.6rem' }}></i>
+                    </a>
+                  )}
                   <p style={Object.assign({}, muted, { fontSize: '0.72rem', marginTop: '0.25rem' })}>Booking #{b.reference}</p>
                 </div>
               ))}

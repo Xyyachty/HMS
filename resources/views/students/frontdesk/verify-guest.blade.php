@@ -273,41 +273,7 @@
   :root[data-ops-theme="2"] .room-status-badge.status-cleaning { background: #fef3c7; color: #b45309; border-color: #fde68a; }
   :root[data-ops-theme="2"] .room-status-badge.status-maintenance { background: #ffe4e6; color: #be123c; border-color: #fecdd3; }
   :root[data-ops-theme="2"] .booking-input { background: rgba(27,67,50,0.03); }
-  /* The guest's receipt: a paper slip inside the dialog, printed on its own. */
-  .receipt-print { background: #fff; color: #1a1a1a; border-radius: 0.625rem; padding: 1.3rem 1.4rem; font-size: 0.86rem; border: 1px solid #e5e2dd; }
-  .rc-top { text-align: center; padding-bottom: 0.9rem; border-bottom: 1px dashed #c9c3ba; }
-  .rc-top h3 { margin: 0 0 0.25rem; font-size: 1.25rem; font-family: var(--font-display, 'Playfair Display', serif); color: #1a1a1a; }
-  .rc-top p { margin: 0.1rem 0; color: #5f5a55; font-size: 0.8rem; }
-  .rc-top .rc-no { font-weight: 700; color: #1a1a1a; letter-spacing: 0.04em; }
-  .rc-block { padding: 0.8rem 0; border-bottom: 1px dashed #c9c3ba; }
-  .rc-head { margin: 0 0 0.4rem; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #5f5a55; }
-  .rc-line { display: flex; justify-content: space-between; gap: 1rem; padding: 0.18rem 0; }
-  .rc-amt { flex: none; font-variant-numeric: tabular-nums; }
-  .rc-strong { font-weight: 700; margin-top: 0.25rem; }
-  .rc-due { color: #c81e3a; }
-  .rc-thanks { margin: 0.9rem 0 0; text-align: center; color: #5f5a55; font-size: 0.8rem; }
-  /* Folio layout (the client's statement-of-account format). */
-  .rc-title { font-weight: 700; color: #1a1a1a !important; letter-spacing: 0.06em; text-transform: uppercase; }
-  .rc-info { display: grid; grid-template-columns: 1fr 1fr; gap: 0.2rem 1.2rem; margin: 0; font-size: 0.78rem; }
-  .rc-info div { display: flex; gap: 0.4rem; min-width: 0; }
-  .rc-info dt { flex: none; width: 5.4rem; color: #5f5a55; }
-  .rc-info dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
-  .rc-table { width: 100%; border-collapse: collapse; font-size: 0.76rem; }
-  .rc-table th { text-align: left; font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; color: #5f5a55; padding: 0 0.35rem 0.35rem; border-bottom: 1px solid #c9c3ba; }
-  .rc-table td { padding: 0.3rem 0.35rem; vertical-align: top; }
-  .rc-table th:first-child, .rc-table td:first-child { padding-left: 0; }
-  .rc-table th:last-child, .rc-table td:last-child { padding-right: 0; }
-  .rc-table .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
-  .rc-table .rc-date { white-space: nowrap; color: #5f5a55; }
-  .rc-sum .rc-line { padding-left: 35%; }
-  .receipt-print .rc-line { font-size: 0.8rem; }
-  .rc-sign { margin: 1.4rem 0 0; display: flex; flex-direction: column; align-items: flex-start; font-size: 0.78rem; color: #5f5a55; }
-  .rc-sign span:first-child { width: 14rem; max-width: 100%; border-bottom: 1px solid #1a1a1a; height: 1.4rem; }
-  @media (max-width: 480px) {
-    .rc-info { grid-template-columns: 1fr; }
-    .rc-table .rc-unitcol { display: none; }
-    .rc-sum .rc-line { padding-left: 0; }
-  }
+  /* The folio and receipt sheets carry their own styles (public/js/hms-guest-folio.js). */
   @media print {
     body * { visibility: hidden !important; }
     .receipt-print, .receipt-print * { visibility: visible !important; }
@@ -336,6 +302,8 @@
   window.HMS_HOTEL_NAME = window.HMS_HOTEL_IDENTITY.name;
   window.HMS_HOTEL_INFO = window.HMS_HOTEL_IDENTITY;
 </script>
+{{-- The folio and receipt sheet, shared with the guest's My Stay page. --}}
+<script src="{{ asset('js/hms-guest-folio.js') }}?v={{ filemtime(public_path('js/hms-guest-folio.js')) }}"></script>
 @verbatim
 <script type="text/babel">
 const { useState, useEffect, useCallback, useRef } = React;
@@ -527,204 +495,20 @@ function useNow(intervalMs) {
 
 const PAYMENT_METHODS = ['Cash', 'GCash', 'Card', 'Other'];
 
-/* The guest's folio on paper, in the client's statement-of-account layout. Built
-   only from the bill the server priced (HotelBooking::toBillArray()), so it shows
-   the same charges, discounts and payments as the Guest Bill and never adds any.
-   official: the receipt handed over at check-out (receipt number, cash received
-   and change, payment method). Otherwise the running Statement of Account. Print
-   prints this sheet alone (see .receipt-print in the styles). */
-/* The folio sheet on its own page: the page's styles, white paper, and the sheet in
-   normal flow so a long folio runs onto a second page instead of being cut off. */
-function folioPrintHtml(sheet) {
-  const styles = [...document.querySelectorAll('style, link[rel="stylesheet"]')].map(n => n.outerHTML).join('');
-  const theme = document.documentElement.getAttribute('data-ops-theme');
-  return `<!doctype html><html${theme ? ` data-ops-theme="${theme}"` : ''}><head><meta charset="utf-8"><title>Guest Folio</title>${styles}`
-    + '<style>@page { margin: 12mm; } html, body { background: #fff !important; margin: 0; font-family: var(--font-body, "Outfit", sans-serif); }'
-    + ' .receipt-print { position: static !important; border: 0 !important; border-radius: 0 !important; padding: 0 !important; }</style>'
-    + `</head><body>${sheet.outerHTML}</body></html>`;
+/* The guest's folio on paper, in the client's statement-of-account layout. Drawn by
+   public/js/hms-guest-folio.js, the same sheet the guest sees on their My Stay page;
+   every value is escaped there. official: the receipt handed over at check-out;
+   otherwise the running Statement of Account. */
+function GuestFolio({ bill, cash, official }) {
+  const html = window.HmsGuestFolio
+    ? window.HmsGuestFolio.html({ hotel: window.HMS_HOTEL_IDENTITY || { name: window.HMS_HOTEL_NAME }, bill, cash, official })
+    : '';
+  return <div dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
 // Prints the folio next to the button, alone, from a hidden frame.
 function printFolio(e) {
-  const sheet = e.currentTarget.closest('.bill-body').querySelector('.receipt-print');
-  const frame = document.createElement('iframe');
-  frame.setAttribute('aria-hidden', 'true');
-  frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
-  document.body.appendChild(frame);
-  // Set after appending: the empty frame's own load has already fired by then.
-  frame.onload = () => {
-    frame.contentWindow.focus();
-    frame.contentWindow.print();
-    setTimeout(() => frame.remove(), 1000);
-  };
-  frame.contentDocument.open();
-  frame.contentDocument.write(folioPrintHtml(sheet));
-  frame.contentDocument.close();
-}
-
-function GuestFolio({ bill, cash, official }) {
-  const hotel = window.HMS_HOTEL_INFO || {};
-  const issued = official && bill.checkedOutAt ? new Date(bill.checkedOutAt) : new Date();
-  const ymd = issued.getFullYear() + String(issued.getMonth() + 1).padStart(2, '0') + String(issued.getDate()).padStart(2, '0');
-  const number = 'OR-' + ymd + '-' + String(bill.bookingId || '').padStart(5, '0');
-  const service = bill.roomService || { orders: [], subtotal: 0 };
-  const addons = bill.addons || { items: [], subtotal: 0 };
-  const extras = bill.otherCharges || { items: [], subtotal: 0 };
-  const balance = Number(bill.balance) || 0;
-  const refundDue = Number(bill.refundDue) || 0;
-  const room = bill.room;
-  const nights = Math.max(1, Math.ceil((Number(room.blocks) || 1) / 2));
-  const methods = [...new Set(bill.payments.filter(p => p.amountPaid > 0).map(p => p.method).filter(Boolean))];
-  const line = (label, amount, key, cls, unit) => (
-    <div className={'rc-line' + (cls ? ' ' + cls : '')} key={key}>
-      <span>{label}{unit && <span className="rc-unit">{unit}</span>}</span><span className="rc-amt">{amount}</span>
-    </div>
-  );
-
-  // Folio format: "06 Nov 2026" in the header, "04/11/2026" on each line.
-  const peso = (n) => (Number(n) < 0 ? '−₱' : '₱') + Math.abs(Number(n) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const toDate = (v) => {
-    if (!v) return null;
-    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
-    const d = m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(v);
-    return isNaN(d) ? null : d;
-  };
-  const longDay = (d) => d ? String(d.getDate()).padStart(2, '0') + ' ' + d.toLocaleString('en-US', { month: 'short' }) + ' ' + d.getFullYear() : '—';
-  const shortDay = (v) => { const d = toDate(v); return d ? String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear() : ''; };
-  const hhmm = (d) => d ? String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') : '';
-  const checkInDay = toDate(bill.checkIn);
-  const checkOutAt = bill.checkedOutAt ? new Date(bill.checkedOutAt) : null;
-  const checkInText = longDay(checkInDay) + (bill.checkInTime ? ` (${String(bill.checkInTime).slice(0, 5)})` : '');
-  const checkOutText = checkOutAt ? `${longDay(checkOutAt)} (${hhmm(checkOutAt)})` : longDay(toDate(bill.checkOut));
-
-  // One row per charge, labelled by the department it came from.
-  const rows = [];
-  rows.push(room.promo
-    ? { key: 'room', date: bill.checkIn, desc: `Front Office - ${room.promo} package`, qty: 1, unit: room.subtotal, amount: room.subtotal }
-    : { key: 'room', date: bill.checkIn, desc: 'Front Office - ' + (bill.roomCategory || 'Room') + ' Room', sub: `per ${room.blockHours} hrs`, qty: room.blocks, unit: room.rate, amount: room.subtotal });
-  ((bill.children && bill.children.items) || []).forEach((c, i) => rows.push(
-    { key: 'ch' + i, date: bill.checkIn, desc: `Front Office - Child, age ${c.age}`, sub: c.rate ? 'per night' : c.label, qty: c.rate ? c.nights : 1, unit: c.rate || 0, amount: c.line || 0 }));
-  service.orders.forEach(order => order.items.forEach((item, i) => rows.push(
-    { key: 'rs' + order.orderId + '-' + i, date: order.placedAt, desc: `F&B - In-Room Dining (${item.name})`, qty: item.qty, unit: item.price, amount: item.line })));
-  addons.items.forEach(a => rows.push(
-    { key: 'ad' + a.id, date: bill.checkIn, desc: `Housekeeping - ${a.name}`, sub: a.perNight ? `× ${a.nights} night${a.nights === 1 ? '' : 's'}` : '', qty: a.qty, unit: a.unitPrice, amount: a.line }));
-  extras.items.forEach(c => rows.push({ key: 'ex' + c.id, date: c.addedAt, desc: `Front Office - ${c.description}`, qty: 1, unit: c.amount, amount: c.amount }));
-
-  // Senior Citizen / PWD is the only deduction the bill makes; there are no taxes
-  // or service charges on it. The VAT exemption comes off with the 20%, so both
-  // are shown or the totals would not add up.
-  const discounts = discountBillLines(bill);
-  const discountVat = discounts.reduce((s, d) => s + (Number(d.vat) || 0), 0);
-  const discount20 = discounts.reduce((s, d) => s + (Number(d.discount) || 0), 0);
-  const serviceCharge = (bill.serviceCharge && Number(bill.serviceCharge.amount)) || 0;
-  const subtotal = (Number(bill.total) || 0) - serviceCharge + discountVat + discount20;
-  const payments = bill.payments.filter(p => Number(p.amountPaid) !== 0);
-  const folioNo = 'FL-' + String(bill.bookingId || '').padStart(6, '0');
-  const contactLine = [hotel.phone && 'Tel: ' + hotel.phone, hotel.email].filter(Boolean).join(' | ');
-
-  return (
-    <div className="receipt-print">
-      <div className="rc-top">
-        <h3>{window.HMS_HOTEL_NAME || 'Hotel'}</h3>
-        {hotel.address && <p>{hotel.address}</p>}
-        {contactLine && <p>{contactLine}</p>}
-        {official ? (
-          <>
-            <p className="rc-title">Guest Statement of Account / Folio</p>
-            <p>(Official Receipt)</p>
-          </>
-        ) : (
-          <p className="rc-title">Statement of Account (Guest Folio)</p>
-        )}
-      </div>
-
-      <div className="rc-block">
-        <dl className="rc-info">
-          {official && <div><dt>Receipt No.</dt><dd>{number}</dd></div>}
-          {official ? <div><dt>Date Issued</dt><dd>{longDay(issued)}</dd></div> : null}
-          <div><dt>Folio No.</dt><dd>{folioNo}</dd></div>
-          {!official && <div><dt>Date Printed</dt><dd>{longDay(issued)}</dd></div>}
-          <div><dt>Room No.</dt><dd>{(bill.roomName || '—') + (bill.roomCategory ? ` (${bill.roomCategory})` : '')}</dd></div>
-          <div><dt>Check-In</dt><dd>{checkInText}</dd></div>
-          <div><dt>Guest Name</dt><dd>{bill.guestName || '—'}</dd></div>
-          <div><dt>Check-Out</dt><dd>{checkOutText}</dd></div>
-          <div><dt>Contact No.</dt><dd>{bill.contactNo || '—'}</dd></div>
-          <div><dt>Nights</dt><dd>{nights} Night{nights === 1 ? '' : 's'}</dd></div>
-          <div><dt>ID No.</dt><dd>{bill.idNumber || '—'}</dd></div>
-          <div><dt>Email</dt><dd>{bill.email || '—'}</dd></div>
-        </dl>
-      </div>
-
-      <div className="rc-block">
-        <table className="rc-table">
-          <thead>
-            <tr>
-              <th>Date</th><th>Department / Description</th><th className="num">Qty</th>
-              <th className="num rc-unitcol">Unit Price</th><th className="num">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(r => (
-              <tr key={r.key}>
-                <td className="rc-date">{shortDay(r.date)}</td>
-                <td>{r.desc}{r.sub && <span className="rc-unit">{r.sub}</span>}</td>
-                <td className="num">{r.qty}</td>
-                <td className="num rc-unitcol">{peso(r.unit)}</td>
-                <td className="num">{r.amount ? peso(r.amount) : 'Free'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="rc-block rc-sum">
-        {line('Subtotal', peso(subtotal), 'sub', 'rc-strong')}
-        {discounts.length > 0 && line('Less: Senior Citizen / PWD VAT exemption', peso(-discountVat), 'lv')}
-        {discounts.length > 0 && line('Less: Senior Citizen / PWD discount (20%)', peso(-discount20), 'ld')}
-        {serviceCharge > 0 && line(`Service Charge (${bill.serviceCharge.rate}%)`, peso(serviceCharge), 'svc', '', `On ${peso(bill.serviceCharge.base)}, after discounts`)}
-        {line('Total Charges', peso(bill.total), 'total', 'rc-strong')}
-      </div>
-
-      <div className="rc-block">
-        <p className="rc-head">{official ? 'Payments / Deposits' : 'Payments & Credits Applied'}</p>
-        {payments.length === 0 && line('None', peso(0), 'nopay')}
-        <table className="rc-table">
-          <tbody>
-            {payments.map(p => (
-              <tr key={p.id}>
-                <td className="rc-date">{shortDay(p.paidAt)}</td>
-                <td>{(Number(p.amountPaid) < 0 ? 'Refund' : p.type === 'Full' ? 'Full payment' : 'Payment')} ({p.method}{p.reference ? ' · ' + p.reference : ''})</td>
-                <td className="num">{peso(-p.amountPaid)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {cash && line('Cash received', peso(cash.tendered), 'cash')}
-        {cash && line('Change', peso(cash.change), 'change')}
-      </div>
-
-      <div className="rc-block rc-sum">
-        {line('Total Paid', peso(bill.amountPaid), 'paid', 'rc-strong')}
-        {line(official ? 'Balance Due' : 'Total Balance Due', peso(balance), 'bal', 'rc-strong' + (balance > 0 ? ' rc-due' : ''))}
-        {refundDue > 0 && line('Refund Due to Guest', peso(refundDue), 'refund', 'rc-strong')}
-      </div>
-
-      <div className="rc-block">
-        <p className="rc-head">Senior Citizen / PWD Discount</p>
-        {discounts.length
-          ? discounts.map(d => line(`${d.type} — ${d.fullName}`, peso(d.discount), 'sc' + d.id, '', `ID No: ${d.idNumber || 'N/A'} · 20% of ${peso(d.vatExemptPrice)}`))
-          : line('Senior Citizen / PWD Discount', peso(0) + ' (ID No: N/A)', 'sc0')}
-        {official && line('Payment Method', methods.join(', ') || '—', 'method')}
-      </div>
-
-      <p className="rc-sign">
-        <span></span>
-        <span>Guest Signature — {bill.guestName || 'Guest'}</span>
-      </p>
-
-      {official && <p className="rc-thanks">Thank you for staying with us! Mabuhay!</p>}
-    </div>
-  );
+  if (window.HmsGuestFolio) window.HmsGuestFolio.print(e.currentTarget.closest('.bill-body').querySelector('.receipt-print'));
 }
 
 /* The guest's receipt, shown once the stay is checked out. receipt.cash, set when

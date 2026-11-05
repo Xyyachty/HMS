@@ -48,16 +48,16 @@ class HotelSimulationAuthController extends Controller
         $bookings = $context
             ? \App\Support\HotelGuestStay::bookings($context['group_name'], (int) $context['faculty_id'])
             : collect();
+        // The builder has no slug in its URL; the team's own is the same page.
+        $siteSlug = $context ? ($slug ?? \App\Models\Group::slugForTeam($context['group_name'], (int) $context['faculty_id'])) : null;
 
         return response()->json([
-            'bookings' => $bookings->map->toGuestArray()->values(),
+            // Each stay links to its My Stay page: status and the whole bill.
+            'bookings' => $bookings->map(fn ($b) => $b->toGuestArray() + [
+                'link' => $siteSlug ? '/hotel/' . rawurlencode($siteSlug) . '/my-stay/' . $b->hotel_booking_id : null,
+            ])->values(),
             'tables'   => $context
-                ? \App\Support\HotelGuestStay::tableReservations(
-                    $context['group_name'],
-                    (int) $context['faculty_id'],
-                    // The builder has no slug in its URL; the team's own is the same page.
-                    $slug ?? \App\Models\Group::slugForTeam($context['group_name'], (int) $context['faculty_id'])
-                )
+                ? \App\Support\HotelGuestStay::tableReservations($context['group_name'], (int) $context['faculty_id'], $siteSlug)
                 : [],
         ]);
     }

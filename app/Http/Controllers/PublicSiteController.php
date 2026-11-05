@@ -451,6 +451,85 @@ class PublicSiteController extends Controller
         return $this->reservationJson($this->accountReservation($slug, $id));
     }
 
+    /**
+     * A room stay of the guest signed into this hotel, opened from My Bookings: its
+     * status and its whole bill, as the Front Desk's Statement of Account while the
+     * stay is open and its Official Receipt once checked out.
+     */
+    public function myStay(string $slug, int $id)
+    {
+        [$booking, $error, $code] = $this->accountStay($slug, $id);
+
+        $team = Group::resolveSlug($slug);
+        $groupName = $team ? (string) $team['group_name'] : '';
+        $facultyId = $team ? (int) $team['faculty_id'] : 0;
+        $custom = $team ? HotelTemplateBuilder::mergeTeamCustomizations($groupName, $facultyId) : [];
+
+        return response()
+            ->view('hotel.stay', [
+                'error'     => $error,
+                'dataUrl'   => $booking ? '/hotel/' . rawurlencode($slug) . '/api/my-stay/' . $id : null,
+                'template'  => $team ? $this->templateFor($groupName, $facultyId) : '1',
+                'brandName' => $team ? $this->brandName($custom, $groupName, $facultyId) : HotelTemplateBuilder::DEFAULT_BRAND_NAME,
+                'theme'     => $this->siteTheme($custom),
+                'siteUrl'   => '/hotel/' . rawurlencode($slug),
+                'printIdentity' => $team
+                    ? HotelTemplateBuilder::printIdentity($custom, $groupName, $facultyId, $this->templateFor($groupName, $facultyId))
+                    : null,
+            ], $code)
+            ->header('Cache-Control', 'no-store')
+            ->header('X-Robots-Tag', 'noindex');
+    }
+
+    public function myStayData(string $slug, int $id)
+    {
+        [$booking, $error, $code] = $this->accountStay($slug, $id);
+        if (!$booking) {
+            return response()->json(['message' => $error], $code);
+        }
+
+        $bill = $booking->toBillArray();
+        // The guest's own bill, less what only staff need: who added a charge, and
+        // payment notes and the reference that groups a shared payment.
+        $bill['otherCharges']['items'] = array_map(
+            fn ($c) => array_intersect_key($c, array_flip(['id', 'description', 'amount', 'addedAt'])),
+            $bill['otherCharges']['items'] ?? []
+        );
+        $bill['payments'] = array_map(
+            fn ($p) => array_intersect_key($p, array_flip(['id', 'type', 'amountPaid', 'method', 'reference', 'paidAt'])),
+            $bill['payments'] ?? []
+        );
+
+        return response()->json([
+            'stay' => $booking->toGuestArray() + ['checkedOutAt' => $bill['checkedOutAt'] ?? null],
+            'bill' => $bill,
+        ])->header('Cache-Control', 'no-store');
+    }
+
+    /**
+     * One of the signed-in guest's own stays at this hotel, by id: the same stays My
+     * Bookings lists (HotelGuestStay::bookings). Another guest's, another hotel's, or
+     * nobody signed in all get the same 404.
+     *
+     * @return array{0: ?\App\Models\HotelBooking, 1: ?string, 2: int}
+     */
+    private function accountStay(string $slug, int $id): array
+    {
+        $context = \App\Support\HotelSimulationAuth::teamContextForSlug($slug);
+        if ($context) {
+            \App\Support\HotelSimulationAuth::restore(request()->user(), $context);
+        }
+
+        $booking = $context
+            ? \App\Support\HotelGuestStay::bookings($context['group_name'], (int) $context['faculty_id'])
+                ->first(fn ($b) => (int) $b->hotel_booking_id === $id)
+            : null;
+
+        return $booking
+            ? [$booking, null, 200]
+            : [null, 'Sign in to the hotel website with the account that made this booking, then open it from My Bookings.', 404];
+    }
+
     /** @param array{0: ?HotelDineInReservation, 1: ?string, 2: int} $found */
     private function reservationPage(string $slug, array $found, string $dataPath)
     {

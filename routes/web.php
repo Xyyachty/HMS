@@ -176,6 +176,16 @@ Route::prefix('hotel')->name('public.hotel')->group(function () {
         ->middleware('throttle:60,1')
         ->whereNumber('id')
         ->name('.my-reservation.data');
+    // A room stay of the signed-in guest, opened from My Bookings: its status and the
+    // whole bill (room, room service, extras), as the Front Desk's folio and receipt.
+    Route::get('/{slug}/my-stay/{id}', [PublicSiteController::class, 'myStay'])
+        ->middleware('throttle:60,1')
+        ->whereNumber('id')
+        ->name('.my-stay');
+    Route::get('/{slug}/api/my-stay/{id}', [PublicSiteController::class, 'myStayData'])
+        ->middleware('throttle:60,1')
+        ->whereNumber('id')
+        ->name('.my-stay.data');
 
     // Food, ordered by the guest reading the menu. Same reason as the two above:
     // the staff endpoint sits behind the students login a visitor does not have.
