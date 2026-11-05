@@ -3142,6 +3142,12 @@ function MyBookingsModal({ open, onClose }) {
                       <i className="fa-solid fa-arrow-up-right-from-square" style={{ fontSize: '0.6rem' }}></i>
                     </a>
                   )}
+                  {b.groupRef && bookings.filter(x => x.groupRef === b.groupRef).length > 1 && (
+                    <p style={Object.assign({}, muted, { fontSize: '0.74rem', marginTop: '0.35rem', color: 'var(--accent)' })}>
+                      <i className="fa-solid fa-link" style={{ fontSize: '0.62rem', marginRight: 5 }}></i>
+                      One booking with {bookings.filter(x => x.groupRef === b.groupRef && x.reference !== b.reference).map(x => x.roomName).join(', ')}
+                    </p>
+                  )}
                   <p style={Object.assign({}, muted, { fontSize: '0.72rem', marginTop: '0.25rem' })}>Booking #{b.reference}</p>
                 </div>
               ))}
@@ -6170,6 +6176,9 @@ function RoomsPage({ onNav, onToast, rooms, addons, categories, canEditRooms, ca
   // one screen; the category tabs stay for narrowing it down.
   const [tab, setTab] = useState('All');
   const [selectedRoomId, setSelectedRoomId] = useState(null);
+  // A website booking just made, which the next room the guest books joins: one
+  // reservation, several rooms. { reference, rooms }.
+  const [joinWith, setJoinWith] = useState(null);
   /* The stay the guest is asking about. Every room number on the page is
      coloured for these dates rather than for right now, so "available" means
      available then. Empty until asked, and the page answers for today. */
@@ -6390,7 +6399,7 @@ function RoomsPage({ onNav, onToast, rooms, addons, categories, canEditRooms, ca
   // success and silently drops the guest.
   const handleReserve = (room, guest, payment, addonLines) => {
     if (!onCreateBooking) return;
-    onCreateBooking(room, guest, payment, addonLines).then(() => {
+    onCreateBooking(room, guest, payment, addonLines, joinWith && window.__HMS_PUBLIC__ ? joinWith.reference : null).then((booking) => {
       // What is free changed the moment those add-ons went out with the guest.
       if (typeof onRefreshAddons === 'function') onRefreshAddons();
       // A guest on the published site stays on the hotel's page. Everything below is
@@ -6398,6 +6407,10 @@ function RoomsPage({ onNav, onToast, rooms, addons, categories, canEditRooms, ca
       // notification, and the jump to Verify Guest, a students-only page.
       if (window.__HMS_PUBLIC__) {
         if (onToast) onToast(`Thank you, ${guest.fullName}! Your ${room.name} is booked. Please bring your ID at check-in.`);
+        // Offer the next room as part of the same booking.
+        if (booking && booking.reference) {
+          setJoinWith({ reference: joinWith ? joinWith.reference : booking.reference, rooms: (booking.rooms && booking.rooms.length) ? booking.rooms : [room.name] });
+        }
         return;
       }
       // The toast and the cross-module notification are both advisory, and the
@@ -6452,6 +6465,20 @@ function RoomsPage({ onNav, onToast, rooms, addons, categories, canEditRooms, ca
         <h1 className="font-display" data-hms-stock="Our Rooms & Suites">Our Rooms & Suites</h1>
         <p data-hms-stock="Each room is a sanctuary of design, blending modern luxury with artisanal craftsmanship and sweeping views.">Each room is a sanctuary of design, blending modern luxury with artisanal craftsmanship and sweeping views.</p>
       </div>
+      {/* After a website booking: the next room the guest books joins it as one
+          reservation (one Group Folio and receipt at the Front Desk). */}
+      {joinWith && window.__HMS_PUBLIC__ && (
+        <div data-hms-no-edit="1" style={{ maxWidth: 1100, margin: '0 auto 1.25rem', padding: '0.85rem 1.1rem', border: '1px solid var(--accent)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.88rem', color: 'var(--fg)' }}>
+            <i className="fa-solid fa-link" style={{ color: 'var(--accent)', marginRight: 8 }}></i>
+            Booking #{joinWith.reference}: {joinWith.rooms.join(' + ')}. Book another room below to add it to this booking.
+          </span>
+          <button type="button" onClick={() => setJoinWith(null)}
+            style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--fg)', borderRadius: 8, padding: '0.4rem 0.9rem', cursor: 'pointer', fontSize: '0.8rem' }}>
+            Done, no more rooms
+          </button>
+        </div>
+      )}
       <TabBar
         tabs={tabs} active={tab} onChange={setTab} items={list}
         review={catReview} removed={window.__HMS_ROOM_CATS_REMOVED__}
@@ -9564,7 +9591,7 @@ function App() {
 
   // Takes the stay and the up-front payment in one POST. The room comes back with its
   // projected `reservation` already on it, so the grid needs no guesswork.
-  const createBooking = useCallback((room, guest, payment, addonLines) => {
+  const createBooking = useCallback((room, guest, payment, addonLines, joinBooking) => {
     pendingWrites.current += 1;
     return fetch(hmsApi('bookings', '/students/hotel/bookings'), {
       method: 'POST',
@@ -9596,6 +9623,8 @@ function App() {
         // Attached in the same POST on purpose: an add-on that ran out takes the whole
         // reservation down with it rather than leaving a stay half-equipped.
         addons: (addonLines || []).map(line => ({ addon_id: line.dbId, qty: line.qty })),
+        // "Add another room to this booking": the guest's own earlier booking.
+        ...(joinBooking ? { join_booking: Number(joinBooking) } : {}),
       }),
     })
       .then(r => r.json().then(data => (r.ok ? data : Promise.reject(data))))

@@ -2008,6 +2008,16 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
                     $bookings[] = $booking;
                 }
 
+                // Rooms booked together for one guest are one group: a Group Folio, one
+                // payment and one receipt when settled together, each room still free to
+                // check out on its own date.
+                if (count($bookings) > 1 && HotelBooking::groupSupported()) {
+                    $groupRef = (string) \Illuminate\Support\Str::uuid();
+                    foreach ($bookings as $booking) {
+                        $booking->forceFill(['group_ref' => $groupRef])->save();
+                    }
+                }
+
                 /* The money taken at the desk, room by room in the order they were
                    picked: each stay is paid up to its room charge, and whatever is left
                    lands on the last one, so a single room records exactly what was
@@ -2406,6 +2416,114 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
 
         return response()->json(['bill' => $booking->toBillArray()]);
     })->name('hotel.bookings.bill');
+
+    /*
+     * Rooms booked together for one guest (group_ref): every room's bill, for the
+     * Group Folio and the combined receipt. Just this room when it was booked alone.
+     */
+    Route::get('/hotel/bookings/{id}/group', function (Request $request, $id) {
+        $membership = \App\Support\HotelBookingDesk::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Group not found'], 404);
+        }
+        $booking = \App\Support\HotelBookingDesk::findBooking($membership, $id);
+        if (!$booking) {
+            return response()->json(['message' => 'Booking not found.'], 404);
+        }
+
+        $bills = $booking->groupBookings()
+            ->map(fn ($b) => \App\Support\HotelBookingDesk::findBooking($membership, $b->hotel_booking_id))
+            ->filter()
+            ->map(fn ($b) => $b->toBillArray() + ['status' => $b->status])
+            ->values();
+
+        return response()->json(['groupRef' => $booking->group_ref ?? null, 'bills' => $bills]);
+    })->name('hotel.bookings.group');
+
+    /*
+     * One payment for rooms booked together, settled together: it is shared over the
+     * rooms that still owe, each up to what it owes, under one transaction_ref (the
+     * way a walk-in's payment for several rooms already is). Never more than the
+     * rooms owe in all: change comes out of the cash at the desk, not into a bill.
+     */
+    Route::post('/hotel/bookings/{id}/group-payments', function (Request $request, $id) {
+        $membership = \App\Support\HotelBookingDesk::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Group not found'], 404);
+        }
+        $booking = \App\Support\HotelBookingDesk::findBooking($membership, $id);
+        if (!$booking) {
+            return response()->json(['message' => 'Booking not found.'], 404);
+        }
+
+        $data = $request->validate([
+            'amount_paid' => 'required|numeric|min:0.01',
+            'method'      => 'nullable|string|max:50',
+            'reference'   => 'nullable|string|max:255',
+            // Only these rooms of the group, e.g. the two checking out today.
+            'booking_ids'   => 'sometimes|array|max:20',
+            'booking_ids.*' => 'integer',
+        ]);
+
+        $members = $booking->groupBookings()
+            ->map(fn ($b) => \App\Support\HotelBookingDesk::findBooking($membership, $b->hotel_booking_id))
+            ->filter()
+            ->filter(fn ($b) => $b->isOpen())
+            ->filter(fn ($b) => empty($data['booking_ids']) || in_array((int) $b->hotel_booking_id, array_map('intval', $data['booking_ids']), true))
+            ->values();
+        $owed = round($members->sum(fn ($b) => $b->outstanding()), 2);
+        $amount = round((float) $data['amount_paid'], 2);
+        if ($owed <= 0) {
+            return response()->json(['message' => 'These rooms have nothing left to pay.'], 422);
+        }
+        if ($amount > $owed + 0.005) {
+            return response()->json([
+                'message' => 'These rooms owe PHP ' . number_format($owed, 2) . ' in all. Record only that; give the rest back as change.',
+            ], 422);
+        }
+
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($members, $amount, $data) {
+                $ref = (string) \Illuminate\Support\Str::uuid();
+                $left = $amount;
+                foreach ($members as $member) {
+                    $pay = round(min($left, $member->outstanding()), 2);
+                    if ($pay <= 0) {
+                        continue;
+                    }
+                    \App\Support\HotelBookingDesk::addPayment($member, [
+                        'amount_paid'     => $pay,
+                        'type'            => $pay + 0.005 >= $member->outstanding() ? 'Full' : 'Partial',
+                        'method'          => $data['method'] ?? 'Cash',
+                        'reference'       => $data['reference'] ?? null,
+                        'payer_name'      => $member->guest?->full_name,
+                        'transaction_ref' => $ref,
+                    ]);
+                    $left = round($left - $pay, 2);
+                    if ($left <= 0) {
+                        break;
+                    }
+                }
+            });
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        ActivityLog::record(
+            auth()->user(),
+            ActivityLog::GUEST_BOOKED,
+            'Took PHP ' . number_format($amount, 2) . ' (' . ($data['method'] ?? 'Cash') . ') for '
+                . $members->count() . ' rooms booked together by ' . ($booking->guest?->full_name ?? 'a guest') . '.'
+        );
+
+        $bills = $booking->groupBookings()
+            ->map(fn ($b) => \App\Support\HotelBookingDesk::findBooking($membership, $b->hotel_booking_id))
+            ->filter()
+            ->map(fn ($b) => $b->toBillArray() + ['status' => $b->status])
+            ->values();
+
+        return response()->json(['bills' => $bills], 201);
+    })->name('hotel.bookings.group-payments.store');
 
     Route::post('/hotel/bookings/{id}/charges', function (Request $request, $id) {
         $membership = \App\Support\HotelBookingDesk::membership();

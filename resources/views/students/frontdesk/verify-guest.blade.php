@@ -499,9 +499,10 @@ const PAYMENT_METHODS = ['Cash', 'GCash', 'Card', 'Other'];
    public/js/hms-guest-folio.js, the same sheet the guest sees on their My Stay page;
    every value is escaped there. official: the receipt handed over at check-out;
    otherwise the running Statement of Account. */
-function GuestFolio({ bill, cash, official }) {
+function GuestFolio({ bill, bills, cash, official }) {
+  // bills: rooms booked together, drawn on one sheet (Group Folio / combined receipt).
   const html = window.HmsGuestFolio
-    ? window.HmsGuestFolio.html({ hotel: window.HMS_HOTEL_IDENTITY || { name: window.HMS_HOTEL_NAME }, bill, cash, official })
+    ? window.HmsGuestFolio.html({ hotel: window.HMS_HOTEL_IDENTITY || { name: window.HMS_HOTEL_NAME }, bill, bills, cash, official })
     : '';
   return <div dangerouslySetInnerHTML={{ __html: html }} />;
 }
@@ -555,8 +556,163 @@ function ReceiptModal({ receipt, onClose }) {
   );
 }
 
-/* The Statement of Account for a stay still open, opened from the Guest Bill. */
-function FolioModal({ bill, onClose }) {
+/*
+ * Rooms booked together for one guest (one group_ref), shown on each room's Guest Bill:
+ * every room with its balance, the Group Folio (one Statement of Account for all of
+ * them), and one payment for the rooms settled together, spread over what each owes,
+ * with a combined receipt. Each room still checks out on its own, on its own date.
+ */
+function GroupBillPanel({ bill, onPaid, onToast }) {
+  const [bills, setBills] = useState(null);
+  const [error, setError] = useState('');
+  const [paying, setPaying] = useState(false);
+  const [picked, setPicked] = useState([]);
+  const [method, setMethod] = useState('Cash');
+  const [amount, setAmount] = useState('');
+  const [reference, setReference] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [sheet, setSheet] = useState(null);   // { bills, official, cash, title }
+
+  const request = (url, method, body) => fetch(url, {
+    method, credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  }).then(r => r.json().catch(() => ({})).then(d => (r.ok ? d : Promise.reject(d))));
+
+  const load = () => request('/students/hotel/bookings/' + bill.bookingId + '/group', 'GET')
+    .then(d => { setBills(d.bills || []); setError(''); })
+    .catch(e => setError((e && e.message) || 'Could not load the rooms booked together.'));
+
+  // Re-read when this room's bill changes, so the group's balances follow it.
+  useEffect(() => { load(); }, [bill.bookingId, bill.balance, bill.total]);
+
+  if (!bills) return error ? <p className="bill-section-note" style={{ color: 'var(--danger, #fb7185)' }}>{error}</p> : null;
+  if (bills.length < 2) return null;
+
+  const isOpen = (b) => !['Checked Out', 'Cancelled'].includes(b.status);
+  const owing = bills.filter(b => isOpen(b) && Number(b.balance) > 0);
+  const chosen = owing.filter(b => picked.includes(b.bookingId));
+  const owed = Math.round(chosen.reduce((n, b) => n + (Number(b.balance) || 0), 0) * 100) / 100;
+  const entered = Math.max(0, parseFloat(amount) || 0);
+  const isCash = method === 'Cash';
+  const paid = isCash ? Math.min(entered, owed) : entered;
+  const change = isCash ? Math.max(0, entered - owed) : 0;
+  const groupBalance = bills.reduce((n, b) => n + (Number(b.balance) || 0), 0);
+
+  const startPaying = () => {
+    const ids = owing.map(b => b.bookingId);
+    setPicked(ids);
+    const total = owing.reduce((n, b) => n + (Number(b.balance) || 0), 0);
+    setAmount(String(Math.round(total * 100) / 100));
+    setPaying(true);
+  };
+  const toggle = (id) => setPicked(ids => (ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id]));
+
+  const pay = (e) => {
+    e.preventDefault();
+    if (!chosen.length) { setError('Pick the rooms this payment is for.'); return; }
+    if (!(paid > 0)) { setError('Enter the amount received.'); return; }
+    if (!isCash && paid > owed + 0.005) { setError('That is more than these rooms owe (' + formatPeso(owed) + ').'); return; }
+    setBusy(true);
+    setError('');
+    const settledIds = chosen.map(b => b.bookingId);
+    request('/students/hotel/bookings/' + bill.bookingId + '/group-payments', 'POST', {
+      amount_paid: Math.round(paid * 100) / 100, method, reference: reference.trim(), booking_ids: settledIds,
+    })
+      .then(d => {
+        const fresh = d.bills || [];
+        setBills(fresh);
+        setPaying(false);
+        if (onToast) onToast(formatPeso(paid) + ' received by ' + method + ' for ' + settledIds.length + ' rooms.' + (change > 0 ? ' Change: ' + formatPeso(change) + '.' : ''));
+        // One receipt for the rooms just settled together.
+        setSheet({
+          bills: fresh.filter(b => settledIds.includes(b.bookingId)),
+          official: true,
+          cash: isCash ? { tendered: entered, change } : null,
+          title: 'Receipt · ' + settledIds.length + ' rooms',
+        });
+        if (onPaid) onPaid();
+      })
+      .catch(err => setError((err && err.message) || 'Could not record that payment.'))
+      .finally(() => setBusy(false));
+  };
+
+  return (
+    <div style={{ border: '1px solid var(--accent)', borderRadius: 10, padding: '0.8rem 0.95rem', margin: '0 0 1rem' }}>
+      <p style={{ margin: 0, color: 'var(--accent)', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+        <i className="fa-solid fa-link" style={{ marginRight: 6 }}></i>Booked together · {bills.length} rooms
+      </p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.5rem' }}>
+        {bills.map(b => (
+          <span key={b.bookingId} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.25rem 0.55rem', fontSize: '0.74rem', color: 'var(--fg)' }}>
+            <b>{b.roomName || 'Room'}</b>
+            <span style={{ color: 'var(--fg-muted)' }}> · {b.status} · {Number(b.balance) > 0 ? formatPeso(b.balance) + ' due' : 'paid'}</span>
+          </span>
+        ))}
+      </div>
+      <p style={{ margin: '0.5rem 0 0', fontSize: '0.78rem', color: 'var(--fg-muted)' }}>
+        Group balance <b style={{ color: groupBalance > 0 ? 'var(--danger, #fb7185)' : 'var(--success, #4ade80)' }}>{formatPeso(groupBalance)}</b>.
+        Each room checks out on its own date; rooms leaving together can be paid together.
+      </p>
+      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.6rem' }}>
+        <button type="button" className="btn-outline" style={{ padding: '0.45rem 0.8rem', fontSize: '0.66rem' }}
+          onClick={() => setSheet({ bills, official: false, title: 'Group Folio' })}>
+          <i className="fa-solid fa-file-invoice" style={{ marginRight: 6 }}></i>Group Folio
+        </button>
+        {owing.length > 0 && !paying && (
+          <button type="button" className="btn-solid" style={{ padding: '0.45rem 0.8rem', fontSize: '0.66rem' }} onClick={startPaying}>
+            <i className="fa-solid fa-money-bill-wave" style={{ marginRight: 6 }}></i>Pay for rooms together
+          </button>
+        )}
+      </div>
+
+      {paying && (
+        <form onSubmit={pay} style={{ marginTop: '0.8rem', display: 'grid', gap: '0.55rem' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+            {owing.map(b => (
+              <label key={b.bookingId} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.76rem', color: 'var(--fg)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.3rem 0.55rem', cursor: 'pointer' }}>
+                <input type="checkbox" checked={picked.includes(b.bookingId)} onChange={() => toggle(b.bookingId)} />
+                {b.roomName} · {formatPeso(b.balance)}
+              </label>
+            ))}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+            <select className="booking-input" value={method} onChange={e => setMethod(e.target.value)} style={{ flex: '1 0 7rem', width: 'auto' }}>
+              {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+            <input type="number" className="booking-input" min="0" step="0.01" value={amount} onChange={e => setAmount(e.target.value)}
+              placeholder={isCash ? 'Cash received' : 'Amount'} aria-label={isCash ? 'Cash received' : 'Amount received'} style={{ flex: '1 1 7rem', width: 'auto' }} />
+            {!isCash && (
+              <input type="text" className="booking-input" placeholder="Ref # / card last 4" value={reference}
+                onChange={e => setReference(e.target.value)} style={{ flex: '1 1 7rem', width: 'auto' }} />
+            )}
+          </div>
+          <p style={{ margin: 0, fontSize: '0.76rem', color: paid + 0.005 >= owed ? 'var(--success, #4ade80)' : 'var(--danger, #fb7185)' }}>
+            {chosen.length} {chosen.length === 1 ? 'room owes' : 'rooms owe'} {formatPeso(owed)}.
+            {paid + 0.005 >= owed ? ' This pays them in full.' : ' ' + formatPeso(Math.max(0, owed - paid)) + ' will still be unpaid.'}
+            {change > 0 ? ' Change: ' + formatPeso(change) + '.' : ''}
+          </p>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button type="submit" className="btn-solid" disabled={busy} style={{ flex: '1 1 10rem' }}>
+              {busy ? 'Working…' : 'Take payment for ' + chosen.length + ' rooms'}
+            </button>
+            <button type="button" className="btn-outline" disabled={busy} onClick={() => setPaying(false)} style={{ padding: '0.5rem 0.9rem', fontSize: '0.68rem' }}>Cancel</button>
+          </div>
+        </form>
+      )}
+      {error && <p style={{ margin: '0.5rem 0 0', color: 'var(--danger, #fb7185)', fontSize: '0.76rem' }}>{error}</p>}
+
+      {sheet && (
+        <FolioModal bills={sheet.bills} official={sheet.official} cash={sheet.cash} title={sheet.title} onClose={() => setSheet(null)} />
+      )}
+    </div>
+  );
+}
+
+/* The Statement of Account for a stay still open, opened from the Guest Bill. With
+   bills, rooms booked together on one sheet: the Group Folio, or (official, with the
+   cash) the combined receipt for rooms settled together. */
+function FolioModal({ bill, bills, official, cash, title, onClose }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
@@ -569,7 +725,7 @@ function FolioModal({ bill, onClose }) {
         <div className="bill-head">
           <div>
             <p style={{ color: 'var(--accent)', fontSize: '0.65rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: '0 0 0.35rem' }}>Front Desk</p>
-            <h2 className="font-display" style={{ fontSize: '1.5rem', margin: 0, color: 'var(--fg)' }}>Guest Folio</h2>
+            <h2 className="font-display" style={{ fontSize: '1.5rem', margin: 0, color: 'var(--fg)' }}>{title || 'Guest Folio'}</h2>
           </div>
           <button type="button" onClick={onClose} aria-label="Close"
             style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)', cursor: 'pointer', flexShrink: 0 }}>
@@ -578,7 +734,7 @@ function FolioModal({ bill, onClose }) {
         </div>
 
         <div className="bill-body">
-          <GuestFolio bill={bill} />
+          <GuestFolio bill={bill} bills={bills} official={!!official} cash={cash || null} />
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', marginTop: '1.2rem' }}>
             <button type="button" className="btn-outline" onClick={printFolio}>
@@ -600,7 +756,7 @@ function FolioModal({ bill, onClose }) {
  * the database will record. Adding an extra charge re-fetches the whole bill for the
  * same reason — the new subtotal comes back priced, it is not patched in locally.
  */
-function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog, onClose, onAddCharge, onRemoveCharge, onAddAddon, onPay, onSettle, onToast }) {
+function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog, onClose, onAddCharge, onRemoveCharge, onAddAddon, onPay, onSettle, onToast, onGroupPaid }) {
   const [method, setMethod] = useState('Cash');
   const [amount, setAmount] = useState('');
   const [reference, setReference] = useState('');
@@ -760,6 +916,8 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
                   <dd>{formatBillStamp(bill.checkedOutAt) || formatBillDate(bill.checkOut) || '—'}</dd>
                 </div>
               </dl>
+
+              {bill.groupRef && <GroupBillPanel bill={bill} onPaid={onGroupPaid} onToast={onToast} />}
 
               <div className="bill-cols">
               <div>
@@ -2131,6 +2289,7 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
         onPay={(payment) => refreshBill(onPay(billFor.reservation.bookingId, payment))}
         onSettle={settleAndCheckOut}
         onToast={onToast}
+        onGroupPaid={() => refreshBill(onFetchBill(billFor.reservation.bookingId))}
       />
 
       <ReceiptModal receipt={receipt} onClose={() => setReceipt(null)} />

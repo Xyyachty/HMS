@@ -821,6 +821,9 @@ class PublicSiteController extends Controller
             'addons'              => 'nullable|array|max:20',
             'addons.*.addon_id'   => 'required|integer',
             'addons.*.qty'        => 'required|integer|min:1|max:10',
+            // "Add another room to this booking": the guest's own earlier booking, which
+            // this room joins as one group (one Group Folio and receipt at the desk).
+            'join_booking'        => 'nullable|integer',
         ]);
 
         $room = HotelRoom::where('hotel_room_id', $data['room_id'])
@@ -867,8 +870,24 @@ class PublicSiteController extends Controller
                 ? ($auth['email'] ?? null)
                 : null;
 
+        // The booking this room joins: the signed-in guest's own, still open. Anyone else's,
+        // or one already closed, is refused rather than silently booked on its own.
+        $joinWith = null;
+        if (!empty($data['join_booking'])) {
+            $joinWith = \App\Models\HotelBooking::where('hotel_booking_id', (int) $data['join_booking'])
+                ->where('group_name', $groupName)
+                ->where('faculty_id', $facultyId)
+                ->whereIn('status', \App\Models\HotelBooking::OPEN_STATUSES)
+                ->first();
+            $ownEmail = $joinWith?->guest?->email;
+            if (!$joinWith || !$accountEmail || !$ownEmail || strcasecmp($ownEmail, $accountEmail) !== 0
+                || !\App\Models\HotelBooking::groupSupported()) {
+                return response()->json(['message' => 'That booking cannot take another room. Book this room on its own.'], 422);
+            }
+        }
+
         try {
-            $booking = \Illuminate\Support\Facades\DB::transaction(function () use ($membership, $room, $data, $guestName, $accountEmail) {
+            $booking = \Illuminate\Support\Facades\DB::transaction(function () use ($membership, $room, $data, $guestName, $accountEmail, $joinWith) {
                 $booking = HotelBookingDesk::reserve(
                     $membership,
                     $room,
@@ -908,12 +927,24 @@ class PublicSiteController extends Controller
                     ] + array_intersect_key($data['payment'], array_flip(['method', 'reference'])));
                 }
 
+                // One reservation, several rooms: the earlier booking and this one share a
+                // group, the earlier one getting it now if it had none yet.
+                if ($joinWith) {
+                    $ref = $joinWith->group_ref ?: (string) \Illuminate\Support\Str::uuid();
+                    if (!$joinWith->group_ref) {
+                        $joinWith->forceFill(['group_ref' => $ref])->save();
+                    }
+                    $booking->forceFill(['group_ref' => $ref])->save();
+                }
+
                 return $booking;
             });
         } catch (\RuntimeException $e) {
             // The party is bigger than the room sleeps, or the promo is not running then.
             return response()->json(['message' => $e->getMessage()], 422);
         }
+
+        $roomsInBooking = $booking->groupBookings()->map(fn ($b) => $b->room?->name)->filter()->values();
 
         return response()->json([
             'message' => 'Thank you. Your booking request has been sent to the front desk.',
@@ -923,6 +954,8 @@ class PublicSiteController extends Controller
                 'checkIn'   => $data['check_in'],
                 'checkOut'  => $data['check_out'],
                 'status'    => $booking->status,
+                // Every room of this reservation so far, for "Add another room".
+                'rooms'     => $roomsInBooking,
             ],
         ], 201);
     }

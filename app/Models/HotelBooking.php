@@ -72,7 +72,36 @@ class HotelBooking extends Model
         'promo_blocks',
         'children',
         'service_charge_rate',
+        'group_ref',
     ];
+
+    /** False until the group_ref migration has run. */
+    public static function groupSupported(): bool
+    {
+        static $has = null;
+
+        return $has ??= \Illuminate\Support\Facades\Schema::hasColumn('hotel_bookings', 'group_ref');
+    }
+
+    /**
+     * Every room booked together with this one for the same guest (its group_ref),
+     * this one included, cancelled ones left out. Just this booking when alone.
+     *
+     * @return \Illuminate\Support\Collection<int, self>
+     */
+    public function groupBookings(): \Illuminate\Support\Collection
+    {
+        if (!self::groupSupported() || !$this->group_ref) {
+            return collect([$this]);
+        }
+
+        return self::where('group_name', $this->group_name)
+            ->where('faculty_id', $this->faculty_id)
+            ->where('group_ref', $this->group_ref)
+            ->where('status', '!=', 'Cancelled')
+            ->orderBy('hotel_booking_id')
+            ->get();
+    }
 
     protected $casts = [
         'check_in'       => 'date',
@@ -481,6 +510,8 @@ class HotelBooking extends Model
         return [
             'bookingId'     => $this->hotel_booking_id,
             'guestId'       => $this->hotel_guest_id,
+            // Shared by rooms booked together for one guest; null when alone.
+            'groupRef'      => $this->group_ref ?? null,
             'status'        => $this->status,
             'fullName'      => $guest?->full_name ?? 'Guest',
             'contactNo'     => $guest?->contact_no ?? '',
@@ -560,6 +591,8 @@ class HotelBooking extends Model
     {
         return [
             'reference'   => $this->hotel_booking_id,
+            // Rooms booked together share it, so My Bookings can show them as one.
+            'groupRef'    => $this->group_ref ?? null,
             'status'      => $this->status,
             'roomName'    => $this->room?->name ?? '',
             'roomCategory'=> $this->room?->category ?? '',
@@ -676,6 +709,7 @@ class HotelBooking extends Model
 
         return [
             'bookingId'    => $this->hotel_booking_id,
+            'groupRef'     => $this->group_ref ?? null,
             'guestName'    => $guest?->full_name ?? 'Guest',
             'contactNo'    => $guest?->contact_no ?? '',
             'email'        => $guest?->email ?? '',

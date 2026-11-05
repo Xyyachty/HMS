@@ -72,63 +72,90 @@
       + (unit ? '<span class="rc-unit">' + esc(unit) + '</span>' : '') + '</span><span class="rc-amt">' + esc(amount) + '</span></div>';
   }
 
+  // One row per charge of one room's bill, labelled by the department it came from.
+  // `prefix` names the room on a sheet that covers several ("Room 101 · ").
+  function rowsOf(bill, prefix) {
+    var room = bill.room || {};
+    var rows = [];
+    rows.push(room.promo
+      ? { date: bill.checkIn, desc: prefix + 'Front Office - ' + room.promo + ' package', qty: 1, unit: room.subtotal, amount: room.subtotal }
+      : { date: bill.checkIn, desc: prefix + 'Front Office - ' + (bill.roomCategory || 'Room') + ' Room', sub: 'per ' + room.blockHours + ' hrs', qty: room.blocks, unit: room.rate, amount: room.subtotal });
+    ((bill.children && bill.children.items) || []).forEach(function (c) {
+      rows.push({ date: bill.checkIn, desc: prefix + 'Front Office - Child, age ' + c.age, sub: c.rate ? 'per night' : c.label, qty: c.rate ? c.nights : 1, unit: c.rate || 0, amount: c.line || 0 });
+    });
+    ((bill.roomService && bill.roomService.orders) || []).forEach(function (order) {
+      (order.items || []).forEach(function (item) {
+        rows.push({ date: order.placedAt, desc: prefix + 'F&B - In-Room Dining (' + item.name + ')', qty: item.qty, unit: item.price, amount: item.line });
+      });
+    });
+    ((bill.addons && bill.addons.items) || []).forEach(function (a) {
+      rows.push({ date: bill.checkIn, desc: prefix + 'Housekeeping - ' + a.name, sub: a.perNight ? '× ' + a.nights + ' night' + (a.nights === 1 ? '' : 's') : '', qty: a.qty, unit: a.unitPrice, amount: a.line });
+    });
+    ((bill.otherCharges && bill.otherCharges.items) || []).forEach(function (c) {
+      rows.push({ date: c.addedAt, desc: prefix + 'Front Office - ' + c.description, qty: 1, unit: c.amount, amount: c.amount });
+    });
+    return rows;
+  }
+
+  function sum(list, f) { return list.reduce(function (n, x) { return n + (Number(f(x)) || 0); }, 0); }
+
   function html(o) {
     o = o || {};
     var hotel = o.hotel || {};
-    var bill = o.bill || {};
+    // o.bills: rooms booked together, on one sheet (the Group Folio, or the receipt
+    // for rooms settled together). Each room's lines are named by the room.
+    var bills = (o.bills && o.bills.length) ? o.bills : [o.bill || {}];
+    var multi = bills.length > 1;
+    var bill = bills[0];
     var official = !!o.official;
     var cash = o.cash || null;
-    var issued = official && bill.checkedOutAt ? new Date(bill.checkedOutAt) : new Date();
+    var outs = bills.map(function (b) { return b.checkedOutAt ? new Date(b.checkedOutAt) : null; });
+    var lastOut = outs.every(Boolean) ? outs.reduce(function (a, b) { return b > a ? b : a; }) : null;
+    var issued = official && lastOut ? lastOut : new Date();
     var ymd = issued.getFullYear() + pad2(issued.getMonth() + 1) + pad2(issued.getDate());
     var number = 'OR-' + ymd + '-' + String(bill.bookingId || '').padStart(5, '0');
-    var service = bill.roomService || { orders: [] };
-    var addons = bill.addons || { items: [] };
-    var extras = bill.otherCharges || { items: [] };
-    var balance = Number(bill.balance) || 0;
-    var refundDue = Number(bill.refundDue) || 0;
-    var room = bill.room || {};
-    var nights = Math.max(1, Math.ceil((Number(room.blocks) || 1) / 2));
-    var allPayments = bill.payments || [];
+    var balance = sum(bills, function (b) { return b.balance; });
+    var refundDue = sum(bills, function (b) { return b.refundDue; });
+    var nights = Math.max.apply(null, bills.map(function (b) { return Math.max(1, Math.ceil((Number((b.room || {}).blocks) || 1) / 2)); }));
+    var allPayments = [];
+    bills.forEach(function (b) {
+      (b.payments || []).forEach(function (p) { allPayments.push(Object.assign({}, p, { roomName: b.roomName })); });
+    });
+    allPayments.sort(function (a, b) { return String(a.paidAt || '').localeCompare(String(b.paidAt || '')); });
     var methods = allPayments.filter(function (p) { return p.amountPaid > 0; }).map(function (p) { return p.method; })
       .filter(function (m, i, a) { return m && a.indexOf(m) === i; });
-    var checkOutAt = bill.checkedOutAt ? new Date(bill.checkedOutAt) : null;
-    var checkInText = longDay(toDate(bill.checkIn)) + (bill.checkInTime ? ' (' + String(bill.checkInTime).slice(0, 5) + ')' : '');
-    var checkOutText = checkOutAt ? longDay(checkOutAt) + ' (' + hhmm(checkOutAt) + ')' : longDay(toDate(bill.checkOut));
+    var firstIn = bills.map(function (b) { return b.checkIn || ''; }).sort()[0];
+    var lastPlanned = bills.map(function (b) { return b.checkOut || ''; }).sort().pop();
+    var checkInText = longDay(toDate(firstIn)) + (bill.checkInTime ? ' (' + String(bill.checkInTime).slice(0, 5) + ')' : '');
+    var checkOutText = lastOut ? longDay(lastOut) + ' (' + hhmm(lastOut) + ')' : longDay(toDate(lastPlanned));
 
-    // One row per charge, labelled by the department it came from.
     var rows = [];
-    rows.push(room.promo
-      ? { date: bill.checkIn, desc: 'Front Office - ' + room.promo + ' package', qty: 1, unit: room.subtotal, amount: room.subtotal }
-      : { date: bill.checkIn, desc: 'Front Office - ' + (bill.roomCategory || 'Room') + ' Room', sub: 'per ' + room.blockHours + ' hrs', qty: room.blocks, unit: room.rate, amount: room.subtotal });
-    ((bill.children && bill.children.items) || []).forEach(function (c) {
-      rows.push({ date: bill.checkIn, desc: 'Front Office - Child, age ' + c.age, sub: c.rate ? 'per night' : c.label, qty: c.rate ? c.nights : 1, unit: c.rate || 0, amount: c.line || 0 });
-    });
-    (service.orders || []).forEach(function (order) {
-      (order.items || []).forEach(function (item) {
-        rows.push({ date: order.placedAt, desc: 'F&B - In-Room Dining (' + item.name + ')', qty: item.qty, unit: item.price, amount: item.line });
-      });
-    });
-    (addons.items || []).forEach(function (a) {
-      rows.push({ date: bill.checkIn, desc: 'Housekeeping - ' + a.name, sub: a.perNight ? '× ' + a.nights + ' night' + (a.nights === 1 ? '' : 's') : '', qty: a.qty, unit: a.unitPrice, amount: a.line });
-    });
-    (extras.items || []).forEach(function (c) {
-      rows.push({ date: c.addedAt, desc: 'Front Office - ' + c.description, qty: 1, unit: c.amount, amount: c.amount });
-    });
+    bills.forEach(function (b) { rows = rows.concat(rowsOf(b, multi ? (b.roomName || 'Room') + ' · ' : '')); });
 
     // The VAT exemption comes off with the 20%, so both are shown or the totals would not add up.
-    var discounts = ((bill.discounts && bill.discounts.items) || []).filter(function (d) { return d.verified; });
-    var discountVat = discounts.reduce(function (s, d) { return s + (Number(d.vat) || 0); }, 0);
-    var discount20 = discounts.reduce(function (s, d) { return s + (Number(d.discount) || 0); }, 0);
-    var serviceCharge = (bill.serviceCharge && Number(bill.serviceCharge.amount)) || 0;
-    var subtotal = (Number(bill.total) || 0) - serviceCharge + discountVat + discount20;
+    var discounts = [];
+    bills.forEach(function (b) {
+      ((b.discounts && b.discounts.items) || []).forEach(function (d) { if (d.verified) discounts.push(d); });
+    });
+    var discountVat = sum(discounts, function (d) { return d.vat; });
+    var discount20 = sum(discounts, function (d) { return d.discount; });
+    var serviceCharge = sum(bills, function (b) { return b.serviceCharge && b.serviceCharge.amount; });
+    var serviceBase = sum(bills, function (b) { return b.serviceCharge && b.serviceCharge.amount > 0 ? b.serviceCharge.base : 0; });
+    var serviceRate = (bills.filter(function (b) { return b.serviceCharge && b.serviceCharge.amount > 0; })[0] || {}).serviceCharge;
+    var total = sum(bills, function (b) { return b.total; });
+    var amountPaid = sum(bills, function (b) { return b.amountPaid; });
+    var subtotal = total - serviceCharge + discountVat + discount20;
     var payments = allPayments.filter(function (p) { return Number(p.amountPaid) !== 0; });
-    var folioNo = 'FL-' + String(bill.bookingId || '').padStart(6, '0');
+    var folioNo = 'FL-' + String(bill.bookingId || '').padStart(6, '0') + (multi ? ' (' + bills.length + ' rooms)' : '');
+    var roomText = multi
+      ? bills.map(function (b) { return b.roomName || 'Room'; }).join(' + ')
+      : (bill.roomName || '—') + (bill.roomCategory ? ' (' + bill.roomCategory + ')' : '');
     var contactLine = [hotel.phone ? 'Tel: ' + hotel.phone : '', hotel.email || ''].filter(Boolean).join(' | ');
 
     var info = (official ? '<div><dt>Receipt No.</dt><dd>' + esc(number) + '</dd></div><div><dt>Date Issued</dt><dd>' + esc(longDay(issued)) + '</dd></div>' : '')
       + '<div><dt>Folio No.</dt><dd>' + esc(folioNo) + '</dd></div>'
       + (official ? '' : '<div><dt>Date Printed</dt><dd>' + esc(longDay(issued)) + '</dd></div>')
-      + '<div><dt>Room No.</dt><dd>' + esc((bill.roomName || '—') + (bill.roomCategory ? ' (' + bill.roomCategory + ')' : '')) + '</dd></div>'
+      + '<div><dt>' + (multi ? 'Rooms' : 'Room No.') + '</dt><dd>' + esc(roomText) + '</dd></div>'
       + '<div><dt>Check-In</dt><dd>' + esc(checkInText) + '</dd></div>'
       + '<div><dt>Guest Name</dt><dd>' + esc(bill.guestName || '—') + '</dd></div>'
       + '<div><dt>Check-Out</dt><dd>' + esc(checkOutText) + '</dd></div>'
@@ -148,7 +175,7 @@
     var paid = payments.map(function (p) {
       var kind = Number(p.amountPaid) < 0 ? 'Refund' : p.type === 'Full' ? 'Full payment' : 'Payment';
       return '<tr><td class="rc-date">' + esc(shortDay(p.paidAt)) + '</td>'
-        + '<td>' + esc(kind + ' (' + p.method + (p.reference ? ' · ' + p.reference : '') + ')') + '</td>'
+        + '<td>' + esc((multi ? (p.roomName || 'Room') + ' · ' : '') + kind + ' (' + p.method + (p.reference ? ' · ' + p.reference : '') + ')') + '</td>'
         + '<td class="num">' + esc(peso(-p.amountPaid)) + '</td></tr>';
     }).join('');
 
@@ -156,7 +183,8 @@
       + '<div class="rc-top"><h3>' + esc(hotel.name || 'Hotel') + '</h3>'
       +   (hotel.address ? '<p>' + esc(hotel.address) + '</p>' : '')
       +   (contactLine ? '<p>' + esc(contactLine) + '</p>' : '')
-      +   (official ? '<p class="rc-title">Guest Statement of Account / Folio</p><p>(Official Receipt)</p>' : '<p class="rc-title">Statement of Account (Guest Folio)</p>')
+      +   (official ? '<p class="rc-title">Guest Statement of Account / Folio</p><p>(Official Receipt' + (multi ? ' · ' + bills.length + ' rooms' : '') + ')</p>'
+                    : '<p class="rc-title">Statement of Account (Guest Folio)</p>' + (multi ? '<p>Group Folio · ' + bills.length + ' rooms booked together</p>' : ''))
       + '</div>'
       + '<div class="rc-block"><dl class="rc-info">' + info + '</dl></div>'
       + '<div class="rc-block"><table class="rc-table"><thead><tr><th>Date</th><th>Department / Description</th><th class="num">Qty</th>'
@@ -164,8 +192,8 @@
       + '<div class="rc-block rc-sum">'
       +   line('Subtotal', peso(subtotal), 'rc-strong')
       +   (discounts.length ? line('Less: Senior Citizen / PWD VAT exemption', peso(-discountVat)) + line('Less: Senior Citizen / PWD discount (20%)', peso(-discount20)) : '')
-      +   (serviceCharge > 0 ? line('Service Charge (' + bill.serviceCharge.rate + '%)', peso(serviceCharge), '', 'On ' + peso(bill.serviceCharge.base) + ', after discounts') : '')
-      +   line('Total Charges', peso(bill.total), 'rc-strong')
+      +   (serviceCharge > 0 ? line('Service Charge (' + serviceRate.rate + '%)', peso(serviceCharge), '', 'On ' + peso(serviceBase) + ', after discounts') : '')
+      +   line('Total Charges', peso(total), 'rc-strong')
       + '</div>'
       + '<div class="rc-block"><p class="rc-head">' + (official ? 'Payments / Deposits' : 'Payments &amp; Credits Applied') + '</p>'
       +   (payments.length ? '' : line('None', peso(0)))
@@ -173,7 +201,7 @@
       +   (cash ? line('Cash received', peso(cash.tendered)) + line('Change', peso(cash.change)) : '')
       + '</div>'
       + '<div class="rc-block rc-sum">'
-      +   line('Total Paid', peso(bill.amountPaid), 'rc-strong')
+      +   line('Total Paid', peso(amountPaid), 'rc-strong')
       +   line(official ? 'Balance Due' : 'Total Balance Due', peso(balance), 'rc-strong' + (balance > 0 ? ' rc-due' : ''))
       +   (refundDue > 0 ? line('Refund Due to Guest', peso(refundDue), 'rc-strong') : '')
       + '</div>'
