@@ -679,8 +679,8 @@ function GuestFolio({ bill, cash, official }) {
 
       <div className="rc-block rc-sum">
         {line('Subtotal', peso(subtotal), 'sub', 'rc-strong')}
-        {discounts.length > 0 && line('Less: SC / PWD VAT exemption', peso(-discountVat), 'lv')}
-        {discounts.length > 0 && line('Less: SC / PWD discount (20%)', peso(-discount20), 'ld')}
+        {discounts.length > 0 && line('Less: Senior Citizen / PWD VAT exemption', peso(-discountVat), 'lv')}
+        {discounts.length > 0 && line('Less: Senior Citizen / PWD discount (20%)', peso(-discount20), 'ld')}
         {line('Total Charges', peso(bill.total), 'total', 'rc-strong')}
       </div>
 
@@ -709,10 +709,10 @@ function GuestFolio({ bill, cash, official }) {
       </div>
 
       <div className="rc-block">
-        <p className="rc-head">SC / PWD Discount</p>
+        <p className="rc-head">Senior Citizen / PWD Discount</p>
         {discounts.length
           ? discounts.map(d => line(`${d.type} — ${d.fullName}`, peso(d.discount), 'sc' + d.id, '', `ID No: ${d.idNumber || 'N/A'} · 20% of ${peso(d.vatExemptPrice)}`))
-          : line('SC / PWD Discount', peso(0) + ' (ID No: N/A)', 'sc0')}
+          : line('Senior Citizen / PWD Discount', peso(0) + ' (ID No: N/A)', 'sc0')}
         {official && line('Payment Method', methods.join(', ') || '—', 'method')}
       </div>
 
