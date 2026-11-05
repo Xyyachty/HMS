@@ -88,7 +88,7 @@
         /* Sections in a grid above the content: four across on a tablet, two
            on a phone. A wrapping 13rem-wide row stacked them one per line and
            left the content a sliver at the bottom. */
-        .tm-nav { width: 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); border-right: 0; border-bottom: 1px solid #E4E2E0; padding: .6rem; }
+        .tm-nav { width: 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); border-right: 0; border-bottom: 1px solid #E4E2E0; padding: .6rem; }
         .tm-tab { padding: .55rem .6rem; gap: .5rem; align-items: center; }
         .tm-tab-icon { width: 1.9rem; height: 1.9rem; font-size: 1rem; }
         .tm-tab-title { font-size: 0.8125rem; line-height: 1.25; }

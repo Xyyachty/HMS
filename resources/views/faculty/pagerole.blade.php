@@ -158,6 +158,11 @@
         width: 2.1rem; height: 2.1rem; flex-shrink: 0; border-radius: .65rem;
         display: inline-flex; align-items: center; justify-content: center; background: #fff; color: #B45309; font-size: 1.1rem;
     }
+    /* The text needs 10rem before the button may sit beside it; narrower, the
+       button drops to its own line (full width on a phone) instead of
+       squeezing the text to a word per line. */
+    .ov-notice > .flex-1 { flex: 1 1 10rem; }
+    @media (max-width: 640px) { .ov-notice > .tm-btn { width: 100%; } }
     .ov-notice-title { font-size: 0.8125rem; font-weight: 800; color: #181818; }
     .ov-notice-text { font-size: 0.75rem; color: #5F5A55; margin-top: .1rem; line-height: 1.45; }
     .ov-clear { display: none; align-items: center; gap: .4rem; font-size: 0.8125rem; font-weight: 700; color: #15803D; }
