@@ -781,6 +781,10 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, finalChecks, 
   const [showAddonForm, setShowAddonForm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [showFolio, setShowFolio] = useState(false);
+  // Split payment, as the dine-in bill: cash plus GCash, card or another method.
+  const freshParts = () => [{ method: 'Cash', amount: '', reference: '' }, { method: 'GCash', amount: '', reference: '' }];
+  const [split, setSplit] = useState(false);
+  const [parts, setParts] = useState(freshParts);
 
   const balance = bill ? Number(bill.balance) || 0 : 0;
   const refundDue = bill ? Number(bill.refundDue) || 0 : 0;
@@ -798,6 +802,8 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, finalChecks, 
     setAddonQty('1');
     setShowAddonForm(false);
     setShowFolio(false);
+    setSplit(false);
+    setParts(freshParts());
   }, [open]);
 
   // Re-filled whenever the balance moves (a charge added, a payment taken).
@@ -817,11 +823,40 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, finalChecks, 
 
   // Cash: the field is what the guest hands over. Only the balance is recorded as
   // paid; the rest goes back as change. Other methods record the amount as typed.
-  const entered = Math.max(0, parseFloat(amount) || 0);
+  const owed = Math.max(0, balance);
   const isCash = method === 'Cash';
-  const paid = isCash ? Math.min(entered, Math.max(0, balance)) : entered;
-  const change = isCash ? Math.max(0, entered - Math.max(0, balance)) : 0;
-  const remainingAfter = Math.max(0, balance - paid);
+
+  /* Split: a cash part is what the guest hands over; only what the bill still needs
+     after the other parts is recorded from it, the rest is change. Other parts record
+     what was typed, and together they may not pay more than the balance. */
+  const amt = (v) => Math.max(0, parseFloat(v) || 0);
+  const r2 = (n) => Math.round(n * 100) / 100;
+  const nonCash = parts.filter(p => p.method !== 'Cash').reduce((n, p) => n + amt(p.amount), 0);
+  const cashGiven = parts.filter(p => p.method === 'Cash').reduce((n, p) => n + amt(p.amount), 0);
+  const cashApplied = Math.min(cashGiven, Math.max(0, owed - nonCash));
+  const tooMuch = split && nonCash > owed + 0.005;
+  const sentParts = split ? [
+    ...(cashApplied > 0 ? [{ method: 'Cash', amount: r2(cashApplied), reference: '' }] : []),
+    ...parts.filter(p => p.method !== 'Cash' && amt(p.amount) > 0)
+      .map(p => ({ method: p.method, amount: r2(amt(p.amount)), reference: p.reference.trim() })),
+  ] : [];
+  const setPart = (i, patch) => setParts(list => list.map((p, k) => (k === i ? Object.assign({}, p, patch) : p)));
+  const restFor = (i) => Math.max(0, r2(owed - parts.reduce((n, p, k) => (k === i ? n : n + amt(p.amount)), 0)));
+
+  const entered = split ? cashGiven : Math.max(0, parseFloat(amount) || 0);
+  const paid = split ? r2(nonCash + cashApplied) : (isCash ? Math.min(entered, owed) : entered);
+  const change = split ? Math.max(0, r2(cashGiven - cashApplied)) : (isCash ? Math.max(0, entered - owed) : 0);
+  const remainingAfter = Math.max(0, r2(balance - paid));
+  const methodLabel = split ? [...new Set(sentParts.map(p => p.method))].join(' + ') : method;
+  // What onPay / onSettle send: one row, or one per part when it really is split.
+  const paymentOut = () => (split && sentParts.length > 1
+    ? { amount: paid, splits: sentParts, method: methodLabel }
+    : split
+      ? { amount: sentParts[0].amount, method: sentParts[0].method, reference: sentParts[0].reference }
+      : { amount: paid, method, reference: reference.trim() });
+  const splitProblem = () => (tooMuch
+    ? 'GCash, card and other parts add up to more than the balance. Lower them; cash change comes from the cash part.'
+    : (split && sentParts.length === 0 ? 'Enter how much each method pays.' : ''));
 
   const submitCharge = (e) => {
     e.preventDefault();
@@ -849,10 +884,16 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, finalChecks, 
 
   // A payment during the stay (a deposit, an upgrade difference) without checking out.
   const payOnly = () => {
+    const problem = splitProblem();
+    if (problem) { if (onToast) onToast(problem); return; }
     if (!(paid > 0)) { if (onToast) onToast('Enter the amount received.'); return; }
     setBusy(true);
-    Promise.resolve(onPay({ amount: paid, method, reference: reference.trim(), full: remainingAfter <= 0 }))
-      .then(() => { setReference(''); if (onToast) onToast(formatPeso(paid) + ' received by ' + method + '.' + (change > 0 ? ' Change: ' + formatPeso(change) + '.' : '')); })
+    Promise.resolve(onPay(Object.assign(paymentOut(), { full: remainingAfter <= 0 })))
+      .then(() => {
+        setReference('');
+        setParts(freshParts());
+        if (onToast) onToast(formatPeso(paid) + ' received by ' + methodLabel + '.' + (change > 0 ? ' Change: ' + formatPeso(change) + '.' : ''));
+      })
       .catch(err => { if (onToast) onToast((err && err.message) || 'Could not record that payment.'); })
       .finally(() => setBusy(false));
   };
@@ -870,13 +911,15 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, finalChecks, 
   const settle = (e) => {
     e.preventDefault();
     if (!canCheckOut) { payOnly(); return; }
+    const problem = splitProblem();
+    if (problem) { if (onToast) onToast(problem); return; }
     // A short payment is allowed — a written-off or disputed stay still has to close —
     // but the desk is told what is being left behind before it does.
     if (remainingAfter > 0 && !window.confirm(
       `${formatPeso(remainingAfter)} will still be unpaid after this. Check out anyway?`
     )) return;
     setBusy(true);
-    Promise.resolve(onSettle({ amount: paid, method, reference: reference.trim(), tendered: entered, change }))
+    Promise.resolve(onSettle(Object.assign(paymentOut(), { tendered: entered, change, cashPart: split ? cashGiven > 0 : isCash })))
       .catch(err => { if (onToast) onToast((err && err.message) || 'Could not complete check-out.'); })
       .finally(() => setBusy(false));
   };
@@ -1141,6 +1184,60 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, finalChecks, 
 
               <form onSubmit={settle} style={{ marginTop: '1.4rem' }}>
                 <p className="bill-section-title" style={{ marginTop: 0 }}>Take Payment</p>
+                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.7rem' }}>
+                  {[[false, 'One Payment'], [true, 'Split Payment']].map(([on, label]) => (
+                    <button key={label} type="button" aria-pressed={split === on}
+                      className={split === on ? 'btn-solid' : 'btn-outline'}
+                      style={{ fontSize: '0.66rem', padding: '0.4rem 0.8rem' }}
+                      onClick={() => setSplit(on)}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {split ? (
+                  <div style={{ display: 'grid', gap: '0.45rem' }}>
+                    {parts.map((p, i) => (
+                      <div key={i} style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center' }}>
+                        <select className="booking-input" value={p.method} onChange={e => setPart(i, { method: e.target.value })}
+                          aria-label="Payment method" style={{ flex: '1 0 7rem', width: 'auto' }}>
+                          {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+                        </select>
+                        <input type="number" className="booking-input" min="0" step="0.01" value={p.amount}
+                          placeholder={p.method === 'Cash' ? 'Cash received' : 'Amount'} aria-label={p.method + ' amount'}
+                          onChange={e => setPart(i, { amount: e.target.value })} style={{ flex: '1 1 7rem', width: 'auto' }} />
+                        {p.method !== 'Cash' && (
+                          <input type="text" className="booking-input" placeholder="Ref # / card last 4" value={p.reference}
+                            onChange={e => setPart(i, { reference: e.target.value })} style={{ flex: '1 1 7rem', width: 'auto' }} />
+                        )}
+                        {p.method !== 'Cash' && restFor(i) > 0 && (
+                          <button type="button" className="btn-outline" onClick={() => setPart(i, { amount: String(restFor(i)) })}
+                            style={{ fontSize: '0.62rem', padding: '0.35rem 0.6rem' }} title="Fill in what the other parts leave">
+                            Pay the rest
+                          </button>
+                        )}
+                        {parts.length > 2 && (
+                          <button type="button" className="btn-outline" aria-label="Remove this part"
+                            onClick={() => setParts(list => list.filter((x, k) => k !== i))}
+                            style={{ fontSize: '0.62rem', padding: '0.35rem 0.55rem' }}>
+                            <i className="fa-solid fa-xmark"></i>
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    {parts.length < 4 && (
+                      <button type="button" onClick={() => setParts(list => [...list, { method: 'Card', amount: '', reference: '' }])}
+                        style={{ justifySelf: 'start', background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: '0.74rem', padding: '0.2rem 0' }}>
+                        <i className="fa-solid fa-plus" style={{ fontSize: '0.62rem', marginRight: 5 }}></i> Add another method
+                      </button>
+                    )}
+                    {tooMuch && (
+                      <p style={{ margin: 0, fontSize: '0.74rem', color: 'var(--danger, #fb7185)' }}>
+                        GCash, card and other parts are more than the balance. Cash change comes from the cash part only.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                <>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.7rem' }}>
                   <div>
                     <label style={{ fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.35rem' }}>Payment Method</label>
@@ -1160,6 +1257,13 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, finalChecks, 
                     <input type="text" className="booking-input" placeholder="Receipt no., card last 4, or ref #"
                       value={reference} onChange={e => setReference(e.target.value)} />
                   </div>
+                )}
+                </>
+                )}
+                {split && (
+                  <p style={{ margin: '0.65rem 0 0', fontSize: '0.76rem', color: 'var(--fg-muted)' }}>
+                    Paying now {formatPeso(paid)}{methodLabel ? ' by ' + methodLabel : ''}
+                  </p>
                 )}
                 <p style={{ margin: '0.65rem 0 0', fontSize: '0.76rem', color: remainingAfter > 0 ? 'var(--danger, #fb7185)' : 'var(--success, #4ade80)' }}>
                   {remainingAfter > 0
@@ -2098,7 +2202,8 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
   const settleAndCheckOut = (payment) => {
     const bookingId = billFor.reservation.bookingId;
     const lastBill = bill;
-    const cash = payment.method === 'Cash' && payment.amount > 0
+    // A split with a cash part prints Cash received / Change too.
+    const cash = (payment.cashPart || payment.method === 'Cash') && payment.amount > 0 && payment.tendered > 0
       ? { tendered: payment.tendered, change: payment.change, paidNow: payment.amount }
       : null;
     return Promise.resolve(onSettleAndCheckOut(bookingId, payment)).then(() => {
@@ -2549,12 +2654,12 @@ function App() {
 
   // Money taken during the stay, without checking out. A refund is money handed back.
   const pay = useCallback((bookingId, payment) => (
-    billRequest('/students/hotel/bookings/' + bookingId + '/payments', 'POST', {
+    billRequest('/students/hotel/bookings/' + bookingId + '/payments', 'POST', Object.assign({
       type: payment.type || (payment.full ? 'Full' : 'Partial'),
-      amount_paid: payment.amount,
-      method: payment.method,
-      reference: payment.reference,
-    }).then(d => { fetchRooms(); return d.bill; })
+    }, payment.splits
+      ? { splits: payment.splits }
+      : { amount_paid: payment.amount, method: payment.method, reference: payment.reference }
+    )).then(d => { fetchRooms(); return d.bill; })
   ), [billRequest, fetchRooms]);
 
   // Both rooms change: the guest leaves one and lands in the other, so read them all again.
@@ -2575,12 +2680,9 @@ function App() {
    */
   const settleAndCheckOut = useCallback((bookingId, payment) => {
     const takePayment = payment.amount > 0
-      ? billRequest('/students/hotel/bookings/' + bookingId + '/payments', 'POST', {
-          type: 'Full',
-          amount_paid: payment.amount,
-          method: payment.method,
-          reference: payment.reference,
-        })
+      ? billRequest('/students/hotel/bookings/' + bookingId + '/payments', 'POST', payment.splits
+          ? { type: 'Full', splits: payment.splits }
+          : { type: 'Full', amount_paid: payment.amount, method: payment.method, reference: payment.reference })
       : Promise.resolve(null);
 
     return takePayment.then(() => (

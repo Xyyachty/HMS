@@ -2327,20 +2327,46 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
 
         $data = $request->validate([
             'type'        => 'nullable|string|max:20',
-            'amount_paid' => 'required|numeric|min:0.01',
+            'amount_paid' => 'required_without:splits|numeric|min:0.01',
             'method'      => 'nullable|string|max:50',
             'reference'   => 'nullable|string|max:255',
             'payer_name'  => 'nullable|string|max:255',
             'notes'       => 'nullable|string|max:2000',
+            // Split payment: cash and GCash, card... One payment row per part, all
+            // under one transaction_ref, all or none.
+            'splits'             => 'sometimes|array|min:2|max:4',
+            'splits.*.method'    => 'required|string|max:50',
+            'splits.*.amount'    => 'required|numeric|min:0.01',
+            'splits.*.reference' => 'nullable|string|max:255',
         ]);
 
         $refund = \App\Models\HotelBookingPayment::normalizeType($data['type'] ?? null) === 'Refund';
         if ($refund && !\App\Support\HotelTableAccess::canAssign($membership)) {
             return response()->json(['message' => 'Only Front Desk staff can record a refund.'], 403);
         }
+        if ($refund && !empty($data['splits'])) {
+            return response()->json(['message' => 'A refund goes back one way. Pick one method.'], 422);
+        }
 
         try {
-            \App\Support\HotelBookingDesk::addPayment($booking, $data);
+            if (!empty($data['splits'])) {
+                $ref = (string) \Illuminate\Support\Str::uuid();
+                DB::transaction(function () use ($booking, $data, $ref) {
+                    foreach ($data['splits'] as $part) {
+                        \App\Support\HotelBookingDesk::addPayment($booking, [
+                            'type'            => $data['type'] ?? null,
+                            'amount_paid'     => $part['amount'],
+                            'method'          => $part['method'],
+                            'reference'       => $part['reference'] ?? null,
+                            'payer_name'      => $data['payer_name'] ?? null,
+                            'notes'           => $data['notes'] ?? null,
+                            'transaction_ref' => $ref,
+                        ]);
+                    }
+                });
+            } else {
+                \App\Support\HotelBookingDesk::addPayment($booking, $data);
+            }
         } catch (\RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
