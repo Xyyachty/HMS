@@ -1126,7 +1126,7 @@ function SleepsModal({ category, current, saving, error, onSubmit, onCancel }) {
    Desk and the hotel website price every child by it; a stay already booked keeps the
    prices it was sold at. Extra beds are priced by Housekeeping as an add-on. */
 function ChildPolicyModal({ policy, saving, error, onSubmit, onCancel }) {
-  const start = policy || { adultAge: 12, freeWithExistingBedding: false, bands: [] };
+  const start = policy || { adultAge: 18, freeWithExistingBedding: false, bands: [{ min_age: 0, max_age: 5, rate: 0 }, { min_age: 6, max_age: 17, rate: 500 }] };
   const [adultAge, setAdultAge] = useState(start.adultAge);
   const [shareFree, setShareFree] = useState(!!start.freeWithExistingBedding);
   const [bands, setBands] = useState((start.bands || []).map(b => ({ min: b.min_age, max: b.max_age, rate: String(b.rate) })));

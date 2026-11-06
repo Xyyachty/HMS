@@ -364,7 +364,7 @@ function freeFor(room, from, to) {
 /* What each child costs per night under the hotel's child policy (Room Management
    sets it). Mirrors HotelChildPolicy::price(); the server prices the stay again when
    it is booked. capacity is what the room sleeps without extra beds, 0 for no limit. */
-const NO_CHILD_POLICY = { saved: false, adultAge: 12, freeWithExistingBedding: false, bands: [] };
+const NO_CHILD_POLICY = { saved: false, adultAge: 18, freeWithExistingBedding: false, bands: [{ min_age: 0, max_age: 5, rate: 0 }, { min_age: 6, max_age: 17, rate: 500 }] };
 function childLines(policy, ages, adults, capacity) {
   const p = policy || NO_CHILD_POLICY;
   const lines = ages.map(age => {

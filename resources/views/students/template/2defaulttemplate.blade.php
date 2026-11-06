@@ -2149,7 +2149,7 @@ const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'Ju
    sets it). Mirrors HotelChildPolicy::price(); the server prices the stay again when
    it is booked. capacity is what the room sleeps without extra beds, 0 for no limit. */
 function childLines(policy, ages, adults, capacity) {
-  const p = policy || { adultAge: 12, freeWithExistingBedding: false, bands: [] };
+  const p = policy || { adultAge: 18, freeWithExistingBedding: false, bands: [{ min_age: 0, max_age: 5, rate: 0 }, { min_age: 6, max_age: 17, rate: 500 }] };
   const lines = ages.map(age => {
     if (age >= p.adultAge) return { age, rate: 0, label: 'Priced as adult (' + p.adultAge + '+), in the room rate' };
     const band = (p.bands || []).find(b => age >= b.min_age && age <= b.max_age);

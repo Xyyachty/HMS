@@ -14,8 +14,8 @@ use Illuminate\Database\Eloquent\Model;
  * free whatever their age, and only a child past the room's limit (on an extra bed)
  * pays their age rate.
  *
- * A team that never saved one gets the unsaved default from forTeam(): every child
- * free, which is how bookings were priced before this existed.
+ * A team that never saved one gets the unsaved default from forTeam(): ages 0-5
+ * free, 6-17 at PHP 500 a night, priced as an adult from 18.
  *
  * price() is the one place a child's charge is worked out. The booking screens
  * preview it in the browser (childLines() in walk-in and both templates) and the
@@ -24,6 +24,12 @@ use Illuminate\Database\Eloquent\Model;
 class HotelChildPolicy extends Model
 {
     public const MAX_CHILD_AGE = 17;
+
+    /** The house rule until a team saves its own: under 6 free, 6-17 pay 500 a night. */
+    public const DEFAULT_BANDS = [
+        ['min_age' => 0, 'max_age' => 5, 'rate' => 0],
+        ['min_age' => 6, 'max_age' => 17, 'rate' => 500],
+    ];
 
     protected $primaryKey = 'hotel_child_policy_id';
 
@@ -43,15 +49,15 @@ class HotelChildPolicy extends Model
     ];
 
     protected $attributes = [
-        'adult_age' => 12,
+        'adult_age' => 18,
         'free_with_existing_bedding' => false,
     ];
 
-    /** The team's saved policy, or the every-child-free default when it has none. */
+    /** The team's saved policy, or the DEFAULT_BANDS policy when it has none. */
     public static function forTeam(string $groupName, int $facultyId): self
     {
         return self::where('group_name', $groupName)->where('faculty_id', $facultyId)->first()
-            ?? new self(['group_name' => $groupName, 'faculty_id' => $facultyId, 'bands' => []]);
+            ?? new self(['group_name' => $groupName, 'faculty_id' => $facultyId, 'bands' => self::DEFAULT_BANDS]);
     }
 
     /**
