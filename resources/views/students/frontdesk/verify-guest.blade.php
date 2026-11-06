@@ -1307,8 +1307,8 @@ function ExtendStayModal({ room, reservation, onClose, onSave }) {
 
         <form className="bill-body" onSubmit={submit}>
           <dl className="bill-meta">
-            <div><dt>Check-out now</dt><dd>{formatBillDateTime(reservation.checkOut, reservation.checkInTime)}</dd></div>
-            <div><dt>New check-out</dt><dd style={{ color: 'var(--accent-light)', fontWeight: 600 }}>{formatBillDateTime(newCheckOut, reservation.checkInTime)}</dd></div>
+            <div><dt>Check-out now</dt><dd>{formatBillDateTime(reservation.checkOut, '12:00')}</dd></div>
+            <div><dt>New check-out</dt><dd style={{ color: 'var(--accent-light)', fontWeight: 600 }}>{formatBillDateTime(newCheckOut, '12:00')}</dd></div>
           </dl>
 
           <p className="bill-section-title">How many more nights?</p>

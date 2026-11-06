@@ -127,7 +127,7 @@
     var firstIn = bills.map(function (b) { return b.checkIn || ''; }).sort()[0];
     var lastPlanned = bills.map(function (b) { return b.checkOut || ''; }).sort().pop();
     var checkInText = longDay(toDate(firstIn)) + (bill.checkInTime ? ' (' + String(bill.checkInTime).slice(0, 5) + ')' : '');
-    var checkOutText = lastOut ? longDay(lastOut) + ' (' + hhmm(lastOut) + ')' : longDay(toDate(lastPlanned));
+    var checkOutText = lastOut ? longDay(lastOut) + ' (' + hhmm(lastOut) + ')' : longDay(toDate(lastPlanned)) + (lastPlanned ? ' (12:00)' : '');
 
     var rows = [];
     bills.forEach(function (b) { rows = rows.concat(rowsOf(b, multi ? (b.roomName || 'Room') + ' · ' : '')); });

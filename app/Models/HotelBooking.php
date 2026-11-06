@@ -46,6 +46,10 @@ class HotelBooking extends Model
     /** Length of one charged stay block, in hours — matches the front-end's BLOCK_HOURS. */
     public const BLOCK_HOURS = 12;
 
+    /** Standard check-in and check-out clock times. Every new stay is booked at these. */
+    public const CHECK_IN_TIME = '14:00';
+    public const CHECK_OUT_TIME = '12:00';
+
     protected $primaryKey = 'hotel_booking_id';
 
     protected $fillable = [

@@ -569,7 +569,7 @@ function RoomWalkIn() {
   const [email, setEmail] = useState('');
   const [idNumber, setIdNumber] = useState('');
   const [nights, setNights] = useState(1);
-  const [checkInTime, setCheckInTime] = useState(nowClock);
+  const checkInTime = '14:00'; // standard check-in; the server stores the same
   const [category, setCategory] = useState('All');
   // The whole party. childAges holds one entry per child: a number, or '' until asked.
   const [adults, setAdults] = useState(1);
@@ -822,7 +822,7 @@ function RoomWalkIn() {
 
   const reset = () => {
     setFullName(''); setContactNo(''); setEmail(''); setIdNumber('');
-    setNights(1); setCheckInTime(nowClock()); setPicks([]); setPromoId(''); setAddonQty({});
+    setNights(1); setPicks([]); setPromoId(''); setAddonQty({});
     setAdults(1); setChildAges([]); setClaimAny('No'); setClaims([]);
     setPayType('Full'); setAmount(''); setMethod('Cash'); setNotes('');
     setError(''); setTried(false); setDone(null); load(); loadAddons();
@@ -909,7 +909,7 @@ function RoomWalkIn() {
           ['Guests', done.partyLabel],
           ['Additional child charges', done.childTotal ? peso(done.childTotal) : 'None'],
           ['Check-in', niceDate(checkIn) + ', ' + niceTime(checkInTime)],
-          ['Check-out', niceDate(checkOut)],
+          ['Check-out', niceDate(checkOut) + ', ' + niceTime('12:00')],
           ['Length of stay', plural(nights, 'night')],
           ['Promo / package', done.promo ? done.promo.name : 'None'],
           ['Senior Citizen / PWD', done.applied.length + done.pending.length === 0 ? 'None'
@@ -983,8 +983,8 @@ function RoomWalkIn() {
               <Field id="wi-nights" label="Nights">
                 <Stepper value={nights} min={1} max={30} onChange={setNights} unit="night" />
               </Field>
-              <Field id="wi-time" label="Check-in time">
-                <input id="wi-time" type="time" className="wi-input" value={checkInTime} onChange={e => setCheckInTime(e.target.value)} />
+              <Field id="wi-time" label="Check-in / check-out time">
+                <input id="wi-time" className="wi-input" value="2:00 PM / 12:00 PM" readOnly />
               </Field>
             </div>
             <div className="wi-dates">

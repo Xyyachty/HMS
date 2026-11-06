@@ -1873,7 +1873,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             'guest.email'        => 'nullable|string|email|max:255',
             'guest.id_number'    => 'nullable|string|max:100',
             'check_in'           => 'required|date',
-            'check_in_time'      => 'required|string|max:10',
+            'check_in_time'      => 'nullable|string|max:10', // ignored: stays start at HotelBooking::CHECK_IN_TIME
             'check_out'          => 'required|date|after:check_in',
             'guest_count'        => 'nullable|integer|min:1|max:99',
             'adults'             => 'nullable|integer|min:1|max:99',
@@ -1992,7 +1992,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
                         $data['guest'],
                         [
                             'check_in'      => $data['check_in'],
-                            'check_in_time' => $data['check_in_time'],
+                            'check_in_time' => \App\Models\HotelBooking::CHECK_IN_TIME,
                             'check_out'     => $data['check_out'],
                             'guest_count'   => $stay['guest_count'] ?? null,
                             'adults'        => $stay['adults'] ?? null,

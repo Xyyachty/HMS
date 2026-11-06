@@ -94,7 +94,7 @@
       +       '<div><dt>Booking</dt><dd>#' + esc(st.reference) + '</dd></div>'
       +       '<div><dt>Guest name</dt><dd>' + esc((bill && bill.guestName) || '—') + '</dd></div>'
       +       '<div><dt>Check-in</dt><dd>' + esc(day(st.checkIn) + clock(st.checkInTime)) + '</dd></div>'
-      +       '<div><dt>Check-out</dt><dd>' + esc(day(st.checkOut)) + '</dd></div>'
+      +       '<div><dt>Check-out</dt><dd>' + esc(day(st.checkOut) + clock('12:00')) + '</dd></div>'
       +       '<div><dt>Guests</dt><dd>' + esc(guests) + '</dd></div>'
       +       '<div><dt>Status</dt><dd>' + badge(st.status) + '</dd></div>'
       +       (st.promoName ? '<div><dt>Package</dt><dd>' + esc(st.promoName) + '</dd></div>' : '')

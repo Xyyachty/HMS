@@ -2277,7 +2277,7 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, childPolicy, cap
     // The stay the guest asked about on the Rooms page. They chose these dates
     // to find this room, so asking for them a second time is asking twice.
     checkIn: stayFrom || '',
-    checkInTime: '',
+    checkInTime: '14:00',
     checkOut: stayTo || '',
     promoId: chosenPromoId || '',
   });
@@ -2307,7 +2307,7 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, childPolicy, cap
 
   useEffect(() => {
     setStep('details');
-    setGuestForm({ fullName: '', contactNo: '', email: '', idNumber: '', adults: '1', childAges: [], checkIn: '', checkInTime: '', checkOut: '', promoId: chosenPromoId || '' });
+    setGuestForm({ fullName: '', contactNo: '', email: '', idNumber: '', adults: '1', childAges: [], checkIn: '', checkInTime: '14:00', checkOut: '', promoId: chosenPromoId || '' });
     setPaymentForm({ type: 'full', amount: '', method: 'Cash', reference: '', payerName: '', notes: '' });
     setAddonLines([]);
     setShowAddons(false);
@@ -2421,10 +2421,6 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, childPolicy, cap
     if (!isSiteInteractive()) return;
     if (guestForm.checkOut && guestForm.checkIn && guestForm.checkOut <= guestForm.checkIn) {
       if (onToast) onToast('Check-Out must be after Check-In.');
-      return;
-    }
-    if (!String(guestForm.checkInTime || '').trim()) {
-      if (onToast) onToast('Check-In Time is required.');
       return;
     }
     // The server holds the same line; this just says so before the payment step.
@@ -2690,8 +2686,10 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, childPolicy, cap
                     </div>
                     <div>
                       <label style={fieldLabel}>Check-In Time</label>
-                      <input type="time" className="booking-input" value={guestForm.checkInTime}
-                        onChange={e => updateGuest('checkInTime', e.target.value)} required />
+                      {/* Standard check-in time; the server stores 14:00 whatever is sent. */}
+                      <div className="booking-input" style={{ display: 'flex', alignItems: 'center', color: 'var(--fg-muted)' }}>
+                        2:00 PM
+                      </div>
                     </div>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>

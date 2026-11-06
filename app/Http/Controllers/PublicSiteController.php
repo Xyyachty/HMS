@@ -931,8 +931,7 @@ class PublicSiteController extends Controller
                     ],
                     [
                         'check_in'      => $data['check_in'],
-                        // Front Desk can move it; a default keeps the stay-length maths honest.
-                        'check_in_time' => trim((string) ($data['check_in_time'] ?? '')) ?: '14:00',
+                        'check_in_time' => \App\Models\HotelBooking::CHECK_IN_TIME,
                         'check_out'     => $data['check_out'],
                         'guest_count'   => $data['guest_count'] ?? null,
                         'adults'        => $data['adults'] ?? null,
