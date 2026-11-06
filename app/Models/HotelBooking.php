@@ -578,6 +578,7 @@ class HotelBooking extends Model
             'inspection'    => $this->status === 'Pending Room Inspection'
                 ? $this->inspection?->load('damages')->toTemplateArray()
                 : null,
+            'finalChecks'   => $this->status === 'Pending Room Inspection' ? $this->finalChecks() : null,
         ];
     }
 
@@ -591,16 +592,69 @@ class HotelBooking extends Model
             return 'Start the check-out first, so Housekeeping can inspect the room.';
         }
 
-        $inspection = $this->inspection;
-        if (!$inspection || $inspection->status !== 'Reported') {
-            return 'Housekeeping has not finished inspecting the room yet.';
-        }
-
-        if ($inspection->damages()->where('status', 'Pending Review')->exists()) {
-            return 'Review the damage Housekeeping reported before the final bill.';
+        foreach ($this->finalChecks() as $check) {
+            if (!$check['ok']) {
+                return $check['detail'];
+            }
         }
 
         return null;
+    }
+
+    /**
+     * The "Verify final charges" step: each department has nothing left open on this
+     * stay before the final bill closes it. Housekeeping inspected the room (and the
+     * Front Desk reviewed any damage), Restaurant and Room Service delivered every
+     * order, and Housekeeping finished or cancelled every request.
+     *
+     * @return array<int, array{key: string, label: string, ok: bool, detail: string}>
+     */
+    public function finalChecks(): array
+    {
+        $inspection = $this->inspection;
+        $inspected = $inspection && $inspection->status === 'Reported';
+        $damageLeft = $inspected ? $inspection->damages()->where('status', 'Pending Review')->count() : 0;
+
+        // foodOrders() already leaves out Cancelled ones.
+        $ordersLeft = $this->foodOrders()->where('status', '!=', 'Completed')->count();
+
+        $requestsLeft = HotelServiceRequest::supported()
+            ? HotelServiceRequest::where('hotel_booking_id', $this->hotel_booking_id)
+                ->whereIn('status', HotelServiceRequest::OPEN_STATUSES)->count()
+            : 0;
+
+        $plural = fn (int $n, string $word) => $n . ' ' . $word . ($n === 1 ? '' : 's');
+
+        return [
+            [
+                'key'    => 'inspection',
+                'label'  => 'Room inspected by Housekeeping',
+                'ok'     => $inspected && $damageLeft === 0,
+                'detail' => !$inspected
+                    ? 'Housekeeping has not finished inspecting the room yet.'
+                    : ($damageLeft
+                        ? 'Review the damage Housekeeping reported before the final bill.'
+                        : 'Inspected. Damage, if any, is reviewed.'),
+            ],
+            [
+                'key'    => 'orders',
+                'label'  => 'Food orders delivered (Restaurant / Room Service)',
+                'ok'     => $ordersLeft === 0,
+                'detail' => $ordersLeft
+                    ? 'Room Service has ' . $plural($ordersLeft, 'order') . ' not delivered yet. Restaurant must deliver and complete '
+                        . ($ordersLeft === 1 ? 'it' : 'them') . ' before check-out.'
+                    : 'Every order is delivered and on the bill.',
+            ],
+            [
+                'key'    => 'requests',
+                'label'  => 'Housekeeping requests closed',
+                'ok'     => $requestsLeft === 0,
+                'detail' => $requestsLeft
+                    ? 'Housekeeping has ' . $plural($requestsLeft, 'open request') . ' for this stay. Let Housekeeping finish, '
+                        . 'or cancel a Pending or Accepted one in Details.'
+                    : 'No open requests.',
+            ],
+        ];
     }
 
     /**

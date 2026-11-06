@@ -445,7 +445,14 @@ function checkoutStage(reservation) {
   if (!reservation || reservation.status !== 'Pending Room Inspection') return null;
   const inspection = reservation.inspection;
   if (!inspection || inspection.status !== 'Reported') return 'waiting';
-  return (inspection.damages || []).some(d => d.status === 'Pending Review') ? 'review' : 'ready';
+  if ((inspection.damages || []).some(d => d.status === 'Pending Review')) return 'review';
+  // Verify final charges: Restaurant / Room Service and Housekeeping have nothing open.
+  return openFinalChecks(reservation).length ? 'blocked' : 'ready';
+}
+
+/* The final checks other than the inspection (that one has its own stages) still open. */
+function openFinalChecks(reservation) {
+  return ((reservation && reservation.finalChecks) || []).filter(c => c.key !== 'inspection' && !c.ok);
 }
 
 function statusHint(reservation) {
@@ -455,6 +462,10 @@ function statusHint(reservation) {
   const damages = reservation.inspection.damages || [];
   const left = damages.filter(d => d.status === 'Pending Review').length;
   if (stage === 'review') return `${left} damage item${left === 1 ? '' : 's'} to review`;
+  if (stage === 'blocked') {
+    const open = openFinalChecks(reservation).map(c => c.key);
+    return open.includes('orders') ? 'Waiting on Room Service orders' : 'Housekeeping requests still open';
+  }
   return damages.length ? 'Damage reviewed, ready to bill' : 'No damage, ready to bill';
 }
 
@@ -758,7 +769,7 @@ function FolioModal({ bill, bills, official, cash, title, onClose }) {
  * the database will record. Adding an extra charge re-fetches the whole bill for the
  * same reason — the new subtotal comes back priced, it is not patched in locally.
  */
-function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog, onClose, onAddCharge, onRemoveCharge, onAddAddon, onPay, onSettle, onToast, onGroupPaid }) {
+function FinalBillModal({ open, bill, loading, error, canCheckOut, finalChecks, addonCatalog, onClose, onAddCharge, onRemoveCharge, onAddAddon, onPay, onSettle, onToast, onGroupPaid }) {
   const [method, setMethod] = useState('Cash');
   const [amount, setAmount] = useState('');
   const [reference, setReference] = useState('');
@@ -1109,6 +1120,24 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
                 <span>Total Bill</span>
                 <span className="bill-amt">{formatPeso(bill.total)}</span>
               </div>
+
+              {/* Verify final charges: every department has closed its part of the stay.
+                  Check-out stays locked (here and on the server) until all three are green. */}
+              {Array.isArray(finalChecks) && finalChecks.length > 0 && (
+                <div style={{ marginTop: '1.4rem' }}>
+                  <p className="bill-section-title" style={{ marginTop: 0 }}>Final Check</p>
+                  {finalChecks.map(c => (
+                    <div key={c.key} style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', padding: '0.35rem 0' }}>
+                      <i className={'fa-solid ' + (c.ok ? 'fa-circle-check' : 'fa-circle-exclamation')}
+                        style={{ marginTop: '0.2rem', color: c.ok ? 'var(--success, #4ade80)' : 'var(--danger, #fb7185)' }}></i>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: '0.86rem', fontWeight: 600, color: 'var(--fg)' }}>{c.label}</div>
+                        <div style={{ fontSize: '0.76rem', color: 'var(--fg-muted)', overflowWrap: 'anywhere' }}>{c.detail}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <form onSubmit={settle} style={{ marginTop: '1.4rem' }}>
                 <p className="bill-section-title" style={{ marginTop: 0 }}>Take Payment</p>
@@ -2091,6 +2120,12 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
     return acc;
   }, []);
 
+  // The open bill's stay as the latest poll has it, so the final checks turn green
+  // while the window is open (Restaurant completes an order, say).
+  const liveBillStay = billFor
+    ? (allReservations.find(s => s.reservation.bookingId === billFor.reservation.bookingId) || billFor)
+    : null;
+
   // One row per guest, however many bookings they hold, so the table never repeats a
   // person. Their bookings stay separate records, earliest first, and Details shows
   // each one on its own with its own buttons.
@@ -2390,7 +2425,8 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
         onClose={closeBill}
         onAddCharge={(description, amount) => refreshBill(onAddCharge(billFor.reservation.bookingId, description, amount))}
         onRemoveCharge={(chargeId) => refreshBill(onRemoveCharge(billFor.reservation.bookingId, chargeId))}
-        canCheckOut={!!billFor && checkoutStage(billFor.reservation) === 'ready'}
+        canCheckOut={!!liveBillStay && checkoutStage(liveBillStay.reservation) === 'ready'}
+        finalChecks={liveBillStay ? liveBillStay.reservation.finalChecks : null}
         addonCatalog={addonCatalog}
         onAddAddon={(addonId, qty) => refreshBill(onAddAddon(billFor.reservation.bookingId, addonId, qty))}
         onPay={(payment) => refreshBill(onPay(billFor.reservation.bookingId, payment))}
