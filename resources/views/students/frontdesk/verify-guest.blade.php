@@ -2127,7 +2127,7 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
   const reviewStay = reviewFor ? allReservations.find(({ reservation }) => reservation.bookingId === reviewFor) : null;
   const detailsStays = detailsFor ? (guests.find(g => g.key === detailsFor) || {}).stays : null;
 
-  const statusTabs = [['All', 'All'], ['Booked', 'Booked'], ['Arrived', 'Arrived'], ['Checked In', 'Checked in'], ['Pending Room Inspection', 'Checking out']];
+  const statusTabs = [['All', 'All'], ['Booked', 'Booked'], ['Arrived', 'Arrived'], ['Checked In', 'Checked in'], ['Pending Room Inspection', 'Pending settlement']];
   const countFor = (key) => guests.filter(g => hasStatus(g, key)).length;
 
   // One booking's next-step buttons: on the row when the guest has a single booking,

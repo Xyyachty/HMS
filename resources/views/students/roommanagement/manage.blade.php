@@ -2013,7 +2013,7 @@ function formatEndsAt(reservation) {
 function guestState(reservation) {
   const status = String((reservation && reservation.status) || '').trim();
   if (status === 'Checked In') return { key: 'in', label: 'Staying now', icon: 'fa-bed', tone: 'tone-ok' };
-  if (status === 'Pending Room Inspection') return { key: 'in', label: 'Checking out, room being inspected', icon: 'fa-magnifying-glass', tone: 'tone-warn' };
+  if (status === 'Pending Room Inspection') return { key: 'in', label: 'Pending settlement, room being inspected', icon: 'fa-magnifying-glass', tone: 'tone-warn' };
   if (status === 'Arrived') return { key: 'arrived', label: 'At the hotel, not checked in', icon: 'fa-person-walking-luggage', tone: 'tone-warn' };
   return { key: 'booked', label: 'Booked, not here yet', icon: 'fa-calendar-check', tone: 'tone-brand' };
 }

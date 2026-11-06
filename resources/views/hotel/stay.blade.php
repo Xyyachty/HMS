@@ -67,7 +67,7 @@
     'Checked Out': ['completed', 'Your stay has ended. Your official receipt is below. Thank you for staying with us.'],
     'Cancelled': ['cancelled', 'This booking was cancelled. Please contact the Front Desk if you think this is a mistake.'],
   };
-  var STEPS = ['Booked', 'Checked In', 'Checking Out', 'Checked Out'];
+  var STEPS = ['Booked', 'Checked In', 'Pending Settlement', 'Checked Out'];
   var STEP_OF = { 'Booked': 0, 'Arrived': 0, 'Checked In': 1, 'Pending Room Inspection': 2, 'Checked Out': 3 };
 
   function badge(status) {
