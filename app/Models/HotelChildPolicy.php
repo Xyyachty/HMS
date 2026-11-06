@@ -135,6 +135,8 @@ class HotelChildPolicy extends Model
             'adultAge' => (int) $this->adult_age,
             'freeWithExistingBedding' => (bool) $this->free_with_existing_bedding,
             'bands' => array_values($this->bands ?: []),
+            // Not part of the child policy, but every screen that prices a party reads this.
+            'extraAdultRate' => HotelBooking::EXTRA_ADULT_RATE,
         ];
     }
 }

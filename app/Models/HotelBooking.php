@@ -46,6 +46,9 @@ class HotelBooking extends Model
     /** Length of one charged stay block, in hours — matches the front-end's BLOCK_HOURS. */
     public const BLOCK_HOURS = 12;
 
+    /** Nightly fee per adult past what the room sleeps; the folding bed is billed on its own. */
+    public const EXTRA_ADULT_RATE = 500;
+
     /** Standard check-in and check-out clock times. Every new stay is booked at these. */
     public const CHECK_IN_TIME = '14:00';
     public const CHECK_OUT_TIME = '12:00';
@@ -75,6 +78,8 @@ class HotelBooking extends Model
         'promo_price',
         'promo_blocks',
         'children',
+        'extra_adults',
+        'extra_adult_rate',
         'service_charge_rate',
         'group_ref',
     ];
@@ -116,6 +121,8 @@ class HotelBooking extends Model
         'guest_count'    => 'integer',
         // [{age, rate, label}] per child, priced by HotelChildPolicy when booked.
         'children'       => 'array',
+        'extra_adults'   => 'integer',
+        'extra_adult_rate' => 'integer',
         'service_charge_rate' => 'float',
         'reserved_at'    => 'datetime',
         'arrived_at'     => 'datetime',
@@ -386,7 +393,7 @@ class HotelBooking extends Model
         // Less the verified Senior Citizen / PWD discounts: they are taken at booking,
         // so the payment taken then is already against the discounted figure, and the
         // final bill reads the same number instead of applying them a second time.
-        return round($this->roomCharge() + $this->childChargesTotal() - $this->statutoryDiscountTotal(), 2);
+        return round($this->roomCharge() + $this->childChargesTotal() + $this->extraAdultTotal() - $this->statutoryDiscountTotal(), 2);
     }
 
     /** The room at its rate or package price, without the children's charges. */
@@ -416,6 +423,12 @@ class HotelBooking extends Model
     public function childChargesTotal(): float
     {
         return (float) array_sum(array_column($this->childLines(), 'rate')) * $this->nights();
+    }
+
+    /** Adults past the room's limit, at the rate snapshotted when booked, every night. */
+    public function extraAdultTotal(): float
+    {
+        return (float) ((int) $this->extra_adults * (int) $this->extra_adult_rate * $this->nights());
     }
 
     /** "1 Adult + 2 Children", or "" when the party size was never asked. */
@@ -529,6 +542,9 @@ class HotelBooking extends Model
             'children'      => $this->childLines(),
             'occupancy'     => $this->occupancyLabel(),
             'childCharges'  => $this->childChargesTotal(),
+            'extraAdults'   => (int) $this->extra_adults,
+            'extraAdultRate'=> (int) $this->extra_adult_rate,
+            'extraAdultCharges' => $this->extraAdultTotal(),
             'roomRate'      => (int) $this->room_rate,
             'promoName'     => $this->promo_name ?? '',
             'promoPrice'    => $this->promo_price,
@@ -654,6 +670,15 @@ class HotelBooking extends Model
                 'amount' => (float) $child['line'],
             ];
         }
+        if ($bill['extraAdults']['count']) {
+            $x = $bill['extraAdults'];
+            $lines[] = [
+                'kind'   => 'extra-adult',
+                'label'  => 'Extra adult' . ($x['count'] === 1 ? '' : 's') . ' × ' . $x['count'],
+                'detail' => $peso($x['rate']) . ' × ' . $x['nights'] . ' night' . ($x['nights'] === 1 ? '' : 's'),
+                'amount' => (float) $x['subtotal'],
+            ];
+        }
         foreach ($bill['discounts']['items'] as $discount) {
             if ($discount['verified']) {
                 $lines[] = [
@@ -747,6 +772,14 @@ class HotelBooking extends Model
                     'line'   => (int) $child['rate'] * $this->nights(),
                 ], $this->childLines()),
                 'subtotal' => $this->childChargesTotal(),
+            ],
+
+            // Adults past what the room sleeps, each on a folding bed (billed under addons).
+            'extraAdults' => [
+                'count'    => (int) $this->extra_adults,
+                'rate'     => (int) $this->extra_adult_rate,
+                'nights'   => $this->nights(),
+                'subtotal' => $this->extraAdultTotal(),
             ],
 
             // Senior Citizen / PWD, applied at booking. The room and child lines above

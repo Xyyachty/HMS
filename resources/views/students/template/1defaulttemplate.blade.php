@@ -4291,7 +4291,7 @@ function RoomAvailabilityCalendar({ ranges, checkIn, checkOut, onPick }) {
    sets it). Mirrors HotelChildPolicy::price(); the server prices the stay again when
    it is booked. capacity is what the room sleeps without extra beds, 0 for no limit. */
 function childLines(policy, ages, adults, capacity) {
-  const p = policy || { adultAge: 18, freeWithExistingBedding: false, bands: [{ min_age: 0, max_age: 5, rate: 0 }, { min_age: 6, max_age: 17, rate: 500 }] };
+  const p = policy || { adultAge: 18, freeWithExistingBedding: false, bands: [{ min_age: 0, max_age: 5, rate: 0 }, { min_age: 6, max_age: 17, rate: 500 }], extraAdultRate: 500 };
   const lines = ages.map(age => {
     if (age >= p.adultAge) return { age, rate: 0, label: 'Priced as adult (' + p.adultAge + '+), in the room rate' };
     const band = (p.bands || []).find(b => age >= b.min_age && age <= b.max_age);
@@ -4393,7 +4393,12 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, childPolicy, cap
   const children = agesOk ? childLines(childPolicy, childAges.map(Number), adultsIn, roomCapacity || 0) : [];
   const childNights = Math.max(1, Math.ceil(blocks / 2));
   const childTotal = children.reduce((sum, c) => sum + c.rate, 0) * childNights;
-  const totalDue = roomCharge + childTotal;
+  // Adults past what the room sleeps pay the extra-person fee every night
+  // (HotelBooking::EXTRA_ADULT_RATE); their folding beds are added as add-ons below.
+  const extraAdults = roomCapacity ? Math.max(0, adultsIn - roomCapacity) : 0;
+  const extraAdultRate = Number((childPolicy || {}).extraAdultRate) || 500;
+  const extraAdultTotal = extraAdults * extraAdultRate * childNights;
+  const totalDue = roomCharge + childTotal + extraAdultTotal;
   // Check-out must be a later date than check-in — a same-day stay isn't a valid
   // booking here, so the day of check-in itself is not selectable on the calendar.
   const minCheckOut = addDays(guestForm.checkIn || today, 1);
@@ -4454,6 +4459,18 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, childPolicy, cap
   const hasBedAddon = addonList.some(a => a.extraBed);
   const extraBeds = !hasBedAddon ? 0 : addonLines.reduce((n, l) => n + (addonList.some(a => a.dbId === l.dbId && a.extraBed) ? l.qty : 0), 0);
   const capacity = roomCapacity ? roomCapacity + extraBeds : roomCapacity;
+  // A folding bed for each guest past the room's limit, added as the party grows and
+  // taken off as it shrinks. The server adds the same if the browser did not.
+  const bedAddon = addonList.find(a => a.extraBed) || null;
+  const bedsNeeded = roomCapacity ? Math.max(0, partySize - roomCapacity) : 0;
+  useEffect(() => {
+    if (!bedAddon) return;
+    const qty = Math.min(bedsNeeded, bedAddon.available);
+    setAddonLines(prev => {
+      const rest = prev.filter(l => l.dbId !== bedAddon.dbId);
+      return qty ? rest.concat([{ dbId: bedAddon.dbId, name: bedAddon.name, price: bedAddon.price, qty }]) : rest;
+    });
+  }, [bedsNeeded, bedAddon && bedAddon.dbId]);
   const addonQty = (dbId) => {
     const line = addonLines.find(l => l.dbId === dbId);
     return line ? line.qty : 0;
@@ -4728,6 +4745,12 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, childPolicy, cap
                         {occupancy}: {childTotal ? `additional child charges of ${formatPeso(childTotal)} for the stay.` : 'the children stay free.'}
                       </p>
                     )}
+                    {bedsNeeded > 0 && bedAddon && (
+                      <p style={{ margin: '0.5rem 0 0', fontSize: '0.75rem', color: 'var(--fg-muted)', lineHeight: 1.5 }}>
+                        This room sleeps {roomCapacity}: {bedsNeeded} × {bedAddon.name} added ({formatPeso(bedAddon.price)} / night)
+                        {extraAdults ? `, plus ${formatPeso(extraAdultRate)} / night for each extra adult` : ''}.
+                      </p>
+                    )}
                     {/* Said at the field, as soon as the number goes over, not only on Proceed. */}
                     {capacity && partySize > capacity ? (
                       <p role="alert" style={{ color: '#f08a99', fontSize: '0.78rem', margin: '0.4rem 0 0' }}>
@@ -4870,7 +4893,13 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, childPolicy, cap
                     <span style={{ color: c.rate ? 'var(--fg)' : 'var(--accent)' }}>{c.rate ? formatPeso(c.rate * childNights) : 'Free'}</span>
                   </div>
                 ))}
-                {children.length > 0 && (
+                {extraAdults > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.35rem', fontSize: '0.8rem', color: 'var(--fg-muted)' }}>
+                    <span>Extra adult{extraAdults === 1 ? '' : 's'} × {extraAdults} · {childNights} night{childNights === 1 ? '' : 's'} × {formatPeso(extraAdultRate)}</span>
+                    <span style={{ color: 'var(--fg)' }}>{formatPeso(extraAdultTotal)}</span>
+                  </div>
+                )}
+                {(children.length > 0 || extraAdults > 0) && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', margin: '0.2rem 0 0.35rem', paddingTop: '0.35rem', borderTop: '1px dashed var(--border)', fontSize: '0.82rem' }}>
                     <span style={{ color: 'var(--fg-muted)' }}>Total due · {occupancy}</span>
                     <strong style={{ color: 'var(--fg)' }}>{formatPeso(totalDue)}</strong>

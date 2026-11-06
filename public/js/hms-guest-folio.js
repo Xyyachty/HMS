@@ -83,6 +83,10 @@
     ((bill.children && bill.children.items) || []).forEach(function (c) {
       rows.push({ date: bill.checkIn, desc: prefix + 'Front Office - Child, age ' + c.age, sub: c.rate ? 'per night' : c.label, qty: c.rate ? c.nights : 1, unit: c.rate || 0, amount: c.line || 0 });
     });
+    var extra = bill.extraAdults || {};
+    if (extra.count) {
+      rows.push({ date: bill.checkIn, desc: prefix + 'Front Office - Extra adult' + (extra.count === 1 ? '' : 's') + ' × ' + extra.count, sub: 'per night', qty: extra.nights * extra.count, unit: extra.rate, amount: extra.subtotal });
+    }
     ((bill.roomService && bill.roomService.orders) || []).forEach(function (order) {
       (order.items || []).forEach(function (item) {
         rows.push({ date: order.placedAt, desc: prefix + 'F&B - In-Room Dining (' + item.name + ')', qty: item.qty, unit: item.price, amount: item.line });

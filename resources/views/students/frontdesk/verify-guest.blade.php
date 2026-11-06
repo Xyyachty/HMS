@@ -929,6 +929,11 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, addonCatalog,
                   detail={c.rate ? `${c.nights} night${c.nights === 1 ? '' : 's'} × ${formatPeso(c.rate)}` : c.label}
                   amount={c.line ? formatPeso(c.line) : 'Free'} />
               ))}
+              {bill.extraAdults && bill.extraAdults.count > 0 && (
+                <BillItem name={`Extra adult${bill.extraAdults.count === 1 ? '' : 's'} × ${bill.extraAdults.count}`}
+                  detail={`${bill.extraAdults.nights} night${bill.extraAdults.nights === 1 ? '' : 's'} × ${formatPeso(bill.extraAdults.rate)}`}
+                  amount={formatPeso(bill.extraAdults.subtotal)} />
+              )}
               {/* Senior Citizen / PWD, applied at booking: shown, never applied again here.
                   The room line above stays at full price. */}
               {((bill.discounts && bill.discounts.items) || []).map(d => (
@@ -1672,18 +1677,19 @@ function HousekeepingRequests({ reservation }) {
 
 function StayDetails({ room, reservation, transactions, onVerifyDiscount }) {
   const childCharges = Number(reservation.childCharges) || 0;
+  const extraAdultCharges = Number(reservation.extraAdultCharges) || 0;
   // totalDue is after the verified Senior Citizen / PWD discounts; the room line shows
   // the full price and the discount sits under it as its own line.
   const statutoryDiscount = Number(reservation.statutoryDiscount) || 0;
   const discounts = reservation.discounts || [];
   const refundDue = Number(reservation.refundDue) || 0;
-  const roomTotal = (Number(reservation.totalDue) || 0) - childCharges + statutoryDiscount;
+  const roomTotal = (Number(reservation.totalDue) || 0) - childCharges - extraAdultCharges + statutoryDiscount;
   const foodTotal = Number(reservation.roomServiceTotal) || 0;
   const foodCount = Number(reservation.roomServiceCount) || 0;
   const extras = Number(reservation.otherCharges) || 0;
   const addonsTotal = Number(reservation.addonsTotal) || 0;
   const addonsCount = Number(reservation.addonsCount) || 0;
-  const grandTotal = Number(reservation.grandTotal) || (roomTotal + childCharges - statutoryDiscount + foodTotal + addonsTotal + extras);
+  const grandTotal = Number(reservation.grandTotal) || (roomTotal + childCharges + extraAdultCharges - statutoryDiscount + foodTotal + addonsTotal + extras);
   const paid = Number(reservation.amountPaid) || 0;
   const outstanding = reservation.outstanding != null
     ? Number(reservation.outstanding)
@@ -1751,6 +1757,12 @@ function StayDetails({ room, reservation, transactions, onVerifyDiscount }) {
         <div className="bill-line">
           <span>Additional child charges{childCharges ? '' : ' (children stay free)'}</span>
           <span className="bill-amt">{formatPeso(childCharges)}</span>
+        </div>
+      )}
+      {extraAdultCharges > 0 && (
+        <div className="bill-line">
+          <span>Extra adult fee <small style={{ color: 'var(--fg-muted)' }}>({reservation.extraAdults} × {formatPeso(reservation.extraAdultRate)} / night)</small></span>
+          <span className="bill-amt">{formatPeso(extraAdultCharges)}</span>
         </div>
       )}
       {statutoryDiscount > 0 && (

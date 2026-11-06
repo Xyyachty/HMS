@@ -88,6 +88,14 @@ class HotelBookingDesk
         [$guestCount, $adults, $ages] = self::party($stay);
         $capacity = self::capacityOf($room);
 
+        // Each guest past what the room sleeps gets a folding bed, added here when the
+        // booking did not pick enough of them. attachTo() still checks the stock.
+        if ($guestCount !== null && $capacity) {
+            $addons = self::withNeededBeds($room, $addons, $guestCount - $capacity);
+        }
+        // Adults past the room's limit also pay EXTRA_ADULT_RATE a night.
+        $extraAdults = self::extraAdults($adults, $capacity);
+
         // The room's own limit, else its category's "Sleeps N", plus one per extra bed
         // taken with the stay. Neither set takes any party, the same as before the
         // fields existed. Children count here even when they stay free.
@@ -123,7 +131,7 @@ class HotelBookingDesk
             (string) ($guest['full_name'] ?? '')
         );
 
-        return DB::transaction(function () use ($scope, $room, $guest, $stay, $payment, $addons, $guestCount, $children, $promo, $claims) {
+        return DB::transaction(function () use ($scope, $room, $guest, $stay, $payment, $addons, $guestCount, $children, $promo, $claims, $extraAdults) {
             $guestModel = HotelGuest::findOrCreateFor($scope, $guest);
 
             $booking = new HotelBooking($scope + [
@@ -136,6 +144,8 @@ class HotelBookingDesk
                 'guest_count'    => $guestCount,
                 // Snapshot, like room_rate: a policy changed later must not move a sold stay.
                 'children'       => $children,
+                'extra_adults'     => $extraAdults ?: null,
+                'extra_adult_rate' => $extraAdults ? HotelBooking::EXTRA_ADULT_RATE : null,
                 // Snapshot: repricing the room later must not move a sold stay.
                 'room_rate'      => (int) $room->price,
                 'reserved_at'    => now(),
@@ -573,7 +583,9 @@ class HotelBookingDesk
             ? HotelChildPolicy::forTeam($room->group_name, (int) $room->faculty_id)->price($ages, (int) $booking->adultCount(), $capacity)
             : $booking->children;
 
-        return DB::transaction(function () use ($booking, $room, $children) {
+        $extraAdults = self::extraAdults($booking->adultCount(), $capacity);
+
+        return DB::transaction(function () use ($booking, $room, $children, $extraAdults) {
             // The same lock and overlap test a new booking takes.
             HotelRoom::whereKey($room->hotel_room_id)->lockForUpdate()->first();
             $taken = HotelBooking::open()
@@ -589,6 +601,8 @@ class HotelBookingDesk
                 'hotel_room_id' => $room->hotel_room_id,
                 'room_rate'     => (int) $room->price,
                 'children'      => $children,
+                'extra_adults'     => $extraAdults ?: null,
+                'extra_adult_rate' => $extraAdults ? HotelBooking::EXTRA_ADULT_RATE : null,
                 'promo_name'    => null,
                 'promo_price'   => null,
                 'promo_blocks'  => null,
@@ -616,17 +630,27 @@ class HotelBookingDesk
         $capacity = self::capacityOf($room);
         $beds = $booking->addons->filter->isPerNight()->sum('qty');
         [$guestCount, $adults, $ages] = self::party(['adults' => $adults, 'child_ages' => $ages]);
+        // A guest added past the beds gets a folding bed, as at booking.
+        $newBeds = $capacity ? self::withNeededBeds($room, [], $guestCount - $capacity - $beds) : [];
+        $beds += array_sum(array_column($newBeds, 'qty'));
         if ($capacity && $guestCount > $capacity + $beds) {
             throw new \RuntimeException($room->name . ' sleeps ' . $capacity
                 . ($beds ? ' and ' . $beds . ' on extra beds' : '') . ' — too small for ' . $guestCount . ' guests.');
         }
 
-        $booking->forceFill([
-            'guest_count' => $guestCount,
-            'children'    => $ages
-                ? HotelChildPolicy::forTeam($room->group_name, (int) $room->faculty_id)->price($ages, $adults, $capacity)
-                : null,
-        ])->save();
+        $extraAdults = self::extraAdults($adults, $capacity);
+        DB::transaction(function () use ($booking, $room, $capacity, $guestCount, $adults, $ages, $newBeds, $extraAdults) {
+            HotelAddonDesk::attachTo($booking, $newBeds);
+            $booking->forceFill([
+                'guest_count' => $guestCount,
+                'children'    => $ages
+                    ? HotelChildPolicy::forTeam($room->group_name, (int) $room->faculty_id)->price($ages, $adults, $capacity)
+                    : null,
+                'extra_adults'     => $extraAdults ?: null,
+                'extra_adult_rate' => $extraAdults ? HotelBooking::EXTRA_ADULT_RATE : null,
+            ])->save();
+        });
+        $booking->load('addons');
 
         return $booking;
     }
@@ -651,6 +675,33 @@ class HotelBookingDesk
         $count = isset($stay['guest_count']) ? max(1, (int) $stay['guest_count']) : null;
 
         return [$count, $count, []];
+    }
+
+    /** Adults past what the room sleeps; 0 when it has no limit or the party was never asked. */
+    private static function extraAdults(?int $adults, int $capacity): int
+    {
+        return $capacity && $adults ? max(0, $adults - $capacity) : 0;
+    }
+
+    /**
+     * $lines plus the team's folding bed, enough of them for $overflow guests past the
+     * room's limit. Unchanged when the lines already carry enough beds or the team
+     * lends none; the capacity check then says so.
+     */
+    private static function withNeededBeds(HotelRoom $room, array $lines, int $overflow): array
+    {
+        $need = $overflow - HotelAddon::extraBedsIn($lines);
+        if ($need <= 0) {
+            return $lines;
+        }
+
+        $bed = HotelAddon::where('group_name', $room->group_name)
+            ->where('faculty_id', $room->faculty_id)
+            ->orderBy('hotel_addon_id')
+            ->get()
+            ->first(fn (HotelAddon $addon) => $addon->isExtraBed());
+
+        return $bed ? array_merge($lines, [['addon_id' => $bed->hotel_addon_id, 'qty' => $need]]) : $lines;
     }
 
     /** What the room sleeps without extra beds: its own limit, else its category's. 0 = no limit. */

@@ -364,7 +364,7 @@ function freeFor(room, from, to) {
 /* What each child costs per night under the hotel's child policy (Room Management
    sets it). Mirrors HotelChildPolicy::price(); the server prices the stay again when
    it is booked. capacity is what the room sleeps without extra beds, 0 for no limit. */
-const NO_CHILD_POLICY = { saved: false, adultAge: 18, freeWithExistingBedding: false, bands: [{ min_age: 0, max_age: 5, rate: 0 }, { min_age: 6, max_age: 17, rate: 500 }] };
+const NO_CHILD_POLICY = { saved: false, adultAge: 18, freeWithExistingBedding: false, bands: [{ min_age: 0, max_age: 5, rate: 0 }, { min_age: 6, max_age: 17, rate: 500 }], extraAdultRate: 500 };
 function childLines(policy, ages, adults, capacity) {
   const p = policy || NO_CHILD_POLICY;
   const lines = ages.map(age => {
@@ -679,13 +679,18 @@ function RoomWalkIn() {
   /* Each room's share of the children, in the order they were listed, priced under
      the hotel's child policy. A promo is one stay's package price
      (HotelBooking::totalDue), so it prices the first room. */
+  const extraAdultRate = Number(childPolicy.extraAdultRate) || 500;
   let kidCursor = 0;
   const priced = stays.map((p, i) => {
     const kidStart = kidCursor;
     const ages = childAges.slice(kidCursor, kidCursor + p.kids).map(Number);
     kidCursor += p.kids;
     const children = agesOk ? childLines(childPolicy, ages, p.adults, sleepsIn(p.room)) : [];
+    // Adults past what the room sleeps pay the extra-person fee every night (HotelBooking::EXTRA_ADULT_RATE).
+    const extraAdults = sleepsIn(p.room) ? Math.max(0, p.adults - sleepsIn(p.room)) : 0;
     return Object.assign({}, p, {
+      extraAdults,
+      extraCost: extraAdults * extraAdultRate * nights,
       ages,
       kidStart,
       children,
@@ -694,6 +699,7 @@ function RoomWalkIn() {
     });
   });
   const childTotal = priced.reduce((sum, p) => sum + p.childCost, 0);
+  const extraAdultTotal = priced.reduce((sum, p) => sum + p.extraCost, 0);
 
   /* Each eligible person, placed in their room and priced on their own share: an adult
      shares the room charge with the other adults in that room, a child is discounted on
@@ -752,7 +758,7 @@ function RoomWalkIn() {
   const pendingTotal = r2(pending.reduce((sum, c) => sum + c.money.less, 0));
   // What is due at booking: the rooms and the children, less the verified Senior
   // Citizen / PWD discounts — the server's totalDue().
-  const total = r2(priced.reduce((sum, p) => sum + p.roomCost + p.childCost, 0) - discountTotal);
+  const total = r2(priced.reduce((sum, p) => sum + p.roomCost + p.childCost + p.extraCost, 0) - discountTotal);
   const paidNow = payType === 'Full' ? total : payType === 'Partial' ? Number(amount) || 0 : 0;
   /* Housekeeping's add-ons go on the stay's bill and are settled at check-out, the
      same as when a room is booked from the hotel site (HotelBookingDesk::reserve). */
@@ -935,6 +941,7 @@ function RoomWalkIn() {
   priced.forEach((p, i) => {
     bill.push([p.room.name, i === 0 && promo ? promo.name + ' package' : peso(p.room.price * BLOCKS_PER_NIGHT) + ' × ' + nightsText, peso(p.roomCost)]);
     p.children.forEach(c => bill.push(['Child, age ' + c.age, c.rate ? peso(c.rate) + ' × ' + nightsText : c.label, c.rate ? peso(c.rate * nights) : 'Free']));
+    if (p.extraAdults) bill.push(['Extra adult' + (p.extraAdults === 1 ? '' : 's') + ' × ' + p.extraAdults, peso(extraAdultRate) + ' × ' + nightsText, peso(p.extraCost)]);
     if (p.beds && bedAddon) bill.push([bedAddon.name + ' × ' + p.beds, peso(bedAddon.price) + ' / night, paid at check-out', peso(bedAddon.price * p.beds * nights)]);
     // The room line above stays at full price; each eligible person's adjustment is
     // its own pair of lines, as the law asks the receipt to show.
@@ -1054,6 +1061,7 @@ function RoomWalkIn() {
             )}
             <div className="wi-occupancy">
               <i className="fa-solid fa-users"></i><b>{partyText(adults, kids)}</b>
+              {extraAdultTotal > 0 && <span className="wi-tag is-charge">Extra adult fee: {peso(extraAdultTotal)}</span>}
               {childTotal > 0
                 ? <span className="wi-tag is-charge">Additional child charges: {peso(childTotal)}</span>
                 : kids > 0 && agesOk && hasRooms ? <span className="wi-tag is-free">Children stay free</span> : null}
