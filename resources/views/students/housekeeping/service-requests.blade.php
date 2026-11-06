@@ -85,7 +85,11 @@
   .ao-live::before { content: ''; width: 0.4375rem; height: 0.4375rem; border-radius: 50%; background: var(--ao-ok); }
 
   /* Totals */
+  /* 4 across, or 2 x 2 when the panel is narrow. A container query, not a viewport
+     one: the sidebar takes width the viewport does not show. */
+  .ao-panel { container-type: inline-size; }
   .ao-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; margin-bottom: 1.1rem; }
+  @container (max-width: 44rem) { .ao-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .ao-stat { display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 0.95rem; border-radius: 0.75rem; border: 1px solid var(--ao-line); background: var(--ao-soft); }
   .ao-stat-icon { flex: none; width: 2.375rem; height: 2.375rem; border-radius: 0.625rem; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; }
   .ao-stat div b { display: block; font-size: 1.35rem; line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--fg); }
@@ -111,7 +115,7 @@
   .ao-input.has-error { border-color: var(--ao-bad); }
 
   /* Item cards */
-  .ao-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(270px, 100%), 1fr)); gap: 1rem; }
+  .ao-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(20rem, 100%), 1fr)); gap: 1rem; }
   .ao-card { min-width: 0; border: 1px solid var(--ao-line); border-radius: 0.875rem; background: var(--ao-soft); overflow: hidden; display: flex; flex-direction: column; }
   .ao-card-img { position: relative; aspect-ratio: 16 / 9; background: var(--ao-soft); }
   .ao-card-img { overflow: hidden; }
@@ -127,8 +131,14 @@
   .ao-card-img .ao-pill.tone-ok, .ao-card-img .ao-pill.tone-warn, .ao-card-img .ao-pill.tone-bad { background: var(--card); }
 
   .ao-stock { display: grid; gap: 0.45rem; }
-  .ao-stock-line { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 0.82rem; color: var(--fg-muted); }
-  .ao-stock-line b { color: var(--fg); font-variant-numeric: tabular-nums; }
+  /* Label on the left, never broken; the value takes the rest and wraps right-aligned. */
+  .ao-stock-line { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.75rem; font-size: 0.82rem; color: var(--fg-muted); }
+  .ao-stock-line span { white-space: nowrap; }
+  .ao-stock-line b { color: var(--fg); font-variant-numeric: tabular-nums; text-align: right; overflow-wrap: anywhere; }
+  /* Report a defect / Cancel: side by side when they fit, stacked when the card is narrow. */
+  .ao-card-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .ao-card-actions .ao-btn { flex: 1 1 9rem; white-space: nowrap; padding-left: 0.8rem; padding-right: 0.8rem; }
+  .ao-card-top .ao-pill { flex: none; }
   .ao-bar { height: 0.5rem; border-radius: 999px; background: color-mix(in srgb, var(--fg) 8%, transparent); overflow: hidden; display: flex; }
   .ao-bar span { display: block; height: 100%; }
   .ao-bar .is-free { background: var(--ao-ok); }
@@ -178,15 +188,12 @@
   .ao-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
   .ao-actions .ao-btn { flex: 1 1 auto; }
 
-  @media (max-width: 960px) {
-    .ao-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  }
   @media (max-width: 680px) {
     .ao-how { grid-template-columns: 1fr; }
   }
   @media (max-width: 560px) {
     .ao { padding: 1.1rem 1rem 2.5rem; }
-    .ao-stats, .ao-row { grid-template-columns: 1fr; }
+    .ao-row { grid-template-columns: 1fr; }
     .ao-head-actions, .ao-head-actions .ao-btn { width: 100%; }
   }
 </style>
@@ -339,11 +346,11 @@ function RequestCard({ request, canManage, busy, onMove, onDefect }) {
 
         <div className="ao-stock">
           {request.preferredTime ? <div className="ao-stock-line"><span>When</span><b>{request.preferredTime}</b></div> : null}
-          {request.notes ? <div className="ao-stock-line"><span>Note</span><b style={{ textAlign: 'right', overflowWrap: 'anywhere' }}>{request.notes}</b></div> : null}
+          {request.notes ? <div className="ao-stock-line"><span>Note</span><b>{request.notes}</b></div> : null}
           <div className="ao-stock-line"><span>Asked by</span><b>{request.source === 'Guest' ? 'Guest (website)' : 'Front Desk'} · {when(request.createdAt)}</b></div>
           {request.handledBy ? <div className="ao-stock-line"><span>Handled by</span><b>{request.handledBy}</b></div> : null}
           {request.completedAt ? <div className="ao-stock-line"><span>Done</span><b>{when(request.completedAt)}</b></div> : null}
-          {request.completionNotes ? <div className="ao-stock-line"><span>Done note</span><b style={{ textAlign: 'right' }}>{request.completionNotes}</b></div> : null}
+          {request.completionNotes ? <div className="ao-stock-line"><span>Done note</span><b>{request.completionNotes}</b></div> : null}
           {request.complaintId ? <div className="ao-stock-line"><span>Defect</span><b>Sent to Maintenance</b></div> : null}
         </div>
 
@@ -359,14 +366,14 @@ function RequestCard({ request, canManage, busy, onMove, onDefect }) {
             <button type="button" className="ao-btn is-solid is-wide" disabled={busy} onClick={() => onMove(request, step.next)}>
               <i className={`fa-solid ${step.actionIcon}`}></i> {step.action}
             </button>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <div className="ao-card-actions">
               {!request.complaintId ? (
-                <button type="button" className="ao-btn is-quiet" style={{ flex: 1 }} disabled={busy} onClick={() => onDefect(request)}>
+                <button type="button" className="ao-btn is-quiet" disabled={busy} onClick={() => onDefect(request)}>
                   <i className="fa-solid fa-screwdriver-wrench"></i> Report a defect
                 </button>
               ) : null}
               {request.status !== 'In Progress' ? (
-                <button type="button" className="ao-btn is-quiet" style={{ flex: 1 }} disabled={busy} onClick={() => onMove(request, 'Cancelled')}>
+                <button type="button" className="ao-btn is-quiet" disabled={busy} onClick={() => onMove(request, 'Cancelled')}>
                   <i className="fa-solid fa-ban"></i> Cancel
                 </button>
               ) : null}

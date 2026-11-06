@@ -536,6 +536,31 @@ class PublicSiteController extends Controller
         return response()->json(['request' => $created->toGuestArray()], 201);
     }
 
+    /** The guest cancels one of their own requests, only while it is still Pending. */
+    public function myStayCancelRequest(string $slug, int $id, int $requestId)
+    {
+        [$booking, $error, $code] = $this->accountStay($slug, $id);
+        if (!$booking) {
+            return response()->json(['message' => $error], $code);
+        }
+        $row = \App\Models\HotelServiceRequest::supported()
+            ? \App\Models\HotelServiceRequest::where('hotel_booking_id', $booking->hotel_booking_id)->find($requestId)
+            : null;
+        if (!$row) {
+            return response()->json(['message' => 'That request is not on this booking.'], 404);
+        }
+        if ($row->status !== 'Pending') {
+            return response()->json(['message' => 'Housekeeping has already ' . ($row->status === 'Accepted' ? 'accepted' : 'taken') . ' this request. Ask the Front Desk to cancel it.'], 422);
+        }
+        try {
+            $row = \App\Support\HotelServiceRequestDesk::move($row, 'Cancelled', null, null, null);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['request' => $row->toGuestArray()]);
+    }
+
     /**
      * One of the signed-in guest's own stays at this hotel, by id: the same stays My
      * Bookings lists (HotelGuestStay::bookings). Another guest's, another hotel's, or

@@ -121,11 +121,18 @@
     var types = d.requestTypes || [];
     if (!list.length && !types.length) return '';
     var rows = list.length ? list.map(function (r) {
-      return '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;padding:0.7rem 0;border-bottom:1px solid var(--border)">'
-        + '<div><b>' + esc(r.type) + '</b>'
-        + '<div class="muted" style="font-size:0.82rem">' + esc((r.preferredTime ? r.preferredTime + ' · ' : '') + (r.notes || ''))
-        + (r.createdAt ? ' · asked ' + esc(HmsDate.date(new Date(r.createdAt), { timeZone: 'Asia/Manila', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })) : '') + '</div></div>'
-        + '<span class="badge s-' + (REQ_TONE[r.status] || 'closed') + '">' + esc(r.status) + '</span></div>';
+      var meta = [r.preferredTime, r.notes,
+        r.createdAt ? 'asked ' + HmsDate.date(new Date(r.createdAt), { timeZone: 'Asia/Manila', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '']
+        .filter(Boolean).join(' · ');
+      // Only a Pending one can be taken back: once Housekeeping accepts, it is on its way.
+      var cancel = r.status === 'Pending'
+        ? '<button type="button" class="tab" data-cancel-req="' + esc(r.id) + '" style="padding:0.35rem 0.75rem;font-size:0.8rem;cursor:pointer"><i class="fa-solid fa-xmark"></i> Cancel</button>'
+        : '';
+      return '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem 1rem;flex-wrap:wrap;padding:0.7rem 0;border-bottom:1px solid var(--border)">'
+        + '<div style="min-width:0;flex:1 1 14rem"><b>' + esc(r.type) + '</b>'
+        + '<div class="muted" style="font-size:0.82rem;overflow-wrap:anywhere">' + esc(meta) + '</div></div>'
+        + '<div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">' + cancel
+        + '<span class="badge s-' + (REQ_TONE[r.status] || 'closed') + '">' + esc(r.status) + '</span></div></div>';
     }).join('') : '<p class="muted" style="font-size:0.9rem">No requests yet.</p>';
     var form = types.length
       ? '<form id="req-form" style="display:grid;gap:0.6rem;margin-top:1rem">'
@@ -206,6 +213,20 @@
   });
 
   app.addEventListener('click', function (e) {
+    var cancel = e.target.closest('[data-cancel-req]');
+    if (cancel) {
+      if (!window.confirm('Cancel this request?')) return;
+      cancel.disabled = true;
+      var meta = document.querySelector('meta[name="csrf-token"]');
+      fetch(DATA_URL + '/requests/' + encodeURIComponent(cancel.getAttribute('data-cancel-req')) + '/cancel', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { Accept: 'application/json', 'X-CSRF-TOKEN': meta ? meta.content : '' },
+      })
+        .then(function (r) { return r.json().catch(function () { return {}; }).then(function (b) { return r.ok ? b : Promise.reject(b); }); })
+        .then(function () { state.json = null; load(); })
+        .catch(function (err) { window.alert((err && err.message) || 'Could not cancel. Please try again.'); cancel.disabled = false; load(); });
+      return;
+    }
     if (e.target.closest('#print-bill')) {
       var sheet = document.querySelector('#bill-sheet .receipt-print');
       if (sheet && window.HmsGuestFolio) window.HmsGuestFolio.print(sheet);

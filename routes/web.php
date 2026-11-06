@@ -191,6 +191,12 @@ Route::prefix('hotel')->name('public.hotel')->group(function () {
         ->middleware('throttle:10,1')
         ->whereNumber('id')
         ->name('.my-stay.requests');
+    // The guest takes back a request Housekeeping has not accepted yet.
+    Route::post('/{slug}/api/my-stay/{id}/requests/{requestId}/cancel', [PublicSiteController::class, 'myStayCancelRequest'])
+        ->middleware('throttle:10,1')
+        ->whereNumber('id')
+        ->whereNumber('requestId')
+        ->name('.my-stay.requests.cancel');
 
     // Food, ordered by the guest reading the menu. Same reason as the two above:
     // the staff endpoint sits behind the students login a visitor does not have.
