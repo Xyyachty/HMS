@@ -32,6 +32,7 @@ class EnsureSimulationUnlocked
         'students.restaurant.reports',
         'students.restaurant.complaints',
         'students.housekeeping.inspections',
+        'students.housekeeping.service-requests',
         'students.housekeeping.addons',
         'students.housekeeping.amenities',
         'students.housekeeping.complaints',

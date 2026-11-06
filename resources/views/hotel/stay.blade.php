@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
+<meta name="csrf-token" content="{{ csrf_token() }}">
 <title>My Stay · {{ $brandName }}</title>
 @include('hotel.partials.guest-page-head')
 </head>
@@ -111,6 +112,39 @@
       + '</section>';
   }
 
+  /* Housekeeping requests: what the guest asked for and where each stands, and (while
+     checked in) a short form to ask for more. The status words are Housekeeping's own. */
+  var REQ_TONE = { 'Pending': 'confirmed', 'Accepted': 'confirmed', 'In Progress': 'seated', 'Completed': 'completed', 'Cancelled': 'cancelled' };
+  function requestsHtml(d) {
+    var list = d.requests || [];
+    var types = d.requestTypes || [];
+    if (!list.length && !types.length) return '';
+    var rows = list.length ? list.map(function (r) {
+      return '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;padding:0.7rem 0;border-bottom:1px solid var(--border)">'
+        + '<div><b>' + esc(r.type) + '</b>'
+        + '<div class="muted" style="font-size:0.82rem">' + esc((r.preferredTime ? r.preferredTime + ' · ' : '') + (r.notes || ''))
+        + (r.createdAt ? ' · asked ' + esc(new Date(r.createdAt).toLocaleString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })) : '') + '</div></div>'
+        + '<span class="badge s-' + (REQ_TONE[r.status] || 'closed') + '">' + esc(r.status) + '</span></div>';
+    }).join('') : '<p class="muted" style="font-size:0.9rem">No requests yet.</p>';
+    var form = types.length
+      ? '<form id="req-form" style="display:grid;gap:0.6rem;margin-top:1rem">'
+        + '<div style="display:flex;flex-wrap:wrap;gap:0.5rem">'
+        +   '<select name="type" class="tab" style="flex:1 1 12rem;padding:0.6rem 0.8rem;border-radius:10px;color:var(--fg);background:var(--card)" aria-label="What do you need?">'
+        +     types.map(function (t) { return '<option value="' + esc(t) + '">' + esc(t) + '</option>'; }).join('')
+        +   '</select>'
+        +   '<input name="preferred_time" class="tab" style="flex:1 1 10rem;padding:0.6rem 0.8rem;border-radius:10px;color:var(--fg);background:var(--card)" placeholder="When? e.g. 2:00 PM, or Now" maxlength="60">'
+        + '</div>'
+        + '<input name="notes" class="tab" style="padding:0.6rem 0.8rem;border-radius:10px;color:var(--fg);background:var(--card)" placeholder="Anything Housekeeping should know (optional)" maxlength="1000">'
+        + '<div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap"><button type="submit" class="btn" style="margin-top:0;border:0;cursor:pointer">'
+        +   '<i class="fa-solid fa-broom"></i> Send to Housekeeping</button><span id="req-msg" class="muted" style="font-size:0.85rem"></span></div>'
+        + '</form>'
+      : '<p class="muted" style="font-size:0.85rem;margin-top:0.8rem">You can ask Housekeeping for help while you are checked in.</p>';
+    return '<section class="section" aria-labelledby="h-req">'
+      + '<div class="section-head"><h2 id="h-req">Housekeeping requests</h2></div>'
+      + '<div class="panel">' + rows + form + '</div>'
+      + '</section>';
+  }
+
   /* The whole bill as the Front Desk prints it: the room, every room-service dish,
      the extras and other charges, discounts, service charge and payments. The
      Statement of Account while the stay is open; the Official Receipt once out. */
@@ -131,10 +165,44 @@
       return;
     }
     var d = state.data;
-    app.innerHTML = stayHtml(d.stay, d.bill) + billHtml(d.stay, d.bill);
+    // A half-typed request survives the 8-second refresh.
+    var form = document.getElementById('req-form');
+    var draft = form ? { type: form.type.value, preferred_time: form.preferred_time.value, notes: form.notes.value } : null;
+    var typing = form && form.contains(document.activeElement);
+    app.innerHTML = stayHtml(d.stay, d.bill) + requestsHtml(d) + billHtml(d.stay, d.bill);
+    var again = document.getElementById('req-form');
+    if (again && draft) {
+      again.type.value = draft.type; again.preferred_time.value = draft.preferred_time; again.notes.value = draft.notes;
+      if (typing) again.notes.focus();
+    }
     var up = document.getElementById('updated');
     if (up) up.textContent = 'Updated ' + new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' });
   }
+
+  app.addEventListener('submit', function (e) {
+    var form = e.target.closest('#req-form');
+    if (!form) return;
+    e.preventDefault();
+    var msg = document.getElementById('req-msg');
+    var button = form.querySelector('button[type=submit]');
+    button.disabled = true;
+    if (msg) msg.textContent = 'Sending…';
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    fetch(DATA_URL + '/requests', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': meta ? meta.content : '' },
+      body: JSON.stringify({ type: form.type.value, preferred_time: form.preferred_time.value, notes: form.notes.value }),
+    })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (b) { return r.ok ? b : Promise.reject(b); }); })
+      .then(function () {
+        form.reset();
+        if (msg) msg.textContent = 'Sent. Housekeeping will update it here.';
+        state.json = null;
+        load();
+      })
+      .catch(function (err) { if (msg) msg.textContent = (err && err.message) || 'Could not send. Please try again.'; })
+      .finally(function () { button.disabled = false; });
+  });
 
   app.addEventListener('click', function (e) {
     if (e.target.closest('#print-bill')) {

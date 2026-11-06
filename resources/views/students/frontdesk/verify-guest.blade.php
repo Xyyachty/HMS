@@ -1579,6 +1579,97 @@ function GuestDetailsModal({ stays, renderActions, onVerifyDiscount, onClose }) 
 }
 
 /* One booking inside GuestDetailsModal: its room, dates, charges and payments. */
+/* Housekeeping requests for this stay: where each one stands (Pending > Accepted >
+   In Progress > Completed) and, while the guest is checked in, a short form for a
+   request the guest made by phone or at the desk. Housekeeping works them on their
+   Service Requests page; the guest can ask on their own My Stay page too. */
+const HK_REQUEST_TYPES = ['Room Cleaning', 'Fresh Towels and Linen', 'Toiletries Refill', 'Extra Pillow or Blanket', 'Turndown Service', 'Other Housekeeping Help'];
+function HousekeepingRequests({ reservation }) {
+  const [list, setList] = useState(null);
+  const [type, setType] = useState(HK_REQUEST_TYPES[0]);
+  const [time, setTime] = useState('');
+  const [notes, setNotes] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const staying = reservation.status === 'Checked In';
+
+  const call = (url, method, body) => fetch(url, {
+    method, credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  }).then(r => r.json().catch(() => ({})).then(d => (r.ok ? d : Promise.reject(d))));
+
+  const load = useCallback(() => {
+    call('/students/hotel/service-requests?booking_id=' + reservation.bookingId, 'GET')
+      .then(d => setList(d.requests || []))
+      .catch(() => setList([]));
+  }, [reservation.bookingId]);
+
+  useEffect(() => {
+    load();
+    const id = setInterval(() => { if (!document.hidden) load(); }, 8000);
+    return () => clearInterval(id);
+  }, [load]);
+
+  const submit = (e) => {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    call('/students/hotel/service-requests', 'POST', { booking_id: reservation.bookingId, type, preferred_time: time.trim(), notes: notes.trim() })
+      .then(() => { setTime(''); setNotes(''); load(); })
+      .catch(err => setError((err && err.message) || 'Could not send that request.'))
+      .finally(() => setBusy(false));
+  };
+  const cancel = (r) => {
+    if (!window.confirm(`Cancel the ${r.type} request?`)) return;
+    call('/students/hotel/service-requests/' + r.id, 'PATCH', { status: 'Cancelled' })
+      .then(load)
+      .catch(err => setError((err && err.message) || 'Could not cancel that request.'));
+  };
+
+  if (list === null || (!list.length && !staying)) return null;
+
+  return (
+    <>
+      <p className="bill-section-title">Housekeeping requests</p>
+      {list.length === 0 ? (
+        <p className="bill-section-note">None yet.</p>
+      ) : list.map(r => (
+        <div key={r.id} className="bill-line" style={{ alignItems: 'flex-start' }}>
+          <span>
+            {r.type}
+            <span className="bill-unit" style={{ display: 'block' }}>
+              {[r.preferredTime, r.notes, r.source === 'Guest' ? 'asked on the website' : 'taken at the desk', r.handledBy ? 'by ' + r.handledBy : ''].filter(Boolean).join(' · ')}
+            </span>
+          </span>
+          <span className="bill-amt" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            {r.status}
+            {(r.status === 'Pending' || r.status === 'Accepted') && (
+              <button type="button" onClick={() => cancel(r)} title="Cancel this request"
+                style={{ background: 'none', border: 'none', color: 'var(--danger, #fb7185)', cursor: 'pointer', fontSize: '0.72rem' }}>
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            )}
+          </span>
+        </div>
+      ))}
+      {staying && (
+        <form onSubmit={submit} style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+          <select className="booking-input" value={type} onChange={e => setType(e.target.value)} style={{ flex: '2 1 10rem', width: 'auto' }} aria-label="What the guest needs">
+            {HK_REQUEST_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+          <input className="booking-input" placeholder="When? e.g. 2:00 PM" value={time} onChange={e => setTime(e.target.value)} style={{ flex: '1 1 7rem', width: 'auto' }} />
+          <input className="booking-input" placeholder="Note (optional)" value={notes} onChange={e => setNotes(e.target.value)} style={{ flex: '2 1 10rem', width: 'auto' }} />
+          <button type="submit" className="btn-solid" disabled={busy} style={{ padding: '0.5rem 0.9rem' }}>
+            <i className="fa-solid fa-broom" style={{ fontSize: '0.7rem' }}></i>{busy ? 'Sending…' : 'Send to Housekeeping'}
+          </button>
+        </form>
+      )}
+      {error && <p style={{ margin: '0.4rem 0 0', color: 'var(--danger, #fb7185)', fontSize: '0.76rem' }}>{error}</p>}
+    </>
+  );
+}
+
 function StayDetails({ room, reservation, transactions, onVerifyDiscount }) {
   const childCharges = Number(reservation.childCharges) || 0;
   // totalDue is after the verified Senior Citizen / PWD discounts; the room line shows
@@ -1636,6 +1727,8 @@ function StayDetails({ room, reservation, transactions, onVerifyDiscount }) {
         <DiscountList discounts={discounts} open={['Booked', 'Arrived', 'Checked In', 'Pending Room Inspection'].includes(reservation.status)}
           onVerify={onVerifyDiscount ? (d) => onVerifyDiscount(reservation, d) : null} />
       )}
+
+      <HousekeepingRequests reservation={reservation} />
 
       {reservation.inspection && (
         <>

@@ -52,6 +52,11 @@ class HotelNavBadges
             ],
             'housekeeping' => [
                 'inspections' => self::inspectionsOnHousekeeping($membership),
+                // Guests' requests nobody has picked up yet.
+                'service-requests' => \App\Models\HotelServiceRequest::supported()
+                    ? \App\Models\HotelServiceRequest::where('group_name', $membership->group_name)
+                        ->where('faculty_id', $membership->faculty_id)->where('status', 'Pending')->count()
+                    : 0,
                 'complaints'  => self::complaints($membership, 'housekeeping', 'Pending'),
                 'addons'      => self::addonsFullyLentOut($membership),
                 'amenities'   => self::amenitiesOnHousekeeping($membership),

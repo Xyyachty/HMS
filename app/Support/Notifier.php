@@ -699,6 +699,20 @@ class Notifier
         );
     }
 
+    /** A guest or the Front Desk asked Housekeeping for something during a stay. */
+    public static function serviceRequested(?User $actor, \App\Models\HotelServiceRequest $request): void
+    {
+        static::push(
+            static::teamRoleUserIds($request->group_name, (int) $request->faculty_id, ['housekeeping']),
+            UserNotification::SERVICE_REQUEST,
+            $request->type . ' · ' . ($request->room_name ?: 'a room'),
+            ($request->guest_name ?: 'A guest') . ' asked for ' . strtolower($request->type)
+                . ($request->preferred_time ? ' (' . $request->preferred_time . ')' : '') . '.',
+            route('students.housekeeping.service-requests'),
+            $actor?->id
+        );
+    }
+
     /**
      * A stay ended and the room needs the post-checkout pass. No actor: check-out can
      * be Front Desk settling the bill or a room-status flip, and either way this is

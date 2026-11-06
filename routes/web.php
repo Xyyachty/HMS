@@ -186,6 +186,11 @@ Route::prefix('hotel')->name('public.hotel')->group(function () {
         ->middleware('throttle:60,1')
         ->whereNumber('id')
         ->name('.my-stay.data');
+    // The staying guest asks Housekeeping for something (cleaning, towels, ...).
+    Route::post('/{slug}/api/my-stay/{id}/requests', [PublicSiteController::class, 'myStayRequest'])
+        ->middleware('throttle:10,1')
+        ->whereNumber('id')
+        ->name('.my-stay.requests');
 
     // Food, ordered by the guest reading the menu. Same reason as the two above:
     // the staff endpoint sits behind the students login a visitor does not have.
@@ -2524,6 +2529,126 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
 
         return response()->json(['bills' => $bills], 201);
     })->name('hotel.bookings.group-payments.store');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Housekeeping requests during a stay (HotelServiceRequestDesk)
+    |--------------------------------------------------------------------------
+    | Front Desk and Housekeeping take them; Housekeeping moves them along. The guest's
+    | own requests come in through the hotel website's My Stay page.
+    */
+    Route::get('/hotel/service-requests', function (Request $request) {
+        $membership = \App\Support\HotelBookingDesk::membership();
+        if (!$membership || !\App\Models\HotelServiceRequest::supported()) {
+            return response()->json(['requests' => [], 'can_manage' => false, 'can_create' => false]);
+        }
+        $roles = \App\Support\HotelTableAccess::roles($membership);
+
+        $query = \App\Models\HotelServiceRequest::where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->orderByDesc('hotel_service_request_id');
+        if ($request->filled('booking_id')) {
+            $query->where('hotel_booking_id', (int) $request->query('booking_id'));
+        } else {
+            // Every open request, and the last few days of finished ones.
+            $query->where(fn ($q) => $q->whereIn('status', \App\Models\HotelServiceRequest::OPEN_STATUSES)
+                ->orWhere('updated_at', '>=', now()->subDays(3)));
+        }
+
+        return response()->json([
+            'requests'   => $query->limit(200)->get()->map->toTemplateArray()->values(),
+            'types'      => \App\Models\HotelServiceRequest::TYPES,
+            'can_manage' => count(array_intersect($roles, ['housekeeping', 'administrator'])) > 0,
+            'can_create' => count(array_intersect($roles, ['front_desk', 'housekeeping', 'administrator'])) > 0,
+        ]);
+    })->name('hotel.service-requests.index');
+
+    Route::post('/hotel/service-requests', function (Request $request) {
+        $membership = \App\Support\HotelBookingDesk::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!array_intersect(\App\Support\HotelTableAccess::roles($membership), ['front_desk', 'housekeeping', 'administrator'])) {
+            return response()->json(['message' => 'Only Front Desk or Housekeeping staff can take a housekeeping request.'], 403);
+        }
+        $data = $request->validate([
+            'booking_id'     => 'required|integer',
+            'type'           => 'required|string|max:60',
+            'preferred_time' => 'nullable|string|max:60',
+            'notes'          => 'nullable|string|max:1000',
+        ]);
+        $booking = \App\Support\HotelBookingDesk::findBooking($membership, $data['booking_id']);
+        if (!$booking) {
+            return response()->json(['message' => 'Booking not found.'], 404);
+        }
+        try {
+            $created = \App\Support\HotelServiceRequestDesk::create($booking, $data, 'Front Desk', auth()->user()?->name, auth()->user());
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['request' => $created->toTemplateArray()], 201);
+    })->name('hotel.service-requests.store');
+
+    Route::patch('/hotel/service-requests/{id}', function (Request $request, $id) {
+        $membership = \App\Support\HotelBookingDesk::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        $roles = \App\Support\HotelTableAccess::roles($membership);
+        $data = $request->validate([
+            'status' => 'required|string|max:20',
+            'notes'  => 'nullable|string|max:1000',
+        ]);
+        // Housekeeping works the request; the Front Desk may only cancel one.
+        $manages = (bool) array_intersect($roles, ['housekeeping', 'administrator']);
+        if (!$manages && !($data['status'] === 'Cancelled' && in_array('front_desk', $roles, true))) {
+            return response()->json(['message' => 'Only Housekeeping staff can update a housekeeping request.'], 403);
+        }
+        $row = \App\Models\HotelServiceRequest::where('hotel_service_request_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->first();
+        if (!$row) {
+            return response()->json(['message' => 'Request not found.'], 404);
+        }
+        try {
+            $row = \App\Support\HotelServiceRequestDesk::move($row, $data['status'], auth()->user()?->name, $data['notes'] ?? null, auth()->user());
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['request' => $row->toTemplateArray()]);
+    })->name('hotel.service-requests.update');
+
+    // A defect found during the job, sent to Maintenance.
+    Route::post('/hotel/service-requests/{id}/defect', function (Request $request, $id) {
+        $membership = \App\Support\HotelBookingDesk::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!array_intersect(\App\Support\HotelTableAccess::roles($membership), ['housekeeping', 'administrator'])) {
+            return response()->json(['message' => 'Only Housekeeping staff can report a defect from a request.'], 403);
+        }
+        $data = $request->validate([
+            'category' => 'required|string|max:120',
+            'details'  => 'nullable|string|max:2000',
+            'unusable' => 'sometimes|boolean',
+        ]);
+        $row = \App\Models\HotelServiceRequest::where('hotel_service_request_id', $id)
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->first();
+        if (!$row) {
+            return response()->json(['message' => 'Request not found.'], 404);
+        }
+        if ($row->hotel_complaint_id) {
+            return response()->json(['message' => 'A defect was already reported from this request.'], 422);
+        }
+        $complaint = \App\Support\HotelServiceRequestDesk::reportDefect($row, $data, $request->boolean('unusable'), auth()->user());
+
+        return response()->json(['request' => $row->fresh()->toTemplateArray(), 'complaintId' => $complaint->hotel_complaint_id], 201);
+    })->name('hotel.service-requests.defect');
 
     Route::post('/hotel/bookings/{id}/charges', function (Request $request, $id) {
         $membership = \App\Support\HotelBookingDesk::membership();
@@ -5272,6 +5397,11 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'housekeeping');
         return view('students.housekeeping.inspections', $data);
     })->name('housekeeping.inspections');
+
+    Route::get('/housekeeping/service-requests', function () {
+        $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'housekeeping');
+        return view('students.housekeeping.service-requests', $data);
+    })->name('housekeeping.service-requests');
 
     Route::get('/housekeeping/addons', function () {
         $data = \App\Support\DepartmentTemplatePage::boot(auth()->user(), 'housekeeping');

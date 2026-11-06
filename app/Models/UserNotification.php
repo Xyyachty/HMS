@@ -32,6 +32,7 @@ class UserNotification extends Model
     public const CONCEPT_SUBMITTED = 'concept_submitted';
     public const CONCEPT_REVIEWED = 'concept_reviewed';
     public const SIMULATION_ROLES = 'simulation_roles';
+    public const SERVICE_REQUEST = 'service_request';
 
     /** Icon + accent per type, consumed by the dropdown partial. */
     public const STYLES = [
@@ -53,6 +54,7 @@ class UserNotification extends Model
         self::CONCEPT_SUBMITTED => ['icon' => 'mdi:lightbulb-on', 'accent' => 'amber'],
         self::CONCEPT_REVIEWED => ['icon' => 'mdi:lightbulb-check', 'accent' => 'emerald'],
         self::SIMULATION_ROLES => ['icon' => 'mdi:bell-ring', 'accent' => 'emerald'],
+        self::SERVICE_REQUEST => ['icon' => 'mdi:spray-bottle', 'accent' => 'amber'],
     ];
 
     protected $primaryKey = 'user_notification_id';

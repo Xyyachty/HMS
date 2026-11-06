@@ -133,6 +133,13 @@
                     <i class="fas fa-broom text-[0.8125rem] text-emerald-400"></i> Room Inspections
                     @include('students.frontdesk.left-sidebar.badge', ['key' => 'inspections'])
                 </a>
+                <a href="{{ route('students.housekeeping.service-requests') }}"
+                    onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
+                    class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.housekeeping.service-requests') ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
+                    <i class="fas fa-spray-can-sparkles text-[0.8125rem] text-emerald-400"></i> Service Requests
+                    {{-- Requests from staying guests nobody has accepted yet. --}}
+                    @include('students.frontdesk.left-sidebar.badge', ['key' => 'service-requests'])
+                </a>
                 <a href="{{ route('students.housekeeping.addons') }}"
                     onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
                     class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.housekeeping.addons') ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">

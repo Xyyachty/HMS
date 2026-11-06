@@ -500,10 +500,40 @@ class PublicSiteController extends Controller
             $bill['payments'] ?? []
         );
 
+        $requests = \App\Models\HotelServiceRequest::supported()
+            ? \App\Models\HotelServiceRequest::where('hotel_booking_id', $booking->hotel_booking_id)
+                ->orderByDesc('hotel_service_request_id')->limit(30)->get()->map->toGuestArray()->values()
+            : collect();
+
         return response()->json([
             'stay' => $booking->toGuestArray() + ['checkedOutAt' => $bill['checkedOutAt'] ?? null],
             'bill' => $bill,
+            // Housekeeping requests: what the guest asked for and where each stands.
+            'requests'     => $requests,
+            'requestTypes' => \App\Models\HotelServiceRequest::supported() && $booking->status === 'Checked In'
+                ? \App\Models\HotelServiceRequest::TYPES : [],
         ])->header('Cache-Control', 'no-store');
+    }
+
+    /** The guest, staying in the room, asks Housekeeping for something. */
+    public function myStayRequest(Request $request, string $slug, int $id)
+    {
+        [$booking, $error, $code] = $this->accountStay($slug, $id);
+        if (!$booking) {
+            return response()->json(['message' => $error], $code);
+        }
+        $data = $request->validate([
+            'type'           => 'required|string|max:60',
+            'preferred_time' => 'nullable|string|max:60',
+            'notes'          => 'nullable|string|max:1000',
+        ]);
+        try {
+            $created = \App\Support\HotelServiceRequestDesk::create($booking, $data, 'Guest', 'Online · ' . ($booking->guest?->full_name ?? 'Guest'), null);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['request' => $created->toGuestArray()], 201);
     }
 
     /**
