@@ -17,6 +17,7 @@
 <script src="{{ asset('js/hms-swal-theme.js') }}?v={{ filemtime(public_path('js/hms-swal-theme.js')) }}"></script>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="{{ asset('js/hms-date-input.js') }}?v={{ filemtime(public_path('js/hms-date-input.js')) }}"></script>
 {{-- Pinned. The unversioned URL is whatever Babel is newest, and it moved to
      Babel 8 on its own; a major release must not reach the live site unasked. --}}
 <script src="https://unpkg.com/@babel/standalone@7.28.5/babel.min.js"></script>
@@ -2082,7 +2083,7 @@ function formatClockTime(value) {
 }
 
 function formatCheckIn(date, time) {
-  const day = String(date || '').trim();
+  const day = HmsDate.format(date) || String(date || '').trim();
   const clock = formatClockTime(time);
   if (!day) return clock || '—';
   return clock ? `${day} · ${clock}` : day;
@@ -2681,7 +2682,7 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, childPolicy, cap
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
                     <div>
                       <label style={fieldLabel}>Check-In</label>
-                      <input type="date" className="booking-input" value={guestForm.checkIn} min={today}
+                      <HmsDateInput type="date" className="booking-input" value={guestForm.checkIn} min={today}
                         onChange={e => updateGuest('checkIn', e.target.value)} required />
                     </div>
                     <div>
@@ -2695,7 +2696,7 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, childPolicy, cap
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
                     <div>
                       <label style={fieldLabel}>Check-Out</label>
-                      <input type="date" className="booking-input" value={guestForm.checkOut} min={minCheckOut}
+                      <HmsDateInput type="date" className="booking-input" value={guestForm.checkOut} min={minCheckOut}
                         onChange={e => updateGuest('checkOut', e.target.value)} required />
                     </div>
                     <div>
@@ -2820,7 +2821,7 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, childPolicy, cap
                   </div>
                 )}
                 <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--fg-muted)' }}>
-                  {formatCheckIn(guestForm.checkIn, guestForm.checkInTime)} — {guestForm.checkOut}
+                  {formatCheckIn(guestForm.checkIn, guestForm.checkInTime)} — {HmsDate.format(guestForm.checkOut) || guestForm.checkOut} · 12:00 PM
                 </p>
               </div>
 
@@ -3085,7 +3086,7 @@ function MyBookingsModal({ open, onClose }) {
                     </span>
                   </div>
                   <p style={Object.assign({}, muted, { marginTop: '0.35rem' })}>
-                    {formatCheckIn(b.checkIn, b.checkInTime)} — {b.checkOut || '—'}
+                    {formatCheckIn(b.checkIn, b.checkInTime)} — {HmsDate.format(b.checkOut) || b.checkOut || '—'}
                     {b.occupancy ? ` · ${b.occupancy}` : b.guestCount ? ` · ${b.guestCount} guest${b.guestCount === 1 ? '' : 's'}` : ''}
                   </p>
                   {b.promoName && (
@@ -3327,7 +3328,7 @@ function TableReserveModal({ open, onClose, guest, onToast }) {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
                 <div>
                   <label style={fieldLabel}>Date</label>
-                  <input type="date" className="booking-input" value={date} min={today}
+                  <HmsDateInput type="date" className="booking-input" value={date} min={today}
                     onChange={e => setDate(e.target.value)} required style={{ colorScheme: 'dark' }} />
                 </div>
                 <div>
@@ -6503,7 +6504,7 @@ function RoomsPage({ onNav, onToast, rooms, addons, categories, canEditRooms, ca
         <div className="cat-dates" data-hms-no-edit="1">
           <div className="cat-date-field">
             <label htmlFor="rp-check-in">Check in</label>
-            <input
+            <HmsDateInput
               id="rp-check-in"
               type="date"
               value={checkIn}
@@ -6513,7 +6514,7 @@ function RoomsPage({ onNav, onToast, rooms, addons, categories, canEditRooms, ca
           </div>
           <div className="cat-date-field">
             <label htmlFor="rp-check-out">Check out</label>
-            <input
+            <HmsDateInput
               id="rp-check-out"
               type="date"
               value={checkOut}
@@ -8277,7 +8278,7 @@ function FacilityBooking({ facility, onToast }) {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.7rem' }}>
                 <div>
                   <label style={labelStyle}>Date</label>
-                  <input type="date" style={fieldStyle} value={form.date} min={todayIsoDate()}
+                  <HmsDateInput type="date" style={fieldStyle} value={form.date} min={todayIsoDate()}
                          onChange={(e) => set('date', e.target.value)} />
                 </div>
                 <div>

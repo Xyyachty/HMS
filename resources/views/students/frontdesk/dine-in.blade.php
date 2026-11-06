@@ -340,7 +340,7 @@ function ReserveModal({ table, freeTables, onReserve, onClose, busy }) {
             <div className="dn-form-row">
               <div>
                 <label className="dn-field-label">Date</label>
-                <input type="date" className="booking-input" value={onDate}
+                <HmsDateInput type="date" className="booking-input" value={onDate}
                   min={defaultReserveDate()} onChange={e => setOnDate(e.target.value)} />
               </div>
               <div>

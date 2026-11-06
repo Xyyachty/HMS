@@ -265,6 +265,7 @@
         }
     </script>
     @include('partials.ph-phone-input')
+    <script src="{{ asset('js/hms-date-input.js') }}?v={{ filemtime(public_path('js/hms-date-input.js')) }}"></script>
     @stack('scripts')
 @include('partials.logout-confirm')
 @include('partials.session-guard')

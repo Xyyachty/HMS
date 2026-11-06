@@ -445,13 +445,13 @@ function PromoModal({ promo, onClose, onSaved }) {
           <div className="ao-row">
             <div className="ao-field">
               <label className="ao-label" htmlFor={ids.start}>Start date</label>
-              <input id={ids.start} type="date" className={`ao-input ${errors.start_date ? 'has-error' : ''}`}
+              <HmsDateInput id={ids.start} type="date" className={`ao-input ${errors.start_date ? 'has-error' : ''}`}
                 value={form.start_date} onChange={e => update('start_date', e.target.value)} />
               {errors.start_date ? <p className="ao-error">{errors.start_date}</p> : null}
             </div>
             <div className="ao-field">
               <label className="ao-label" htmlFor={ids.end}>End date</label>
-              <input id={ids.end} type="date" min={form.start_date || undefined} className={`ao-input ${errors.end_date ? 'has-error' : ''}`}
+              <HmsDateInput id={ids.end} type="date" min={form.start_date || undefined} className={`ao-input ${errors.end_date ? 'has-error' : ''}`}
                 value={form.end_date} onChange={e => update('end_date', e.target.value)} />
               {errors.end_date ? <p className="ao-error">{errors.end_date}</p> : null}
             </div>

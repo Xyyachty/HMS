@@ -1206,7 +1206,7 @@ function RoomWalkIn() {
                         <Field id={'wi-c-dob-' + c.key} label="Date of birth" bad={show('birthDate')}
                           help={c.age !== null && !c.bad.birthDate ? 'Age ' + c.age + ' on check-in'
                             : 'Born on or before ' + new Date(seniorBornBy + 'T00:00').toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' }) + ' (age ' + SENIOR_AGE + '+).'}>
-                          <input id={'wi-c-dob-' + c.key} type="date" min="1900-01-01" max={seniorBornBy} className={'wi-input' + (show('birthDate') ? ' is-bad' : '')}
+                          <HmsDateInput id={'wi-c-dob-' + c.key} type="date" min="1900-01-01" max={seniorBornBy} className={'wi-input' + (show('birthDate') ? ' is-bad' : '')}
                             value={c.birthDate} onChange={e => set({ birthDate: e.target.value })} />
                         </Field>
                       )}
@@ -1508,7 +1508,7 @@ function TableWalkIn() {
             {when === 'later' && (
               <div className="wi-two">
                 <Field id="wt-date" label="Date">
-                  <input id="wt-date" type="date" className="wi-input" value={onDate} min={today()} onChange={e => setOnDate(e.target.value)} />
+                  <HmsDateInput id="wt-date" type="date" className="wi-input" value={onDate} min={today()} onChange={e => setOnDate(e.target.value)} />
                 </Field>
                 <Field id="wt-time" label="Time" bad={tried && !whenOk ? 'That time has already passed.' : ''}>
                   <input id="wt-time" type="time" className={'wi-input' + (tried && !whenOk ? ' is-bad' : '')} value={atTime} onChange={e => setAtTime(e.target.value)} />

@@ -356,11 +356,11 @@ function PresetBar({ preset, from, to, onPreset, onFrom, onTo }) {
       </div>
       <div style={{ minWidth: 150 }}>
         <label className="rp-tile-label">From</label>
-        <input type="date" className="booking-input" value={from} onChange={e => onFrom(e.target.value)} style={{ colorScheme: 'dark' }} />
+        <HmsDateInput type="date" className="booking-input" value={from} onChange={e => onFrom(e.target.value)} style={{ colorScheme: 'dark' }} />
       </div>
       <div style={{ minWidth: 150 }}>
         <label className="rp-tile-label">To</label>
-        <input type="date" className="booking-input" value={to} onChange={e => onTo(e.target.value)} style={{ colorScheme: 'dark' }} />
+        <HmsDateInput type="date" className="booking-input" value={to} onChange={e => onTo(e.target.value)} style={{ colorScheme: 'dark' }} />
       </div>
     </div>
   );

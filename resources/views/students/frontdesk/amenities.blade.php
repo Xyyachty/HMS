@@ -674,7 +674,7 @@ function BookingModal({ amenity, guests, services, packages, onClose, onBooked }
             <div className="rm-form-row">
               <div>
                 <label style={fieldLabel}>Date *</label>
-                <input type="date" className="booking-input" value={form.scheduledOn}
+                <HmsDateInput type="date" className="booking-input" value={form.scheduledOn}
                   min={todayStr()} onChange={e => update('scheduledOn', e.target.value)}
                   style={errors.scheduledOn ? { borderColor: '#f43f5e' } : undefined} />
                 {errText('scheduledOn')}

@@ -77,6 +77,7 @@
     <script src="{{ asset('js/hms-swal-theme.js') }}?v={{ filemtime(public_path('js/hms-swal-theme.js')) }}"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="{{ asset('js/hms-date-input.js') }}?v={{ filemtime(public_path('js/hms-date-input.js')) }}"></script>
     {{-- Pinned. The unversioned URL is whatever Babel is newest, and it moved to
          Babel 8 on its own; a major release must not reach the live site unasked. --}}
     <script src="https://unpkg.com/@babel/standalone@7.28.5/babel.min.js"></script>

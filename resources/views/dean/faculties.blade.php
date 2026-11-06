@@ -72,7 +72,7 @@
                         class="mt-1 w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm">
                 </label>
                 <label class="text-sm font-semibold text-slate-700">End date <span class="font-normal text-slate-400">(optional)</span>
-                    <input type="date" name="ends_on" value="{{ optional($currentTerm->ends_on)->toDateString() }}"
+                    <input type="date" data-pretty-date name="ends_on" value="{{ optional($currentTerm->ends_on)->toDateString() }}"
                         class="mt-1 w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm">
                 </label>
                 <button type="submit" class="h-10 px-4 rounded-xl text-sm font-bold bg-brand text-white transition">Save</button>
@@ -90,7 +90,7 @@
                         class="mt-1 w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm">
                 </label>
                 <label class="text-sm font-semibold text-slate-700">End date <span class="font-normal text-slate-400">(optional)</span>
-                    <input type="date" name="ends_on"
+                    <input type="date" data-pretty-date name="ends_on"
                         class="mt-1 w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm">
                 </label>
                 <button type="submit" class="h-10 px-4 rounded-xl text-sm font-bold bg-brand text-white transition">Start term</button>
