@@ -2871,6 +2871,15 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, childPolicy, cap
                         Partial Payment
                       </button>
                     </div>
+                    {/* totalDue is this room only (HotelBooking::totalDue); everything else
+                        is settled at check-out, so the guest is told before paying. */}
+                    {paymentForm.type === 'full' && (
+                      <p role="note" style={{ margin: '0.5rem 0 0', padding: '0.55rem 0.7rem', borderRadius: 8, border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)', fontSize: '0.75rem', lineHeight: 1.5, color: 'var(--fg-muted)' }}>
+                        <i className="fa-solid fa-circle-info" style={{ marginRight: '0.4rem', color: 'var(--accent)' }}></i>
+                        Full payment covers <strong style={{ color: 'var(--fg)' }}>this room's stay only</strong>{totalDue !== roomCharge ? ' (with its child and extra adult charges)' : ''}.
+                        Add-ons such as a folding bed, room service, other rooms and other charges are not included and are paid at the Front Desk on check-out.
+                      </p>
+                    )}
                   </div>
 
                   <div>
