@@ -178,7 +178,9 @@
   .vg-status { border-radius: 999px; letter-spacing: 0; text-transform: none; font-size: 0.76rem; padding: 0.28rem 0.65rem; }
 
   .vg-actions {
-    display: grid; grid-template-columns: 7.2rem 7.2rem 4.8rem; gap: 0.4rem;
+    /* Two columns: Change room / Check in on top, Bill / Details below. A third
+       column pushed Bill past the panel's edge, where it was cut off. */
+    display: grid; grid-template-columns: 7.2rem 7.2rem; gap: 0.4rem;
     justify-content: center; align-items: center;
   }
   .vg-btn {
