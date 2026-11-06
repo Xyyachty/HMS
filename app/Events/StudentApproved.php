@@ -44,7 +44,7 @@ class StudentApproved implements ShouldBroadcast
             'email' => $this->user->email,
             'phone_number' => $this->user->phone_number,
             'status' => $this->user->status ?? 'active',
-            'joined' => optional($this->user->created_at)->format('M d, Y'),
+            'joined' => optional($this->user->created_at)->hmsFormat('M j, Y'),
         ];
     }
 }

@@ -55,15 +55,15 @@
     var TIME_ZONE = 'Asia/Manila';
 
     // Intl carries the offset rules, so no manual hour arithmetic.
-    var formatter = new Intl.DateTimeFormat('en-PH', {
+    var formatter = new Intl.DateTimeFormat('en-US', {
         timeZone: TIME_ZONE,
-        month: 'short', day: '2-digit', year: 'numeric',
+        month: 'short', day: 'numeric', year: 'numeric',
         hour: 'numeric', minute: '2-digit', second: '2-digit',
         hour12: true,
     });
 
     function paint() {
-        var text = formatter.format(new Date());
+        var text = formatter.format(new Date()).replace(/^(Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/, '$1.'); // "Nov. 6, 2026, 3:05:07 PM"
         var nodes = document.querySelectorAll('[data-hms-clock-text]');
         for (var i = 0; i < nodes.length; i++) {
             nodes[i].textContent = text;

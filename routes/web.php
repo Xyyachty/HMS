@@ -724,7 +724,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
         return response()->json([
             'signature'    => $signature,
             'deadline'     => $teamDeadline
-                ? ['date' => $teamDeadline->format('M j, Y'), 'time' => $teamDeadline->format('g:i A')]
+                ? ['date' => $teamDeadline->hmsFormat('M j, Y'), 'time' => $teamDeadline->format('g:i A')]
                 : null,
             'phase_signature' => md5(json_encode([
                 \Illuminate\Support\Arr::except($phase, 'items'),
@@ -2255,7 +2255,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
                 if ($clash) {
                     return response()->json([
                         'message' => ($booking->room?->name ?? 'This room') . ' is booked for another guest from '
-                            . $clash->check_in->format('M j') . '. Pick an earlier check-out date.',
+                            . $clash->check_in->hmsFormat('M j') . '. Pick an earlier check-out date.',
                     ], 409);
                 }
         }

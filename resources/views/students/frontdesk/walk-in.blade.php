@@ -340,7 +340,7 @@ function nowClock() { const d = new Date(); return pad2(d.getHours()) + ':' + pa
 function peso(n) { return '₱' + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }); }
 function niceDate(iso) {
   const [y, m, d] = iso.split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+  return HmsDate.date(new Date(y, m - 1, d), { weekday: 'short', month: 'short', day: 'numeric' });
 }
 function niceTime(hhmm) {
   if (!hhmm) return '';
@@ -1205,7 +1205,7 @@ function RoomWalkIn() {
                       {c.type === 'Senior Citizen' && (
                         <Field id={'wi-c-dob-' + c.key} label="Date of birth" bad={show('birthDate')}
                           help={c.age !== null && !c.bad.birthDate ? 'Age ' + c.age + ' on check-in'
-                            : 'Born on or before ' + new Date(seniorBornBy + 'T00:00').toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' }) + ' (age ' + SENIOR_AGE + '+).'}>
+                            : 'Born on or before ' + HmsDate.date(new Date(seniorBornBy + 'T00:00'), { month: 'long', day: 'numeric', year: 'numeric' }) + ' (age ' + SENIOR_AGE + '+).'}>
                           <HmsDateInput id={'wi-c-dob-' + c.key} type="date" min="1900-01-01" max={seniorBornBy} className={'wi-input' + (show('birthDate') ? ' is-bad' : '')}
                             value={c.birthDate} onChange={e => set({ birthDate: e.target.value })} />
                         </Field>

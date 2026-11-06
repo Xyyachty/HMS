@@ -174,7 +174,7 @@
         {{-- The period the rows on screen cover, after the filters below. Printed too. --}}
         <span class="inline-flex items-center gap-2 h-11 px-4 rounded-xl border border-slate-200 bg-white text-[0.8125rem] font-semibold text-slate-600 whitespace-nowrap">
             <span class="iconify text-base text-slate-400" data-icon="mdi:calendar-range-outline"></span>
-            {{ $reportFrom ? $reportFrom->format('M j, Y') : '—' }} – {{ $reportTo ? $reportTo->format('M j, Y') : '—' }}
+            {{ $reportFrom ? $reportFrom->hmsFormat('M j, Y') : '—' }} – {{ $reportTo ? $reportTo->hmsFormat('M j, Y') : '—' }}
         </span>
         <button type="button" onclick="window.print()"
                 class="rp-no-print inline-flex items-center gap-2 h-11 px-5 rounded-xl brand-gradient text-white text-[0.8125rem] font-bold shadow-md shadow-brand/20 hover:opacity-95 transition">

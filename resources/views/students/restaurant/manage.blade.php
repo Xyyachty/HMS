@@ -988,7 +988,7 @@ function formatBookedFor(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  return HmsDate.date(d, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
 function createEmptyTableForm() {
@@ -1964,7 +1964,7 @@ const STEP_TEXT = {
 
 function formatEventDay(iso) {
   const d = new Date(String(iso) + 'T00:00:00');
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+  return Number.isNaN(d.getTime()) ? iso : HmsDate.date(d, { weekday: 'short', month: 'short', day: 'numeric' });
 }
 function orderTypeOf(o) { return o.orderType || 'room_service'; }
 function isFinished(o) { return o.status === 'Completed' || o.status === 'Cancelled'; }

@@ -213,8 +213,8 @@ class ReportDesk
                 'student_name' => self::personName($task->student?->user ?? $task->assignedTo) ?: '—',
                 'role' => $roleKey,
                 'role_label' => $roleLabels[$roleKey] ?? $roleKey,
-                'due_date' => optional($task->due_date)->format('M d, Y g:i A'),
-                'completed_at' => optional($task->updated_at)->format('M d, Y'),
+                'due_date' => optional($task->due_date)->hmsFormat('M j, Y g:i A'),
+                'completed_at' => optional($task->updated_at)->hmsFormat('M j, Y'),
             ];
         }
 
@@ -235,8 +235,8 @@ class ReportDesk
             $bucket['page_name'] = !empty($bucket['page_roles'])
                 ? implode(', ', array_values($bucket['page_roles']))
                 : '—';
-            $bucket['assigned_date'] = optional($bucket['assigned_at'])->format('M d, Y') ?? '—';
-            $bucket['date_completed'] = optional($bucket['completed_at'])->format('M d, Y') ?? '—';
+            $bucket['assigned_date'] = optional($bucket['assigned_at'])->hmsFormat('M j, Y') ?? '—';
+            $bucket['date_completed'] = optional($bucket['completed_at'])->hmsFormat('M j, Y') ?? '—';
             $bucket['completed_sort'] = optional($bucket['completed_at'])->timestamp ?? 0;
             $bucket['task_count'] = count($bucket['tasks']);
             unset($bucket['page_roles'], $bucket['assigned_at'], $bucket['completed_at']);
@@ -350,7 +350,7 @@ class ReportDesk
                 $user = $task->student?->user ?? $task->assignedTo;
 
                 return [
-                    'date'       => optional($task->updated_at)->format('M d, Y'),
+                    'date'       => optional($task->updated_at)->hmsFormat('M j, Y'),
                     'time'       => optional($task->updated_at)->format('g:i A'),
                     'student'    => self::personName($user) ?: 'Unclaimed',
                     'user'       => $user,

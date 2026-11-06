@@ -413,7 +413,7 @@
                                 @if (filled($pfEntry->description))<span title="{{ $pfEntry->description }}">{{ $pfEntry->description }}</span>@endif
                             </div>
                             @if ($pfAt)
-                                <div class="pf-when">{{ $pfAt->diffForHumans() }}<small>{{ $pfAt->format('M j, g:i A') }}</small></div>
+                                <div class="pf-when">{{ $pfAt->diffForHumans() }}<small>{{ $pfAt->hmsFormat('M j, g:i A') }}</small></div>
                             @endif
                         </li>
                     @endforeach

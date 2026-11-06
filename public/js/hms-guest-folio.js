@@ -32,8 +32,8 @@
     var d = m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(v);
     return isNaN(d) ? null : d;
   }
-  function longDay(d) { return d ? pad2(d.getDate()) + ' ' + d.toLocaleString('en-US', { month: 'short' }) + ' ' + d.getFullYear() : '—'; }
-  function shortDay(v) { var d = toDate(v); return d ? pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '/' + d.getFullYear() : ''; }
+  function longDay(d) { return d ? d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).replace(/^(Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/, '$1.') : '—'; }
+  function shortDay(v) { var d = toDate(v); return d ? longDay(d) : ''; }
   function hhmm(d) { return d ? pad2(d.getHours()) + ':' + pad2(d.getMinutes()) : ''; }
 
   var STYLE = ''

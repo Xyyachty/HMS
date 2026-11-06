@@ -193,7 +193,7 @@ function todayIso() {
 
 function niceDate(iso) {
   const d = new Date(iso + 'T00:00:00');
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  return HmsDate.date(d, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function compressImageDataUrl(dataUrl, done) {

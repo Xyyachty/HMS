@@ -1008,7 +1008,7 @@ function formatShortDay(iso) {
   if (!iso) return '';
   const d = new Date(iso + 'T00:00:00');
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  return HmsDate.date(d, { month: 'short', day: 'numeric' });
 }
 
 /* The next booked stretch from today on, for the card's one-line summary. */
@@ -1989,7 +1989,7 @@ function formatStamp(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+  return HmsDate.date(d, { month: 'short', day: 'numeric', year: 'numeric' })
     + ' · ' + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
@@ -1997,7 +1997,7 @@ function formatStamp(iso) {
 function formatDayTime(date, time) {
   if (!date) return '—';
   const d = new Date(date + 'T00:00:00');
-  const day = Number.isNaN(d.getTime()) ? date : d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+  const day = Number.isNaN(d.getTime()) ? date : HmsDate.date(d, { weekday: 'short', month: 'short', day: 'numeric' });
   const clock = formatClockTime(time);
   return clock ? `${day} · ${clock}` : day;
 }
@@ -2005,7 +2005,7 @@ function formatDayTime(date, time) {
 function formatEndsAt(reservation) {
   const end = stayEndsAt(reservation);
   if (!end) return reservation && reservation.checkOut ? formatDayTime(reservation.checkOut) : '—';
-  return end.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
+  return HmsDate.date(end, { weekday: 'short', month: 'short', day: 'numeric' })
     + ' · ' + end.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 

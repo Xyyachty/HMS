@@ -240,7 +240,7 @@ function formatWhen(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  return HmsDate.date(d, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
 /* Clock only. Used for "taken at", where the date is almost always today and

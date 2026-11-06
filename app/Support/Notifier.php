@@ -188,7 +188,7 @@ class Notifier
     /** The moment an event happened, as people in Manila read it. */
     private static function stamp(): string
     {
-        return now('Asia/Manila')->format('M j, Y g:i A');
+        return now('Asia/Manila')->hmsFormat('M j, Y g:i A');
     }
 
     /* ── Events ─────────────────────────────────────────────────────────── */
@@ -365,7 +365,7 @@ class Notifier
     public static function tasksAssigned(?User $actor, array $titlesPerUserId, $dueDate = null): void
     {
         // Due dates are kept as the wall-clock time faculty typed, so no zone shift.
-        $due = $dueDate ? ' Due ' . \Illuminate\Support\Carbon::parse($dueDate)->format('M j, Y g:i A') . '.' : '';
+        $due = $dueDate ? ' Due ' . \Illuminate\Support\Carbon::parse($dueDate)->hmsFormat('M j, Y g:i A') . '.' : '';
 
         foreach ($titlesPerUserId as $userId => $titles) {
             $titles = array_values(array_unique($titles));
@@ -414,7 +414,7 @@ class Notifier
     public static function teamTasksAssigned(?User $actor, array $titlesByTeam, $dueDate = null): void
     {
         $who = $actor?->name ?? 'A faculty member';
-        $due = $dueDate ? ' Due ' . \Illuminate\Support\Carbon::parse($dueDate)->format('M d, Y g:i A') . '.' : '';
+        $due = $dueDate ? ' Due ' . \Illuminate\Support\Carbon::parse($dueDate)->hmsFormat('M j, Y g:i A') . '.' : '';
 
         foreach ($titlesByTeam as $team => $titles) {
             $titles = array_keys($titles);
@@ -660,7 +660,7 @@ class Notifier
             'Event booked · ' . $reservation->amenity_name,
             trim(($reservation->event_type ? $reservation->event_type . ' for ' : 'An event for ')
                 . ($reservation->guest_count ? $reservation->guest_count . ' guests ' : '')
-                . 'on ' . optional($reservation->scheduled_on)->format('M j') . ', '
+                . 'on ' . optional($reservation->scheduled_on)->hmsFormat('M j') . ', '
                 . $reservation->timeLabel() . '.'),
             route('students.housekeeping.amenities'),
             $actor
@@ -680,7 +680,7 @@ class Notifier
             'Catering order · ' . $reservation->amenity_name,
             ($reservation->cateringPackage?->name ?: 'A catering package')
                 . ' for ' . ($reservation->guest_count ?: '?') . ' guests on '
-                . optional($reservation->scheduled_on)->format('M j') . '.',
+                . optional($reservation->scheduled_on)->hmsFormat('M j') . '.',
             route('students.restaurant.manage', ['nav' => 'orders']),
             $actor
         );

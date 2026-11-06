@@ -764,7 +764,7 @@ class FacultyController extends Controller
                 'email' => $user?->email,
                 'phone_number' => $user?->phone_number,
                 'status' => $user?->status ?? 'active',
-                'joined' => optional($user?->created_at)->format('M d, Y'),
+                'joined' => optional($user?->created_at)->hmsFormat('M j, Y'),
                 'class' => $student->facultyClass?->letter,
             ];
         });
@@ -1752,10 +1752,10 @@ class FacultyController extends Controller
                         ),
                     'student_name' => $studentName,
                     'submitted_at' => $task->status === 'archived'
-                        ? $task->updated_at?->timezone('Asia/Manila')->format('M d, Y')
+                        ? $task->updated_at?->timezone('Asia/Manila')->hmsFormat('M j, Y')
                         : null,
-                    'due_date' => optional($task->due_date)->format('M d, Y g:i A'),
-                    'updated_at' => $task->updated_at?->timezone('Asia/Manila')->format('M d, Y'),
+                    'due_date' => optional($task->due_date)->hmsFormat('M j, Y g:i A'),
+                    'updated_at' => $task->updated_at?->timezone('Asia/Manila')->hmsFormat('M j, Y'),
                 ];
             })
             ->all();
@@ -1957,7 +1957,7 @@ class FacultyController extends Controller
                 'role' => $task->role,
                 'role_label' => $task->role_label,
                 'title' => $task->title,
-                'submitted_at' => $task->updated_at?->timezone('Asia/Manila')->format('M d, Y g:i A'),
+                'submitted_at' => $task->updated_at?->timezone('Asia/Manila')->hmsFormat('M j, Y g:i A'),
                 'submitted_human' => optional($task->updated_at)->diffForHumans(),
                 /* Epoch so the badge can age itself between payload fetches.
                    submitted_human is computed here and would otherwise still
@@ -2003,7 +2003,7 @@ class FacultyController extends Controller
                 'submitted_by' => $concept->submitter
                     ? \App\Http\Controllers\HotelConceptController::displayName($concept->submitter)
                     : 'A team member',
-                'submitted_at' => $concept->submitted_at?->timezone('Asia/Manila')->format('M d, Y g:i A'),
+                'submitted_at' => $concept->submitted_at?->timezone('Asia/Manila')->hmsFormat('M j, Y g:i A'),
                 'submitted_human' => optional($concept->submitted_at)->diffForHumans(),
                 'submitted_ts' => optional($concept->submitted_at)->getTimestamp(),
             ];
@@ -2669,13 +2669,13 @@ class FacultyController extends Controller
             'started' => $task->is_started,
             'student_name' => $name !== '' ? $name : ($u?->name ?? null),
             'group_name' => $membership?->group_name,
-            'due_date' => optional($task->due_date)->format('M d, Y g:i A'),
+            'due_date' => optional($task->due_date)->hmsFormat('M j, Y g:i A'),
             'submitted_at' => $task->status === 'archived'
-                ? $task->updated_at?->timezone('Asia/Manila')->format('M d, Y g:i A')
+                ? $task->updated_at?->timezone('Asia/Manila')->hmsFormat('M j, Y g:i A')
                 : null,
             'feedback' => $task->feedback,
             // Campus time: this is the approval stamp faculty read on the review.
-            'feedback_at' => $task->feedback_at?->timezone('Asia/Manila')->format('M d, Y g:i A'),
+            'feedback_at' => $task->feedback_at?->timezone('Asia/Manila')->hmsFormat('M j, Y g:i A'),
             'feedback_by' => $task->feedbackBy?->name,
             'revision_count' => (int) $task->revision_count,
             'preview_url' => $previewUrl,

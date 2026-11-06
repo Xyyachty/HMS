@@ -6312,7 +6312,7 @@ function MyBookingsModal({ open, onClose }) {
                   </div>
                   <p style={Object.assign({}, muted, { marginTop: '0.35rem' })}>
                     {t.reservedFor
-                      ? new Date(t.reservedFor).toLocaleString('en-US', { timeZone: 'Asia/Manila', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+                      ? HmsDate.date(new Date(t.reservedFor), { timeZone: 'Asia/Manila', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
                       : '—'}
                     {` · ${t.partySize} ${t.partySize === 1 ? 'person' : 'persons'}`}
                   </p>
@@ -6413,7 +6413,7 @@ function TableReserveModal({ open, onClose, guest, onToast }) {
       .then(r => r.json().catch(() => ({})).then(data => (r.ok ? data : Promise.reject(Object.assign({ status: r.status }, data)))))
       .then((data) => {
         if (data && data.reservation && data.reservation.link) { setDone(data.reservation); return; }
-        const when = new Date(date + 'T' + time).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+        const when = HmsDate.date(new Date(date + 'T' + time), { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
         if (onToast) onToast(`${pickedNames} ${pickedList.length > 1 ? 'are' : 'is'} reserved for you on ${when}. Give your name at the restaurant.`);
         onClose();
       })
@@ -6446,7 +6446,7 @@ function TableReserveModal({ open, onClose, guest, onToast }) {
                 {[
                   ['Reference', done.reference],
                   [String(done.tableName || '').includes(' + ') ? 'Reserved tables' : 'Reserved table', done.tableName],
-                  ['Date', new Date(done.reservedFor).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'long', day: 'numeric', year: 'numeric' })],
+                  ['Date', HmsDate.date(new Date(done.reservedFor), { timeZone: 'Asia/Manila', month: 'long', day: 'numeric', year: 'numeric' })],
                   ['Time', new Date(done.reservedFor).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit' })],
                   ['Guests', done.partySize + (done.partySize === 1 ? ' person' : ' persons')],
                   ['Status', done.status],

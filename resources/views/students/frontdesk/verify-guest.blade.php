@@ -379,7 +379,7 @@ function hmsCsrfToken() {
 function formatBillDate(dateStr) {
   const [y, m, d] = String(dateStr || '').split('-').map(Number);
   if (!y || !m || !d) return '';
-  return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  return HmsDate.date(new Date(y, m - 1, d), { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 /* 'Aug 12, 2026 — 2:00 PM' for the bill header. */
@@ -395,7 +395,7 @@ function formatBillStamp(iso) {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+  return HmsDate.date(d, { month: 'short', day: 'numeric', year: 'numeric' })
     + ' — ' + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
@@ -460,7 +460,7 @@ function statusHint(reservation) {
 function formatShortDate(dateStr) {
   const [y, m, d] = String(dateStr || '').split('-').map(Number);
   if (!y || !m || !d) return '';
-  return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return HmsDate.date(new Date(y, m - 1, d), { month: 'short', day: 'numeric' });
 }
 function formatShortDateTime(dateStr, timeStr) {
   const day = formatShortDate(dateStr);

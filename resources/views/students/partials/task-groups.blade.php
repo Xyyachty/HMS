@@ -185,7 +185,7 @@
                         <div class="flex items-center gap-2 mt-2">
                             <span class="iconify text-[#8A817A] text-base" data-icon="mdi:calendar-blank-outline"></span>
                             @if($groupDue)
-                                <p class="text-[0.8125rem] font-semibold text-slate-700">{{ $groupDue->format('M j, Y') }}</p>
+                                <p class="text-[0.8125rem] font-semibold text-slate-700">{{ $groupDue->hmsFormat('M j, Y') }}</p>
                             @else
                                 <p class="text-[0.8125rem] text-slate-400">No due date set</p>
                             @endif
@@ -237,7 +237,7 @@
                             // from it would go stale against the reprint.
                             $rowRoleLabel  = $homeRoleLabels[$task->role] ?? $task->role_label;
                             $rowDueLabel   = $task->due_date
-                                                ? $task->due_date->format('M j, Y') . ' · ' . $task->due_date->format('g:i A')
+                                                ? $task->due_date->hmsFormat('M j, Y') . ' · ' . $task->due_date->format('g:i A')
                                                 : 'No due date';
                             // 'FD TASK 1' — the role's initials plus the task's number on
                             // the checklist, which is what the card is known by. The
@@ -315,7 +315,7 @@
                                     <span class="iconify text-[#8A817A] text-sm shrink-0" data-icon="mdi:calendar-blank-outline"></span>
                                     @if($task->due_date)
                                         <p class="text-[0.6875rem] font-semibold truncate {{ $isOverdue && !$isCompleted && !$isPending ? 'text-[#181818]' : 'text-slate-500' }}">
-                                            {{ $task->due_date->format('M j, Y') }} &middot; {{ $task->due_date->format('g:i A') }}
+                                            {{ $task->due_date->hmsFormat('M j, Y') }} &middot; {{ $task->due_date->format('g:i A') }}
                                         </p>
                                     @else
                                         <p class="text-[0.6875rem] font-semibold text-slate-300">No due date</p>

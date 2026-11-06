@@ -288,7 +288,7 @@ class HotelPromo extends Model
         if (!$promo || !$promo->is_active
             || $day < $promo->start_date->toDateString() || $day > $promo->end_date->toDateString()) {
             throw new \RuntimeException('That promo is not available for a stay starting on '
-                . \Illuminate\Support\Carbon::parse($day)->format('M j, Y') . '. Please choose another.');
+                . \Illuminate\Support\Carbon::parse($day)->hmsFormat('M j, Y') . '. Please choose another.');
         }
 
         return $promo;
@@ -327,8 +327,8 @@ class HotelPromo extends Model
         $state = !$this->is_active ? 'Inactive' : ($end < $today ? 'Expired' : ($start > $today ? 'Scheduled' : 'Running'));
 
         $range = $this->start_date->year === $this->end_date->year
-            ? $this->start_date->format('M j') . ' – ' . $this->end_date->format('M j, Y')
-            : $this->start_date->format('M j, Y') . ' – ' . $this->end_date->format('M j, Y');
+            ? $this->start_date->hmsFormat('M j') . ' – ' . $this->end_date->hmsFormat('M j, Y')
+            : $this->start_date->hmsFormat('M j, Y') . ' – ' . $this->end_date->hmsFormat('M j, Y');
         $peso = fn (int $n) => '₱' . number_format($n);
 
         return [

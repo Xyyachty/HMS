@@ -7,15 +7,28 @@
  *   React (Babel pages):  <HmsDateInput type="date" value={v} onChange={...} />
  *   Server-rendered form: <input type="date" data-pretty-date ...>  (enhanced on load)
  *   Text anywhere:        HmsDate.format('2026-11-16')  // "Nov. 16, 2026"
+ *                        HmsDate.date(anyDate) / HmsDate.dateTime(anyDate)  // "Nov. 16, 2026, 3:05 PM"
  */
 (function () {
-  var MONTHS = ['Jan.', 'Feb.', 'Mar.', 'Apr.', 'May', 'Jun.', 'Jul.', 'Aug.', 'Sep.', 'Oct.', 'Nov.', 'Dec.'];
-
-  function format(iso) {
-    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ''));
-    if (!m || !MONTHS[+m[2] - 1]) return '';
-    return MONTHS[+m[2] - 1] + ' ' + (+m[3]) + ', ' + m[1];
+  /* HmsDate.date(value, opts) -> "Nov. 16, 2026"; with opts.hour/minute -> "Nov. 16, 2026, 3:05 PM".
+     value: 'YYYY-MM-DD' (a calendar day, read in local time), any Date-parsable string,
+     a timestamp or a Date. opts may add timeZone/hour/minute; month, day and year are
+     always the house style, so a caller's weekday/month/day/year options are ignored. */
+  function date(value, opts) {
+    if (value == null || value === '') return '';
+    var ymd = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value).trim());
+    var d = value instanceof Date ? value : ymd ? new Date(+ymd[1], +ymd[2] - 1, +ymd[3]) : new Date(value);
+    if (isNaN(d.getTime())) return '';
+    var o = { month: 'short', day: 'numeric', year: 'numeric' };
+    ['timeZone', 'hour', 'minute', 'hour12'].forEach(function (k) {
+      if (opts && opts[k] !== undefined && !(ymd && k === 'timeZone')) o[k] = opts[k];
+    });
+    return d.toLocaleString('en-US', o).replace(/\b(Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b(?!\.)/, '$1.');
   }
+  function dateTime(value, opts) {
+    return date(value, Object.assign({ hour: 'numeric', minute: '2-digit' }, opts || {}));
+  }
+  var format = function (iso) { return date(iso); };
 
   var css = ''
     + '.hms-date{position:relative;display:flex;flex-direction:column;min-width:0}'
@@ -50,11 +63,12 @@
     try { if (input.showPicker && !input.disabled && !input.readOnly) input.showPicker(); } catch (e) { /* not allowed here */ }
   }
 
-  function labelText(value, placeholder) {
-    return format(value) || placeholder || 'Select date';
+  function pretty(value, type) { return type === "datetime-local" ? dateTime(value) : date(value); }
+  function labelText(value, placeholder, type) {
+    return pretty(value, type) || placeholder || 'Select date';
   }
 
-  window.HmsDate = { format: format };
+  window.HmsDate = { format: format, date: date, dateTime: dateTime };
 
   if (window.React) {
     var h = React.createElement;
@@ -66,7 +80,7 @@
       React.useLayoutEffect(function () { sync(inputRef.current, labelRef.current); });
 
       var rest = Object.assign({}, props, {
-        type: 'date',
+        type: props.type === "datetime-local" ? "datetime-local" : "date",
         ref: inputRef,
         onChange: function (e) {
           if (props.value === undefined) own[1](e.target.value);
@@ -79,8 +93,8 @@
       });
       return h('span', { className: 'hms-date' },
         h('input', rest),
-        h('span', { ref: labelRef, className: 'hms-date__text' + (format(value) ? '' : ' is-empty'), 'aria-hidden': 'true' },
-          labelText(value, props.placeholder)));
+        h('span', { ref: labelRef, className: 'hms-date__text' + (pretty(value, props.type) ? "" : " is-empty"), 'aria-hidden': 'true' },
+          labelText(value, props.placeholder, props.type)));
     };
   }
 
@@ -95,8 +109,8 @@
     wrap.appendChild(input);
     wrap.appendChild(label);
     var update = function () {
-      label.textContent = labelText(input.value, input.getAttribute('placeholder'));
-      label.classList.toggle('is-empty', !format(input.value));
+      label.textContent = labelText(input.value, input.getAttribute("placeholder"), input.type);
+      label.classList.toggle('is-empty', !pretty(input.value, input.type));
       sync(input, label);
     };
     input.addEventListener('input', update);
@@ -107,7 +121,7 @@
   }
 
   function enhanceAll() {
-    document.querySelectorAll('input[type="date"][data-pretty-date]').forEach(enhance);
+    document.querySelectorAll('input[data-pretty-date]').forEach(enhance);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', enhanceAll);
   else enhanceAll();

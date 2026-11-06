@@ -31,6 +31,7 @@
 
 @unless ($error)
 {{-- The folio and receipt sheet, the same one the Front Desk prints. --}}
+<script src="{{ asset('js/hms-date-input.js') }}?v={{ filemtime(public_path('js/hms-date-input.js')) }}"></script>
 <script src="{{ asset('js/hms-guest-folio.js') }}?v={{ filemtime(public_path('js/hms-guest-folio.js')) }}"></script>
 <script>
 (function () {
@@ -48,7 +49,7 @@
   // 'YYYY-MM-DD' is a calendar day at the hotel, read as such, not as UTC midnight.
   function day(ymd) {
     var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd || '');
-    return m ? new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '—';
+    return m ? HmsDate.date(new Date(+m[1], +m[2] - 1, +m[3]), { month: 'long', day: 'numeric', year: 'numeric' }) : '—';
   }
   function clock(hhmm) {
     var m = /^(\d{1,2}):(\d{2})/.exec(hhmm || '');
@@ -123,7 +124,7 @@
       return '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;padding:0.7rem 0;border-bottom:1px solid var(--border)">'
         + '<div><b>' + esc(r.type) + '</b>'
         + '<div class="muted" style="font-size:0.82rem">' + esc((r.preferredTime ? r.preferredTime + ' · ' : '') + (r.notes || ''))
-        + (r.createdAt ? ' · asked ' + esc(new Date(r.createdAt).toLocaleString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })) : '') + '</div></div>'
+        + (r.createdAt ? ' · asked ' + esc(HmsDate.date(new Date(r.createdAt), { timeZone: 'Asia/Manila', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })) : '') + '</div></div>'
         + '<span class="badge s-' + (REQ_TONE[r.status] || 'closed') + '">' + esc(r.status) + '</span></div>';
     }).join('') : '<p class="muted" style="font-size:0.9rem">No requests yet.</p>';
     var form = types.length

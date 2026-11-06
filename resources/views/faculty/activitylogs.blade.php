@@ -92,10 +92,10 @@
                                 @endif
                             </td>
                             <td class="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">
-                                {{ optional($task->due_date)->format('M d, Y g:i A') ?? '-' }}
+                                {{ optional($task->due_date)->hmsFormat('M j, Y g:i A') ?? '-' }}
                             </td>
                             <td class="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">
-                                {{ optional($task->updated_at)->format('M d, Y') }}
+                                {{ optional($task->updated_at)->hmsFormat('M j, Y') }}
                             </td>
                         </tr>
                     @empty

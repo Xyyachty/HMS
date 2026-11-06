@@ -113,7 +113,7 @@ class AssignedTaskList
                     'title' => $title,
                     'role' => (string) $task->role,
                     'role_label' => $task->role_label,
-                    'due' => $task->due_date?->format('M j'),
+                    'due' => $task->due_date?->hmsFormat('M j'),
                     'status' => $status,
                     'status_label' => $statusLabel,
                     'page' => $area['page'] ?? null,

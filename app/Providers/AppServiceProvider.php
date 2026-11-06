@@ -36,6 +36,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Dates read "Nov. 16, 2026": PHP's M gives "Nov", so the period is added here,
+        // never to May. Use ->hmsFormat('M j, Y') wherever a date is shown.
+        foreach ([\Carbon\Carbon::class, \Carbon\CarbonImmutable::class] as $carbon) {
+            $carbon::macro('hmsFormat', function (string $pattern): string {
+                return preg_replace('/\b(Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b(?!\.)/', '$1.', $this->format($pattern));
+            });
+        }
+
         // Laravel has no Brevo transport of its own, so the 'brevo' mailer in
         // config/mail.php only resolves once this is registered.
         Mail::extend('brevo', function (array $config) {

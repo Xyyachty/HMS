@@ -18,7 +18,7 @@
     'pfRecords'     => [
         ['Role', 'Dean'],
         ['Phone', $phoneValue ? '+63 ' . $phoneValue : null],
-        ['Joined', optional($user->created_at)->format('M j, Y')],
+        ['Joined', optional($user->created_at)->hmsFormat('M j, Y')],
     ],
 ])
 @endsection

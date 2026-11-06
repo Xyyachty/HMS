@@ -47,7 +47,7 @@
                     <div class="flex items-center justify-between mt-2">
                         @if($task->due_date)
                         <span class="text-[0.625rem] text-zinc-600 ml-auto">
-                            <i class="far fa-clock mr-1"></i>{{ \Carbon\Carbon::parse($task->due_date)->format('M d, g:i A') }}
+                            <i class="far fa-clock mr-1"></i>{{ \Carbon\Carbon::parse($task->due_date)->hmsFormat('M j, g:i A') }}
                         </span>
                         @endif
                     </div>

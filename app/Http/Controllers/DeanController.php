@@ -267,7 +267,7 @@ class DeanController extends Controller
                 'block' => $block ? strtoupper((string) $block) : null,
                 'block_label' => $blockLabel ?? Faculty::blockLabel($block),
                 'status' => $user->status ?? ($user->faculty->status ?? 'active'),
-                'joined' => optional($user->created_at)->format('M d, Y'),
+                'joined' => optional($user->created_at)->hmsFormat('M j, Y'),
             ];
         });
 
@@ -421,8 +421,8 @@ class DeanController extends Controller
             'role_label' => $roleLabels[$task->role] ?? $task->role,
             'student' => $studentName,
             // Same formats as the faculty Team Task Activity table.
-            'due_date' => optional($task->due_date)->format('M d, Y g:i A'),
-            'submitted_at' => $task->status === 'archived' ? optional($task->updated_at)->format('M d, Y') : null,
+            'due_date' => optional($task->due_date)->hmsFormat('M j, Y g:i A'),
+            'submitted_at' => $task->status === 'archived' ? optional($task->updated_at)->hmsFormat('M j, Y') : null,
             'status' => $status,
             'status_label' => $statusLabel,
         ];
@@ -459,7 +459,7 @@ class DeanController extends Controller
 
             return $full !== '' ? $full : $user->name;
         };
-        $when = fn ($at) => $at ? \Illuminate\Support\Carbon::parse($at)->timezone('Asia/Manila')->format('M j, Y \a\t g:i A') : null;
+        $when = fn ($at) => $at ? \Illuminate\Support\Carbon::parse($at)->timezone('Asia/Manila')->hmsFormat('M j, Y \a\t g:i A') : null;
 
         return $tasks
             ->map(function (Task $task) use ($handedInAt, $name, $when) {

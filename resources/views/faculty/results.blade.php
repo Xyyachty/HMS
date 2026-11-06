@@ -68,7 +68,7 @@
                         <span class="px-2.5 py-1 rounded-full text-[0.625rem] font-bold bg-brand-soft text-brand border border-brand/10">
                             {{ $roleLabels[$task->role] ?? ($task->role ?: 'General') }}
                         </span>
-                        <span class="text-[0.625rem] text-slate-400">Completed: {{ optional($task->updated_at)->format('M d, Y') }}</span>
+                        <span class="text-[0.625rem] text-slate-400">Completed: {{ optional($task->updated_at)->hmsFormat('M j, Y') }}</span>
                     </div>
                     <h5 class="font-semibold text-slate-700 text-sm">{{ $task->title }}</h5>
                     @if($task->description)

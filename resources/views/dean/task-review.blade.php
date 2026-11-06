@@ -68,7 +68,7 @@
                 <div>
                     <p class="dtr-label">Submitted</p>
                     {{-- Stored in UTC; read in the campus's own time. --}}
-                    <p class="dtr-value">{{ $review['submitted_at'] ? \Illuminate\Support\Carbon::parse($review['submitted_at'], 'UTC')->timezone('Asia/Manila')->format('M d, Y g:i A') : 'Not submitted' }}</p>
+                    <p class="dtr-value">{{ $review['submitted_at'] ? \Illuminate\Support\Carbon::parse($review['submitted_at'], 'UTC')->timezone('Asia/Manila')->hmsFormat('M j, Y g:i A') : 'Not submitted' }}</p>
                 </div>
                 <div>
                     <p class="dtr-label">Revisions</p>

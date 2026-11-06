@@ -687,7 +687,7 @@
                                     $actionTint  = $isPending ? 'bg-blue-50 text-blue-600' : ($isDone ? 'bg-emerald-50 text-emerald-500' : ($needsRevision ? 'bg-red-50 text-red-500' : 'bg-amber-50 text-amber-500'));
                                     $stamp       = $task->updated_at;
                                     $stampDay    = $stamp
-                                        ? ($stamp->isToday() ? 'Today' : ($stamp->isYesterday() ? 'Yesterday' : $stamp->format('M j, Y')))
+                                        ? ($stamp->isToday() ? 'Today' : ($stamp->isYesterday() ? 'Yesterday' : $stamp->hmsFormat('M j, Y')))
                                         : '';
                                 @endphp
                                 <div class="flex items-start gap-3">
@@ -828,7 +828,7 @@
                             <div class="flex items-center gap-3 shrink-0">
                                 <span class="iconify text-slate-300 text-[1.625rem]" data-icon="mdi:calendar-outline"></span>
                                 <div>
-                                    <p id="teamDeadlineDate" class="text-xl font-extrabold text-slate-900 leading-none whitespace-nowrap">{{ $teamDeadline ? $teamDeadline->format('M j, Y') : 'None set' }}</p>
+                                    <p id="teamDeadlineDate" class="text-xl font-extrabold text-slate-900 leading-none whitespace-nowrap">{{ $teamDeadline ? $teamDeadline->hmsFormat('M j, Y') : 'None set' }}</p>
                                     <p id="teamDeadlineLabel" class="text-[0.75rem] text-slate-400 font-semibold mt-1 whitespace-nowrap">Deadline{{ $teamDeadline ? ' · ' . $teamDeadline->format('g:i A') : '' }}</p>
                                 </div>
                             </div>
@@ -946,7 +946,7 @@
                                             <!-- Last active -->
                                             <td class="px-4 py-3.5">
                                                 @if($lastSeen)
-                                                    <p class="text-[0.75rem] font-semibold text-slate-600 whitespace-nowrap">{{ $lastSeen->format('M j, Y') }}</p>
+                                                    <p class="text-[0.75rem] font-semibold text-slate-600 whitespace-nowrap">{{ $lastSeen->hmsFormat('M j, Y') }}</p>
                                                     <p class="text-[0.6875rem] text-slate-400 whitespace-nowrap">{{ $lastSeen->format('g:i A') }}</p>
                                                 @else
                                                     <span class="text-[0.75rem] text-slate-300">—</span>
@@ -1176,17 +1176,17 @@
                     ];
 
                     // Day headings: Today, Yesterday, then the date.
-                    $actToday = now('Asia/Manila')->format('M d, Y');
-                    $actYesterday = now('Asia/Manila')->subDay()->format('M d, Y');
+                    $actToday = now('Asia/Manila')->hmsFormat('M j, Y');
+                    $actYesterday = now('Asia/Manila')->subDay()->hmsFormat('M j, Y');
                     $actRows = $actLogs->map(function ($log) use ($actGroupOf, $actIcons, $actToday, $actYesterday) {
                         $activity = (string) ($log['activity'] ?? '');
                         $stamp = (string) ($log['created_at'] ?? '');
-                        try { $at = \Carbon\Carbon::createFromFormat('M d, Y g:i A', $stamp, 'Asia/Manila'); } catch (\Throwable $e) { $at = null; }
-                        $day = $at ? $at->format('M d, Y') : '';
+                        try { $at = \Carbon\Carbon::createFromFormat('M j, Y g:i A', str_replace('.', '', $stamp), 'Asia/Manila'); } catch (\Throwable $e) { $at = null; }
+                        $day = $at ? $at->hmsFormat('M j, Y') : '';
                         return $log + [
                             'group' => $actGroupOf($activity),
                             'icon'  => $actIcons[$activity] ?? (str_starts_with($activity, 'task_') ? 'mdi:clipboard-text-outline' : 'mdi:history'),
-                            'day'   => $day === $actToday ? 'Today' : ($day === $actYesterday ? 'Yesterday' : ($at ? $at->format('l, M j, Y') : 'Earlier')),
+                            'day'   => $day === $actToday ? 'Today' : ($day === $actYesterday ? 'Yesterday' : ($at ? $at->hmsFormat('l, M j, Y') : 'Earlier')),
                             'time'  => $at ? $at->format('g:i A') : '',
                             'recent' => $at ? $at->gte(now()->subDays(6)->startOfDay()) : false,
                         ];
@@ -1474,7 +1474,7 @@
                                 {{-- One line per task: its title, then the day and time it was finished. --}}
                                 <div class="px-5 py-3 flex items-center justify-between gap-4">
                                     <p class="text-sm font-bold text-slate-800 truncate min-w-0">{{ $task->title }}</p>
-                                    <p class="text-xs font-semibold text-slate-500 whitespace-nowrap shrink-0">{{ $task->updated_at?->timezone('Asia/Manila')->format('F j, Y · g:i A') }}</p>
+                                    <p class="text-xs font-semibold text-slate-500 whitespace-nowrap shrink-0">{{ $task->updated_at?->timezone('Asia/Manila')->hmsFormat('M j, Y · g:i A') }}</p>
                                 </div>
                             @empty
                                 <div class="px-5 py-10 text-center text-sm text-slate-400 font-semibold">No completed assignments.</div>
@@ -1526,7 +1526,7 @@
                                 {{-- One line per task: its title, then the day and time it was finished. --}}
                                 <div class="px-5 py-3 flex items-center justify-between gap-4">
                                     <p class="text-sm font-bold text-slate-800 truncate min-w-0">{{ $task->title }}</p>
-                                    <p class="text-xs font-semibold text-slate-500 whitespace-nowrap shrink-0">{{ $task->updated_at?->timezone('Asia/Manila')->format('F j, Y · g:i A') }}</p>
+                                    <p class="text-xs font-semibold text-slate-500 whitespace-nowrap shrink-0">{{ $task->updated_at?->timezone('Asia/Manila')->hmsFormat('M j, Y · g:i A') }}</p>
                                 </div>
                             @empty
                                 <div class="px-5 py-10 text-center text-sm text-slate-400 font-semibold">No team completed assignments.</div>

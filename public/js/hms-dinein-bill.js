@@ -21,8 +21,8 @@
     return (Number(n) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
   function pad2(n) { return String(n).padStart(2, '0'); }
-  function shortDay(d) { return isNaN(d) ? '' : pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '/' + d.getFullYear(); }
-  function longDay(d) { return pad2(d.getDate()) + ' ' + d.toLocaleString('en-US', { month: 'short' }) + ' ' + d.getFullYear(); }
+  function shortDay(d) { return isNaN(d) ? '' : longDay(d); }
+  function longDay(d) { return d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).replace(/^(Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/, '$1.'); }
   // Only a colour value reaches the stylesheet.
   function safeColor(v) { return /^(#[0-9a-f]{3,8}|rgba?\([\d\s.,%]+\))$/i.test(String(v || '').trim()) ? String(v).trim() : '#1f2a44'; }
   function safeSrc(v) { v = String(v || ''); return /^(https?:)?\/\/|^\/|^data:image\//i.test(v) ? v : ''; }

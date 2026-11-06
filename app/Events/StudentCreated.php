@@ -54,7 +54,7 @@ class StudentCreated implements ShouldBroadcast
             'status' => $this->user->status ?? 'pending',
             'block' => $block ? strtoupper((string) $block) : null,
             'block_label' => $this->student->facultyClass?->name ?? '—',
-            'joined' => optional($this->user->created_at)->format('M d, Y'),
+            'joined' => optional($this->user->created_at)->hmsFormat('M j, Y'),
         ];
     }
 }

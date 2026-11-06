@@ -747,7 +747,7 @@
             <div id="teamCardsGrid" class="tm-card-grid">
                 @forelse($groups ?? [] as $groupName => $groupMembers)
                     @php
-                        $createdAt  = optional($groupMembers->first()->created_at)->format('M d, Y');
+                        $createdAt  = optional($groupMembers->first()->created_at)->hmsFormat('M j, Y');
                         $memberData = [];
                         foreach ($groupMembers as $m) {
                             $u = $m->student?->user;
@@ -2280,7 +2280,7 @@
                     <div class="max-w-md">
                         <div class="relative">
                             <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 iconify text-slate-400" data-icon="mdi:calendar-clock"></span>
-                            <input name="due_date" type="datetime-local" value="{{ old('due_date') }}"
+                            <input name="due_date" type="datetime-local" data-pretty-date value="{{ old('due_date') }}"
                                 class="w-full h-12 pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition">
                         </div>
                         <p class="text-[0.6875rem] text-slate-400 mt-1.5">Students see this deadline in their own task list.</p>
@@ -4545,7 +4545,7 @@ function updateSummary(checked) {
     // pinning midnight the way the date-only input needed.
     const dueDate = document.querySelector('input[name="due_date"]').value;
     document.getElementById('reviewDueDate').textContent = dueDate
-        ? new Date(dueDate).toLocaleString('en-US', {
+        ? HmsDate.date(new Date(dueDate), {
               month: 'short', day: 'numeric', year: 'numeric',
               hour: 'numeric', minute: '2-digit',
           })
@@ -4564,6 +4564,7 @@ function resetTaskWizard() {
         setTaskCardSelected(master.id.replace('taskGroupCheck-', ''), false);
     });
     document.querySelector('input[name="due_date"]').value = '';
+    document.querySelector('input[name="due_date"]').dispatchEvent(new Event('change')); // repaints the "Nov. 16, 2026" label
 
     updateRoleMemberCounts();
     updateSubmitState();

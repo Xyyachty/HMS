@@ -47,7 +47,7 @@
                     <span class="al-meta">
                         {{ $facultyTasks->count() }} {{ Str::plural('task', $facultyTasks->count()) }} finished
                         @if($teamCount) · {{ $teamCount }} {{ Str::plural('team', $teamCount) }} @endif
-                        @if($lastDone) · last on {{ $lastDone->format('M j, Y') }} @endif
+                        @if($lastDone) · last on {{ $lastDone->hmsFormat('M j, Y') }} @endif
                     </span>
                 </span>
                 <span class="al-chevron iconify" data-icon="mdi:chevron-down"></span>
@@ -64,7 +64,7 @@
                                 <span class="al-tag">{{ $roleLabels[$task->role] ?? Str::headline((string) $task->role) }}</span>
                             </span>
                         </span>
-                        <span class="al-date">{{ optional($task->updated_at)->format('M j, Y') }}</span>
+                        <span class="al-date">{{ optional($task->updated_at)->hmsFormat('M j, Y') }}</span>
                     </li>
                 @endforeach
             </ul>

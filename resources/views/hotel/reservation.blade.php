@@ -30,6 +30,7 @@
 
 @unless ($error)
 {{-- The Dine-in Final Bill sheet, the same one the restaurant prints. --}}
+<script src="{{ asset('js/hms-date-input.js') }}?v={{ filemtime(public_path('js/hms-date-input.js')) }}"></script>
 <script src="{{ asset('js/hms-dinein-bill.js') }}?v={{ filemtime(public_path('js/hms-dinein-bill.js')) }}"></script>
 <script>
 (function () {
@@ -81,7 +82,7 @@
       +     '<dl class="facts">'
       +       '<div><dt>Reference</dt><dd>' + esc(r.reference) + '</dd></div>'
       +       '<div><dt>Guest name</dt><dd>' + esc(r.guestName) + '</dd></div>'
-      +       '<div><dt>Date</dt><dd>' + esc(when(r.reservedFor, { month: 'long', day: 'numeric', year: 'numeric' })) + '</dd></div>'
+      +       '<div><dt>Date</dt><dd>' + esc(HmsDate.date(r.reservedFor, { timeZone: 'Asia/Manila' }) || '—') + '</dd></div>'
       +       '<div><dt>Time</dt><dd>' + esc(when(r.reservedFor, { hour: 'numeric', minute: '2-digit' })) + '</dd></div>'
       +       '<div><dt>Guests</dt><dd>' + esc(r.partySize) + (r.partySize === 1 ? ' person' : ' persons') + '</dd></div>'
       +       '<div><dt>Status</dt><dd>' + badge(r.status) + '</dd></div>'

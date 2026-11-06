@@ -41,7 +41,7 @@
                     <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Current term</p>
                     <p class="text-base font-bold text-slate-800 mt-0.5">{{ $currentTerm->name }}</p>
                     <p class="text-sm text-slate-500">
-                        {{ $currentTerm->ends_on ? 'Ends ' . $currentTerm->ends_on->format('M j, Y') : 'No end date set' }}
+                        {{ $currentTerm->ends_on ? 'Ends ' . $currentTerm->ends_on->hmsFormat('M j, Y') : 'No end date set' }}
                     </p>
                 </div>
                 <div class="flex flex-wrap gap-2">
@@ -60,7 +60,7 @@
             </div>
             @if ($currentTerm->isDueToEnd())
                 <p class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
-                    {{ $currentTerm->ends_on->isPast() ? 'This term ended on' : 'This term ends on' }} {{ $currentTerm->ends_on->format('M j, Y') }}.
+                    {{ $currentTerm->ends_on->isPast() ? 'This term ended on' : 'This term ends on' }} {{ $currentTerm->ends_on->hmsFormat('M j, Y') }}.
                     When grades are in, press End term to archive this batch before the next one starts.
                 </p>
             @endif
@@ -165,7 +165,7 @@
                         @endif
                         @forelse ($facultyGroups as $groupName => $groupMembers)
                             @php
-                                $createdAt = optional($groupMembers->first()->created_at)->format('M d, Y');
+                                $createdAt = optional($groupMembers->first()->created_at)->hmsFormat('M j, Y');
                                 $memberCount = $groupMembers->count();
                                 $membersJson = $groupMembers->map(function ($m) use ($roleLabels) {
                                     $u = $m->student?->user;

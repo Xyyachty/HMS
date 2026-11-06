@@ -229,7 +229,7 @@ function send(url, method, body) {
 function when(iso) {
   if (!iso) return '';
   const d = new Date(iso);
-  return isNaN(d) ? '' : d.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  return isNaN(d) ? '' : HmsDate.date(d, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
 // The status and the one button that moves a request on, in Housekeeping's words.

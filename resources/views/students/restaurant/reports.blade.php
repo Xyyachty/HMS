@@ -38,7 +38,7 @@ function formatWhen(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: TZ });
+  return HmsDate.date(d, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: TZ });
 }
 
 /* Every time on this page is Philippine time, whatever clock the viewer's device
@@ -59,7 +59,7 @@ function whenStamp(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
   return {
-    date: d.toLocaleDateString(undefined, { timeZone: TZ, month: 'short', day: 'numeric', year: 'numeric' }),
+    date: HmsDate.date(d, { timeZone: TZ, month: 'short', day: 'numeric', year: 'numeric' }),
     time: d.toLocaleTimeString([], { timeZone: TZ, hour: 'numeric', minute: '2-digit' }),
   };
 }
@@ -81,7 +81,7 @@ function formatDate(value) {
   if (!raw) return '—';
   const [y, m, d] = raw.split('-').map(Number);
   if (!y || !m || !d) return raw;
-  return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  return HmsDate.date(new Date(y, m - 1, d), { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function formatRange(from, to) {

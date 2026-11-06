@@ -440,7 +440,7 @@
                         <td>
                             <span class="st-muted inline-flex items-center gap-1.5 whitespace-nowrap">
                                 <span class="iconify text-sm text-amber-500" data-icon="mdi:calendar-blank-outline"></span>
-                                {{ optional($user->created_at)->format('M d, Y') }}
+                                {{ optional($user->created_at)->hmsFormat('M j, Y') }}
                             </span>
                         </td>
 
