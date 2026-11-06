@@ -174,7 +174,7 @@
                 <a href="{{ route('students.roommanagement.manage', ['nav' => 'guest-details']) }}"
                     onclick="return typeof confirmLeaveBuilder === 'function' ? confirmLeaveBuilder(event) : true"
                     class="w-full h-10 px-3 rounded-lg text-sm font-semibold text-zinc-200 bg-zinc-800 border hover:border-emerald-500/50 hover:text-white transition flex items-center gap-2.5 {{ request()->routeIs('students.roommanagement.manage') && request()->query('nav') === 'guest-details' ? 'border-emerald-500/50 text-white' : 'border-zinc-700' }}">
-                    <i class="fas fa-user text-[0.8125rem] text-emerald-400"></i> Guest Details
+                    <i class="fas fa-user text-[0.8125rem] text-emerald-400"></i> Guest Folio
                     {{-- Guests registered but not checked in yet. --}}
                     @include('students.frontdesk.left-sidebar.badge', ['key' => 'guest-details'])
                 </a>

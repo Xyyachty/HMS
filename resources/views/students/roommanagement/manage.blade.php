@@ -2253,7 +2253,7 @@ function GuestDetailsPanel({ rooms, onBookingAction, onToast }) {
       <header className="mr-head">
         <div>
           <p className="mr-eyebrow">Room Management</p>
-          <h1 className="font-display">Guest Details</h1>
+          <h1 className="font-display">Guest Folio</h1>
           <p className="mr-lead">
             Guests staying in a room now, and guests who booked but are not checked in yet.
             Check a guest in when they arrive, and press See details for their contact

@@ -3536,7 +3536,7 @@ function CartReviewModal({ open, onClose, cart, onUpdateQty, onRemove, rooms, on
                 </form>
               ) : checkedInRooms.length === 0 ? (
                 <p style={{ color: 'var(--fg-muted)', fontSize: '0.85rem', lineHeight: 1.6 }}>
-                  No guests are checked in right now. Room Management can check a guest in from Guest Details before a room-service order can be placed.
+                  No guests are checked in right now. Room Management can check a guest in from Guest Folio before a room-service order can be placed.
                 </p>
               ) : (
                 <form onSubmit={submit}>
