@@ -666,8 +666,75 @@ function RoomWalkIn() {
   const fitting = free.filter(r => !sleepsIn(r) || sleepsIn(r) + bedsInStock >= party);
   const splitting = fitting.length === 0 && free.length > 0;
   const matched = splitting ? free : fitting;
-  const categories = ['All', ...Array.from(new Set(matched.map(r => r.category).filter(Boolean)))];
+  // Every type the hotel has, booked out or not, so the guest's preferred one can be
+  // picked and, when it has nothing for them, the desk sees what else there is.
+  const categories = ['All', ...Array.from(new Set(rooms.map(r => r.category).filter(Boolean)))];
   const shown = category === 'All' ? matched : matched.filter(r => r.category === category);
+  const perNight = (r) => r.price * BLOCKS_PER_NIGHT;
+
+  /* Alternative room options.
+     1. The preferred type has no free room for this party: rooms of the other types
+        that do, the closest in price to the preferred type first, with the difference.
+     2. Smaller rooms that together sleep the party (no extra beds): the cheapest
+        pairs, or triples when no pair does, with an adult for every room. */
+  const preferredOut = category !== 'All' && shown.length === 0;
+  const preferredRates = rooms.filter(r => r.category === category).map(perNight);
+  const preferredRate = preferredRates.length ? Math.min(...preferredRates) : 0;
+  const otherTypes = preferredOut
+    ? matched.filter(r => r.category !== category)
+      .sort((a, b) => Math.abs(perNight(a) - preferredRate) - Math.abs(perNight(b) - preferredRate) || perNight(a) - perNight(b))
+      .slice(0, 6)
+    : [];
+  const combos = useMemo(() => {
+    if (splitting || party < 2) return [];
+    const small = free.filter(r => sleepsIn(r) && sleepsIn(r) < party);
+    // ponytail: brute force over pairs and triples; a hotel has tens of free rooms, not thousands.
+    const find = (pool) => {
+      const out = [];
+      for (let size = 2; size <= 3 && !out.length && size <= adults; size++) {
+        const walk = (start, list) => {
+          if (list.length === size) {
+            const sleeps = list.reduce((n, r) => n + sleepsIn(r), 0);
+            if (sleeps >= party) out.push({ rooms: list, sleeps, price: list.reduce((n, r) => n + perNight(r), 0) });
+            return;
+          }
+          for (let i = start; i < pool.length; i++) walk(i + 1, list.concat([pool[i]]));
+        };
+        walk(0, []);
+      }
+      return out.sort((a, b) => a.price - b.price || a.sleeps - b.sleeps).slice(0, 2);
+    };
+    const own = category === 'All' ? [] : find(small.filter(r => r.category === category));
+    return own.length ? own : find(small);
+  }, [free, sleeps, party, adults, category, splitting]);
+  const pickCombo = (combo) => setPicks(spread(combo.rooms.map(r => ({ id: r.dbId, adults: 0, kids: 0, beds: 0 })), adults, kids));
+  const comboOn = (combo) => picks.length === combo.rooms.length && combo.rooms.every(r => picks.some(p => p.id === r.dbId));
+  // One room to pick. diff: its nightly price against the preferred type's, for an alternative.
+  const roomCard = (r, diff) => {
+    const on = picks.some(p => p.id === r.dbId);
+    const bedsNeeded = !splitting && sleepsIn(r) ? Math.max(0, party - sleepsIn(r)) : 0;
+    return (
+      <button key={r.dbId} type="button" className={'wi-card' + (on ? ' is-on' : '')}
+        onClick={() => toggleRoom(r)} aria-pressed={on}>
+        <div className="wi-card-photo">
+          {r.img ? <img src={r.img} alt="" loading="lazy" /> : <i className="fa-solid fa-bed"></i>}
+        </div>
+        <div className="wi-card-body">
+          <span className="wi-card-name">{r.name}</span>
+          <span className="wi-card-sub">{r.category || 'Room'} · {sleepsIn(r) ? 'Max occupancy ' + sleepsIn(r) : 'No guest limit'}</span>
+          <span className="wi-card-price">{peso(perNight(r))} <small>per night</small></span>
+          {diff !== null && (
+            <span className={'wi-tag ' + (diff > 0 ? 'is-charge' : 'is-free')} title={'Per night, against the cheapest ' + category + ' room'}
+              style={{ justifySelf: 'start', whiteSpace: 'normal' }}>
+              {diff > 0 ? 'Upgrade +' + peso(diff) : diff < 0 ? peso(-diff) + ' cheaper' : 'Same price'}
+            </span>
+          )}
+          {bedsNeeded > 0 && <span className="wi-tag is-charge">Needs {plural(bedsNeeded, 'extra bed')}</span>}
+        </div>
+        {on && <span className="wi-card-tick"><i className="fa-solid fa-check"></i></span>}
+      </button>
+    );
+  };
 
   const stays = picks.map(p => Object.assign({}, p, { room: free.find(r => r.dbId === p.id) })).filter(p => p.room);
   const bedsTaken = stays.reduce((sum, p) => sum + p.beds, 0);
@@ -1082,33 +1149,53 @@ function RoomWalkIn() {
           )}>
           {loadError && <p className="wi-alert" style={{ marginBottom: '0.8rem' }}>{loadError}</p>}
           {tried && !hasRooms && loaded && shown.length > 0 && <p className="wi-alert" style={{ marginBottom: '0.8rem' }}>Pick a room for the guest.</p>}
-          {!loaded ? <CardSkeletons /> : shown.length === 0 ? (
+          {!loaded ? <CardSkeletons /> : free.length === 0 ? (
             <div className="wi-empty">
               <i className="fa-solid fa-bed"></i>
               No clean room is free for {nights === 1 ? 'tonight' : 'those ' + nights + ' nights'}.<br />
               {nights > 1 ? 'Try fewer nights.' : 'Rooms show here once Housekeeping cleans them.'}
             </div>
+          ) : preferredOut ? (
+            <>
+              <p className="wi-alert" style={{ marginBottom: '0.8rem' }}>
+                {rooms.some(r => r.category === category && r.status === 'Available' && freeFor(r, checkIn, checkOut))
+                  ? 'No ' + category + ' room sleeps ' + plural(party, 'guest') + '.'
+                  : 'No ' + category + ' room is free for this stay.'}
+                {otherTypes.length ? ' Offer one of these instead:' : combos.length ? ' Offer two rooms instead:' : ''}
+              </p>
+              {otherTypes.length > 0 && (
+                <div className="wi-cards">
+                  {otherTypes.map(r => roomCard(r, preferredRate ? perNight(r) - preferredRate : null))}
+                </div>
+              )}
+            </>
           ) : (
             <div className="wi-cards">
-              {shown.map(r => {
-                const on = picks.some(p => p.id === r.dbId);
-                const bedsNeeded = !splitting && sleepsIn(r) ? Math.max(0, party - sleepsIn(r)) : 0;
-                return (
-                  <button key={r.dbId} type="button" className={'wi-card' + (on ? ' is-on' : '')}
-                    onClick={() => toggleRoom(r)} aria-pressed={on}>
-                    <div className="wi-card-photo">
-                      {r.img ? <img src={r.img} alt="" loading="lazy" /> : <i className="fa-solid fa-bed"></i>}
-                    </div>
-                    <div className="wi-card-body">
-                      <span className="wi-card-name">{r.name}</span>
-                      <span className="wi-card-sub">{r.category || 'Room'} · {sleepsIn(r) ? 'Max occupancy ' + sleepsIn(r) : 'No guest limit'}</span>
-                      <span className="wi-card-price">{peso(r.price * BLOCKS_PER_NIGHT)} <small>per night</small></span>
-                      {bedsNeeded > 0 && <span className="wi-tag is-charge">Needs {plural(bedsNeeded, 'extra bed')}</span>}
-                    </div>
-                    {on && <span className="wi-card-tick"><i className="fa-solid fa-check"></i></span>}
-                  </button>
-                );
-              })}
+              {shown.map(r => roomCard(r, null))}
+            </div>
+          )}
+          {loaded && combos.length > 0 && (
+            <div style={{ marginTop: '1rem' }}>
+              <p className="wi-note" style={{ marginBottom: '0.5rem' }}>
+                <b style={{ color: 'var(--fg)' }}>Or split into smaller rooms</b> · they sleep {plural(party, 'guest')} without extra beds
+              </p>
+              <div className="wi-cards">
+                {combos.map(c => {
+                  const on = comboOn(c);
+                  return (
+                    <button key={c.rooms.map(r => r.dbId).join('-')} type="button" className={'wi-card' + (on ? ' is-on' : '')}
+                      onClick={() => pickCombo(c)} aria-pressed={on}>
+                      <div className="wi-card-photo"><i className="fa-solid fa-layer-group"></i></div>
+                      <div className="wi-card-body">
+                        <span className="wi-card-name">{c.rooms.length} rooms</span>
+                        <span className="wi-card-sub" style={{ whiteSpace: 'normal' }}>{c.rooms.map(r => r.name).join(' + ')} · sleeps {c.sleeps}</span>
+                        <span className="wi-card-price">{peso(c.price)} <small>per night</small></span>
+                      </div>
+                      {on && <span className="wi-card-tick"><i className="fa-solid fa-check"></i></span>}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
           {priced.length > 0 && (
