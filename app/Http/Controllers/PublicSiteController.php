@@ -843,7 +843,8 @@ class PublicSiteController extends Controller
             'payment'             => 'nullable|array',
             'payment.type'        => 'nullable|string|max:20',
             'payment.amount_paid' => 'nullable|numeric|min:0',
-            'payment.method'      => 'nullable|string|max:50',
+            // Online, so never Cash: cash is only taken at the desk.
+            'payment.method'      => ['nullable', 'string', 'max:50', Rule::notIn(['Cash'])],
             'payment.reference'   => 'nullable|string|max:255',
             'payment.payer_name'  => 'nullable|string|max:255',
             // Housekeeping's extras the guest picked, held for the stay the same way Front

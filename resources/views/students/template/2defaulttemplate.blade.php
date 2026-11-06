@@ -2297,7 +2297,7 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, childPolicy, cap
   const [paymentForm, setPaymentForm] = useState({
     type: 'full',
     amount: '',
-    method: 'Cash',
+    method: 'GCash', // online booking: no cash
     reference: '',
     payerName: '',
     notes: '',
@@ -2309,7 +2309,7 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, childPolicy, cap
   useEffect(() => {
     setStep('details');
     setGuestForm({ fullName: '', contactNo: '', email: '', idNumber: '', adults: '1', childAges: [], checkIn: '', checkInTime: '14:00', checkOut: '', promoId: chosenPromoId || '' });
-    setPaymentForm({ type: 'full', amount: '', method: 'Cash', reference: '', payerName: '', notes: '' });
+    setPaymentForm({ type: 'full', amount: '', method: 'GCash', reference: '', payerName: '', notes: '' });
     setAddonLines([]);
     setShowAddons(false);
   }, [room.id]);
@@ -2866,14 +2866,7 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, childPolicy, cap
 
                   <div>
                     <label style={fieldLabel}>Payment Method</label>
-                    <select className="booking-input" value={paymentForm.method} onChange={e => {
-                      const method = e.target.value;
-                      updatePayment('method', method);
-                      // Drop a reference typed under GCash before switching to Cash;
-                      // the field is hidden then, so it must not submit unseen.
-                      if (method === 'Cash') updatePayment('reference', '');
-                    }} required>
-                      <option value="Cash">Cash</option>
+                    <select className="booking-input" value={paymentForm.method} onChange={e => updatePayment('method', e.target.value)} required>
                       <option value="Credit Card">Credit Card</option>
                       <option value="Debit Card">Debit Card</option>
                       <option value="Bank Transfer">Bank Transfer</option>
@@ -2888,13 +2881,11 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, childPolicy, cap
                       onChange={e => updatePayment('payerName', e.target.value)} required />
                   </div>
 
-                  {paymentForm.method !== 'Cash' && (
                     <div>
                       <label style={fieldLabel}>Reference / Transaction ID</label>
                       <input type="text" className="booking-input" placeholder="Receipt no., card last 4, or ref #" value={paymentForm.reference}
                         onChange={e => updatePayment('reference', e.target.value)} required />
                     </div>
-                  )}
 
                   <div>
                     <label style={fieldLabel}>Payment Notes</label>
