@@ -46,7 +46,7 @@ class HotelNavBadges
                 'complaints'    => self::complaints($membership, 'room_management', 'Pending'),
             ],
             'restaurant_management' => [
-                'orders'      => self::openOrders($membership),
+                'orders'      => self::openOrders($membership) + self::checkoutsToConfirm($membership),
                 'manage-menu' => self::soldOutMenuItems($membership),
                 'complaints'  => self::complaints($membership, 'restaurant_management', 'Pending'),
             ],
@@ -123,6 +123,24 @@ class HotelNavBadges
         return HotelFoodOrder::where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
             ->whereIn('status', ['Preparing', 'Ready', 'Delivering'])
+            ->count();
+    }
+
+    /**
+     * Check-outs waiting on Restaurant Services to confirm the food orders, the same
+     * ones listed under "Check-outs: confirm food orders" on Orders.
+     */
+    private static function checkoutsToConfirm(StudentGroup $membership): int
+    {
+        if (!HotelBooking::ordersConfirmSupported()) {
+            return 0;
+        }
+
+        return HotelBooking::where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->where('status', 'Pending Room Inspection')
+            ->get()
+            ->reject(fn (HotelBooking $booking) => $booking->ordersConfirmed())
             ->count();
     }
 

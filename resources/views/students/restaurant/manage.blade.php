@@ -2255,7 +2255,11 @@ function CheckoutConfirmSection({ onToast }) {
     <section className="mn-panel" aria-labelledby="ord-checkout" style={{ marginBottom: '1rem', border: waiting ? '1px solid var(--accent)' : undefined }}>
       <div className="mn-panel-head">
         <div>
-          <h2 id="ord-checkout">Check-outs: confirm food orders</h2>
+          <h2 id="ord-checkout" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            Check-outs: confirm food orders
+            {/* Same 8-second poll as the list, so it counts down as each one is confirmed. */}
+            <span className="ord-type-count has-work" aria-label={`${waiting} awaiting confirmation`}>{waiting}</span>
+          </h2>
           <p>{`${waiting} ${waiting === 1 ? 'guest is' : 'guests are'} checking out. Confirm every order is delivered and on the bill. Confirmed ones move to Reports.`}</p>
         </div>
       </div>
