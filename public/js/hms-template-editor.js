@@ -3140,6 +3140,11 @@
       pointer-events: auto; cursor: grab; box-shadow: 0 4px 12px rgba(8,145,178,.35);
     }
     #hms-editor-ui .hms-move-handle:active { cursor: grabbing; }
+    /* What is being moved or resized follows the pointer at once. A button's
+       own "transition: transform" eased every step behind the cursor, and the
+       drag start read the button mid-transition, so a moved button lost its
+       offset and jumped back to its first place. */
+    .hms-edit-selected, body.hms-design-mode [data-hms-free-position] { transition: none !important; }
     /* A finger drag on a handle moves the element, never the page. */
     #hms-editor-ui .hms-handle, #hms-editor-ui .hms-move-handle { touch-action: none; }
     @media (pointer: coarse) {
