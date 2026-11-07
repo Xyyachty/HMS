@@ -1358,6 +1358,20 @@ function PhotoStrip({ imgs, onOpen }) {
   );
 }
 
+/* Picks the rooms the home page's Available Rooms section shows, like the
+   Restaurant's "Show in Best Seller". */
+function OnHomeCheck({ checked, onChange }) {
+  return (
+    <div className="mr-field">
+      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 600 }}>
+        <input type="checkbox" checked={!!checked} onChange={e => onChange(e.target.checked)} style={{ width: 16, height: 16 }} />
+        <span><i className="fa-solid fa-house" style={{ marginRight: 5 }}></i>Show on the home page</span>
+      </label>
+      <p className="mr-help">Ticked rooms are the ones Available Rooms on the home page shows, up to eight. Until you tick any, the first eight show.</p>
+    </div>
+  );
+}
+
 /* Adding a room is the rare move; looking one up is the common one — so the form
    lives in a dialog and the page leads with the rooms. Same POST, same validation. */
 function AddRoomModal({ rooms, categories, sleeps, defaultCategory, onClose, onAdded }) {
@@ -1397,6 +1411,7 @@ function AddRoomModal({ rooms, categories, sleeps, defaultCategory, onClose, onA
         price: parseInt(String(form.price).replace(/,/g, ''), 10),
         capacity: roomCapacityPayload(form),
         description: String(form.desc || '').trim(),
+        show_on_home: !!form.onHome,
       }, roomSlotsPayload(form.imgs))),
     })
       .then(r => r.ok ? r.json() : r.json().then(e => Promise.reject(e)))
@@ -1477,6 +1492,8 @@ function AddRoomModal({ rooms, categories, sleeps, defaultCategory, onClose, onA
 
           <PhotoStrip imgs={form.imgs} onOpen={() => setImgModal(true)} />
 
+          <OnHomeCheck checked={form.onHome} onChange={v => update('onHome', v)} />
+
           <div className="mr-actions">
             <button type="button" className="mr-btn is-quiet" onClick={onClose}>Cancel</button>
             <button type="submit" className="mr-btn is-solid" disabled={saving}>
@@ -1506,6 +1523,7 @@ function EditRoomModal({ room, categories, sleeps, onClose, onSaved }) {
     capacity: room.capacity ? String(room.capacity) : '',
     desc: room.desc || '',
     imgs: toRoomSlots(room),
+    onHome: !!room.onHome,
   }));
   const [errors, setErrors] = useState({});
   const [imgModal, setImgModal] = useState(false);
@@ -1546,6 +1564,7 @@ function EditRoomModal({ room, categories, sleeps, onClose, onSaved }) {
         price: parseInt(String(form.price).replace(/,/g, ''), 10),
         capacity: roomCapacityPayload(form),
         description: String(form.desc || '').trim(),
+        show_on_home: !!form.onHome,
       }, roomSlotsPayload(form.imgs))),
     })
       .then(r => (r.ok ? r.json() : r.json().then(err => Promise.reject(err))))
@@ -1627,6 +1646,8 @@ function EditRoomModal({ room, categories, sleeps, onClose, onSaved }) {
           </div>
 
           <PhotoStrip imgs={form.imgs} onOpen={() => setImgModal(true)} />
+
+          <OnHomeCheck checked={form.onHome} onChange={v => update('onHome', v)} />
 
           <div className="mr-actions">
             <button type="button" className="mr-btn is-quiet" onClick={onClose}>Cancel</button>

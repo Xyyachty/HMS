@@ -3800,7 +3800,7 @@ function HomePage({ sitePromos, onNavigate, onToast, rooms, menus, canEditRooms,
           <button className="btn-outline" onClick={() => onNavigate('rooms')} style={{ fontSize: '0.72rem', padding: '0.55rem 1rem' }}>View all rooms</button>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1.25rem', alignItems: 'stretch' }}>
-          {roomList.slice(0, 8).map(room => (
+          {homeRoomList(roomList).map(room => (
             <div key={room.id} className="room-card" style={{ cursor: 'pointer', position: 'relative' }} onClick={() => onNavigate('rooms')}>
               {canEditRooms && (
                 <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 3, display: 'flex', gap: 6 }}
@@ -7234,6 +7234,13 @@ const PLATE_SHAPE_OPTIONS = [['circle', 'Circle'], ['rounded', 'Rounded'], ['squ
 /* The Best Seller section's dishes: the ones the Restaurant team ticked
    "Show in Best Seller" on, up to six, or the first six on the menu while none
    is ticked - which is all the section ever showed before it could be chosen. */
+/* The home page's Available Rooms: the rooms Room Management ticked "Show on
+   the home page" on, up to eight, or the first eight while none is ticked. */
+function homeRoomList(rooms) {
+  const list = rooms || [];
+  const picked = list.filter(room => room && room.onHome);
+  return (picked.length ? picked : list).slice(0, 8);
+}
 function bestSellerList(menus) {
   const list = menus || [];
   const picked = list.filter(item => item && item.bestSeller);

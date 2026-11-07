@@ -44,12 +44,29 @@ class HotelRoom extends Model
         'description',
         'image',
         'gallery',
+        'show_on_home',
     ];
 
     protected $casts = [
         'price' => 'integer',
         'gallery' => 'array',
+        'show_on_home' => 'boolean',
     ];
+
+    /**
+     * Whether this database has the show_on_home column yet. Until its migration
+     * has run, a room is simply not one the team picked. Answered once per request.
+     */
+    public static function supportsShowOnHome(): bool
+    {
+        static $has = null;
+
+        if ($has === null) {
+            $has = \Illuminate\Support\Facades\Schema::hasColumn('hotel_rooms', 'show_on_home');
+        }
+
+        return $has;
+    }
 
     /**
      * Whether this database has the `gallery` column yet.
@@ -171,6 +188,8 @@ class HotelRoom extends Model
             // Primary first. The card rotates through these; 'img' stays for the
             // places that only ever draw one.
             'imgs'         => $this->imageUrls(),
+            // Ticked in Room Management for the home page's Available Rooms.
+            'onHome'       => self::supportsShowOnHome() && (bool) $this->show_on_home,
             'reservation'  => $booking?->toReservationArray(),
             // Every open stay on the room, earliest first. Guest Information lists each
             // as its own booking; `reservation` above stays the one the desk is on today.
@@ -224,6 +243,7 @@ class HotelRoom extends Model
             // Primary first. The card rotates through these; 'img' stays for the
             // places that only ever draw one.
             'imgs'         => $this->imageUrls(),
+            'onHome'       => self::supportsShowOnHome() && (bool) $this->show_on_home,
             'bookedRanges' => $openBookings
                 ->filter(fn (HotelBooking $b) => $b->check_in && $b->check_out)
                 ->map(fn (HotelBooking $b) => [

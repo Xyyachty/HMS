@@ -1674,11 +1674,16 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             'image'       => 'sometimes|nullable|string|max:900000',
             'gallery'     => 'sometimes|nullable|array|max:' . HotelRoom::GALLERY_MAX,
             'gallery.*'   => 'nullable|string|max:900000',
+            'show_on_home' => 'sometimes|boolean',
         ], [
             'image.max' => 'That image is too large. Please choose a smaller one.',
             'gallery.max' => 'A room keeps at most ' . HotelRoom::GALLERY_MAX . ' photos.',
             'gallery.*.max' => 'One of those images is too large. Please choose a smaller one.',
         ]);
+
+        if (array_key_exists('show_on_home', $data) && HotelRoom::supportsShowOnHome()) {
+            $room->show_on_home = (bool) $data['show_on_home'];
+        }
 
         foreach (['name', 'category', 'price', 'capacity', 'description'] as $field) {
             if (array_key_exists($field, $data)) {
@@ -1765,6 +1770,7 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             'image'       => 'nullable|string|max:900000',
             'gallery'     => 'nullable|array|max:' . HotelRoom::GALLERY_MAX,
             'gallery.*'   => 'nullable|string|max:900000',
+            'show_on_home' => 'sometimes|boolean',
         ], [
             'image.max' => 'That image is too large. Please choose a smaller one.',
             'gallery.max' => 'A room keeps at most ' . HotelRoom::GALLERY_MAX . ' photos.',
@@ -1797,7 +1803,8 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             'capacity'    => isset($data['capacity']) ? (int) $data['capacity'] : null,
             'description' => $data['description'] ?? null,
             'image'       => $imagePath,
-        ] + (HotelRoom::supportsGallery() ? ['gallery' => $gallery] : []));
+        ] + (HotelRoom::supportsGallery() ? ['gallery' => $gallery] : [])
+          + (HotelRoom::supportsShowOnHome() ? ['show_on_home' => (bool) ($data['show_on_home'] ?? false)] : []));
         return response()->json([
             'room' => $room->toTemplateArray(),
             'image_warning' => match (true) {
