@@ -171,8 +171,10 @@ class HotelPromo extends Model
      * The builder's promo cards as promo fields: ['promo-1' => ['name' => ...,
      * 'description' => ..., 'offer_label' => ..., 'terms_label' => ...,
      * 'image' => ...]]. Text is read off the card's title, description, offer and
-     * terms elements, the picture off the card-image map. Price and dates stay
-     * Front Desk's; the labels only change the words on the card.
+     * terms elements, the picture off the card-image map. An offer that is only
+     * an amount ("₱9,999") is also the promo's price, so what the card says is
+     * what a booking charges; any other offer ("Save 20%") is words only. Dates
+     * stay Front Desk's.
      *
      * @return array<string, array<string, string>>
      */
@@ -194,6 +196,13 @@ class HotelPromo extends Model
             }
         }
 
+        foreach ($out as $key => $fields) {
+            $price = isset($fields['offer_label']) ? self::priceIn($fields['offer_label']) : null;
+            if ($price !== null) {
+                $out[$key]['promo_price'] = $price;
+            }
+        }
+
         $map = $customizations[HotelTemplateBuilder::CARD_IMAGES_KEY]['map'] ?? [];
         foreach (is_array($map) ? $map : [] as $ref => $url) {
             if (preg_match('/^promo:(promo-\d+)$/', (string) $ref, $m) && is_string($url) && trim($url) !== '') {
@@ -202,6 +211,34 @@ class HotelPromo extends Model
         }
 
         return $out;
+    }
+
+    /**
+     * The amount an offer label states when the label is nothing but an amount:
+     * "₱9,999", "PHP 9999", "9,999.00". Null for anything else.
+     */
+    public static function priceIn(string $label): ?int
+    {
+        if (!preg_match('/^\s*(?:₱|php|p)?\s*(\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?\s*$/iu', $label, $m)) {
+            return null;
+        }
+        $price = (int) str_replace(',', '', $m[1]);
+
+        return $price <= 9999999 ? $price : null;
+    }
+
+    /**
+     * A price from the card is only taken while it stays under the regular price,
+     * the rule Front Desk's own form enforces; the label is kept either way.
+     */
+    private static function withValidPrice(self $promo, array $fields): array
+    {
+        if (isset($fields['promo_price']) && $promo->original_price !== null
+            && (int) $promo->original_price <= (int) $fields['promo_price']) {
+            unset($fields['promo_price']);
+        }
+
+        return $fields;
     }
 
     /**
@@ -218,7 +255,7 @@ class HotelPromo extends Model
 
         foreach (self::forTeam($groupName, $facultyId)->whereNotNull('template_key')->get() as $promo) {
             $stock = self::DEFAULTS[(int) substr($promo->template_key, 6) - 1] ?? null;
-            foreach ($stock ? ($content[$promo->template_key] ?? []) : [] as $field => $value) {
+            foreach ($stock ? self::withValidPrice($promo, $content[$promo->template_key] ?? []) : [] as $field => $value) {
                 // The labels have no stock value: null means not set yet.
                 if ($promo->$field === ($stock[$field] ?? null)) {
                     $promo->$field = $value;
@@ -278,7 +315,7 @@ class HotelPromo extends Model
         }
 
         foreach (self::forTeam($groupName, $facultyId)->whereIn('template_key', array_keys($changes))->get() as $promo) {
-            $promo->fill($changes[$promo->template_key])->save();
+            $promo->fill(self::withValidPrice($promo, $changes[$promo->template_key]))->save();
         }
     }
 
@@ -374,7 +411,11 @@ class HotelPromo extends Model
             'desc'           => $this->description,
             // The team's own words from the card when it wrote some; the price
             // otherwise. The dates always show: a guest needs to know when it runs.
-            'offer'          => filled($this->offer_label) ? $this->offer_label : $peso((int) $this->promo_price),
+            // An amount-only label is the price itself, so the live price is shown:
+            // Front Desk may have changed it in the Simulation since.
+            'offer'          => filled($this->offer_label) && self::priceIn($this->offer_label) === null
+                ? $this->offer_label
+                : $peso((int) $this->promo_price),
             'terms'          => filled($this->terms_label)
                 ? $this->terms_label . ' · Valid ' . $range
                 : ($this->original_price ? 'Regular ' . $peso((int) $this->original_price) . ' · ' : '') . 'Valid ' . $range,

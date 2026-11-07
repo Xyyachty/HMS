@@ -1289,8 +1289,11 @@
   /* The card that just took the left-hand slot fades in, so the trade reads as a
      change rather than as a photograph blinking. */
   @keyframes promo-feature-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  /* Above the body (also z-index 2, later in the page), which covers the whole
+     card: level with it, every click on the badge landed on the body and the
+     offer could not be picked to edit in Design mode. */
   .promo-badge {
-    position: absolute; top: 1rem; left: 1rem; z-index: 2;
+    position: absolute; top: 1rem; left: 1rem; z-index: 3;
     background: var(--warm); color: #fff;
     padding: 0.3rem 0.75rem; border-radius: 100px;
     font-family: 'DM Sans', sans-serif; font-size: 0.66rem; font-weight: 600;

@@ -1163,8 +1163,11 @@
   @keyframes promo-feature-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
   .promo-feature { animation: promo-feature-in 0.35s ease; }
 
+  /* Above the body (also z-index 2, later in the page), which covers the whole
+     card: level with it, every click on the badge landed on the body and the
+     offer could not be picked to edit in Design mode. */
   .promo-badge {
-    position: absolute; top: 1rem; left: 1rem; z-index: 2;
+    position: absolute; top: 1rem; left: 1rem; z-index: 3;
     background: var(--accent); color: var(--bg);
     padding: 0.25rem 0.7rem; border-radius: 4px; font-weight: 700;
     font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase;
