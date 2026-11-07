@@ -3027,6 +3027,42 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
         ]);
     })->name('hotel.menu-categories.update');
 
+    /**
+     * The x on a Restaurant tab: removes the course and the dishes under it. Orders
+     * already taken keep their own copy of each dish, so nothing billed is lost.
+     */
+    Route::delete('/hotel/menu-categories', function (Request $request) {
+        $membership = \App\Support\HotelMenuAccess::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Join a hotel team first.'], 404);
+        }
+        if (!\App\Support\HotelMenuAccess::canManage($membership)) {
+            return response()->json(['message' => 'Only Restaurant staff can remove a menu category.'], 403);
+        }
+        if (\App\Support\HotelMenuAccess::isUnderReview($membership)) {
+            return response()->json(['message' => \App\Support\HotelMenuAccess::lockMessage()], 403);
+        }
+
+        $data = $request->validate(['name' => 'required|string|max:60']);
+
+        $refused = \App\Support\HotelMenuDefaults::removeCategory($membership, $data['name']);
+        if ($refused !== null) {
+            return response()->json(['message' => $refused], 422);
+        }
+
+        $items = HotelMenuItem::where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->orderBy('category')
+            ->orderBy('name')
+            ->get()
+            ->map(fn ($item) => $item->toTemplateArray());
+
+        return response()->json([
+            'categories' => \App\Support\HotelMenuDefaults::categoriesFor($membership),
+            'items'      => $items,
+        ]);
+    })->name('hotel.menu-categories.destroy');
+
     Route::post('/hotel/menus', function (Request $request) {
         $membership = \App\Support\HotelMenuAccess::membership();
         if (!$membership) {

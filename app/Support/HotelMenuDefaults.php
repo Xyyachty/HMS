@@ -110,7 +110,7 @@ class HotelMenuDefaults
             ->where('faculty_id', $facultyId)
             ->orderBy('position')
             ->orderBy('hotel_menu_category_id')
-            ->get(['name', 'position']);
+            ->get(HotelMenuCategory::supportsRemoval() ? ['name', 'position', 'removed_at'] : ['name', 'position']);
 
         if ($rows->isEmpty()) {
             // Nobody has opened the editor for this team yet.
@@ -135,6 +135,11 @@ class HotelMenuDefaults
         }
 
         foreach ($rows as $row) {
+            // A removed course still holds its slot above, so a starting one does
+            // not reappear in its place, but is not listed.
+            if ($row->isRemoved()) {
+                continue;
+            }
             $bySlot[] = ['slot' => (int) $row->position, 'name' => (string) $row->name];
         }
 
@@ -195,11 +200,16 @@ class HotelMenuDefaults
             'faculty_id' => $membership->faculty_id,
         ];
 
-        $taken = HotelMenuCategory::where($scope)
-            ->get(['name', 'position']);
+        $taken = HotelMenuCategory::where($scope)->get();
 
-        foreach ($taken->pluck('name') as $existing) {
-            if (mb_strtolower((string) $existing) === mb_strtolower($clean)) {
+        foreach ($taken as $existing) {
+            if (mb_strtolower((string) $existing->name) === mb_strtolower($clean)) {
+                // A course removed earlier under this name comes back in its old
+                // place rather than tripping the unique name index.
+                if ($existing->isRemoved()) {
+                    $existing->fill(['removed_at' => null, 'name' => mb_substr($clean, 0, 60)])->save();
+                    return $existing;
+                }
                 return null;
             }
         }
@@ -247,7 +257,8 @@ class HotelMenuDefaults
 
         $rows = HotelMenuCategory::where($scope)->get();
 
-        $target = $rows->first(fn ($row) => mb_strtolower((string) $row->name) === mb_strtolower($fromClean));
+        $target = $rows->first(fn ($row) => !$row->isRemoved()
+            && mb_strtolower((string) $row->name) === mb_strtolower($fromClean));
         if (!$target) {
             return null;
         }
@@ -255,11 +266,16 @@ class HotelMenuDefaults
         // Renaming to the same name, in different case, is a rename rather than a clash.
         $clash = $rows->first(fn ($row) => mb_strtolower((string) $row->name) === mb_strtolower($toClean)
             && (int) $row->hotel_menu_category_id !== (int) $target->hotel_menu_category_id);
-        if ($clash) {
+        if ($clash && !$clash->isRemoved()) {
             return null;
         }
 
-        return DB::transaction(function () use ($target, $toClean, $scope, $fromClean) {
+        return DB::transaction(function () use ($target, $toClean, $scope, $fromClean, $clash) {
+            // A removed course gives its name up; it only has to keep its slot.
+            if ($clash) {
+                $clash->name = '~removed-' . $clash->hotel_menu_category_id;
+                $clash->save();
+            }
             $target->name = $toClean;
             $target->save();
 
@@ -269,5 +285,48 @@ class HotelMenuDefaults
 
             return $toClean;
         });
+    }
+
+    /**
+     * Removes one of the team's courses and the dishes filed under it, the way the
+     * dish's own delete does. Orders already taken keep their own copy of the dish,
+     * so nothing billed is lost. The last course is kept: a dish added afterwards
+     * needs one to sit under.
+     *
+     * Returns null when done, or the reason it was refused.
+     */
+    public static function removeCategory(StudentGroup $membership, string $name): ?string
+    {
+        if (!HotelMenuCategory::supportsRemoval()) {
+            return 'Removing a category is not available yet. Try again in a few minutes.';
+        }
+
+        $clean = trim($name);
+        self::ensureCategoriesFor($membership);
+
+        $scope = [
+            'group_name' => $membership->group_name,
+            'faculty_id' => $membership->faculty_id,
+        ];
+
+        $target = HotelMenuCategory::where($scope)->get()
+            ->first(fn ($row) => !$row->isRemoved() && mb_strtolower((string) $row->name) === mb_strtolower($clean));
+        if (!$target) {
+            return 'That category is not one of yours.';
+        }
+
+        if (count(self::categoriesFor($membership)) <= 1) {
+            return 'Keep at least one menu category.';
+        }
+
+        DB::transaction(function () use ($scope, $target) {
+            HotelMenuItem::where($scope)
+                ->whereRaw('LOWER(category) = LOWER(?)', [(string) $target->name])
+                ->delete();
+            $target->removed_at = now();
+            $target->save();
+        });
+
+        return null;
     }
 }

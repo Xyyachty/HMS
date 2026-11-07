@@ -221,8 +221,12 @@ class HotelMenuAccess
         if (\App\Models\HotelMenuCategory::tableReady()) {
             $rows = \App\Models\HotelMenuCategory::where('group_name', $membership->group_name)
                 ->where('faculty_id', $membership->faculty_id)
-                ->get(['name', 'position']);
+                ->get();
             foreach ($rows as $row) {
+                // A removed course is counted below as one of the five gone.
+                if ($row->isRemoved()) {
+                    continue;
+                }
                 $default = $bySlot[(int) $row->position] ?? null;
                 if ($default !== null) {
                     $kept++;

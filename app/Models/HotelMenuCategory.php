@@ -27,11 +27,37 @@ class HotelMenuCategory extends Model
         'group_id',
         'name',
         'position',
+        // Set when Restaurant Management removes the course. The row is kept so
+        // its slot stays taken and a starting course does not come back.
+        'removed_at',
     ];
 
     protected $casts = [
         'position' => 'integer',
+        'removed_at' => 'datetime',
     ];
+
+    /**
+     * Whether removed_at is on the table yet. Until its migration has run, no
+     * course can be removed and every row is a live one.
+     */
+    public static function supportsRemoval(): bool
+    {
+        static $supported = null;
+
+        if ($supported === null) {
+            $supported = self::tableReady()
+                && \Illuminate\Support\Facades\Schema::hasColumn('hotel_menu_categories', 'removed_at');
+        }
+
+        return $supported;
+    }
+
+    /** Whether this row is a course Restaurant Management removed. */
+    public function isRemoved(): bool
+    {
+        return self::supportsRemoval() && $this->removed_at !== null;
+    }
 
     /**
      * Whether the table is there yet.

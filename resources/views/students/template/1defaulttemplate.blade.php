@@ -7421,7 +7421,7 @@ function RestaurantHero({ menus, onExplore, onNavigate, onReserveTable, brandNam
   );
 }
 
-function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMenuColor, canOrderMenu, onOrderMenu, onAddMenu, onEditMenu, onRemoveMenu, menuCategories, onAddMenuCategory, onRenameMenuCategory, menuLockedReason, cardImages, isDesignMode, rooms, guest, onReserveTable }) {
+function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMenuColor, canOrderMenu, onOrderMenu, onAddMenu, onEditMenu, onRemoveMenu, menuCategories, onAddMenuCategory, onRenameMenuCategory, onRemoveMenuCategory, menuLockedReason, cardImages, isDesignMode, rooms, guest, onReserveTable }) {
   const menuList = menus || [];
   /* The hero's own call to action lands here, on the menu's heading, rather than
      navigating away from the page. */
@@ -7704,6 +7704,16 @@ function RestaurantPage({ onNavigate, onToast, menus, canManageMenus, canEditMen
         items={menuList}
         getKey={(item) => menuCategoryKey(item.category, menuTabs)}
         onRenameTab={canManageMenus ? ((name) => { setMenuError(''); setRenamingFrom(name); }) : null}
+        onRemoveTab={canManageMenus && onRemoveMenuCategory ? ((name) => {
+          const count = menuList.filter(item => menuCategoryKey(item.category, menuTabs) === name).length;
+          const rest = count ? ` Its ${count} dish${count === 1 ? '' : 'es'} will be removed too.` : '';
+          if (!hmsConfirm(`Remove the ${name} category?${rest}`)) return;
+          Promise.resolve(onRemoveMenuCategory(name)).then((ok) => {
+            if (!ok) return;
+            setMenuTab(prev => (prev === name ? (menuTabs.find(t => t !== name) || prev) : prev));
+            if (onToast) onToast(`${name} removed`);
+          });
+        }) : null}
         extra={canManageMenus ? (
           <button
             type="button"
@@ -10088,6 +10098,21 @@ function App() {
       })
   ), [menuRequest, showToast]);
 
+  /* Removes a course and its dishes. Resolves true once done; the server's
+     reason is shown as a toast otherwise. */
+  const removeMenuCategory = useCallback((name) => (
+    menuRequest('/students/hotel/menu-categories', 'DELETE', { name })
+      .then(data => {
+        if (data && Array.isArray(data.categories)) setMenuCategories(data.categories);
+        if (data && Array.isArray(data.items)) setMenus(data.items);
+        return true;
+      })
+      .catch(err => {
+        showToast((err && err.message) || 'Could not remove that category.');
+        return false;
+      })
+  ), [menuRequest, showToast]);
+
   const renameMenuCategory = useCallback((from, to) => (
     menuRequest('/students/hotel/menu-categories', 'PATCH', { from, to })
       .then(data => {
@@ -10301,6 +10326,7 @@ function App() {
         menuCategories={menuCategories}
         onAddMenuCategory={addMenuCategory}
         onRenameMenuCategory={renameMenuCategory}
+        onRemoveMenuCategory={removeMenuCategory}
         guest={guestAuth}
         cardImages={cardImages}
         isDesignMode={isDesignMode}
