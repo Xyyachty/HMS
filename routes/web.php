@@ -2678,9 +2678,12 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             'status' => 'required|string|max:20',
             'notes'  => 'nullable|string|max:1000',
         ]);
-        // Housekeeping works the request; the Front Desk may only cancel one.
-        $manages = (bool) array_intersect($roles, ['housekeeping', 'administrator']);
-        if (!$manages && !($data['status'] === 'Cancelled' && in_array('front_desk', $roles, true))) {
+        // Housekeeping works the request; only the guest or the Front Desk cancels one.
+        if ($data['status'] === 'Cancelled') {
+            if (!array_intersect($roles, ['front_desk', 'administrator'])) {
+                return response()->json(['message' => 'Housekeeping cannot cancel a request. The guest cancels it from My Stay while it is Pending.'], 403);
+            }
+        } elseif (!array_intersect($roles, ['housekeeping', 'administrator'])) {
             return response()->json(['message' => 'Only Housekeeping staff can update a housekeeping request.'], 403);
         }
         $row = \App\Models\HotelServiceRequest::where('hotel_service_request_id', $id)

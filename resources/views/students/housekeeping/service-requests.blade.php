@@ -135,7 +135,7 @@
   .ao-stock-line { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.75rem; font-size: 0.82rem; color: var(--fg-muted); }
   .ao-stock-line span { white-space: nowrap; }
   .ao-stock-line b { color: var(--fg); font-variant-numeric: tabular-nums; text-align: right; overflow-wrap: anywhere; }
-  /* Report a defect / Cancel: side by side when they fit, stacked when the card is narrow. */
+  /* Card footer buttons: side by side when they fit, stacked when the card is narrow. */
   .ao-card-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
   .ao-card-actions .ao-btn { flex: 1 1 9rem; white-space: nowrap; padding-left: 0.8rem; padding-right: 0.8rem; }
   .ao-card-top .ao-pill { flex: none; }
@@ -366,18 +366,13 @@ function RequestCard({ request, canManage, busy, onMove, onDefect }) {
             <button type="button" className="ao-btn is-solid is-wide" disabled={busy} onClick={() => onMove(request, step.next)}>
               <i className={`fa-solid ${step.actionIcon}`}></i> {step.action}
             </button>
-            <div className="ao-card-actions">
-              {!request.complaintId ? (
+            {!request.complaintId ? (
+              <div className="ao-card-actions">
                 <button type="button" className="ao-btn is-quiet" disabled={busy} onClick={() => onDefect(request)}>
                   <i className="fa-solid fa-screwdriver-wrench"></i> Report a defect
                 </button>
-              ) : null}
-              {request.status !== 'In Progress' ? (
-                <button type="button" className="ao-btn is-quiet" disabled={busy} onClick={() => onMove(request, 'Cancelled')}>
-                  <i className="fa-solid fa-ban"></i> Cancel
-                </button>
-              ) : null}
-            </div>
+              </div>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -415,7 +410,6 @@ function App() {
 
   const move = (request, status) => {
     let notes = null;
-    if (status === 'Cancelled' && !window.confirm(`Cancel the ${request.type} request for ${request.roomName}?`)) return;
     if (status === 'Completed') {
       notes = window.prompt('Anything to note about the job? (optional)', '');
       if (notes === null) return;
