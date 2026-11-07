@@ -2294,6 +2294,7 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, childPolicy, cap
         : Object.assign({}, prev, { checkIn: stayFrom || '', checkOut: stayTo || '' })
     ));
   }, [room && room.id, stayFrom, stayTo]);
+  const [agreedPolicies, setAgreedPolicies] = useState(false);
   const [paymentForm, setPaymentForm] = useState({
     type: 'full',
     amount: '',
@@ -2465,6 +2466,10 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, childPolicy, cap
   const handlePaymentSubmit = (e) => {
     e.preventDefault();
     if (!isSiteInteractive()) return;
+    if (!agreedPolicies) {
+      if (onToast) onToast('Please read and agree to the hotel policies first.');
+      return;
+    }
 
     const payAmount = paymentForm.type === 'full'
       ? totalDue
@@ -2932,6 +2937,17 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, childPolicy, cap
                   </div>
                 </div>
 
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', marginTop: '1.25rem', fontSize: '0.8rem', lineHeight: 1.5, color: 'var(--fg-muted)', cursor: 'pointer' }}>
+                  <input type="checkbox" required checked={agreedPolicies} onChange={e => setAgreedPolicies(e.target.checked)}
+                    style={{ marginTop: '0.2rem', width: '1rem', height: '1rem', flex: 'none', accentColor: 'var(--accent)' }} />
+                  <span>
+                    I have read and agree to the hotel's{' '}
+                    <a href="#" onClick={e => { e.preventDefault(); openHotelPolicies(); }} style={{ color: 'var(--accent)', textDecoration: 'underline' }}>
+                      booking, cancellation, check-in and check-out policies
+                    </a>.
+                  </span>
+                </label>
+
                 <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '1.35rem' }}>
                   Complete Reservation <i className="fa-solid fa-check" style={{ fontSize: '0.7rem' }}></i>
                 </button>
@@ -2941,6 +2957,92 @@ function RoomDetailModal({ room, addons, promos, chosenPromoId, childPolicy, cap
         </div>
       </div>
     </div>
+  );
+}
+
+// The hotel's booking rules. Guests open them from the footer and must agree to
+// them before paying for a room. Any button opens the popup with openHotelPolicies().
+const HOTEL_POLICIES = [
+  { title: 'Booking Policy', icon: 'fa-calendar-check', rules: [
+    'Guests must provide accurate personal information when making a reservation.',
+    'Guests must select their check-in date, check-out date, room type, and number of guests.',
+    'A booking is confirmed once the required payment or deposit has been successfully processed.',
+    'Guests must follow the selected booking dates.',
+  ] },
+  { title: 'Cancellation Policy', icon: 'fa-ban', rules: [
+    <>Guests can only cancel their reservation <b>within 24 hours after the booking was made</b>.</>,
+    'Cancellations are only allowed within the 24-hour cancellation period.',
+    'Once the 24-hour cancellation period has expired, the reservation can no longer be canceled.',
+    'Cancellation is not allowed once the guest has checked in.',
+    'Cancellations must be made before the scheduled check-in time.',
+  ] },
+  { title: 'Check-In Policy', icon: 'fa-door-open', rules: [
+    'Guests may check in on their scheduled arrival date.',
+    'Guests must present valid identification for verification.',
+    "Any remaining booking balance must be settled according to the hotel's payment requirements.",
+    'Once the guest has checked in, the reservation becomes active and cannot be canceled.',
+  ] },
+  { title: 'Early Check-Out Policy', icon: 'fa-person-walking-luggage', rules: [
+    <><b>Early check-out is not allowed when the guest still has remaining booked days.</b></>,
+    'Guests must complete their reserved stay according to the confirmed check-in and check-out dates.',
+    'The system will not allow guests to process an early check-out before their scheduled check-out date.',
+    'Any exceptional or emergency departure must be handled directly by hotel management.',
+  ] },
+  { title: 'Check-Out Policy', icon: 'fa-suitcase-rolling', rules: [
+    'Guests can check out on their scheduled check-out date.',
+    'All outstanding charges, including room services and additional hotel services, must be settled before check-out.',
+    'The system will allow check-out once the reservation reaches its scheduled check-out date and all outstanding balances are cleared.',
+  ] },
+  { title: 'Agreement to Hotel Policies', icon: 'fa-file-signature', rules: [
+    "By confirming a reservation, guests acknowledge that they have read, understood, and agreed to the hotel's booking, cancellation, check-in, and check-out policies.",
+  ] },
+];
+
+const openHotelPolicies = () => window.dispatchEvent(new Event('hms:hotel-policies'));
+
+function HotelPoliciesModal() {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const show = () => setOpen(true);
+    window.addEventListener('hms:hotel-policies', show);
+    return () => window.removeEventListener('hms:hotel-policies', show);
+  }, []);
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') { e.stopImmediatePropagation(); setOpen(false); } };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [open]);
+  if (!open) return null;
+  const close = () => setOpen(false);
+
+  return ReactDOM.createPortal(
+    <div className="room-modal-overlay" data-hms-no-edit="1" role="dialog" aria-modal="true" aria-labelledby="hms-policies-title" onClick={close}>
+      <div className="room-modal" style={{ width: 'min(640px, 100%)', padding: '1.75rem 1.5rem 1.5rem', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="room-modal-close" onClick={close} aria-label="Close">
+          <i className="fa-solid fa-xmark"></i>
+        </button>
+        <p style={{ margin: 0, fontSize: '0.68rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--accent)' }}>Please read before you book</p>
+        <h3 id="hms-policies-title" className="font-display" style={{ fontSize: '1.6rem', margin: '0.35rem 2.5rem 0 0', lineHeight: 1.2 }}>Hotel Booking Rules and Policies</h3>
+        {HOTEL_POLICIES.map((section, n) => (
+          <section key={section.title} style={{ marginTop: '1.25rem', paddingTop: n ? '1.1rem' : 0, borderTop: n ? '1px solid var(--border)' : 'none' }}>
+            <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: '0 0 0.55rem', fontSize: '0.95rem', fontWeight: 600 }}>
+              <span aria-hidden="true" style={{ flex: 'none', width: '1.9rem', height: '1.9rem', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', color: 'var(--accent)', background: 'color-mix(in srgb, var(--accent) 14%, transparent)' }}>
+                <i className={'fa-solid ' + section.icon}></i>
+              </span>
+              {n + 1}. {section.title}
+            </h4>
+            <ul style={{ margin: 0, paddingLeft: '3.6rem', color: 'var(--fg-muted)', fontSize: '0.85rem', lineHeight: 1.6 }}>
+              {section.rules.map((rule, i) => <li key={i} style={{ marginBottom: '0.25rem' }}>{rule}</li>)}
+            </ul>
+          </section>
+        ))}
+        <button type="button" className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '1.5rem' }} onClick={close}>
+          I understand
+        </button>
+      </div>
+    </div>,
+    document.body
   );
 }
 
@@ -9000,6 +9102,7 @@ function Footer({ onNav, cardImages, page, brandName, hotelInfo, socialLinks }) 
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
           <span data-hms-brand-text="1" data-hms-no-edit="1" style={{ fontSize: '0.72rem', color: 'rgba(247,244,239,0.35)' }}>{new Date().getFullYear()} {brandName}. All rights reserved.</span>
           <div style={{ display: 'flex', gap: '1.25rem' }}>
+            <a href="#" style={{ fontSize: '0.72rem' }} data-hms-no-edit="1" onClick={(e) => { e.preventDefault(); openHotelPolicies(); }}>Hotel Policies</a>
             <a href="#" style={{ fontSize: '0.72rem' }} data-hms-stock="Privacy Policy">Privacy Policy</a>
             <a href="#" style={{ fontSize: '0.72rem' }} data-hms-stock="Terms of Service">Terms of Service</a>
           </div>
@@ -10208,6 +10311,7 @@ function App() {
         />
       <main data-hms-page={page}>{pages[page] || pages.home}</main>
       <Footer onNav={navigateTo} cardImages={cardImages} page={page} brandName={brandName} hotelInfo={hotelInfo} socialLinks={socialLinks} />
+      <HotelPoliciesModal />
       <HeaderEditModal edit={headerEditDialog} openedFor={headerEdit} onSave={saveHeaderEdit} onCancel={() => setHeaderEdit(null)} />
       <GuestAuthModal
         open={!!guestAuthModal}
