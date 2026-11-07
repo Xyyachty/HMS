@@ -1221,9 +1221,9 @@ function ServiceModal({ service, amenities, onClose, onSaved }) {
         <form onSubmit={handleSubmit} className="am-form" noValidate>
           <div className="am-field">
             <label className="am-label" htmlFor={id('fac')}>Which facility?</label>
-            <select id={id('fac')} className="am-input" value={form.amenityId} onChange={e => update('amenityId', e.target.value)}>
+            <HmsSelect id={id('fac')} className="am-input" value={form.amenityId} onChange={e => update('amenityId', e.target.value)}>
               {appointmentAmenities.map(a => <option key={a.dbId} value={a.dbId}>{a.name}</option>)}
-            </select>
+            </HmsSelect>
             {appointmentAmenities.length === 0 && (
               <p className="am-error">No facility is set to "Guests book a time". Edit one first.</p>
             )}

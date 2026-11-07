@@ -219,8 +219,9 @@
   .hk-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
   .hk-actions .hk-btn { flex: 1 1 auto; }
 
-  /* What did you find? — four equal choices: 4 across in an open card, 2 or 1 when narrow */
-  .hk-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+  /* What did you find? — three equal choices: one row in an open card, stacked when narrow */
+  .hk-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(13rem, 100%), 1fr)); gap: 0.6rem; }
+  .hk-other { margin-top: 0.5rem; }
   .hk-choice { position: relative; display: flex; flex-direction: column; gap: 0.55rem; padding: 0.85rem; border-radius: 0.75rem; border: 1px solid var(--hk-line); background: var(--card); cursor: pointer; transition: border-color 0.15s, background 0.15s; }
   .hk-choice:hover { border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
   .hk-choice input { position: absolute; opacity: 0; pointer-events: none; }
@@ -230,15 +231,11 @@
   .hk-choice.is-on { border-color: var(--accent); background: var(--hk-tint); }
 
   @container (min-width: 720px) {
-    .hk-choices { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .hk-damage { grid-template-columns: 1fr 1.5fr 1fr auto; align-items: end; }
     .hk-remove span { display: none; }
     .hk-remove { padding: 0; width: 2.875rem; }
     .hk-step .hk-actions { justify-content: flex-end; }
     .hk-step .hk-actions .hk-btn { flex: 0 0 auto; min-width: 12rem; }
-  }
-  @container (max-width: 300px) {
-    .hk-choices { grid-template-columns: 1fr; }
   }
 
   .hk-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
@@ -320,13 +317,26 @@ const TABS = [
   { key: 'all',      label: 'All rooms',        icon: 'fa-layer-group', match: () => true },
 ];
 
-// The four keys of App\Models\HotelRoomInspection::FINDINGS, in plain words.
+// The keys of App\Models\HotelRoomInspection::FINDINGS, in plain words.
 const FINDING_TEXT = {
-  'Cleaning Only':     { title: 'All good, only needed cleaning', hint: 'Nothing broken or missing.', icon: 'fa-broom', tone: 'tone-done' },
-  'Damaged Equipment': { title: 'Something is broken',            hint: 'TV, aircon, lamp, appliance.', icon: 'fa-plug-circle-xmark', tone: 'tone-fix' },
-  'Needs Repair':      { title: 'Something needs fixing',         hint: 'Furniture, door, faucet, wall.', icon: 'fa-hammer', tone: 'tone-fix' },
-  'Missing Items':     { title: 'Something is missing',           hint: 'A hotel item is gone from the room.', icon: 'fa-box-open', tone: 'tone-clean' },
+  'Cleaning Only':     { title: 'All good, only needed cleaning',   hint: 'Nothing broken or missing.', icon: 'fa-broom', tone: 'tone-done' },
+  'Damaged Equipment': { title: 'Something is broken or needs fixing', hint: 'TV, aircon, furniture, door, faucet.', icon: 'fa-screwdriver-wrench', tone: 'tone-fix' },
+  'Missing Items':     { title: 'Something is missing',             hint: 'A hotel item is gone from the room.', icon: 'fa-box-open', tone: 'tone-clean' },
 };
+// Older inspections may say 'Needs Repair', now part of 'Damaged Equipment'.
+FINDING_TEXT['Needs Repair'] = FINDING_TEXT['Damaged Equipment'];
+const findingChoice = f => (f === 'Needs Repair' ? 'Damaged Equipment' : f || '');
+
+// Things found in a hotel room, for the damaged / missing item picker.
+// 'Other' lets the housekeeper type anything not on the list.
+const ROOM_ITEMS = [
+  { group: 'Appliances', items: ['TV', 'TV remote', 'Aircon', 'Aircon remote', 'Electric fan', 'Telephone', 'Hair dryer', 'Electric kettle', 'Mini fridge', 'Lamp', 'Light bulb', 'Safe box', 'Key card'] },
+  { group: 'Furniture and fixtures', items: ['Bed frame', 'Mattress', 'Chair', 'Table', 'Bedside table', 'Closet / cabinet', 'Mirror', 'Curtains', 'Door', 'Door lock', 'Window', 'Wall', 'Floor'] },
+  { group: 'Linens', items: ['Bed sheet', 'Pillow', 'Pillowcase', 'Blanket', 'Bath towel', 'Hand towel', 'Bathrobe', 'Bath mat'] },
+  { group: 'Bathroom', items: ['Faucet', 'Shower', 'Toilet', 'Sink', 'Toilet seat', 'Slippers', 'Toiletries'] },
+  { group: 'Small items', items: ['Drinking glass', 'Coffee mug', 'Ice bucket', 'Hangers', 'Trash bin', 'Room menu'] },
+];
+const OTHER_ITEM = '__other';
 
 // What Front Desk did with each item reported before check-out.
 const DAMAGE_STATUS = {
@@ -584,7 +594,7 @@ function StepHead({ title, onClose }) {
 }
 
 function CheckingStep({ inspection, busy, onClose, onRecord, onFinishClean, onReport }) {
-  const [choice, setChoice] = useState(inspection.finding || '');
+  const [choice, setChoice] = useState(findingChoice(inspection.finding));
   const [notes, setNotes] = useState(inspection.notes || '');
   const [error, setError] = useState('');
 
@@ -644,8 +654,8 @@ function CheckingStep({ inspection, busy, onClose, onRecord, onFinishClean, onRe
 // which decides what the guest pays. Nothing is sent to Maintenance yet; the guest is
 // still in the room.
 function ReportStep({ inspection, busy, onClose, onSubmit }) {
-  const blank = { item: '', description: '', photo: '' };
-  const [choice, setChoice] = useState(inspection.finding || '');
+  const blank = { item: '', other: false, description: '', photo: '' };
+  const [choice, setChoice] = useState(findingChoice(inspection.finding));
   const [notes, setNotes] = useState(inspection.notes || '');
   const [items, setItems] = useState([blank]);
   const [error, setError] = useState('');
@@ -666,7 +676,7 @@ function ReportStep({ inspection, busy, onClose, onSubmit }) {
     const damages = isProblem
       ? items.filter(it => it.item.trim()).map(it => ({ item: it.item.trim(), description: it.description.trim(), photo: it.photo || null }))
       : [];
-    if (isProblem && damages.length === 0) { setError('Write the name of the damaged or missing item.'); return; }
+    if (isProblem && damages.length === 0) { setError('Pick the damaged or missing item, or choose Other and type it.'); return; }
     setError('');
     onSubmit({ finding: choice, notes, damages });
   };
@@ -692,7 +702,25 @@ function ReportStep({ inspection, busy, onClose, onSubmit }) {
         <div key={i} className="hk-damage">
           <div>
             <label className="hk-label" htmlFor={`hk-item-${inspection.id}-${i}`}>Item {items.length > 1 ? i + 1 : ''}</label>
-            <input id={`hk-item-${inspection.id}-${i}`} type="text" className="hk-input" maxLength={120} placeholder="Example: TV remote" value={it.item} onChange={e => setItem(i, { item: e.target.value })} />
+            <HmsSelect
+              id={`hk-item-${inspection.id}-${i}`}
+              className="hk-input"
+              value={it.other ? OTHER_ITEM : it.item}
+              onChange={e => setItem(i, e.target.value === OTHER_ITEM ? { item: '', other: true } : { item: e.target.value, other: false })}
+            >
+              <option value="">Choose an item</option>
+              {ROOM_ITEMS.map(g => (
+                <optgroup key={g.group} label={g.group}>
+                  {g.items.map(name => <option key={name} value={name}>{name}</option>)}
+                </optgroup>
+              ))}
+              <optgroup label="Not on the list">
+                <option value={OTHER_ITEM}>Other (type it)</option>
+              </optgroup>
+            </HmsSelect>
+            {it.other ? (
+              <input type="text" className="hk-input hk-other" maxLength={120} autoFocus aria-label="Name of the item" placeholder="Type the item, e.g. Wall clock" value={it.item} onChange={e => setItem(i, { item: e.target.value })} />
+            ) : null}
           </div>
           <div>
             <label className="hk-label" htmlFor={`hk-desc-${inspection.id}-${i}`}>What is wrong? <em>(optional)</em></label>

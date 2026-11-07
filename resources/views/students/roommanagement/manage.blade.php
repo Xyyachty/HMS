@@ -1176,9 +1176,9 @@ function ChildPolicyModal({ policy, saving, error, onSubmit, onCancel }) {
         <form onSubmit={submit} className="mr-form" noValidate>
           <div className="mr-field">
             <label className="mr-label" htmlFor={uid + '-adult'}>Priced as an adult from age</label>
-            <select id={uid + '-adult'} className="mr-input" value={adultAge} onChange={e => setAdultAge(parseInt(e.target.value, 10))}>
+            <HmsSelect id={uid + '-adult'} className="mr-input" value={adultAge} onChange={e => setAdultAge(parseInt(e.target.value, 10))}>
               {ages(1, 18).map(n => <option key={n} value={n}>{n}</option>)}
-            </select>
+            </HmsSelect>
             <p className="mr-help">A guest this age or older is an adult. The room rate already covers adults.</p>
           </div>
 
@@ -1190,15 +1190,15 @@ function ChildPolicyModal({ policy, saving, error, onSubmit, onCancel }) {
               <div key={i} className="mr-band">
                 <div className="mr-field">
                   <label className="mr-label" htmlFor={uid + '-min' + i}><em>From age</em></label>
-                  <select id={uid + '-min' + i} className="mr-input" value={b.min} onChange={e => setBand(i, { min: parseInt(e.target.value, 10) })}>
+                  <HmsSelect id={uid + '-min' + i} className="mr-input" value={b.min} onChange={e => setBand(i, { min: parseInt(e.target.value, 10) })}>
                     {ages(0, 17).map(n => <option key={n} value={n}>{n}</option>)}
-                  </select>
+                  </HmsSelect>
                 </div>
                 <div className="mr-field">
                   <label className="mr-label" htmlFor={uid + '-max' + i}><em>To age</em></label>
-                  <select id={uid + '-max' + i} className="mr-input" value={b.max} onChange={e => setBand(i, { max: parseInt(e.target.value, 10) })}>
+                  <HmsSelect id={uid + '-max' + i} className="mr-input" value={b.max} onChange={e => setBand(i, { max: parseInt(e.target.value, 10) })}>
                     {ages(0, 17).map(n => <option key={n} value={n}>{n}</option>)}
-                  </select>
+                  </HmsSelect>
                 </div>
                 <div className="mr-field">
                   <label className="mr-label" htmlFor={uid + '-rate' + i}><em>Charge / night</em></label>

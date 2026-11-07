@@ -398,7 +398,7 @@ function RegisterEntryModal({ amenity, guests, onClose, onRegistered }) {
           <form onSubmit={handleSubmit} className="rm-form-grid" noValidate>
             <div>
               <label style={fieldLabel}>Guest *</label>
-              <select
+              <HmsSelect
                 className="booking-input" value={bookingId}
                 onChange={e => { setBookingId(e.target.value); if (error) setError(null); }}
                 style={error ? { borderColor: '#f43f5e' } : undefined}
@@ -409,7 +409,7 @@ function RegisterEntryModal({ amenity, guests, onClose, onRegistered }) {
                     {g.guestName}{g.roomName ? ' · Room ' + g.roomName : ''}
                   </option>
                 ))}
-              </select>
+              </HmsSelect>
               {error && <p style={{ margin: '0.35rem 0 0', color: 'var(--danger)', fontSize: '0.72rem' }}>{error}</p>}
               {guests.length === 0 && (
                 <p style={{ margin: '0.35rem 0 0', color: 'var(--fg-muted)', fontSize: '0.72rem' }}>
@@ -583,7 +583,7 @@ function BookingModal({ amenity, guests, services, packages, onClose, onBooked }
                 what unlocks charging the booking to their room. */}
             <div>
               <label style={fieldLabel}>Hotel guest (optional)</label>
-              <select
+              <HmsSelect
                 className="booking-input" value={form.bookingId}
                 onChange={e => {
                   const id = e.target.value;
@@ -603,7 +603,7 @@ function BookingModal({ amenity, guests, services, packages, onClose, onBooked }
                     {g.guestName}{g.roomName ? ' · Room ' + g.roomName : ''}
                   </option>
                 ))}
-              </select>
+              </HmsSelect>
             </div>
 
             <div>
@@ -634,7 +634,7 @@ function BookingModal({ amenity, guests, services, packages, onClose, onBooked }
             {!isEvent && (
               <div>
                 <label style={fieldLabel}>Service *</label>
-                <select
+                <HmsSelect
                   className="booking-input" value={form.serviceId}
                   onChange={e => update('serviceId', e.target.value)}
                   style={errors.serviceId ? { borderColor: '#f43f5e' } : undefined}
@@ -643,7 +643,7 @@ function BookingModal({ amenity, guests, services, packages, onClose, onBooked }
                   {amenityServices.map(s => (
                     <option key={s.id} value={s.id}>{s.name} · {s.duration} · {peso(s.price)}</option>
                   ))}
-                </select>
+                </HmsSelect>
                 {errText('serviceId')}
                 {amenityServices.length === 0 && (
                   <p style={{ margin: '0.35rem 0 0', color: 'var(--warn)', fontSize: '0.72rem' }}>
@@ -710,10 +710,10 @@ function BookingModal({ amenity, guests, services, packages, onClose, onBooked }
             {isEvent && (
               <div>
                 <label style={fieldLabel}>Package *</label>
-                <select className="booking-input" value={form.packageName}
+                <HmsSelect className="booking-input" value={form.packageName}
                   onChange={e => update('packageName', e.target.value)}>
                   {PACKAGES.map(p => <option key={p} value={p}>{p}</option>)}
-                </select>
+                </HmsSelect>
                 <p style={{ margin: '0.4rem 0 0', color: 'var(--fg-muted)', fontSize: '0.72rem', lineHeight: 1.5 }}>
                   {needsSetup && needsCatering
                     ? 'Housekeeping will prepare the room and Restaurant Services will get the catering order.'
@@ -729,7 +729,7 @@ function BookingModal({ amenity, guests, services, packages, onClose, onBooked }
             {isEvent && needsCatering && (
               <div>
                 <label style={fieldLabel}>Catering Package *</label>
-                <select className="booking-input" value={form.cateringPackageId}
+                <HmsSelect className="booking-input" value={form.cateringPackageId}
                   onChange={e => update('cateringPackageId', e.target.value)}
                   style={errors.cateringPackageId ? { borderColor: '#f43f5e' } : undefined}>
                   <option value="">Choose a package…</option>
@@ -738,7 +738,7 @@ function BookingModal({ amenity, guests, services, packages, onClose, onBooked }
                       {p.name} · {peso(p.pricePerHead)}/head · min {p.minGuests}
                     </option>
                   ))}
-                </select>
+                </HmsSelect>
                 {errText('cateringPackageId')}
                 {cateringPack && cateringPack.inclusions && (
                   <p style={{ margin: '0.4rem 0 0', color: 'var(--fg-muted)', fontSize: '0.72rem', lineHeight: 1.5 }}>
@@ -950,9 +950,9 @@ function ReservationModal({ reservation, onClose, onChanged }) {
               <div className="rm-form-row">
                 <input type="number" min="0.01" step="0.01" className="booking-input" value={amount}
                   placeholder={String(r.balance)} onChange={e => setAmount(e.target.value)} />
-                <select className="booking-input" value={method} onChange={e => setMethod(e.target.value)}>
+                <HmsSelect className="booking-input" value={method} onChange={e => setMethod(e.target.value)}>
                   {PAY_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
+                </HmsSelect>
               </div>
               <button type="submit" className="btn-primary" disabled={busy} style={{ justifyContent: 'center' }}>
                 {busy ? 'Working…' : 'Record Payment'}

@@ -454,13 +454,13 @@ function TableCard({ table, partyWith, canReserve, onOpenReserve, onSeat, onMove
           </button>
           {/* Moves the held reservation, guest and all, to a free table that fits the
               party. The guest's own reservation page follows it. */}
-          <select className="booking-input" aria-label={`Move ${table.name}'s reservation to another table`}
+          <HmsSelect className="booking-input" aria-label={`Move ${table.name}'s reservation to another table`}
             disabled={busy || moveTargets.length === 0} value=""
             onChange={e => { if (e.target.value) onMove(table, moveTargets.find(t => String(t.id) === e.target.value)); }}
             style={{ marginTop: '0.5rem', fontSize: '0.75rem', padding: '0.45rem 0.6rem' }}>
             <option value="">{moveTargets.length ? 'Move to another table…' : 'No free table fits this many guests'}</option>
             {moveTargets.map(t => <option key={t.id} value={t.id}>{t.name} · seats {t.capacity}</option>)}
-          </select>
+          </HmsSelect>
         </div>
       )}
 

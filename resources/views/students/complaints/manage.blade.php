@@ -441,12 +441,12 @@ function ComplaintForm({ rooms, tables, departments, categories, onSubmit, busy 
           <div className={'cx-step' + (tableName && guestName.trim() ? ' is-done' : '')}>
             <div className="cx-step-head"><span className="cx-num">{++stepNo}</span><label htmlFor="cxTable">Which guest?</label></div>
             <div className="cx-two">
-              <select id="cxTable" className="cx-input" value={tableName} onChange={e => pickTable(e.target.value)}>
+              <HmsSelect id="cxTable" className="cx-input" value={tableName} onChange={e => pickTable(e.target.value)}>
                 <option value="">{(tables || []).length === 0 ? 'No tables set up yet' : 'Choose a table…'}</option>
                 {(tables || []).map(table => (
                   <option key={table.id} value={table.name}>{table.name}{table.guestName ? ` · ${table.guestName}` : ` · ${table.status}`}</option>
                 ))}
-              </select>
+              </HmsSelect>
               <input type="text" className="cx-input" placeholder="Guest name" value={guestName} onChange={e => setGuestName(e.target.value)} aria-label="Guest name (filled in from the table)" title="Filled in from the table" />
             </div>
             <p className="cx-help">Pick the table the guest was seated at. The name fills in from a seated table.</p>
@@ -455,12 +455,12 @@ function ComplaintForm({ rooms, tables, departments, categories, onSubmit, busy 
           <div className={'cx-step' + (roomNumber || guestName.trim() ? ' is-done' : '')}>
             <div className="cx-step-head"><span className="cx-num">{++stepNo}</span><label htmlFor="cxRoom">Which guest?</label></div>
             <div className="cx-two">
-              <select id="cxRoom" className="cx-input" value={roomNumber} onChange={e => pickRoom(e.target.value)}>
+              <HmsSelect id="cxRoom" className="cx-input" value={roomNumber} onChange={e => pickRoom(e.target.value)}>
                 <option value="">{occupiedRooms.length === 0 ? 'No guests are checked in' : 'Choose a room…'}</option>
                 {occupiedRooms.map(room => (
                   <option key={room.id} value={room.name}>Room {room.name} · {room.reservation.fullName || 'Guest'}</option>
                 ))}
-              </select>
+              </HmsSelect>
               <input type="text" className="cx-input" placeholder="Guest name" value={guestName} onChange={e => setGuestName(e.target.value)} aria-label="Guest name (filled in from the room)" title="Filled in from the room" />
             </div>
             <p className="cx-help">
@@ -688,10 +688,10 @@ function ComplaintCard({ complaint, canHandle, canFile, onUpdate }) {
               same backward move the status flow forbids. Nor an escalated one: a
               supervisor already has it. */}
           {complaint.status !== 'Escalated' && (
-            <select className="cx-btn-sm cx-handover" value="" onChange={e => handOver(e.target.value)} aria-label="Give this complaint to another department">
+            <HmsSelect className="cx-btn-sm cx-handover" value="" onChange={e => handOver(e.target.value)} aria-label="Give this complaint to another department">
               <option value="">Give to…</option>
               {otherDepartments.map(key => <option key={key} value={key}>{DEPARTMENT_LABELS[key]}</option>)}
-            </select>
+            </HmsSelect>
           )}
           <button type="button" className="cx-btn-sm is-danger" onClick={cancel}>
             <i className="fa-solid fa-xmark"></i>Cancel

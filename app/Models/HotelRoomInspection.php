@@ -42,11 +42,14 @@ class HotelRoomInspection extends Model
      * means nothing to report — the room only needed cleaning, so no complaint is
      * filed. The category is a starting point: HotelHousekeepingDesk::reportIssue()
      * lets the caller override it, the same way the Front Desk complaint form does.
+     *
+     * 'Damaged Equipment' covers anything broken or needing repair. Older rows may
+     * still say 'Needs Repair', which is no longer offered; the page shows them as
+     * the same choice.
      */
     public const FINDINGS = [
         'Cleaning Only'     => null,
         'Damaged Equipment' => 'Broken Television or Appliances',
-        'Needs Repair'      => 'Damaged Furniture',
         'Missing Items'     => 'Other Maintenance Problems',
     ];
 

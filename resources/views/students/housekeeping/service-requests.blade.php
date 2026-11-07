@@ -301,9 +301,9 @@ function DefectModal({ request, onClose, onSent }) {
         <form className="ao-form" onSubmit={submit}>
           <div className="ao-field">
             <label className="ao-label">What is wrong?</label>
-            <select className="ao-input" value={category} onChange={e => setCategory(e.target.value)}>
+            <HmsSelect className="ao-input" value={category} onChange={e => setCategory(e.target.value)}>
               {cats.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+            </HmsSelect>
           </div>
           <div className="ao-field">
             <label className="ao-label">Details <em>(optional)</em></label>

@@ -1074,13 +1074,13 @@ function RoomWalkIn() {
             <Field id="wi-promo" label="Promo / package" optional
               help={promo ? promo.description + ' Package price: ' + peso(promo.promo_price) + ' for the whole stay, on the first room.'
                 : promoChoices.length ? '' : 'No promo is running today.'}>
-              <select id="wi-promo" className="wi-input" value={promoId} onChange={e => setPromoId(e.target.value)}
+              <HmsSelect id="wi-promo" className="wi-input" value={promoId} onChange={e => setPromoId(e.target.value)}
                 disabled={!promoChoices.length}>
                 <option value="">No promo, regular room rate</option>
                 {promoChoices.map(p => (
                   <option key={p.dbId} value={String(p.dbId)}>{p.name} · {peso(p.promo_price)}</option>
                 ))}
-              </select>
+              </HmsSelect>
             </Field>
           </div>
         </Section>
@@ -1104,13 +1104,13 @@ function RoomWalkIn() {
                   return (
                     <div key={i} style={{ '--i': i }}>
                       <Field id={'wi-age-' + i} label={'Child ' + (i + 1) + '’s age'} bad={tried && age === '' ? 'Pick an age.' : ''}>
-                        <select id={'wi-age-' + i} className={'wi-input' + (tried && age === '' ? ' is-bad' : '')}
+                        <HmsSelect id={'wi-age-' + i} className={'wi-input' + (tried && age === '' ? ' is-bad' : '')}
                           value={age === '' ? '' : String(age)} onChange={e => setAge(i, e.target.value)}>
                           <option value="">Select age</option>
                           {Array.from({ length: 18 }, (_, n) => (
                             <option key={n} value={String(n)}>{n === 0 ? 'Under 1 year' : plural(n, 'year')}</option>
                           ))}
-                        </select>
+                        </HmsSelect>
                       </Field>
                       {own && (
                         <p className="wi-age-hint">
@@ -1275,21 +1275,21 @@ function RoomWalkIn() {
                     </div>
                     <div className="wi-claim-grid">
                       <Field id={'wi-c-slot-' + c.key} label="Who is this?" bad={show('slot')}>
-                        <select id={'wi-c-slot-' + c.key} className={'wi-input' + (show('slot') ? ' is-bad' : '')} value={c.slot}
+                        <HmsSelect id={'wi-c-slot-' + c.key} className={'wi-input' + (show('slot') ? ' is-bad' : '')} value={c.slot}
                           onChange={e => set({ slot: e.target.value })}>
                           <option value="primary">Primary guest{fullName.trim() ? ' (' + fullName.trim() + ')' : ''}</option>
                           <option value="adult">Accompanying adult</option>
                           {c.type === 'PWD' && childAges.map((age, k) => (
                             <option key={k} value={'child:' + k}>Child {k + 1}{age !== '' ? ', age ' + age : ''}</option>
                           ))}
-                        </select>
+                        </HmsSelect>
                       </Field>
                       {adultRooms && (
                         <Field id={'wi-c-room-' + c.key} label="Staying in">
-                          <select id={'wi-c-room-' + c.key} className="wi-input" value={c.room ? String(c.room.id) : ''}
+                          <HmsSelect id={'wi-c-room-' + c.key} className="wi-input" value={c.room ? String(c.room.id) : ''}
                             onChange={e => set({ roomId: Number(e.target.value) })}>
                             {priced.map(p => <option key={p.id} value={String(p.id)}>{p.room.name}</option>)}
-                          </select>
+                          </HmsSelect>
                         </Field>
                       )}
                       <Field id={'wi-c-name-' + c.key} label="Full name" bad={show('fullName')}>

@@ -695,9 +695,9 @@ function GroupBillPanel({ bill, onPaid, onToast }) {
             ))}
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-            <select className="booking-input" value={method} onChange={e => setMethod(e.target.value)} style={{ flex: '1 0 7rem', width: 'auto' }}>
+            <HmsSelect className="booking-input" value={method} onChange={e => setMethod(e.target.value)} style={{ flex: '1 0 7rem', width: 'auto' }}>
               {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
-            </select>
+            </HmsSelect>
             <input type="number" className="booking-input" min="0" step="0.01" value={amount} onChange={e => setAmount(e.target.value)}
               placeholder={isCash ? 'Cash received' : 'Amount'} aria-label={isCash ? 'Cash received' : 'Amount received'} style={{ flex: '1 1 7rem', width: 'auto' }} />
             {!isCash && (
@@ -850,16 +850,16 @@ function BillDiscountForm({ bill, adults, promoName, onAdd, onToast }) {
               <div key={i} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(9rem, 1fr))', gap: '0.5rem', padding: '0.6rem', border: '1px solid var(--border)', borderRadius: '0.5rem' }}>
                 <div>
                   <label style={fieldLabel}>Discount</label>
-                  <select className="booking-input" value={child ? 'PWD' : r.type} onChange={e => setRow(i, { type: e.target.value })} disabled={child}>
+                  <HmsSelect className="booking-input" value={child ? 'PWD' : r.type} onChange={e => setRow(i, { type: e.target.value })} disabled={child}>
                     <option value="Senior Citizen">Senior Citizen</option>
                     <option value="PWD">PWD</option>
-                  </select>
+                  </HmsSelect>
                 </div>
                 <div>
                   <label style={fieldLabel}>Who</label>
-                  <select className="booking-input" value={who} onChange={e => setRow(i, { who: e.target.value, type: e.target.value.indexOf('child:') === 0 ? 'PWD' : r.type })}>
+                  <HmsSelect className="booking-input" value={who} onChange={e => setRow(i, { who: e.target.value, type: e.target.value.indexOf('child:') === 0 ? 'PWD' : r.type })}>
                     {whoOptions.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
-                  </select>
+                  </HmsSelect>
                 </div>
                 {who !== 'primary' && (
                   <div>
@@ -1215,14 +1215,14 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, finalChecks, 
                 </form>
               ) : showAddonForm ? (
                 <form onSubmit={submitAddon} style={{ display: 'flex', gap: '0.4rem', marginTop: '0.6rem', flexWrap: 'wrap' }}>
-                  <select className="booking-input" value={addonId} onChange={e => setAddonId(e.target.value)} style={{ flex: '2 1 160px', width: 'auto' }}>
+                  <HmsSelect className="booking-input" value={addonId} onChange={e => setAddonId(e.target.value)} style={{ flex: '2 1 160px', width: 'auto' }}>
                     <option value="">Pick an extra…</option>
                     {(addonCatalog || []).map(a => (
                       <option key={a.dbId} value={String(a.dbId)} disabled={a.available <= 0}>
                         {a.name} · {a.price ? formatPeso(a.price) + (a.extraBed ? ' / night' : '') : 'Free'} · {a.available} left
                       </option>
                     ))}
-                  </select>
+                  </HmsSelect>
                   <input type="number" className="booking-input" min="1" max="99" value={addonQty}
                     onChange={e => setAddonQty(e.target.value)} style={{ flex: '0 1 70px', width: 'auto' }} aria-label="How many" />
                   <button type="submit" className="btn-solid" disabled={busy} style={{ padding: '0.5rem 0.9rem' }}>Add</button>
@@ -1342,10 +1342,10 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, finalChecks, 
                   <div style={{ display: 'grid', gap: '0.45rem' }}>
                     {parts.map((p, i) => (
                       <div key={i} style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center' }}>
-                        <select className="booking-input" value={p.method} onChange={e => setPart(i, { method: e.target.value })}
+                        <HmsSelect className="booking-input" value={p.method} onChange={e => setPart(i, { method: e.target.value })}
                           aria-label="Payment method" style={{ flex: '1 0 7rem', width: 'auto' }}>
                           {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
-                        </select>
+                        </HmsSelect>
                         <input type="number" className="booking-input" min="0" step="0.01" value={p.amount}
                           placeholder={p.method === 'Cash' ? 'Cash received' : 'Amount'} aria-label={p.method + ' amount'}
                           onChange={e => setPart(i, { amount: e.target.value })} style={{ flex: '1 1 7rem', width: 'auto' }} />
@@ -1385,9 +1385,9 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, finalChecks, 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.7rem' }}>
                   <div>
                     <label style={{ fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.35rem' }}>Payment Method</label>
-                    <select className="booking-input" value={method} onChange={e => setMethod(e.target.value)}>
+                    <HmsSelect className="booking-input" value={method} onChange={e => setMethod(e.target.value)}>
                       {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
-                    </select>
+                    </HmsSelect>
                   </div>
                   <div>
                     <label style={{ fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.35rem' }}>{isCash ? 'Cash Received' : 'Amount Received'}</label>
@@ -1699,12 +1699,12 @@ function ChangeRoomModal({ room, reservation, rooms, onClose, onSave }) {
               No other room is free from {formatBillDate(reservation.checkIn)} to {formatBillDate(reservation.checkOut)}.
             </p>
           ) : (
-            <select className="booking-input" value={pickedId || ''} onChange={e => { setPickedId(Number(e.target.value) || null); setError(''); }}>
+            <HmsSelect className="booking-input" value={pickedId || ''} onChange={e => { setPickedId(Number(e.target.value) || null); setError(''); }}>
               <option value="">Pick a room…</option>
               {options.map(r => (
                 <option key={r.id} value={r.dbId}>{r.name} · {r.label || r.category} · {formatPeso(r.price)} / 12 hrs</option>
               ))}
-            </select>
+            </HmsSelect>
           )}
 
           {picked && (
@@ -1939,9 +1939,9 @@ function HousekeepingRequests({ reservation }) {
       ))}
       {staying && (
         <form onSubmit={submit} style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
-          <select className="booking-input" value={type} onChange={e => setType(e.target.value)} style={{ flex: '2 1 10rem', width: 'auto' }} aria-label="What the guest needs">
+          <HmsSelect className="booking-input" value={type} onChange={e => setType(e.target.value)} style={{ flex: '2 1 10rem', width: 'auto' }} aria-label="What the guest needs">
             {HK_REQUEST_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
+          </HmsSelect>
           <input className="booking-input" placeholder="When? e.g. 2:00 PM" value={time} onChange={e => setTime(e.target.value)} style={{ flex: '1 1 7rem', width: 'auto' }} />
           <input className="booking-input" placeholder="Note (optional)" value={notes} onChange={e => setNotes(e.target.value)} style={{ flex: '2 1 10rem', width: 'auto' }} />
           <button type="submit" className="btn-solid" disabled={busy} style={{ padding: '0.5rem 0.9rem' }}>

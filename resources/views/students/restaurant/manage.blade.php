@@ -1188,11 +1188,11 @@ function DineInBillModal({ table, onFetchBill, onSettle, onClose, onToast, onRec
                     <div style={{ display: 'grid', gap: '0.45rem', marginTop: '0.6rem' }}>
                       {claims.map((c, i) => (
                         <div key={i} style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center' }}>
-                          <select className="booking-input" value={c.type} onChange={e => setClaim(i, { type: e.target.value })}
+                          <HmsSelect className="booking-input" value={c.type} onChange={e => setClaim(i, { type: e.target.value })}
                             aria-label="Discount type" style={{ padding: '0.45rem 1.6rem 0.45rem 0.5rem', fontSize: '0.76rem', flex: '1 0 8.5rem', width: 'auto' }}>
                             <option value="Senior Citizen">Senior Citizen</option>
                             <option value="PWD">PWD</option>
-                          </select>
+                          </HmsSelect>
                           <input className="booking-input" placeholder="Full name" value={c.full_name}
                             onChange={e => setClaim(i, { full_name: e.target.value })} style={{ padding: '0.45rem 0.6rem', fontSize: '0.76rem', flex: '2 1 9rem', width: 'auto' }} />
                           <input className="booking-input" placeholder="ID number" value={c.id_number}
@@ -1265,10 +1265,10 @@ function DineInBillModal({ table, onFetchBill, onSettle, onClose, onToast, onRec
                     <div style={{ display: 'grid', gap: '0.45rem' }}>
                       {parts.map((p, i) => (
                         <div key={i} style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center' }}>
-                          <select className="booking-input" value={p.method} onChange={e => setPart(i, { method: e.target.value })}
+                          <HmsSelect className="booking-input" value={p.method} onChange={e => setPart(i, { method: e.target.value })}
                             aria-label="Payment method" style={{ flex: '1 0 7rem', width: 'auto', padding: '0.5rem 1.6rem 0.5rem 0.6rem', fontSize: '0.8rem', colorScheme: 'dark', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)' }}>
                             {BILL_METHODS.map(m => <option key={m} value={m} style={{ background: 'var(--card, #181714)' }}>{m}</option>)}
-                          </select>
+                          </HmsSelect>
                           <input type="number" className="booking-input" min="0" step="0.01" value={p.amount}
                             placeholder={p.method === 'Cash' ? 'Cash received' : 'Amount'} aria-label={p.method + ' amount'}
                             onChange={e => setPart(i, { amount: e.target.value })} style={{ flex: '1 1 7rem', width: 'auto', padding: '0.5rem 0.6rem', fontSize: '0.8rem' }} />
@@ -1305,10 +1305,10 @@ function DineInBillModal({ table, onFetchBill, onSettle, onClose, onToast, onRec
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.7rem' }}>
                     <div>
                       <label style={fieldLabel}>Payment Method</label>
-                      <select className="booking-input" value={method} onChange={e => setMethod(e.target.value)}
+                      <HmsSelect className="booking-input" value={method} onChange={e => setMethod(e.target.value)}
                         style={{ colorScheme: 'dark', background: 'rgba(255,255,255,0.03)', color: 'var(--fg)' }}>
                         {BILL_METHODS.map(m => <option key={m} value={m} style={{ background: 'var(--card, #181714)' }}>{m}</option>)}
-                      </select>
+                      </HmsSelect>
                     </div>
                     <div>
                       <label style={fieldLabel}>{isCash ? 'Cash Received' : 'Amount Paid'}</label>
