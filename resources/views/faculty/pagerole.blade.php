@@ -139,6 +139,7 @@
     .tc-btn-primary { background: #4A4643; border-color: #4A4643; color: #fff; }
     .tc-btn-primary:hover { background: #2F2C2A; border-color: #2F2C2A; }
     .tc-btn .iconify { font-size: 1rem; }
+    .tc-btn-wide { grid-column: 1 / -1; }
     /* Submissions waiting: the review notices moved into View Team, so the card
        keeps only this dot. Driven by the notices' own hidden class, which the
        live poll already toggles. */
@@ -863,6 +864,13 @@
                                 <span class="iconify" data-icon="mdi:pencil-outline"></span>
                                 Update
                             </button>
+                            {{-- The team's live site with every customization merged in. --}}
+                            <a href="{{ route('faculty.teams.preview', ['group' => $groupName]) }}"
+                               target="_blank" rel="noopener"
+                               class="tc-btn tc-btn-wide">
+                                <span class="iconify" data-icon="mdi:web"></span>
+                                View Website
+                            </a>
                         </div>
 
                         {{-- View Team's Overview for this team. Never shown on the card:
