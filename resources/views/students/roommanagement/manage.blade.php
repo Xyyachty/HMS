@@ -2179,12 +2179,22 @@ function GuestCard({ room, now, onView, onCheckIn }) {
         <button type="button" className="mr-btn is-small" onClick={() => onView(room)}>
           <i className="fa-solid fa-eye"></i> See details
         </button>
-        {state.key !== 'in' ? (
+        {state.key !== 'in' ? (res.checkInBlocker ? (
+          // Room still Cleaning / Maintenance, or the last guest is still in.
+          <button type="button" className="mr-btn is-solid is-small" disabled title={res.checkInBlocker}>
+            <i className="fa-solid fa-hourglass-half"></i> Room not ready
+          </button>
+        ) : (
           <button type="button" className="mr-btn is-solid is-small" onClick={() => onCheckIn(room)}>
             <i className="fa-solid fa-key"></i> Check in
           </button>
-        ) : null}
+        )) : null}
       </div>
+      {state.key !== 'in' && res.checkInBlocker ? (
+        <p className="mr-time is-idle" style={{ marginTop: '0.5rem' }}>
+          <i className="fa-solid fa-broom"></i><span>{res.checkInBlocker}</span>
+        </p>
+      ) : null}
     </article>
   );
 }
@@ -2223,10 +2233,9 @@ function GuestDetailsPanel({ rooms, onBookingAction, onToast }) {
   // it starts the guest's paid clock, and a mis-click on the wrong card is easy.
   const checkInGuest = (room) => {
     if (typeof onBookingAction !== 'function' || !room.reservation) return;
-    const go = () => {
-      onBookingAction(room.reservation.bookingId, 'check_in');
-      if (onToast) onToast(`${room.reservation.fullName || 'Guest'} is checked in to ${room.name}.`);
-    };
+    const go = () => Promise.resolve(onBookingAction(room.reservation.bookingId, 'check_in')).then(res => {
+      if (onToast) onToast(res && res.ok === false ? res.message : `${room.reservation.fullName || 'Guest'} is checked in to ${room.name}.`);
+    });
     if (!window.Swal) { if (window.confirm(`Check in ${room.reservation.fullName || 'this guest'} to ${room.name}?`)) go(); return; }
     window.Swal.fire({
       title: `Check in ${room.reservation.fullName || 'this guest'}?`,
@@ -2488,15 +2497,19 @@ function App() {
   const bookingAction = useCallback((bookingId, action) => {
     if (!bookingId) return;
     pendingWrites.current += 1;
-    fetch('/students/hotel/bookings/' + bookingId, {
+    return fetch('/students/hotel/bookings/' + bookingId, {
       method: 'PATCH',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
       body: JSON.stringify({ action }),
     })
-      .then(r => (r.ok ? r.json() : null))
-      .then(data => { if (data && data.room) setRooms(prev => prev.map(r => (r.id === data.room.id ? data.room : r))); })
-      .catch(() => {})
+      // Never rejects: { ok: false, message } when the server refuses (room not ready, say).
+      .then(r => r.json().catch(() => ({})).then(data => {
+        if (!r.ok) return { ok: false, message: (data && data.message) || 'Could not update this booking.' };
+        if (data && data.room) setRooms(prev => prev.map(x => (x.id === data.room.id ? data.room : x)));
+        return { ok: true };
+      }))
+      .catch(() => ({ ok: false, message: 'Could not reach the server. Try again.' }))
       .finally(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); });
   }, []);
 

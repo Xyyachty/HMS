@@ -457,6 +457,11 @@ function openFinalChecks(reservation) {
 
 function statusHint(reservation) {
   const stage = checkoutStage(reservation);
+  if (!stage && reservation.checkInBlocker) {
+    return /being cleaned/.test(reservation.checkInBlocker) ? 'Room not ready: Cleaning'
+      : /maintenance/.test(reservation.checkInBlocker) ? 'Room not ready: Maintenance'
+      : 'Room not ready: last guest still in';
+  }
   if (!stage) return STATUS_HINTS[reservation.status];
   if (stage === 'waiting') return 'Housekeeping is checking the room';
   const damages = reservation.inspection.damages || [];
@@ -2158,10 +2163,9 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
   const checkInGuest = (room, reservation) => {
     if (typeof onBookingAction !== 'function') return;
     const name = reservation.fullName || 'this guest';
-    const go = () => {
-      onBookingAction(reservation.bookingId, 'check_in');
-      if (onToast) onToast(`${reservation.fullName || 'Guest'} is checked in to ${room.name}.`);
-    };
+    const go = () => Promise.resolve(onBookingAction(reservation.bookingId, 'check_in')).then(res => {
+      if (onToast) onToast(res && res.ok === false ? res.message : `${reservation.fullName || 'Guest'} is checked in to ${room.name}.`);
+    });
     if (!window.Swal) { if (window.confirm(`Check in ${name} to ${room.name}?`)) go(); return; }
     window.Swal.fire({
       title: `Check in ${name}?`,
@@ -2319,13 +2323,19 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
             <i className="fa-solid fa-door-open"></i> Mark arrived
           </button>
         )}
-        {status === 'Arrived' && (
+        {status === 'Arrived' && (reservation.checkInBlocker ? (
+          // Room still Cleaning / Maintenance, or the last guest is still in: no key yet.
+          // Change room (left) moves them to a ready one.
+          <button type="button" className="vg-btn vg-btn-main" disabled title={reservation.checkInBlocker}>
+            <i className="fa-solid fa-hourglass-half"></i> Room not ready
+          </button>
+        ) : (
           <button type="button" className="vg-btn vg-btn-main"
             onClick={() => checkInGuest(room, reservation)}
             title="Give the guest the key and start their stay">
             <i className="fa-solid fa-key"></i> Check in
           </button>
-        )}
+        ))}
         {status === 'Checked In' && (
           <button type="button" className="vg-btn vg-lifecycle-btn vg-btn-main"
             onClick={() => startCheckOut(room, reservation)}
@@ -2597,15 +2607,19 @@ function App() {
   const bookingAction = useCallback((bookingId, action) => {
     if (!bookingId) return;
     pendingWrites.current += 1;
-    fetch('/students/hotel/bookings/' + bookingId, {
+    return fetch('/students/hotel/bookings/' + bookingId, {
       method: 'PATCH',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
       body: JSON.stringify({ action }),
     })
-      .then(r => (r.ok ? r.json() : null))
-      .then(data => { if (data && data.room) setRooms(prev => prev.map(r => (r.id === data.room.id ? data.room : r))); })
-      .catch(() => {})
+      // Never rejects: { ok: false, message } when the server refuses (room not ready, say).
+      .then(r => r.json().catch(() => ({})).then(data => {
+        if (!r.ok) return { ok: false, message: (data && data.message) || 'Could not update this booking.' };
+        if (data && data.room) setRooms(prev => prev.map(x => (x.id === data.room.id ? data.room : x)));
+        return { ok: true };
+      }))
+      .catch(() => ({ ok: false, message: 'Could not reach the server. Try again.' }))
       .finally(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); });
   }, []);
 

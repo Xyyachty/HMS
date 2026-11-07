@@ -2207,6 +2207,10 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
                 \App\Support\HotelBookingDesk::markArrived($booking);
                 break;
             case 'check_in':
+                // The key goes only to a ready room, walk-in or booked ahead.
+                if ($blocker = $booking->checkInBlocker()) {
+                    return response()->json(['message' => $blocker], 422);
+                }
                 \App\Support\HotelBookingDesk::checkIn($booking);
                 break;
             case 'request_inspection':

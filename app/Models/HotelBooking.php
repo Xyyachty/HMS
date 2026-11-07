@@ -579,6 +579,8 @@ class HotelBooking extends Model
                 ? $this->inspection?->load('damages')->toTemplateArray()
                 : null,
             'finalChecks'   => $this->status === 'Pending Room Inspection' ? $this->finalChecks() : null,
+            // Why the key cannot be handed over yet (room Cleaning, say); null when it can.
+            'checkInBlocker' => in_array($this->status, ['Booked', 'Arrived'], true) ? $this->checkInBlocker() : null,
         ];
     }
 
@@ -596,6 +598,34 @@ class HotelBooking extends Model
             if (!$check['ok']) {
                 return $check['detail'];
             }
+        }
+
+        return null;
+    }
+
+    /**
+     * Why the Front Desk cannot hand over the key yet, or null when it can: the room
+     * is still Cleaning or under Maintenance, or the last guest has not left it. A
+     * booking made ahead (website or desk) is held to the same rule as a walk-in.
+     */
+    public function checkInBlocker(): ?string
+    {
+        $room = $this->room;
+        if (!$room) {
+            return null;
+        }
+        if ($room->status === 'Cleaning') {
+            return $room->name . ' is still being cleaned. Wait for Housekeeping to mark it Available, or use Change room.';
+        }
+        if ($room->status === 'Maintenance') {
+            return $room->name . ' is under maintenance. Wait until it is Available again, or use Change room.';
+        }
+        $stillIn = self::where('hotel_room_id', $this->hotel_room_id)
+            ->where('hotel_booking_id', '!=', $this->hotel_booking_id)
+            ->whereIn('status', ['Checked In', 'Pending Room Inspection'])
+            ->exists();
+        if ($stillIn) {
+            return 'Another guest is still in ' . $room->name . '. Check them out first, or use Change room.';
         }
 
         return null;
