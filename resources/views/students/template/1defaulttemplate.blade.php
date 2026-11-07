@@ -4047,7 +4047,7 @@ function HomePage({ sitePromos, onNavigate, onToast, rooms, menus, canEditRooms,
 
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• ROOMS PAGE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-function RoomTabBar({ tabs, active, onChange, items, getKey, allKey, extra, onRenameTab, review, removed }) {
+function RoomTabBar({ tabs, active, onChange, items, getKey, allKey, extra, onRenameTab, onRemoveTab, review, removed }) {
   const keyFn = getKey || ((it) => normalizeRoomCategory(it.category || it.label));
   const counts = useMemo(() => {
     const map = {};
@@ -4110,6 +4110,22 @@ function RoomTabBar({ tabs, active, onChange, items, getKey, allKey, extra, onRe
               style={{ marginLeft: 7, opacity: 0.8, cursor: 'pointer', fontSize: '0.82em' }}
             >
               <i className="fa-solid fa-pen"></i>
+            </span>
+          )}
+          {onRemoveTab && !(allKey && tab === allKey) && (
+            <span
+              role="button"
+              tabIndex={0}
+              title={`Remove ${tab}`}
+              aria-label={`Remove ${tab}`}
+              data-hms-no-edit="1"
+              data-hms-action="remove-room-category"
+              onClick={(e) => { e.stopPropagation(); onRemoveTab(tab); }}
+              onMouseDown={(e) => e.stopPropagation()}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onRemoveTab(tab); } }}
+              style={{ marginLeft: 7, opacity: 0.8, cursor: 'pointer', fontSize: '0.9em' }}
+            >
+              <i className="fa-solid fa-xmark"></i>
             </span>
           )}
         </button>
@@ -5622,7 +5638,7 @@ function CategoryDetailModal({ open, name, detail, roomsIn, checkIn, checkOut, o
   );
 }
 
-function RoomsPage({ onNavigate, onToast, rooms, addons, categories, canEditRooms, canManageRooms, canReserveRooms, onAddRoom, onAddCategory, onRenameCategory, onUpdateCategory, categoryDetails, childPolicy, onEditRoom, onRemoveRoom, onCreateBooking, onRefreshAddons, onOpenRoomManagement, onRequireGuest, guest, promos, chosenPromoId }) {
+function RoomsPage({ onNavigate, onToast, rooms, addons, categories, canEditRooms, canManageRooms, canReserveRooms, onAddRoom, onAddCategory, onRenameCategory, onRemoveCategory, onUpdateCategory, categoryDetails, childPolicy, onEditRoom, onRemoveRoom, onCreateBooking, onRefreshAddons, onOpenRoomManagement, onRequireGuest, guest, promos, chosenPromoId }) {
   const list = rooms && rooms.length ? rooms : [];
   // Front Desk lands on "All" so every room Room Management created is visible on
   // one screen; the category tabs stay for narrowing it down.
@@ -5935,6 +5951,19 @@ function RoomsPage({ onNavigate, onToast, rooms, addons, categories, canEditRoom
         tabs={tabs} active={tab} onChange={setTab} items={list} allKey="All"
         review={catReview} removed={window.__HMS_ROOM_CATS_REMOVED__}
         onRenameTab={canEditRooms ? ((name) => { setRenameError(''); setRenameFrom(name); }) : null}
+        onRemoveTab={canEditRooms && onRemoveCategory ? ((name) => {
+          const count = (rooms || []).filter(r => (r.category || r.label) === name).length;
+          const rest = count ? ` Its ${count} room${count === 1 ? '' : 's'} will be removed too.` : '';
+          if (!hmsConfirm(`Remove the ${name} category?${rest}`)) return;
+          Promise.resolve(onRemoveCategory(name)).then((res) => {
+            if (res && res.ok) {
+              setTab(prev => (prev === name ? 'All' : prev));
+              if (onToast) onToast(`${name} removed`);
+            } else if (onToast) {
+              onToast((res && res.message) || 'Could not remove that category.');
+            }
+          });
+        }) : null}
         extra={canEditRooms ? (
           <button
             type="button"
@@ -7241,11 +7270,18 @@ const PLATE_SHAPE_OPTIONS = [['circle', 'Circle'], ['rounded', 'Rounded'], ['squ
    "Show in Best Seller" on, up to six, or the first six on the menu while none
    is ticked - which is all the section ever showed before it could be chosen. */
 /* The home page's Available Rooms: the rooms Room Management ticked "Show on
-   the home page" on, up to eight, or the first eight while none is ticked. */
+   the home page" on, up to eight, or else two of each room type (Classic 101,
+   Classic 102, then Twin...) so every type is seen. */
 function homeRoomList(rooms) {
-  const list = rooms || [];
-  const picked = list.filter(room => room && room.onHome);
-  return (picked.length ? picked : list).slice(0, 8);
+  const list = (rooms || []).filter(Boolean);
+  const picked = list.filter(room => room.onHome);
+  if (picked.length) return picked.slice(0, 8);
+  const perType = {};
+  return list.filter((room) => {
+    const type = room.category || room.label || '';
+    perType[type] = (perType[type] || 0) + 1;
+    return perType[type] <= 2;
+  });
 }
 function bestSellerList(menus) {
   const list = menus || [];
@@ -9806,6 +9842,31 @@ function App() {
       .finally(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); });
   }, []);
 
+  /* Removes a category and its rooms. Resolves to { ok } or { ok: false, message }:
+     the server refuses while any of its rooms has a booking. */
+  const removeRoomCategory = useCallback((name) => {
+    pendingWrites.current += 1;
+    return fetch('/students/hotel/room-categories', {
+      method: 'DELETE',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': hmsCsrfToken(), 'Accept': 'application/json' },
+      body: JSON.stringify({ name }),
+    })
+      .then(r => r.json().then(data => (r.ok ? data : Promise.reject(data))))
+      .then(data => {
+        if (data && Array.isArray(data.categories)) {
+          const names = data.categories.map(c => (typeof c === 'string' ? c : c.name)).filter(Boolean);
+          setRoomCategoryNames(names);
+          setRoomCategories(names);
+          setCategoryDetails(data.categories);
+        }
+        if (data && Array.isArray(data.rooms)) setRooms(data.rooms);
+        return { ok: true };
+      })
+      .catch(err => ({ ok: false, message: (err && err.message) || 'Could not remove that category.' }))
+      .finally(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); });
+  }, []);
+
   const removeRoom = useCallback((id) => {
     setRooms(prev => prev.filter(r => r.id !== id));
   }, []);
@@ -10203,6 +10264,7 @@ function App() {
         onAddRoom={addRoom}
         onAddCategory={addRoomCategory}
         onRenameCategory={renameRoomCategory}
+        onRemoveCategory={removeRoomCategory}
         onUpdateCategory={updateRoomCategory}
         onEditRoom={editRoom}
         onRemoveRoom={removeRoom}

@@ -345,6 +345,11 @@ class HotelRoomDefaults
         }
 
         foreach ($rows as $category) {
+            // A removed category still holds its hundreds block above, so a
+            // starting one does not reappear in its place, but is not listed.
+            if (HotelRoomCategory::supportsRemoval() && $category->removed_at !== null) {
+                continue;
+            }
             // Photographs go out as addresses, not storage paths - see
             // HotelRoomCategory::toTemplateArray().
             $categories[] = $category->toTemplateArray();
@@ -562,6 +567,54 @@ class HotelRoomDefaults
     }
 
     /**
+     * Removes one of the team's categories and the rooms in it.
+     *
+     * Refused while any of those rooms has ever been booked: deleting a room
+     * cascades to its bookings, so it would take the stays, payments and reports
+     * with it. The last category is kept too — a room added afterwards needs one
+     * to fall under.
+     *
+     * Returns null when done, or the reason it was refused.
+     */
+    public static function removeCategory(StudentGroup $membership, string $name): ?string
+    {
+        if (!HotelRoomCategory::supportsRemoval()) {
+            return 'Removing a category is not available yet. Try again in a few minutes.';
+        }
+
+        self::ensureCategoriesFor($membership);
+
+        $current = self::normalizeCategory($name, $membership);
+        if (mb_strtolower($current) !== mb_strtolower(trim($name))) {
+            return 'That category is not one of yours.';
+        }
+
+        if (count(self::floorsFor($membership)) <= 1) {
+            return 'Keep at least one room category.';
+        }
+
+        $scope = [
+            'group_name' => $membership->group_name,
+            'faculty_id' => $membership->faculty_id,
+        ];
+
+        $booked = HotelRoom::where($scope)
+            ->where('category', $current)
+            ->whereHas('bookings')
+            ->exists();
+        if ($booked) {
+            return $current . ' has rooms with bookings, so it stays. Its booking history would be lost.';
+        }
+
+        DB::transaction(function () use ($scope, $current) {
+            HotelRoom::where($scope)->where('category', $current)->delete();
+            HotelRoomCategory::where($scope)->where('name', $current)->update(['removed_at' => now()]);
+        });
+
+        return null;
+    }
+
+    /**
      * Adds a category to the team's list and hands it back.
      *
      * Returns null when the name is already taken — case and surrounding spaces do not
@@ -584,6 +637,26 @@ class HotelRoomDefaults
             if (mb_strtolower($existing) === mb_strtolower($clean)) {
                 return null;
             }
+        }
+
+        $scope = ['group_name' => $membership->group_name, 'faculty_id' => $membership->faculty_id];
+
+        if (HotelRoomCategory::supportsRemoval()) {
+            // A category removed earlier under this name comes back, on its own
+            // hundreds block, rather than tripping the unique name index.
+            $removed = HotelRoomCategory::where($scope)
+                ->whereNotNull('removed_at')
+                ->whereRaw('LOWER(name) = ?', [mb_strtolower($clean)])
+                ->first();
+            if ($removed) {
+                $removed->fill(['removed_at' => null, 'name' => $clean] + ($rate !== null ? ['rate' => $rate] : [])
+                    + ($description !== null ? ['description' => $description] : []))->save();
+                return $removed;
+            }
+
+            // Past removed categories too, so a removed one restored later does
+            // not share its room numbers with this one.
+            $floors[] = (int) HotelRoomCategory::where($scope)->max('floor_number');
         }
 
         try {

@@ -34,6 +34,9 @@ class HotelRoomCategory extends Model
         'capacity',
         'bed_type',
         'room_size',
+        // Set when Room Management removes the category. The row is kept so its
+        // hundreds block stays taken and a starting category does not come back.
+        'removed_at',
     ];
 
     protected $casts = [
@@ -42,7 +45,23 @@ class HotelRoomCategory extends Model
         'rooms_available' => 'integer',
         'gallery' => 'array',
         'capacity' => 'integer',
+        'removed_at' => 'datetime',
     ];
+
+    /**
+     * Whether removed_at is on the table yet. Until its migration has run, no
+     * category can be removed and every row is a live one.
+     */
+    public static function supportsRemoval(): bool
+    {
+        static $supported = null;
+
+        if ($supported === null) {
+            $supported = \Illuminate\Support\Facades\Schema::hasColumn('hotel_room_categories', 'removed_at');
+        }
+
+        return $supported;
+    }
 
     /**
      * Whether the showcase columns are on the table yet.

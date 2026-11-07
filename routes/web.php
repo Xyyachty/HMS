@@ -1510,6 +1510,42 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
     })->name('hotel.room-categories.update');
 
     /**
+     * The x on a Rooms tab: removes the category and its rooms. Refused while any of
+     * those rooms has a booking - see HotelRoomDefaults::removeCategory().
+     */
+    Route::delete('/hotel/room-categories', function (Request $request) {
+        $authUser = auth()->user();
+        $student  = $authUser?->student;
+        $membership = \App\Support\StudentGroupSync::membershipForStudent($student?->user_information_id);
+        if (!$membership) {
+            return response()->json(['error' => 'Group not found'], 404);
+        }
+
+        if (!\App\Support\HotelTemplateBuilder::canEdit($authUser, $membership, 'room_management')) {
+            return response()->json(['message' => 'Only Room Management can remove a room category.'], 403);
+        }
+
+        $data = $request->validate(['name' => 'required|string|max:60']);
+
+        $refused = \App\Support\HotelRoomDefaults::removeCategory($membership, $data['name']);
+        if ($refused !== null) {
+            return response()->json(['message' => $refused], 422);
+        }
+
+        $rooms = HotelRoom::with(['activeBooking.guest', 'activeBooking.payments', 'activeBooking.foodOrders', 'activeBooking.charges', 'activeBooking.addons', 'openBookings.guest', 'openBookings.payments', 'openBookings.foodOrders', 'openBookings.charges', 'openBookings.addons'])
+            ->where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->orderBy('hotel_room_id')
+            ->get()
+            ->map(fn (HotelRoom $room) => $room->toTemplateArray());
+
+        return response()->json([
+            'categories' => \App\Support\HotelRoomDefaults::categoriesFor($membership),
+            'rooms'      => $rooms,
+        ]);
+    })->name('hotel.room-categories.destroy');
+
+    /**
      * The design stage's edit of one room category: its picture, its rate, its
      * words, what the stay includes and how many rooms of it the hotel offers.
      *

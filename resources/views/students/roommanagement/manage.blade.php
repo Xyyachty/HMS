@@ -1367,7 +1367,7 @@ function OnHomeCheck({ checked, onChange }) {
         <input type="checkbox" checked={!!checked} onChange={e => onChange(e.target.checked)} style={{ width: 16, height: 16 }} />
         <span><i className="fa-solid fa-house" style={{ marginRight: 5 }}></i>Show on the home page</span>
       </label>
-      <p className="mr-help">Ticked rooms are the ones Available Rooms on the home page shows, up to eight. Until you tick any, the first eight show.</p>
+      <p className="mr-help">Ticked rooms are the ones Available Rooms on the home page shows, up to eight. Until you tick any, two rooms of each type show.</p>
     </div>
   );
 }
