@@ -714,6 +714,38 @@ class Notifier
     }
 
     /**
+     * Front Desk started a check-out: Restaurant Services confirms every food order on
+     * the stay is delivered and on the bill before the final bill closes it.
+     */
+    public static function checkoutOrdersToConfirm(\App\Models\HotelBooking $booking): void
+    {
+        $room = $booking->room?->name ?: 'a room';
+        static::push(
+            static::teamRoleUserIds($booking->group_name, (int) $booking->faculty_id, ['restaurant_management']),
+            UserNotification::CHECKOUT_ORDERS,
+            'Confirm food orders · ' . $room,
+            ($booking->guest?->full_name ?: 'A guest') . ' is checking out of ' . $room
+                . '. Confirm every food order is delivered and on the bill.',
+            route('students.restaurant.manage', ['nav' => 'orders']),
+            null
+        );
+    }
+
+    /** Restaurant Services confirmed a check-out's food orders; the Front Desk can bill. */
+    public static function checkoutOrdersConfirmed(?User $actor, \App\Models\HotelBooking $booking): void
+    {
+        $room = $booking->room?->name ?: 'a room';
+        static::push(
+            static::teamRoleUserIds($booking->group_name, (int) $booking->faculty_id, ['front_desk']),
+            UserNotification::CHECKOUT_ORDERS,
+            'Food orders confirmed · ' . $room,
+            'Restaurant Services confirmed ' . ($booking->guest?->full_name ?: 'the guest') . '’s food orders are delivered and on the bill.',
+            route('students.frontdesk.verify-guest'),
+            $actor?->id
+        );
+    }
+
+    /**
      * A stay ended and the room needs the post-checkout pass. No actor: check-out can
      * be Front Desk settling the bill or a room-status flip, and either way this is
      * addressed to Housekeeping, not credited to whoever triggered it.

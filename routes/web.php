@@ -2396,6 +2396,69 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
      * Front Desk saw the Senior Citizen / PWD ID of a guest whose discount was left
      * pending at booking. The discount comes off the bill from now on.
      */
+    // Verify final charges, Restaurant Services' part: guests checking out, each with
+    // the food orders on their stay, for the desk to confirm delivered and billed.
+    Route::get('/hotel/checkout-confirmations', function () {
+        $membership = \App\Support\HotelBookingDesk::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Group not found'], 404);
+        }
+        $roles = \App\Support\HotelTableAccess::roles($membership);
+        $stays = HotelBooking::where('group_name', $membership->group_name)
+            ->where('faculty_id', $membership->faculty_id)
+            ->where('status', 'Pending Room Inspection')
+            ->with(['room', 'guest', 'foodOrders'])
+            ->orderBy('hotel_booking_id')
+            ->get()
+            ->map(fn (HotelBooking $b) => [
+                'bookingId'   => $b->hotel_booking_id,
+                'roomName'    => $b->room?->name ?? '',
+                'guestName'   => $b->guest?->full_name ?? 'Guest',
+                'orders'      => $b->foodOrders->map(fn ($o) => [
+                    'id'     => $o->hotel_food_order_id,
+                    'status' => $o->status,
+                    'total'  => (float) $o->total,
+                    'items'  => collect($o->items ?? [])->map(fn ($i) => (($i['qty'] ?? 1) . '× ' . ($i['name'] ?? 'Item')))->implode(', '),
+                ])->values(),
+                'openOrders'  => $b->foodOrders->where('status', '!=', 'Completed')->count(),
+                'total'       => (float) $b->foodOrders->sum('total'),
+                'confirmed'   => $b->ordersConfirmed(),
+                'confirmedBy' => $b->orders_confirmed_by ?? '',
+            ])->values();
+
+        return response()->json([
+            'supported'  => HotelBooking::ordersConfirmSupported(),
+            'can_confirm' => (bool) array_intersect($roles, ['restaurant_management', 'administrator']),
+            'stays'      => $stays,
+        ]);
+    })->name('hotel.checkout-confirmations.index');
+
+    Route::post('/hotel/bookings/{id}/confirm-orders', function (Request $request, $id) {
+        $membership = \App\Support\HotelBookingDesk::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Group not found'], 404);
+        }
+        if (!array_intersect(\App\Support\HotelTableAccess::roles($membership), ['restaurant_management', 'administrator'])) {
+            return response()->json(['message' => 'Only Restaurant Services can confirm the food orders.'], 403);
+        }
+        $booking = \App\Support\HotelBookingDesk::findBooking($membership, $id);
+        if (!$booking) {
+            return response()->json(['message' => 'Booking not found.'], 404);
+        }
+        try {
+            \App\Support\HotelBookingDesk::confirmOrders($booking, auth()->user()?->name, auth()->user());
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+        ActivityLog::record(
+            auth()->user(),
+            ActivityLog::GUEST_BOOKED,
+            'Confirmed the food orders of ' . ($booking->guest?->full_name ?? 'a guest') . ' (' . ($booking->room?->name ?? 'a room') . ') for check-out.'
+        );
+
+        return response()->json(['ok' => true]);
+    })->name('hotel.bookings.confirm-orders');
+
     // With Discount on the Guest Bill: Senior Citizen / PWD added after booking, ID seen now.
     Route::post('/hotel/bookings/{id}/discounts', function (Request $request, $id) {
         $membership = \App\Support\HotelBookingDesk::membership();

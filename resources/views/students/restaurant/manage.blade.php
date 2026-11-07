@@ -2216,6 +2216,97 @@ const ORD_PAGE = 12;
    has ordered so far and one Bill button. The bill, the payment and the receipt are
    the existing ones (DineInBillModal, HotelDineInBill, /settle), so a party still gets
    one consolidated bill with each line naming its table. */
+/* Verify final charges, Restaurant Services' part. When the Front Desk starts a guest's
+   check-out, the stay shows here with its food orders: once every one is delivered,
+   Restaurant confirms they are all on the bill, and the Front Desk's Final Check for
+   food turns green. Polls on its own, like the order board. */
+function CheckoutConfirmSection({ onToast }) {
+  const [data, setData] = useState({ supported: false, can_confirm: false, stays: [] });
+  const [busyId, setBusyId] = useState(null);
+  const load = useCallback(() => {
+    fetch('/students/hotel/checkout-confirmations', { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+      .then(r => (r.ok ? r.json() : Promise.reject(r)))
+      .then(d => setData({ supported: !!d.supported, can_confirm: !!d.can_confirm, stays: d.stays || [] }))
+      .catch(() => {});
+  }, []);
+  useEffect(() => {
+    load();
+    const id = setInterval(() => { if (!document.hidden) load(); }, 8000);
+    return () => clearInterval(id);
+  }, [load]);
+
+  const confirm = (s) => {
+    setBusyId(s.bookingId);
+    fetch('/students/hotel/bookings/' + s.bookingId + '/confirm-orders', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') || {}).content || '' },
+    })
+      .then(r => r.json().catch(() => ({})).then(d => (r.ok ? d : Promise.reject(d))))
+      .then(() => { if (onToast) onToast(`${s.guestName} · ${s.roomName}: food orders confirmed. Front Desk can bill.`); load(); })
+      .catch(err => { if (onToast) onToast((err && err.message) || 'Could not confirm.'); load(); })
+      .finally(() => setBusyId(null));
+  };
+
+  if (!data.supported || data.stays.length === 0) return null;
+  const waiting = data.stays.filter(s => !s.confirmed).length;
+
+  return (
+    <section className="mn-panel" aria-labelledby="ord-checkout" style={{ marginBottom: '1rem', border: waiting ? '1px solid var(--accent)' : undefined }}>
+      <div className="mn-panel-head">
+        <div>
+          <h2 id="ord-checkout">Check-outs: confirm food orders</h2>
+          <p>{waiting
+            ? `${waiting} ${waiting === 1 ? 'guest is' : 'guests are'} checking out. Confirm every order is delivered and on the bill.`
+            : 'All confirmed. The Front Desk can finish the bills.'}</p>
+        </div>
+      </div>
+      <div className="ord-grid">
+        {data.stays.map(s => (
+          <div key={s.bookingId} className="mn-panel" style={{ padding: '0.9rem 1rem' }}>
+            <p style={{ margin: 0, color: 'var(--fg)', fontWeight: 700 }}>{s.guestName}</p>
+            <p style={{ margin: '0.15rem 0 0.5rem', color: 'var(--fg-muted)', fontSize: '0.78rem' }}>
+              {s.roomName} · {s.orders.length} {s.orders.length === 1 ? 'order' : 'orders'}{s.orders.length ? ' · ' + formatPeso(s.total) : ''}
+            </p>
+            {s.orders.length === 0 ? (
+              <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--fg-muted)' }}>No food ordered on this stay.</p>
+            ) : (
+              <div style={{ display: 'grid', gap: '0.3rem' }}>
+                {s.orders.map(o => (
+                  <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', fontSize: '0.76rem' }}>
+                    <span style={{ color: 'var(--fg-muted)', minWidth: 0, overflowWrap: 'anywhere' }}>#{o.id} {o.items}</span>
+                    <span style={{ flex: 'none', fontWeight: 600, color: o.status === 'Completed' ? 'var(--success, #4ade80)' : 'var(--danger, #fb7185)' }}>
+                      {o.status === 'Completed' ? 'Delivered' : o.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {s.confirmed ? (
+              <p style={{ margin: '0.7rem 0 0', fontSize: '0.8rem', color: 'var(--success, #4ade80)', fontWeight: 600 }}>
+                <i className="fa-solid fa-circle-check"></i> Confirmed{s.confirmedBy ? ' by ' + s.confirmedBy : ''}
+              </p>
+            ) : data.can_confirm ? (
+              <>
+                <button type="button" className="mn-btn is-small is-solid" style={{ marginTop: '0.7rem', width: '100%', justifyContent: 'center' }}
+                  disabled={busyId === s.bookingId || s.openOrders > 0} onClick={() => confirm(s)}>
+                  <i className="fa-solid fa-clipboard-check"></i> {s.orders.length ? 'All delivered and billed · Confirm' : 'No orders · Confirm'}
+                </button>
+                {s.openOrders > 0 && (
+                  <p style={{ margin: '0.4rem 0 0', fontSize: '0.74rem', color: 'var(--danger, #fb7185)' }}>
+                    Deliver {s.openOrders === 1 ? 'the open order' : 'the ' + s.openOrders + ' open orders'} first.
+                  </p>
+                )}
+              </>
+            ) : (
+              <p style={{ margin: '0.7rem 0 0', fontSize: '0.78rem', color: 'var(--fg-muted)' }}>Waiting for Restaurant Services to confirm.</p>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function DineInBillsSection({ tables, orders, canBill, onFetchBill, onSettle, onToast }) {
   const [billingId, setBillingId] = useState(null);
   const [receipt, setReceipt] = useState(null);
@@ -2391,6 +2482,8 @@ function OrdersPanel({ orders, tables, menus, canPlaceDineIn, onPlaceOrder, onUp
           ) : null}
         </div>
       </header>
+
+      <CheckoutConfirmSection onToast={onToast} />
 
       <div className="ord-types" role="group" aria-label="Kind of order">
         {ORDER_TYPES.map(t => {

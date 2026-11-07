@@ -516,12 +516,43 @@ class HotelBookingDesk
     {
         return DB::transaction(function () use ($booking) {
             $booking->status = 'Pending Room Inspection';
+            // Restaurant Services confirms this check-out's food orders afresh.
+            if (HotelBooking::ordersConfirmSupported()) {
+                $booking->orders_confirmed_at = null;
+                $booking->orders_confirmed_by = null;
+            }
             $booking->save();
 
             HotelHousekeepingDesk::openForCheckout($booking);
+            if (HotelBooking::ordersConfirmSupported()) {
+                Notifier::checkoutOrdersToConfirm($booking);
+            }
 
             return $booking;
         });
+    }
+
+    /**
+     * Restaurant Services: every food order on this check-out is delivered and on the
+     * bill. Refused while an order is still with the kitchen or on its way.
+     */
+    public static function confirmOrders(HotelBooking $booking, ?string $by, ?\App\Models\User $actor): HotelBooking
+    {
+        if (!HotelBooking::ordersConfirmSupported()) {
+            throw new \RuntimeException('This step is not set up on the server yet. Try again in a minute.');
+        }
+        if ($booking->status !== 'Pending Room Inspection') {
+            throw new \RuntimeException('This guest is not checking out.');
+        }
+        $open = $booking->foodOrders()->where('status', '!=', 'Completed')->count();
+        if ($open) {
+            throw new \RuntimeException($open . ' order' . ($open === 1 ? ' is' : 's are')
+                . ' not delivered yet. Deliver and complete ' . ($open === 1 ? 'it' : 'them') . ' first.');
+        }
+        $booking->forceFill(['orders_confirmed_at' => now(), 'orders_confirmed_by' => $by])->save();
+        Notifier::checkoutOrdersConfirmed($actor, $booking);
+
+        return $booking;
     }
 
     /**

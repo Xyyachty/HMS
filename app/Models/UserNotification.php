@@ -33,6 +33,7 @@ class UserNotification extends Model
     public const CONCEPT_REVIEWED = 'concept_reviewed';
     public const SIMULATION_ROLES = 'simulation_roles';
     public const SERVICE_REQUEST = 'service_request';
+    public const CHECKOUT_ORDERS = 'checkout_orders';
 
     /** Icon + accent per type, consumed by the dropdown partial. */
     public const STYLES = [
@@ -55,6 +56,7 @@ class UserNotification extends Model
         self::CONCEPT_REVIEWED => ['icon' => 'mdi:lightbulb-check', 'accent' => 'emerald'],
         self::SIMULATION_ROLES => ['icon' => 'mdi:bell-ring', 'accent' => 'emerald'],
         self::SERVICE_REQUEST => ['icon' => 'mdi:spray-bottle', 'accent' => 'amber'],
+        self::CHECKOUT_ORDERS => ['icon' => 'mdi:food-fork-drink', 'accent' => 'amber'],
     ];
 
     protected $primaryKey = 'user_notification_id';

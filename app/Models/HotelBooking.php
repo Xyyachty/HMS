@@ -92,6 +92,30 @@ class HotelBooking extends Model
         return $has ??= \Illuminate\Support\Facades\Schema::hasColumn('hotel_bookings', 'group_ref');
     }
 
+    /** False until the orders_confirmed migration has run; the check-out then skips the step. */
+    public static function ordersConfirmSupported(): bool
+    {
+        static $has = null;
+
+        return $has ??= \Illuminate\Support\Facades\Schema::hasColumn('hotel_bookings', 'orders_confirmed_at');
+    }
+
+    /**
+     * Restaurant Services confirmed this check-out's food orders, and nothing was
+     * ordered after they did.
+     */
+    public function ordersConfirmed(): bool
+    {
+        if (!self::ordersConfirmSupported()) {
+            return true;
+        }
+        if (!$this->orders_confirmed_at) {
+            return false;
+        }
+
+        return !$this->foodOrders()->where('created_at', '>', $this->orders_confirmed_at)->exists();
+    }
+
     /**
      * Every room booked together with this one for the same guest (its group_ref),
      * this one included, cancelled ones left out. Just this booking when alone.
@@ -128,6 +152,7 @@ class HotelBooking extends Model
         'arrived_at'     => 'datetime',
         'checked_in_at'  => 'datetime',
         'checked_out_at' => 'datetime',
+        'orders_confirmed_at' => 'datetime',
         'cancelled_at'   => 'datetime',
     ];
 
@@ -669,11 +694,14 @@ class HotelBooking extends Model
             [
                 'key'    => 'orders',
                 'label'  => 'Food orders delivered (Restaurant / Room Service)',
-                'ok'     => $ordersLeft === 0,
+                'ok'     => $ordersLeft === 0 && $this->ordersConfirmed(),
                 'detail' => $ordersLeft
                     ? 'Room Service has ' . $plural($ordersLeft, 'order') . ' not delivered yet. Restaurant must deliver and complete '
                         . ($ordersLeft === 1 ? 'it' : 'them') . ' before check-out.'
-                    : 'Every order is delivered and on the bill.',
+                    : (!$this->ordersConfirmed()
+                        ? 'Waiting for Restaurant Services to confirm every order is delivered and on the bill.'
+                        : 'Confirmed by Restaurant Services' . ($this->orders_confirmed_by ? ' (' . $this->orders_confirmed_by . ')' : '')
+                            . ': every order is delivered and on the bill.'),
             ],
             [
                 'key'    => 'requests',

@@ -469,7 +469,7 @@ function statusHint(reservation) {
   if (stage === 'review') return `${left} damage item${left === 1 ? '' : 's'} to review`;
   if (stage === 'blocked') {
     const open = openFinalChecks(reservation).map(c => c.key);
-    return open.includes('orders') ? 'Waiting on Room Service orders' : 'Housekeeping requests still open';
+    return open.includes('orders') ? 'Waiting on Restaurant: food orders' : 'Housekeeping requests still open';
   }
   return damages.length ? 'Damage reviewed, ready to bill' : 'No damage, ready to bill';
 }
