@@ -717,7 +717,8 @@ function RoomWalkIn() {
       <button key={r.dbId} type="button" className={'wi-card' + (on ? ' is-on' : '')}
         onClick={() => toggleRoom(r)} aria-pressed={on}>
         <div className="wi-card-photo">
-          {r.img ? <img src={r.img} alt="" loading="lazy" /> : <i className="fa-solid fa-bed"></i>}
+          {/* Same stock photo Room Management and the hotel site show for a room with none of its own. */}
+          <img src={r.img || 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=800&h=600&q=80'} alt="" loading="lazy" />
         </div>
         <div className="wi-card-body">
           <span className="wi-card-name">{r.name}</span>
