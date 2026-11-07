@@ -312,6 +312,68 @@ class HotelBookingDesk
     }
 
     /**
+     * "With Discount" on the Guest Bill: Senior Citizens / PWDs added to a stay after it
+     * was booked (a website booking, or one the desk forgot to mark). Front Desk is
+     * holding the ID, so each is verified on the spot. Checked by the same rules as at
+     * booking, and against the claims already on the stay.
+     *
+     * @return int how many were added
+     */
+    public static function addDiscounts(HotelBooking $booking, array $claims, ?string $by): int
+    {
+        return DB::transaction(function () use ($booking, $claims, $by) {
+            HotelBooking::whereKey($booking->hotel_booking_id)->lockForUpdate()->first();
+            if (!$booking->isOpen()) {
+                throw new \RuntimeException('This stay is closed. Its bill can no longer change.');
+            }
+            $existing = $booking->discountRows();
+            $adults = $booking->adultCount() ?? 1;
+            $adultsLeft = max(0, $adults - $existing->where('occupant', 'adult')->count());
+            $adultClaims = count(array_filter($claims, fn ($c) => ($c['occupant'] ?? 'adult') !== 'child'));
+            if ($adultClaims > $adultsLeft) {
+                throw new \RuntimeException($adultsLeft === 0
+                    ? 'Every adult on this stay already has a discount.'
+                    : 'Only ' . $adultsLeft . ' more adult' . ($adultsLeft === 1 ? '' : 's') . ' on this stay can claim a discount.');
+            }
+
+            $clean = self::checkDiscounts(
+                $claims,
+                $adultsLeft,
+                array_column($booking->childLines(), 'age'),
+                optional($booking->check_in)->toDateString() ?? '',
+                (bool) $booking->promo_name,
+                (string) ($booking->guest?->full_name ?? '')
+            );
+            foreach ($clean as $claim) {
+                if ($existing->contains('id_hash', $claim['id_hash'])) {
+                    throw new \RuntimeException($claim['full_name'] . ': that ' . $claim['type'] . ' ID is already on this stay.');
+                }
+                if ($claim['is_primary'] && $existing->contains('is_primary', true)) {
+                    throw new \RuntimeException('The guest who booked already has a discount on this stay.');
+                }
+                if ($claim['occupant'] === 'child' && $existing->where('occupant', 'child')->contains('child_index', $claim['child_index'])) {
+                    throw new \RuntimeException($claim['full_name'] . ': that child already has a discount.');
+                }
+            }
+
+            foreach ($clean as $claim) {
+                HotelBookingDiscount::create([
+                    'group_name'       => $booking->group_name,
+                    'faculty_id'       => $booking->faculty_id,
+                    'group_id'         => $booking->group_id,
+                    'hotel_booking_id' => $booking->hotel_booking_id,
+                    'verified_at'      => now(),
+                    'verified_by'      => $by,
+                ] + array_diff_key($claim, ['verified' => true]));
+            }
+            $booking->unsetRelation('discounts');
+            $booking->recordDiscountAmounts();
+
+            return count($clean);
+        });
+    }
+
+    /**
      * Front Desk saw the ID of a guest whose discount was pending. From now on the
      * discount comes off the bill; anything already paid over that is a refund due,
      * recorded as its own payment line, never by rewriting the earlier payment.

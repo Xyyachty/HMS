@@ -2396,6 +2396,48 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
      * Front Desk saw the Senior Citizen / PWD ID of a guest whose discount was left
      * pending at booking. The discount comes off the bill from now on.
      */
+    // With Discount on the Guest Bill: Senior Citizen / PWD added after booking, ID seen now.
+    Route::post('/hotel/bookings/{id}/discounts', function (Request $request, $id) {
+        $membership = \App\Support\HotelBookingDesk::membership();
+        if (!$membership) {
+            return response()->json(['message' => 'Group not found'], 404);
+        }
+        if (!\App\Support\HotelTableAccess::canAssign($membership)) {
+            return response()->json(['message' => 'Only Front Desk staff can add a Senior Citizen or PWD discount.'], 403);
+        }
+        $booking = \App\Support\HotelBookingDesk::findBooking($membership, $id);
+        if (!$booking) {
+            return response()->json(['message' => 'Booking not found.'], 404);
+        }
+        $data = $request->validate([
+            'discounts'               => 'required|array|min:1|max:20',
+            'discounts.*.type'        => 'required|string|max:30',
+            'discounts.*.occupant'    => 'nullable|string|in:adult,child',
+            'discounts.*.child_index' => 'nullable|integer|min:0',
+            'discounts.*.is_primary'  => 'nullable|boolean',
+            'discounts.*.full_name'   => 'nullable|string|max:255',
+            'discounts.*.birth_date'  => 'nullable|date',
+            'discounts.*.id_number'   => 'required|string|max:100',
+        ]);
+        try {
+            $added = \App\Support\HotelBookingDesk::addDiscounts($booking, $data['discounts'], auth()->user()?->name);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+        ActivityLog::record(
+            auth()->user(),
+            ActivityLog::GUEST_BOOKED,
+            'Added ' . $added . ' Senior Citizen / PWD discount' . ($added === 1 ? '' : 's')
+                . ' to booking #' . $booking->hotel_booking_id . ' (ID checked at the desk).'
+        );
+        $fresh = \App\Support\HotelBookingDesk::findBooking($membership, $id);
+
+        return response()->json([
+            'booking' => $fresh->toReservationArray(),
+            'bill'    => $fresh->toBillArray(),
+        ], 201);
+    })->name('hotel.bookings.discounts.store');
+
     Route::patch('/hotel/bookings/{id}/discounts/{discountId}', function (Request $request, $id, $discountId) {
         $membership = \App\Support\HotelBookingDesk::membership();
         if (!$membership) {

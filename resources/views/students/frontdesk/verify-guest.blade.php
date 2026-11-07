@@ -774,7 +774,142 @@ function FolioModal({ bill, bills, official, cash, title, onClose }) {
  * the database will record. Adding an extra charge re-fetches the whole bill for the
  * same reason — the new subtotal comes back priced, it is not patched in locally.
  */
-function FinalBillModal({ open, bill, loading, error, canCheckOut, finalChecks, addonCatalog, onClose, onAddCharge, onRemoveCharge, onAddAddon, onPay, onSettle, onToast, onGroupPaid }) {
+/* With / Without Discount on the room bill, as on the dine-in bill: Senior Citizens and
+   PWDs added after booking (a website booking, or one the desk did not mark). The desk
+   has the ID in hand, so each one is verified as it is added; the server checks age,
+   duplicate IDs, how many adults are left, and that the stay is not on a promo. */
+function BillDiscountForm({ bill, adults, promoName, onAdd, onToast }) {
+  const [mode, setMode] = useState('without');
+  const blank = () => ({ type: 'Senior Citizen', who: '', full_name: '', birth_date: '', id_number: '' });
+  const [rows, setRows] = useState([blank()]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const existing = (bill.discounts && bill.discounts.items) || [];
+  const hasPrimary = existing.some(d => d.isPrimary);
+  const adultsUsed = existing.filter(d => d.occupant !== 'child').length;
+  const kids = (bill.children && bill.children.items) || [];
+  const whoOptions = [
+    ...(hasPrimary ? [] : [['primary', 'Guest who booked · ' + (bill.guestName || 'Guest')]]),
+    ...(adults - adultsUsed > (hasPrimary ? 0 : 1) ? [['adult', 'Adult staying with them']] : []),
+    ...kids.map((c, i) => ['child:' + i, 'Child, age ' + c.age]),
+  ];
+  const setRow = (i, patch) => setRows(list => list.map((r, k) => (k === i ? Object.assign({}, r, patch) : r)));
+  const fieldLabel = { fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '0.3rem' };
+
+  if (promoName) {
+    return <p className="bill-subnote" style={{ marginTop: '0.4rem' }}>Booked under the {promoName} promo. A Senior Citizen / PWD discount cannot be combined with a promo.</p>;
+  }
+
+  const apply = () => {
+    setError('');
+    const claims = rows.map(r => {
+      const who = r.who || (whoOptions[0] && whoOptions[0][0]) || 'adult';
+      const child = who.indexOf('child:') === 0;
+      return {
+        type: r.type,
+        occupant: child ? 'child' : 'adult',
+        child_index: child ? Number(who.slice(6)) : null,
+        is_primary: who === 'primary',
+        full_name: who === 'primary' ? '' : r.full_name.trim(),
+        birth_date: r.type === 'Senior Citizen' ? r.birth_date : null,
+        id_number: r.id_number.trim(),
+      };
+    });
+    setBusy(true);
+    Promise.resolve(onAdd(claims))
+      .then(() => {
+        if (onToast) onToast(claims.length === 1 ? 'Discount applied.' : claims.length + ' discounts applied.');
+        setRows([blank()]);
+        setMode('without');
+      })
+      .catch(err => setError((err && err.message) || 'Could not apply the discount.'))
+      .finally(() => setBusy(false));
+  };
+
+  return (
+    <div style={{ margin: '0.6rem 0 0.2rem' }}>
+      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+        {[['without', 'Without Discount'], ['with', 'With Discount']].map(([key, label]) => (
+          <button key={key} type="button" aria-pressed={mode === key}
+            className={mode === key ? 'btn-solid' : 'btn-outline'}
+            style={{ fontSize: '0.66rem', padding: '0.4rem 0.8rem' }}
+            onClick={() => { setMode(key); setError(''); }}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {mode === 'with' && (whoOptions.length === 0 ? (
+        <p className="bill-subnote" style={{ marginTop: '0.5rem' }}>Everyone on this stay who can claim a discount already has one.</p>
+      ) : (
+        <div style={{ display: 'grid', gap: '0.7rem', marginTop: '0.7rem' }}>
+          <p className="bill-subnote" style={{ margin: 0 }}>Check the Senior Citizen or PWD ID first. It is verified as you apply it: VAT exemption on their share, then 20% off.</p>
+          {rows.map((r, i) => {
+            const who = r.who || whoOptions[0][0];
+            const child = who.indexOf('child:') === 0;
+            return (
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(9rem, 1fr))', gap: '0.5rem', padding: '0.6rem', border: '1px solid var(--border)', borderRadius: '0.5rem' }}>
+                <div>
+                  <label style={fieldLabel}>Discount</label>
+                  <select className="booking-input" value={child ? 'PWD' : r.type} onChange={e => setRow(i, { type: e.target.value })} disabled={child}>
+                    <option value="Senior Citizen">Senior Citizen</option>
+                    <option value="PWD">PWD</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={fieldLabel}>Who</label>
+                  <select className="booking-input" value={who} onChange={e => setRow(i, { who: e.target.value, type: e.target.value.indexOf('child:') === 0 ? 'PWD' : r.type })}>
+                    {whoOptions.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+                  </select>
+                </div>
+                {who !== 'primary' && (
+                  <div>
+                    <label style={fieldLabel}>Full name</label>
+                    <input type="text" className="booking-input" value={r.full_name} onChange={e => setRow(i, { full_name: e.target.value })} placeholder="As on the ID" />
+                  </div>
+                )}
+                {r.type === 'Senior Citizen' && !child && (
+                  <div>
+                    <label style={fieldLabel}>Date of birth</label>
+                    <HmsDateInput type="date" min="1900-01-01" className="booking-input" value={r.birth_date} onChange={e => setRow(i, { birth_date: e.target.value })} />
+                  </div>
+                )}
+                <div>
+                  <label style={fieldLabel}>{child ? 'PWD' : r.type} ID no.</label>
+                  <input type="text" className="booking-input" value={r.id_number} onChange={e => setRow(i, { id_number: e.target.value })} />
+                </div>
+                {rows.length > 1 && (
+                  <button type="button" className="btn-outline" onClick={() => setRows(list => list.filter((x, k) => k !== i))}
+                    style={{ alignSelf: 'end', fontSize: '0.66rem', padding: '0.45rem 0.6rem' }}>
+                    <i className="fa-solid fa-xmark"></i> Remove
+                  </button>
+                )}
+              </div>
+            );
+          })}
+          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            {rows.length < whoOptions.length && (
+              <button type="button" className="btn-outline" style={{ fontSize: '0.66rem', padding: '0.4rem 0.8rem' }}
+                onClick={() => setRows(list => {
+                  // The next person not already in a row; adults can repeat.
+                  const taken = list.map(r => r.who || whoOptions[0][0]);
+                  const next = whoOptions.map(o => o[0]).find(k => k === 'adult' || !taken.includes(k)) || 'adult';
+                  return [...list, Object.assign(blank(), { who: next, type: next.indexOf('child:') === 0 ? 'PWD' : 'Senior Citizen' })];
+                })}>
+                <i className="fa-solid fa-plus"></i> Another person
+              </button>
+            )}
+            <button type="button" className="btn-solid" disabled={busy} onClick={apply} style={{ fontSize: '0.7rem', padding: '0.5rem 0.9rem' }}>
+              <i className="fa-solid fa-id-card"></i> {busy ? 'Applying…' : 'ID checked · Apply discount'}
+            </button>
+          </div>
+          {error && <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--danger, #fb7185)' }}>{error}</p>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FinalBillModal({ open, bill, loading, error, canCheckOut, finalChecks, stayInfo, addonCatalog, onClose, onAddCharge, onRemoveCharge, onAddAddon, onAddDiscount, onPay, onSettle, onToast, onGroupPaid }) {
   const [method, setMethod] = useState('Cash');
   const [amount, setAmount] = useState('');
   const [reference, setReference] = useState('');
@@ -1008,6 +1143,10 @@ function FinalBillModal({ open, bill, loading, error, canCheckOut, finalChecks, 
                     detail="Pending ID verification. Verify it under Details to apply." amount="Not applied" />
                 )
               ))}
+              {onAddDiscount && bill.status !== 'Checked Out' && bill.status !== 'Cancelled' && (
+                <BillDiscountForm key={bill.bookingId} bill={bill} adults={(stayInfo && stayInfo.adults) || 1}
+                  promoName={stayInfo && stayInfo.promoName} onAdd={onAddDiscount} onToast={onToast} />
+              )}
 
               {service.orders.length > 0 && (
                 <>
@@ -2089,7 +2228,7 @@ function fdThemeColor(name, fallback) {
   return value || fallback;
 }
 
-function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast, onFetchBill, onAddCharge, onRemoveCharge, onAddAddon, onPay, onSettleAndCheckOut, onExtendStay, onChangeRoom, onRequestInspection, onReviewDamage, onVerifyDiscount }) {
+function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast, onFetchBill, onAddCharge, onRemoveCharge, onAddAddon, onAddDiscount, onPay, onSettleAndCheckOut, onExtendStay, onChangeRoom, onRequestInspection, onReviewDamage, onVerifyDiscount }) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [page, setPage] = useState(1);
@@ -2542,6 +2681,8 @@ function VerifyGuestPage({ rooms, addonCatalog, onBack, onBookingAction, onToast
         onRemoveCharge={(chargeId) => refreshBill(onRemoveCharge(billFor.reservation.bookingId, chargeId))}
         canCheckOut={!!liveBillStay && checkoutStage(liveBillStay.reservation) === 'ready'}
         finalChecks={liveBillStay ? liveBillStay.reservation.finalChecks : null}
+        stayInfo={liveBillStay ? { adults: liveBillStay.reservation.adults, promoName: liveBillStay.reservation.promoName } : null}
+        onAddDiscount={onAddDiscount ? (claims) => refreshBill(onAddDiscount(billFor.reservation.bookingId, claims)) : null}
         addonCatalog={addonCatalog}
         onAddAddon={(addonId, qty) => refreshBill(onAddAddon(billFor.reservation.bookingId, addonId, qty))}
         onPay={(payment) => refreshBill(onPay(billFor.reservation.bookingId, payment))}
@@ -2645,6 +2786,12 @@ function App() {
     billRequest('/students/hotel/bookings/' + bookingId + '/charges', 'POST', { description, amount }).then(d => d.bill)
   ), [billRequest]);
 
+  // With Discount: Senior Citizen / PWD added on the bill, verified as added.
+  const addDiscount = useCallback((bookingId, discounts) => (
+    billRequest('/students/hotel/bookings/' + bookingId + '/discounts', 'POST', { discounts })
+      .then(d => { fetchRooms(); return d.bill; })
+  ), [billRequest, fetchRooms]);
+
   // Housekeeping's catalogue, for Add extras. Re-read after each add: stock moves.
   const [addonCatalog, setAddonCatalog] = useState([]);
   const fetchAddons = useCallback(() => {
@@ -2743,6 +2890,7 @@ function App() {
       onBookingAction={bookingAction}
       onFetchBill={fetchBill}
       onAddCharge={addCharge}
+      onAddDiscount={addDiscount}
       onRemoveCharge={removeCharge}
       addonCatalog={addonCatalog}
       onAddAddon={addAddon}
