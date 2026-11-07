@@ -104,6 +104,26 @@
     return named.join(', ');
   }
 
+  /**
+   * fetch() with a deadline. Every write and sync runs through one queue, so a
+   * request that never answers held the queue forever: the indicator sat on
+   * "Saving…", autosave stopped, and Submit (which waits for the queue) never
+   * went out until the page was reloaded. A timeout turns that into an
+   * ordinary failed save that the next autosave tick retries.
+   */
+  const TIMED_OUT = 408;
+  function fetchWithTimeout(url, options, ms) {
+    if (typeof AbortController !== 'function') return fetch(url, options);
+    const controller = new AbortController();
+    const timer = setTimeout(function () { controller.abort(); }, ms);
+    return fetch(url, Object.assign({}, options, { signal: controller.signal }))
+      .catch(function (e) {
+        if (e && e.name === 'AbortError') e.timedOut = true;
+        throw e;
+      })
+      .finally(function () { clearTimeout(timer); });
+  }
+
   /** The body of a response, or {} when it is not JSON (a proxy's HTML error page). */
   async function readJson(res) {
     try {
@@ -116,6 +136,7 @@
   /** Why a save failed, as something the student can act on. */
   function failureMessage(status, data) {
     const own = data && (data.error || data.message);
+    if (status === TIMED_OUT) return 'The server took too long to answer. Your edits are kept on this screen and will be retried.';
     if (status === 0) return 'You seem to be offline. Your edits are kept on this screen and will save when the connection is back.';
     if (status === 401 || status === 419) return 'Your session has expired. Sign in again in another tab, then come back — your edits here are kept and saving will resume.';
     if (status === 403) return own || 'You can no longer edit this page. Reload to see your current role.';
@@ -357,14 +378,14 @@
 
     let res;
     try {
-      res = await fetch(url, {
+      res = await fetchWithTimeout(url, {
         method: 'POST',
         credentials: 'same-origin',
         headers: this._headers(),
         body: JSON.stringify(body),
-      });
+      }, 45000);
     } catch (e) {
-      throw saveError(0, {});
+      throw saveError(e && e.timedOut ? TIMED_OUT : 0, {});
     }
     const data = await readJson(res);
 
@@ -501,10 +522,10 @@
     const self = this;
     return this._enqueue(async function () {
       try {
-        const res = await fetch(self.routes.sync, {
+        const res = await fetchWithTimeout(self.routes.sync, {
           credentials: 'same-origin',
           headers: self._headers(),
-        });
+        }, 20000);
         const data = await readJson(res);
         if (!res.ok) return;
         const next = data.sync_version || 0;
