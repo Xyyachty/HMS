@@ -1946,7 +1946,8 @@
   /* Content a moved or resized element may not land on: text, pictures,
      buttons, cards, and the student's own added items. Containers are left
      out - an element always sits inside some box - and so are the section
-     backgrounds and hero slides, which are painted, not <img>. */
+     backgrounds and hero slides, which are painted (Template 2's slide <img>s
+     are skipped in coveredContent). */
   const OBSTACLE_SELECTOR = 'img, h1, h2, h3, h4, h5, h6, p, button, a, li, input, textarea, [data-hms-user], '
     + '.partner-card, .room-card, .menu-food-card, .menu-card, .menu-item, .team-card, .facility-card, .cat-card';
 
@@ -2010,6 +2011,9 @@
       // buttons do not, the tile under them is checked itself.
       if (other.closest('#hms-editor-ui, #hms-editor-file, #hms-hotel-auth-bar, #hms-section-rail')) continue;
       if (other.matches('button, a') && other.closest('[data-hms-no-edit]')) continue;
+      // Template 2 draws its hero slides as <img>, not a painted background. They
+      // are still the backdrop: text dropped on the hero photo was put back.
+      if (other.matches('.hero-slide-img')) continue;
       const box = other.getBoundingClientRect();
       if (!overlapArea(mine, box)) continue;
       const covered = contentBoxes(other).some((r) => {
