@@ -1954,9 +1954,20 @@
   // not block the empty space beside it.
   function contentBoxes(node) {
     if (/^(H[1-6]|P|A|LI)$/.test(node.tagName) && node.textContent.trim()) {
+      /* Text nodes only: a range over the whole element also returns the box of
+         every child element, and a block one (a heading's <em> second line)
+         spans the full column like the heading itself. */
+      const boxes = [];
       const range = document.createRange();
-      range.selectNodeContents(node);
-      return Array.prototype.filter.call(range.getClientRects(), (r) => r.width > 1 && r.height > 1);
+      const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+      for (let t = walker.nextNode(); t; t = walker.nextNode()) {
+        if (!t.data.trim()) continue;
+        range.selectNodeContents(t);
+        Array.prototype.forEach.call(range.getClientRects(), (r) => {
+          if (r.width > 1 && r.height > 1) boxes.push(r);
+        });
+      }
+      return boxes;
     }
     const r = node.getBoundingClientRect();
     return r.width > 1 && r.height > 1 ? [r] : [];
@@ -1984,7 +1995,12 @@
   function coveredContent(el, rect, strict) {
     const found = [];
     const mine = rect || el.getBoundingClientRect();
-    const myArea = Math.max(1, mine.width * mine.height);
+    /* A moved heading claims its glyphs too, the same as the text it is
+       checked against. Its block box spans the whole column, so a wide title
+       "covered" the picture or line beside it almost anywhere it was dropped,
+       and every move went back. */
+    const mineBoxes = rect ? [rect] : contentBoxes(el);
+    const myArea = Math.max(1, mineBoxes.reduce((sum, b) => sum + b.width * b.height, 0));
     const all = document.querySelectorAll(OBSTACLE_SELECTOR);
     for (let i = 0; i < all.length; i++) {
       const other = all[i];
@@ -1997,7 +2013,7 @@
       const box = other.getBoundingClientRect();
       if (!overlapArea(mine, box)) continue;
       const covered = contentBoxes(other).some((r) => {
-        const area = overlapArea(mine, r);
+        const area = mineBoxes.reduce((sum, m) => sum + overlapArea(m, r), 0);
         return strict ? area > 16 : area > 0.1 * Math.min(myArea, Math.max(1, r.width * r.height));
       });
       if (covered) found.push(other);

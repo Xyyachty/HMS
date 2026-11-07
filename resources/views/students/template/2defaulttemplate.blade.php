@@ -7275,14 +7275,17 @@ function RestaurantHero({ menus, onExplore, onNav, onReserveTable, cardImages, c
           </div>
         </div>
 
-        <div className="dine-hero-art">
+        <div className="dine-hero-art" data-hms-no-move="1">
           {plateShape === 'circle' && <span className="dine-hero-ring"></span>}
-          <div className={'dine-hero-plate shape-' + plateShape} data-hms-shape-changed={plateShape !== 'circle' ? '1' : undefined}>
+          {/* The plate stays where the template puts it; its shape and photo are the
+              Restaurant team's to choose with the buttons below. */}
+          <div className={'dine-hero-plate shape-' + plateShape} data-hms-no-move="1" data-hms-shape-changed={plateShape !== 'circle' ? '1' : undefined}>
             <img
               src={heroSrc}
               data-hms-dynamic-src="1"
               data-hms-content-kind="restaurant"
               data-hms-content-id="hero"
+              data-hms-no-move="1"
               data-hms-img-changed={chosenSrc ? '1' : undefined}
               alt="Signature dish"
               draggable={false}
