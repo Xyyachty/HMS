@@ -80,7 +80,28 @@ class HotelPromo extends Model
         'end_date',
         'is_active',
         'template_key',
+        'offer_label',
+        'terms_label',
     ];
+
+    /** The card field each promo field is read from, and how long it may be. */
+    private const CARD_FIELDS = [
+        'title' => ['name', 120],
+        'desc'  => ['description', 600],
+        'offer' => ['offer_label', 60],
+        'terms' => ['terms_label', 160],
+    ];
+
+    /**
+     * Whether the offer/terms label columns exist yet. A deploy whose migration
+     * has not run must still save the builder, which syncs promos on every save.
+     */
+    public static function hasCardLabels(): bool
+    {
+        static $has = null;
+
+        return $has ??= \Illuminate\Support\Facades\Schema::hasColumn('hotel_promos', 'offer_label');
+    }
 
     protected $casts = [
         'original_price' => 'integer',
@@ -148,27 +169,27 @@ class HotelPromo extends Model
 
     /**
      * The builder's promo cards as promo fields: ['promo-1' => ['name' => ...,
-     * 'description' => ..., 'image' => ...]]. Text is read off the card's title and
-     * description elements, the picture off the card-image map. The offer label and
-     * the terms line are left out: on a promo those are drawn from its price and
-     * dates, which Front Desk sets.
+     * 'description' => ..., 'offer_label' => ..., 'terms_label' => ...,
+     * 'image' => ...]]. Text is read off the card's title, description, offer and
+     * terms elements, the picture off the card-image map. Price and dates stay
+     * Front Desk's; the labels only change the words on the card.
      *
      * @return array<string, array<string, string>>
      */
     public static function templateContent(array $customizations): array
     {
         $out = [];
+        $parts = self::hasCardLabels() ? 'title|desc|offer|terms' : 'title|desc';
 
         foreach ($customizations as $key => $entry) {
             if (!is_string($key) || !is_array($entry) || !isset($entry['text'])) {
                 continue;
             }
-            if (preg_match('/\[data-hms-category="(promo-\d+)-(title|desc)"\]$/', $key, $m)) {
+            if (preg_match('/\[data-hms-category="(promo-\d+)-(' . $parts . ')"\]$/', $key, $m)) {
                 $text = trim(preg_replace('/\s+/', ' ', (string) $entry['text']));
                 if ($text !== '') {
-                    $out[$m[1]][$m[2] === 'title' ? 'name' : 'description'] = $m[2] === 'title'
-                        ? mb_substr($text, 0, 120)
-                        : mb_substr($text, 0, 600);
+                    [$field, $max] = self::CARD_FIELDS[$m[2]];
+                    $out[$m[1]][$field] = mb_substr($text, 0, $max);
                 }
             }
         }
@@ -198,7 +219,8 @@ class HotelPromo extends Model
         foreach (self::forTeam($groupName, $facultyId)->whereNotNull('template_key')->get() as $promo) {
             $stock = self::DEFAULTS[(int) substr($promo->template_key, 6) - 1] ?? null;
             foreach ($stock ? ($content[$promo->template_key] ?? []) : [] as $field => $value) {
-                if ($promo->$field === $stock[$field]) {
+                // The labels have no stock value: null means not set yet.
+                if ($promo->$field === ($stock[$field] ?? null)) {
                     $promo->$field = $value;
                 }
             }
@@ -350,8 +372,12 @@ class HotelPromo extends Model
             // templates draw these with the component they already have.
             'title'          => $this->name,
             'desc'           => $this->description,
-            'offer'          => $peso((int) $this->promo_price),
-            'terms'          => ($this->original_price ? 'Regular ' . $peso((int) $this->original_price) . ' · ' : '') . 'Valid ' . $range,
+            // The team's own words from the card when it wrote some; the price
+            // otherwise. The dates always show: a guest needs to know when it runs.
+            'offer'          => filled($this->offer_label) ? $this->offer_label : $peso((int) $this->promo_price),
+            'terms'          => filled($this->terms_label)
+                ? $this->terms_label . ' · Valid ' . $range
+                : ($this->original_price ? 'Regular ' . $peso((int) $this->original_price) . ' · ' : '') . 'Valid ' . $range,
         ];
     }
 }

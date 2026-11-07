@@ -5372,8 +5372,14 @@ function PromoShowcase({ promos, canEdit, onToast, onBook }) {
               <img src={resolveCardImg('promo', promo.id, promo.img)} alt={promo.title} loading="lazy" draggable={false}
                 data-hms-img-changed={resolveCardImg('promo', promo.id, promo.img) !== promo.img ? '1' : undefined} />
               {canEdit && (
-                <div style={{ position: 'absolute', top: 4, right: 4, zIndex: 3 }}
+                <div style={{ position: 'absolute', top: 4, right: 4, zIndex: 3, display: 'flex', gap: 4 }}
                   data-hms-no-edit="1" onClick={e => e.stopPropagation()}>
+                  {/* Design mode blocks the card's own click, so without this the
+                      description and terms of every promo but the featured one
+                      were never on screen to edit. */}
+                  <button type="button" title="Show this promo to edit its description and terms"
+                    onClick={() => promote(promo.id)}
+                    style={toolBtnStyle()}><i className="fa-solid fa-pen" style={{ fontSize: 11 }}></i></button>
                   <button type="button" title="Change promo image"
                     onClick={() => changeCardImg('promo', promo.id, () => onToast && onToast('Promo image updated'))}
                     style={toolBtnStyle('image')}><i className="fa-solid fa-image" style={{ fontSize: 11 }}></i></button>
