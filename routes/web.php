@@ -2404,32 +2404,52 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
             return response()->json(['message' => 'Group not found'], 404);
         }
         $roles = \App\Support\HotelTableAccess::roles($membership);
-        $stays = HotelBooking::where('group_name', $membership->group_name)
+        $supported = HotelBooking::ordersConfirmSupported();
+        // Check-outs still waiting on Restaurant Services, plus every stay they have
+        // confirmed (kept on the booking), which Reports lists as the history.
+        $rows = HotelBooking::where('group_name', $membership->group_name)
             ->where('faculty_id', $membership->faculty_id)
-            ->where('status', 'Pending Room Inspection')
+            ->where(function ($q) use ($supported) {
+                $q->where('status', 'Pending Room Inspection');
+                if ($supported) {
+                    $q->orWhereNotNull('orders_confirmed_at');
+                }
+            })
             ->with(['room', 'guest', 'foodOrders'])
             ->orderBy('hotel_booking_id')
             ->get()
             ->map(fn (HotelBooking $b) => [
                 'bookingId'   => $b->hotel_booking_id,
+                'status'      => $b->status,
                 'roomName'    => $b->room?->name ?? '',
                 'guestName'   => $b->guest?->full_name ?? 'Guest',
                 'orders'      => $b->foodOrders->map(fn ($o) => [
-                    'id'     => $o->hotel_food_order_id,
-                    'status' => $o->status,
-                    'total'  => (float) $o->total,
-                    'items'  => collect($o->items ?? [])->map(fn ($i) => (($i['qty'] ?? 1) . '× ' . ($i['name'] ?? 'Item')))->implode(', '),
+                    'id'      => $o->hotel_food_order_id,
+                    'status'  => $o->status,
+                    'total'   => (float) $o->total,
+                    'items'   => collect($o->items ?? [])->map(fn ($i) => (($i['qty'] ?? 1) . '× ' . ($i['name'] ?? 'Item')))->implode(', '),
+                    'lines'   => collect($o->items ?? [])->map(fn ($i) => [
+                        'name'  => $i['name'] ?? 'Item',
+                        'qty'   => (int) ($i['qty'] ?? 1),
+                        'price' => (float) ($i['price'] ?? 0),
+                    ])->values(),
+                    'placedAt' => $o->created_at?->toIso8601String(),
                 ])->values(),
                 'openOrders'  => $b->foodOrders->where('status', '!=', 'Completed')->count(),
                 'total'       => (float) $b->foodOrders->sum('total'),
                 'confirmed'   => $b->ordersConfirmed(),
+                'confirmedAt' => $supported ? $b->orders_confirmed_at?->toIso8601String() : null,
                 'confirmedBy' => $b->orders_confirmed_by ?? '',
-            ])->values();
+            ]);
+        // Waiting = checking out and not confirmed (or ordered again since). Each stay
+        // sits in exactly one list, so a confirmed one never shows twice.
+        [$waiting, $confirmed] = $rows->partition(fn ($s) => $s['status'] === 'Pending Room Inspection' && !$s['confirmed']);
 
         return response()->json([
-            'supported'  => HotelBooking::ordersConfirmSupported(),
+            'supported'  => $supported,
             'can_confirm' => (bool) array_intersect($roles, ['restaurant_management', 'administrator']),
-            'stays'      => $stays,
+            'stays'      => $waiting->values(),
+            'confirmed'  => $confirmed->filter(fn ($s) => $s['confirmedAt'])->sortByDesc('confirmedAt')->values(),
         ]);
     })->name('hotel.checkout-confirmations.index');
 

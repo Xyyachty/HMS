@@ -2242,22 +2242,21 @@ function CheckoutConfirmSection({ onToast }) {
       headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') || {}).content || '' },
     })
       .then(r => r.json().catch(() => ({})).then(d => (r.ok ? d : Promise.reject(d))))
-      .then(() => { if (onToast) onToast(`${s.guestName} · ${s.roomName}: food orders confirmed. Front Desk can bill.`); load(); })
+      .then(() => { if (onToast) onToast(`${s.guestName} · ${s.roomName}: food orders confirmed and moved to Reports. Front Desk can bill.`); load(); })
       .catch(err => { if (onToast) onToast((err && err.message) || 'Could not confirm.'); load(); })
       .finally(() => setBusyId(null));
   };
 
   if (!data.supported || data.stays.length === 0) return null;
-  const waiting = data.stays.filter(s => !s.confirmed).length;
+  // The endpoint lists only check-outs still waiting; confirmed ones move to Reports.
+  const waiting = data.stays.length;
 
   return (
     <section className="mn-panel" aria-labelledby="ord-checkout" style={{ marginBottom: '1rem', border: waiting ? '1px solid var(--accent)' : undefined }}>
       <div className="mn-panel-head">
         <div>
           <h2 id="ord-checkout">Check-outs: confirm food orders</h2>
-          <p>{waiting
-            ? `${waiting} ${waiting === 1 ? 'guest is' : 'guests are'} checking out. Confirm every order is delivered and on the bill.`
-            : 'All confirmed. The Front Desk can finish the bills.'}</p>
+          <p>{`${waiting} ${waiting === 1 ? 'guest is' : 'guests are'} checking out. Confirm every order is delivered and on the bill. Confirmed ones move to Reports.`}</p>
         </div>
       </div>
       <div className="ord-grid">
@@ -2281,11 +2280,7 @@ function CheckoutConfirmSection({ onToast }) {
                 ))}
               </div>
             )}
-            {s.confirmed ? (
-              <p style={{ margin: '0.7rem 0 0', fontSize: '0.8rem', color: 'var(--success, #4ade80)', fontWeight: 600 }}>
-                <i className="fa-solid fa-circle-check"></i> Confirmed{s.confirmedBy ? ' by ' + s.confirmedBy : ''}
-              </p>
-            ) : data.can_confirm ? (
+            {data.can_confirm ? (
               <>
                 <button type="button" className="mn-btn is-small is-solid" style={{ marginTop: '0.7rem', width: '100%', justifyContent: 'center' }}
                   disabled={busyId === s.bookingId || s.openOrders > 0} onClick={() => confirm(s)}>

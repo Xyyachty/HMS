@@ -19,6 +19,8 @@
     // Only to tell a stay that was cancelled from one that is still running:
     // a room-service order billed to a cancelled stay never earned anything.
     bookingsUrl: @json(route('students.hotel.bookings.index')),
+    // Check-outs whose food orders Restaurant Services confirmed on Orders.
+    checkoutsUrl: @json(route('students.hotel.checkout-confirmations.index')),
   };
 </script>
 @verbatim
@@ -299,6 +301,7 @@ function TabBar({ tab, onTab, counts }) {
   const tabs = [
     { key: 'dinein', label: 'Dine-In', count: counts.dinein },
     { key: 'roomsvc', label: 'Room Service', count: counts.roomsvc },
+    { key: 'checkouts', label: 'Confirmed Check-outs', count: counts.checkouts },
   ];
   return (
     <div className="rp-tabs">
@@ -480,6 +483,70 @@ function RoomServiceTable({ rows, total, page, onPage, rangeLabel, openStayTotal
   );
 }
 
+/* Check-outs Restaurant Services confirmed on Orders: the guest, every food order
+   on the stay with its items, and when and by whom it was confirmed. Read from the
+   booking's orders_confirmed_at, so nothing is copied or duplicated. */
+function CheckoutTable({ rows, page, onPage, rangeLabel }) {
+  const [viewing, setViewing] = useState(null);
+  const totalPages = Math.max(1, Math.ceil(rows.length / PER_PAGE));
+  const safePage = Math.min(page, totalPages);
+  const pageRows = rows.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
+
+  if (rows.length === 0) {
+    return <EmptyState icon="fa-clipboard-check" message={`No check-out food orders were confirmed between ${rangeLabel}.`} />;
+  }
+
+  return (
+    <>
+      <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid var(--border)' }}>
+        <table className="rp-table rp-stack">
+          <thead>
+            <tr>
+              <th>Guest</th>
+              <th>Room</th>
+              <th>Orders</th>
+              <th>Confirmed</th>
+              <th className="rp-num">Total</th>
+              <th className="rp-act">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pageRows.map(s => (
+              <tr key={s.bookingId}>
+                <td className="rp-strong" data-label="Guest">{s.guestName}</td>
+                <td data-label="Room">{s.roomName || '—'}</td>
+                <td data-label="Orders">{s.orders.length ? s.orders.map(o => '#' + o.id).join(', ') : 'No orders'}</td>
+                <StampCell label="Confirmed" stamp={whenStamp(s.confirmedAt)} />
+                <td className="rp-num rp-money" data-label="Total">{s.total > 0 ? formatPeso(s.total) : <span className="rp-zero">₱0</span>}</td>
+                <td className="rp-act"><ViewButton onClick={() => setViewing(s)} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {viewing && (
+        <DetailModal
+          title={`Check-out · ${viewing.guestName}`}
+          sub={viewing.roomName || ''}
+          fields={[
+            ['Booking #', '#' + viewing.bookingId],
+            ['Guest', viewing.guestName],
+            ['Room', viewing.roomName],
+            ['Status', 'Confirmed'],
+            ['Confirmed By', viewing.confirmedBy],
+            ['Confirmed', formatWhen(viewing.confirmedAt)],
+            ['Orders', viewing.orders.length ? viewing.orders.map(o => `#${o.id} (${o.status === 'Completed' ? 'Delivered' : o.status}, ${formatWhen(o.placedAt)})`).join('; ') : 'No food ordered on this stay'],
+            ['Total', formatPeso(viewing.total)],
+          ]}
+          items={viewing.orders.flatMap(o => (o.lines || []).map(it => ({ ...it, name: `#${o.id} · ${it.name}` })))}
+          onClose={() => setViewing(null)}
+        />
+      )}
+      <Pager page={safePage} totalPages={totalPages} total={rows.length} perPage={PER_PAGE} onPage={onPage} />
+    </>
+  );
+}
+
 function App() {
   const [orders, setOrders] = useState([]);
   const [tables, setTables] = useState([]);
@@ -487,13 +554,14 @@ function App() {
   const [loadedOrders, setLoadedOrders] = useState(false);
   const [loadedTables, setLoadedTables] = useState(false);
   const [loadedBookings, setLoadedBookings] = useState(false);
+  const [checkouts, setCheckouts] = useState([]);
 
   const [tab, setTab] = useState('dinein');
   const [preset, setPreset] = useState('month');
   const [from, setFrom] = useState(() => presetRange('month').from);
   const [to, setTo] = useState(() => presetRange('month').to);
   const [search, setSearch] = useState('');
-  const [pages, setPages] = useState({ dinein: 1, roomsvc: 1 });
+  const [pages, setPages] = useState({ dinein: 1, roomsvc: 1, checkouts: 1 });
 
   const load = useCallback(() => {
     // Asked for Completed only: this page reports what the kitchen finished, not
@@ -512,6 +580,11 @@ function App() {
       .then(r => (r.ok ? r.json() : {}))
       .then(data => { setBookings(Array.isArray(data.bookings) ? data.bookings : []); setLoadedBookings(true); })
       .catch(() => setLoadedBookings(true));
+
+    fetch(CFG.checkoutsUrl, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+      .then(r => (r.ok ? r.json() : {}))
+      .then(data => setCheckouts(Array.isArray(data.confirmed) ? data.confirmed : []))
+      .catch(() => {});
 
     // A screen left open across a shift should not keep reporting yesterday's
     // "Today". Only touches state when the computed range actually differs, so
@@ -535,7 +608,7 @@ function App() {
     return () => { clearInterval(id); window.removeEventListener('focus', load); };
   }, [load]);
 
-  const resetPages = () => setPages({ dinein: 1, roomsvc: 1 });
+  const resetPages = () => setPages({ dinein: 1, roomsvc: 1, checkouts: 1 });
 
   const applyPreset = (p) => {
     setPreset(p);
@@ -596,6 +669,11 @@ function App() {
     .sort((a, b) => (a.id < b.id ? 1 : -1)),
     [foodAll, cancelledIds, from, to, q]);
 
+  const checkoutRows = useMemo(() => checkouts
+    .filter(s => inWindow(localDayKey(s.confirmedAt), from, to))
+    .filter(s => matches([s.bookingId, s.guestName, s.roomName, s.confirmedBy, ...s.orders.flatMap(o => [o.id, ...(o.lines || []).map(it => it.name)])])),
+    [checkouts, from, to, q]);
+
   const totals = useMemo(() => {
     const dineIn = dineRows.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
     const roomService = svcRows.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
@@ -603,7 +681,7 @@ function App() {
     return { dineIn, roomService, svcOnOpenStay, grand: dineIn + roomService };
   }, [dineRows, svcRows]);
 
-  const counts = { dinein: dineRows.length, roomsvc: svcRows.length };
+  const counts = { dinein: dineRows.length, roomsvc: svcRows.length, checkouts: checkoutRows.length };
   const rangeLabel = formatRange(from, to);
   const narrowed = !!search || preset === 'custom';
   const loaded = loadedOrders && loadedTables && loadedBookings;
@@ -659,6 +737,13 @@ function App() {
           onPage={n => setPages(p => ({ ...p, dinein: n }))}
           rangeLabel={rangeLabel}
           tableNameById={tableNameById}
+        />
+      ) : tab === 'checkouts' ? (
+        <CheckoutTable
+          rows={checkoutRows}
+          page={pages.checkouts}
+          onPage={n => setPages(p => ({ ...p, checkouts: n }))}
+          rangeLabel={rangeLabel}
         />
       ) : (
         <RoomServiceTable
