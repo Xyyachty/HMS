@@ -562,6 +562,8 @@ function Done({ title, rows, note, primary, onAgain }) {
 function RoomWalkIn() {
   const [rooms, setRooms] = useState([]);
   const [sleeps, setSleeps] = useState({});
+  // Category name to its photo, for a room with none of its own (as on the hotel site).
+  const [categoryImgs, setCategoryImgs] = useState({});
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [fullName, setFullName] = useState('');
@@ -606,6 +608,9 @@ function RoomWalkIn() {
         setRooms(Array.isArray(data.rooms) ? data.rooms : []);
         // Category name to how many it sleeps; a category without one takes any party.
         setSleeps(Object.fromEntries((data.categories || []).filter(c => c.capacity).map(c => [c.name, c.capacity])));
+        setCategoryImgs(Object.fromEntries((data.categories || [])
+          .map(c => [c.name, c.image || (Array.isArray(c.gallery) ? c.gallery.find(Boolean) : '')])
+          .filter(([, img]) => img)));
         if (data.childPolicy) setChildPolicy(data.childPolicy);
         setLoadError('');
         setLoaded(true);
@@ -717,8 +722,9 @@ function RoomWalkIn() {
       <button key={r.dbId} type="button" className={'wi-card' + (on ? ' is-on' : '')}
         onClick={() => toggleRoom(r)} aria-pressed={on}>
         <div className="wi-card-photo">
-          {/* Same stock photo Room Management and the hotel site show for a room with none of its own. */}
-          <img src={r.img || 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=800&h=600&q=80'} alt="" loading="lazy" />
+          {/* The room's own photo, else its category's, else the stock photo the hotel site falls back to. */}
+          <img src={r.img || (r.imgs || []).find(Boolean) || categoryImgs[r.category]
+            || 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=800&h=600&q=80'} alt="" loading="lazy" />
         </div>
         <div className="wi-card-body">
           <span className="wi-card-name">{r.name}</span>
