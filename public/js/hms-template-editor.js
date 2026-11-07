@@ -2034,6 +2034,12 @@
   function undoIfCovering(state, allowOverlap) {
     const el = state.el;
     if (allowOverlap || !el || !el.isConnected) return false;
+    /* Words a student added float above the page on purpose, so they may sit
+       over it. Holding them to "an empty space" sent almost every drop back to
+       where it started: a hotel page has little empty space, and the Alt
+       override does not exist on a phone or tablet. The template's own
+       elements keep the rule, which protects the layout. */
+    if (el.hasAttribute('data-hms-user')) return false;
     const covered = findCoveredContent(el, null, state.alreadyCovering);
     if (!covered) return false;
     el.style.cssText = state.startCss;

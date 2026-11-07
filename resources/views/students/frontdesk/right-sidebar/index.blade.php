@@ -289,20 +289,17 @@
                 <span class="section-icon"><i class="fas fa-plus"></i></span>
                 <span class="section-label">
                     Add something new
-                    <span class="section-sub">Text, buttons, images, cards</span>
+                    <span class="section-sub">Text</span>
                 </span>
                 <i class="fas fa-chevron-down section-chevron" id="chevron-add" style="transform: rotate(-90deg)"></i>
             </button>
             <div class="section-body hidden" id="section-add">
                 <p class="section-hint">Puts it on the page where you are looking. Drag the “Move” tab above it to place it.</p>
-                {{-- Text field, Icon and Container are gone: a typing box a guest
-                     cannot send anywhere, an icon only changeable by its code name,
-                     and an empty dashed box did nothing for a hotel page. --}}
+                {{-- Text field, Icon and Container went first; Button, Picture and
+                     Card followed on 2026-11-08. Words is
+                     the only addition left. --}}
                 <div class="grid grid-cols-2 gap-1.5">
                     <button type="button" onclick="addCanvasElement('text')" class="add-el-btn"><i class="fas fa-font"></i>Words</button>
-                    <button type="button" onclick="addCanvasElement('button')" class="add-el-btn"><i class="fas fa-square"></i>Button</button>
-                    <button type="button" onclick="addCanvasElement('image')" class="add-el-btn"><i class="fas fa-image"></i>Picture</button>
-                    <button type="button" onclick="addCanvasElement('card')" class="add-el-btn"><i class="fas fa-id-card"></i>Card</button>
                 </div>
             </div>
         </div>
@@ -1036,7 +1033,7 @@
             return;
         }
         postToTemplate({ type: 'add-element', elementType: type });
-        const names = { text: 'Words', button: 'A button', image: 'A picture', card: 'A card' };
+        const names = { text: 'Words' };
         if (typeof toast === 'function') toast((names[type] || 'It') + ' added. Drag the “Move” tab to place it.');
     }
 

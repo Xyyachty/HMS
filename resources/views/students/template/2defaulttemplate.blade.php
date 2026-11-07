@@ -4918,10 +4918,13 @@ function siteTypeCss(type) {
   let css = '';
   const bodyRules = [
     family ? 'font-family:' + family + ';' : '',
-    size ? 'font-size:' + size + ';' : '',
     color ? 'color:' + color + ';' : '',
   ].join('');
   if (bodyRules) css += 'body{' + bodyRules + '}';
+  // On the root, not the body: the template sizes its text in rem, which
+  // follows <html>. A body font-size reached almost nothing, so the Base
+  // text size slider looked dead.
+  if (size) css += 'html{font-size:' + size + ';}';
   if (family) css += 'h1,h2,h3,h4,h5,h6,.font-display,.nav-bar,button,input,select,textarea{font-family:' + family + ';}';
   if (color) css += 'p,span,li,td,th,label,a{color:inherit;}';
   if (headingColor) css += 'h1,h2,h3,h4,h5,h6,.font-display{color:' + headingColor + ';}';
