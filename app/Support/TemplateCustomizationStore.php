@@ -467,7 +467,13 @@ class TemplateCustomizationStore
                     'item_ref' => isset($el['id']) ? (string) $el['id'] : null,
                 ]);
                 foreach ($el as $field => $fieldValue) {
-                    if (is_array($fieldValue)) {
+                    /* styles holds the item's place and look (left, top, font-size).
+                       It was skipped with every other array, so an added item came
+                       back from each save with no position and was redrawn at the
+                       default spot: every drag "went back". Kept as JSON instead. */
+                    if ($field === 'styles' && is_array($fieldValue)) {
+                        $fieldValue = json_encode($fieldValue);
+                    } elseif (is_array($fieldValue)) {
                         continue;
                     }
                     // Persist inline images for user elements
@@ -660,7 +666,17 @@ class TemplateCustomizationStore
         // userElements
         $out[HotelTemplateBuilder::USER_ELEMENTS_KEY] = [];
         foreach ($byCollection->get('userElements', collect()) as $item) {
-            $out[HotelTemplateBuilder::USER_ELEMENTS_KEY][] = self::fieldsMap($item);
+            $fields = self::fieldsMap($item);
+            // Written as JSON by writeCustomizations(); see the note there.
+            if (isset($fields['styles']) && is_string($fields['styles'])) {
+                $styles = json_decode($fields['styles'], true);
+                if (is_array($styles)) {
+                    $fields['styles'] = $styles;
+                } else {
+                    unset($fields['styles']);
+                }
+            }
+            $out[HotelTemplateBuilder::USER_ELEMENTS_KEY][] = $fields;
         }
 
         foreach ([
