@@ -1333,7 +1333,10 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
         return response()->json([
             'success' => true,
             'path' => $path,
-            'url' => asset('storage/' . $path),
+            // Ask the media disk, not asset('storage/...'): in production the file
+            // is on Supabase, and the app's own /storage/ path 403s, so the new
+            // picture showed broken (or fell back to the stock one) until a reload.
+            'url' => \App\Support\HotelImageStore::url($path),
         ]);
     })->name('frontdesk.template.media');
 
