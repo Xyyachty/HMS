@@ -77,7 +77,21 @@ class HotelMenuAccess
      */
     public static function isUnderReview(?StudentGroup $membership): bool
     {
-        return self::taskIsUnderReview(self::taskFor($membership));
+        if (!self::taskIsUnderReview(self::taskFor($membership))) {
+            return false;
+        }
+
+        // Faculty sent one of the menu's pieces back (Manage Food & Drink Items,
+        // say) while Review Restaurant Menu was still waiting on them. The student
+        // has to be able to make that change, so a send-back reopens the menu even
+        // though the review task itself is still pending.
+        return !Task::where('faculty_id', $membership->faculty_id)
+            ->where('role', self::MANAGE_ROLE)
+            ->whereRaw('LOWER(group_name) = LOWER(?)', [(string) $membership->group_name])
+            ->where('status', 'active')
+            ->whereNotNull('feedback')
+            ->where('feedback', '!=', '')
+            ->exists();
     }
 
     /** The same question of a task already in hand, so it can be reasoned about alone. */
