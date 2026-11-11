@@ -519,7 +519,7 @@
                                 <p class="text-[0.9375rem] font-bold text-slate-800 leading-tight">Pending Tasks</p>
                                 <p class="text-[2.125rem] font-extrabold text-slate-900 leading-none mt-1"><span data-task-count="active">{{ $homeMyPending }}</span></p>
                                 @if($homeOverdueCount > 0)
-                                    <p class="text-[0.75rem] font-semibold text-red-500 mt-1.5 truncate">{{ $homeOverdueCount }} past due date</p>
+                                    <p class="text-[0.75rem] font-semibold text-red-500 mt-1.5 truncate">{{ $homeOverdueCount }} missing</p>
                                 @else
                                     <p class="text-[0.75rem] text-slate-400 font-medium mt-1.5 truncate">Waiting for Approval</p>
                                 @endif

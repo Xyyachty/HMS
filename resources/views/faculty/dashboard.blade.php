@@ -62,7 +62,7 @@
         <div class="mt-3 pt-2 border-t border-slate-100 flex items-center gap-1.5">
             @if($overdueTasks > 0)
                 <span class="iconify text-red-400 text-sm" data-icon="mdi:alert-circle-outline"></span>
-                <span class="text-[0.6875rem] font-semibold text-red-500 truncate">{{ number_format($overdueTasks) }} past due date</span>
+                <span class="text-[0.6875rem] font-semibold text-red-500 truncate">{{ number_format($overdueTasks) }} missing</span>
             @else
                 <span class="iconify text-emerald-500 text-sm" data-icon="mdi:check-circle-outline"></span>
                 <span class="text-[0.6875rem] font-semibold text-emerald-600 truncate">All tasks on schedule</span>
