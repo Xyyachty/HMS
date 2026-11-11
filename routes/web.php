@@ -334,6 +334,12 @@ Route::prefix('students')->middleware(['auth', 'role:student', 'simulation.unloc
                 ->first()
             : null;
 
+        // Repairs a concept task left on an old team after teams were re-made, so
+        // it shows in this team's Tasks. Writes nothing when already right.
+        if ($groupMembership) {
+            \App\Support\HotelConceptDesk::ensureTaskFor($groupMembership);
+        }
+
         $groupMembers = collect();
         $group        = null;
         $facultyId    = null;

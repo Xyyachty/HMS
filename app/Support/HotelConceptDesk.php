@@ -382,9 +382,12 @@ class HotelConceptDesk
             return collect();
         }
 
+        // Also by team name: a member who moved here may still hold a finished
+        // task from their old team, which is not this team's.
         return Task::where('kind', self::TASK_KIND)
             ->where('faculty_id', $facultyId)
             ->whereIn('student_id', $studentIds)
+            ->where(fn ($q) => $q->where('group_name', $groupName)->orWhereNull('group_name'))
             ->get();
     }
 
@@ -403,11 +406,31 @@ class HotelConceptDesk
             return;
         }
 
-        $existing = Task::where('kind', self::TASK_KIND)
+        // A student can hold more than one: a finished one from a team they have since
+        // left, and the one for their team now. Their current team's row wins; failing
+        // that, an open or unstamped one, which follows them to the new team below.
+        // A finished row from another team stays with that team, and a fresh one is
+        // seeded for this team instead.
+        $rows = Task::where('kind', self::TASK_KIND)
             ->where('student_id', $membership->student_id)
-            ->first();
+            ->orderBy('task_id')
+            ->get();
+
+        $existing = $rows->firstWhere('group_name', $membership->group_name)
+            ?? $rows->first(fn (Task $t) => blank($t->group_name) || $t->status === 'active');
 
         if ($existing) {
+            // Teams were re-made and this member moved (Team 2 to Team 3). The open
+            // task kept the old team's name, so the new team's Tasks list, which is
+            // filtered by team, never showed it.
+            if (filled($existing->group_name) && filled($membership->group_name)
+                && $existing->group_name !== $membership->group_name) {
+                $existing->forceFill([
+                    'group_name' => $membership->group_name,
+                    'group_id' => $membership->group_id,
+                ])->save();
+            }
+
             // The task was seeded when a team owed one concept; the wording has to
             // catch up or the card asks for the wrong thing.
             if ($existing->title !== self::TASK_TITLE || $existing->description !== self::TASK_DESCRIPTION) {
