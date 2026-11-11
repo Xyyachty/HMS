@@ -959,11 +959,16 @@ class FacultyController extends Controller
             ->when($class, fn ($q) => $q->where('faculty_class_id', $class->faculty_class_id))
             ->pluck('user_id');
 
-        $changed = User::whereIn('user_id', $userIds)
+        $toChange = User::whereIn('user_id', $userIds)
             ->where('role', 'student')
             // Only flips active and inactive; pending or archived accounts keep theirs.
             ->where('status', $validated['status'] === 'active' ? 'inactive' : 'active')
+            ->get(['user_id', 'email', 'first_name', 'name']);
+
+        $changed = $toChange->isEmpty() ? 0 : User::whereIn('user_id', $toChange->pluck('user_id'))
             ->update(['status' => $validated['status']]);
+
+        \App\Mail\AccountStatusMail::sendTo($toChange, $validated['status'], auth()->user()->name ?? 'Your faculty');
 
         $where = $class->name ?? 'all your blocks';
         ActivityLog::recordFor(
@@ -1053,7 +1058,13 @@ class FacultyController extends Controller
             }
         }
 
+        $statusChanged = $user->status !== $validated['status'];
+
         $user->update($updateData);
+
+        if ($statusChanged) {
+            \App\Mail\AccountStatusMail::sendTo([$user], $validated['status'], auth()->user()->name ?? 'Your faculty');
+        }
 
         $description = 'Updated student account ' . ($user->name ?? $user->email)
             . ' — status set to ' . $validated['status'] . '.';
