@@ -26,7 +26,7 @@ class DeanSeeder extends Seeder
             'first_name'   => 'System',
             'middle_name'  => '',
             'last_name'    => 'Dean',
-            'email'        => 'salahid.dean@hms.edu',
+            'email'        => 'dean.salahid@hms.edu',
             'password'     => Hash::make('Dean@1234'),
             'role'         => 'dean',
             'phone_number' => '',
