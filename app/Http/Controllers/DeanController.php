@@ -420,6 +420,7 @@ class DeanController extends Controller
             'role' => (string) $task->role,
             'role_label' => $roleLabels[$task->role] ?? $task->role,
             'student' => $studentName,
+            'student_avatar' => $user?->avatar_url,
             // Same formats as the faculty Team Task Activity table.
             'due_date' => optional($task->due_date)->hmsFormat('M j, Y g:i A'),
             'submitted_at' => $task->status === 'archived' ? optional($task->updated_at)->hmsFormat('M j, Y') : null,

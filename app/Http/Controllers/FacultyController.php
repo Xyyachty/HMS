@@ -1751,6 +1751,7 @@ class FacultyController extends Controller
                             $teamEdits ??= \App\Support\SimulationPhase::lastEdits((string) $groupName, (int) $facultyId)
                         ),
                     'student_name' => $studentName,
+                    'student_avatar' => $u?->avatar_url,
                     'submitted_at' => $task->status === 'archived'
                         ? $task->updated_at?->timezone('Asia/Manila')->hmsFormat('M j, Y')
                         : null,

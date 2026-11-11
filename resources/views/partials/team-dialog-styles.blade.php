@@ -168,7 +168,7 @@
     .tm-avatar {
         width: 2.75rem; height: 2.75rem; border-radius: 999px; flex-shrink: 0;
         display: inline-flex; align-items: center; justify-content: center;
-        background: #4A4643; color: #fff; font-size: 1rem; font-weight: 800;
+        background: #4A4643; color: #fff; font-size: 1rem; font-weight: 800; object-fit: cover;
     }
     .tm-avatar-sm { width: 1.75rem; height: 1.75rem; font-size: .7rem; }
     .tm-member-name { font-size: 0.9062rem; font-weight: 800; color: #181818; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

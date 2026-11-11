@@ -178,6 +178,7 @@
                                     return [
                                         'name' => $n,
                                         'user_id' => $u?->user_id,
+                                        'avatar' => $u?->avatar_url,
                                         'role_labels' => array_map(fn ($r) => $roleLabels[$r] ?? $r, $memberRoles),
                                     ];
                                 })->values()->toJson();
@@ -806,7 +807,7 @@
                         + '<div class="min-w-0">'
                             + '<p class="tm-group-title">' + escHtml(items[0].role_label || items[0].role || 'Other') + '</p>'
                             + '<p class="tm-group-student">'
-                                + '<img src="{{ asset('images/default-avatar.svg') }}" alt="" class="tm-avatar tm-avatar-sm">'
+                                + '<img src="' + escHtml(items[0].student_avatar || '{{ asset('images/default-avatar.svg') }}') + '" alt="" class="tm-avatar tm-avatar-sm">'
                                 + '<span class="tm-ellipsis">' + escHtml(items[0].student || 'Not assigned') + '</span></p>'
                         + '</div>'
                         + '<span class="tm-muted" style="white-space:nowrap;">' + items.length + (items.length === 1 ? ' task' : ' tasks')
@@ -851,7 +852,7 @@
                     : '';
                 return '<div class="tm-member" data-member-card="' + Number(m.user_id || 0) + '">'
                     + '<div class="tm-member-top">'
-                        + '<img src="{{ asset('images/default-avatar.svg') }}" alt="" class="tm-avatar">'
+                        + '<img src="' + escHtml(m.avatar || '{{ asset('images/default-avatar.svg') }}') + '" alt="" class="tm-avatar">'
                         + '<div class="min-w-0">'
                             + '<p class="tm-member-name" title="' + escHtml(m.name) + '">' + escHtml(m.name) + '</p>'
                             + '<p class="tm-member-no">Member ' + (i + 1) + '</p>'
