@@ -935,6 +935,50 @@ class FacultyController extends Controller
         Notifier::classOpened(auth()->user(), $facultyId, $openNow);
     }
 
+    /**
+     * One click sets every student in the block tab on screen to active or inactive.
+     * Inactive signs them out on their next request (EnforceSessionRules).
+     */
+    public function setAllStudentsStatus(Request $request)
+    {
+        $facultyId = auth()->user()?->faculty?->user_information_id;
+        if (!$facultyId) {
+            return back()->withErrors(['error' => 'Faculty account not found.']);
+        }
+
+        $validated = $request->validate([
+            'status' => ['required', 'in:active,inactive'],
+            'class' => ['nullable', 'string', 'max:5'],
+        ]);
+
+        $class = FacultyClass::where('faculty_id', $facultyId)
+            ->where('letter', strtoupper((string) ($validated['class'] ?? '')))
+            ->first();
+
+        $userIds = Student::where('faculty_id', $facultyId)
+            ->when($class, fn ($q) => $q->where('faculty_class_id', $class->faculty_class_id))
+            ->pluck('user_id');
+
+        $changed = User::whereIn('user_id', $userIds)
+            ->where('role', 'student')
+            // Only flips active and inactive; pending or archived accounts keep theirs.
+            ->where('status', $validated['status'] === 'active' ? 'inactive' : 'active')
+            ->update(['status' => $validated['status']]);
+
+        $where = $class->name ?? 'all your blocks';
+        ActivityLog::recordFor(
+            ActivityLog::ACCOUNT_UPDATED,
+            'Set ' . $changed . ' student account(s) in ' . $where . ' to ' . $validated['status'] . '.'
+        );
+
+        return redirect()
+            ->route('faculty.students', $class ? ['class' => $class->letter] : [])
+            ->with('success', $changed === 0
+                ? 'Every student in ' . $where . ' is already ' . $validated['status'] . '.'
+                : $changed . ' student(s) in ' . $where . ' set to ' . $validated['status'] . '.')
+            ->with('success_title', 'Status Updated');
+    }
+
     public function updateStudent(Request $request, $userId)
     {
         $user = User::findOrFail($userId);

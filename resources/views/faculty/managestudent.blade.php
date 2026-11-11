@@ -313,6 +313,22 @@
                     onkeydown="if (event.key === 'Escape') collapseStudentSearch(true)"
                 >
             </div>
+            @if ($activeClass && ($activeClass->seats_taken ?? 0) > 0)
+                <form id="setAllStatusForm" method="POST" action="{{ route('faculty.students.status') }}" class="hidden">
+                    @csrf
+                    <input type="hidden" name="class" value="{{ $activeClass->letter }}">
+                    <input type="hidden" name="status" id="setAllStatusValue">
+                </form>
+                <button
+                    type="button"
+                    onclick="confirmSetAllStatus()"
+                    title="Set every student in this block to Active or Inactive"
+                    class="h-10 shrink-0 bg-brand text-white px-4 rounded-xl text-sm font-bold transition shadow-md shadow-brand/20 inline-flex items-center gap-2 whitespace-nowrap ms-light-hover"
+                >
+                    <span class="iconify text-base" data-icon="mdi:account-switch-outline"></span>
+                    Set All Status
+                </button>
+            @endif
             @php
                 // No block, or a block not open yet — see Faculty::intakeLockReason().
                 $canEnrol = empty($intakeLock);
@@ -910,6 +926,27 @@
     function closeModal(modalId) {
         document.getElementById(modalId).classList.add('hidden');
         document.body.style.overflow = '';
+    }
+
+    // Active or Inactive for every student in the block tab on screen.
+    function confirmSetAllStatus() {
+        Swal.fire({
+            icon: 'question',
+            title: @json('Set all students in ' . ($activeClass->name ?? 'this block')),
+            html: '<p class="text-sm text-slate-500">Inactive students are signed out and cannot log in until set back to Active.</p>',
+            showDenyButton: true,
+            showCancelButton: true,
+            confirmButtonText: 'All Active',
+            denyButtonText: 'All Inactive',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#15803D',
+            denyButtonColor: '#DC2626',
+            backdrop: 'rgba(42,17,24, 0.35)',
+        }).then((result) => {
+            if (result.isDismissed) return;
+            document.getElementById('setAllStatusValue').value = result.isConfirmed ? 'active' : 'inactive';
+            document.getElementById('setAllStatusForm').submit();
+        });
     }
 
     document.addEventListener('DOMContentLoaded', function() {

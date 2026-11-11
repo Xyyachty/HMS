@@ -256,6 +256,7 @@ Route::prefix('faculty')->middleware(['auth', 'role:faculty'])->name('faculty.')
     Route::post('/students', [FacultyController::class, 'storeStudent'])->name('students.store');
     Route::put('/students/{userId}', [FacultyController::class, 'updateStudent'])->name('students.update');
     Route::post('/students/bulk', [FacultyController::class, 'bulkImportStudents'])->name('students.bulk');
+    Route::post('/students/status', [FacultyController::class, 'setAllStudentsStatus'])->name('students.status');
     Route::get('/role', [FacultyController::class, 'role'])->name('role');
     // Polled from Manage Teams so the Task Submission Indicator on every card
     // updates itself — new submission, or a reviewed one dropping off — without
