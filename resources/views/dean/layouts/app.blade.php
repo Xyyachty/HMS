@@ -168,7 +168,7 @@
                         $deanUser?->first_name,
                         $deanUser?->last_name,
                     ]))) ?: ($deanUser?->name ?? 'Dean');
-                    $deanEmail = $deanUser?->email ?? 'salahiddean@hms.edu';
+                    $deanEmail = $deanUser?->email ?? 'salahid.dean@hms.edu';
                 @endphp
                 @include('partials.sidebar-profile-card', [
                     'user'        => $deanUser,
